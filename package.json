@@ -1,0 +1,53 @@
+{
+  "name": "personal-website-generator",
+  "version": "1.0.0",
+  "description": "A minimalist personal website generator for solo entrepreneurs.",
+  "main": "src/index.tsx",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "keywords": [
+    "react",
+    "website",
+    "generator",
+    "personal",
+    "minimalist"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@types/react-router-dom": "^5.3.3",
+    "axios": "^1.12.2",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-router-dom": "^5.3.4",
+    "react-scripts": "4.0.3",
+    "typescript": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/minimatch": "^6.0.0",
+    "@types/node": "^24.7.0",
+    "@types/react": "^17.0.89",
+    "@types/react-dom": "^17.0.26"
+  },
+  "homepage": "http://yourhomepage.com",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/yourusername/personal-website-generator.git"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
