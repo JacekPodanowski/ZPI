@@ -1,0 +1,196 @@
+# Set up
+venv_local\Scripts\activate
+
+# docker
+docker-compose down -v
+docker volume rm sitebackend_postgres_data_site_project
+
+docker-compose up --build -d
+docker-compose logs -f
+
+# migracje
+python manage.py makemigrations api
+docker-compose exec backend python manage.py makemigrations api
+
+# api
+1. Uwierzytelnianie (JWT)
+Endpoint: POST /api/v1/token/
+Cel: Logowanie użytkownika i uzyskanie tokenów dostępu.
+Metoda: POST
+Ciało żądania (JSON): Wymaga podania email i password użytkownika.
+Odpowiedź (Sukces): Zwraca token access (do użycia w kolejnych żądaniach) oraz token refresh (do odświeżania tokena access).
+Odpowiedź (Błąd): Informacja o niepoprawnych danych logowania.
+Endpoint: POST /api/v1/token/refresh/
+Cel: Odświeżenie wygasłego tokena dostępu (access token).
+Metoda: POST
+Ciało żądania (JSON): Wymaga podania ważnego tokena refresh.
+Odpowiedź (Sukces): Zwraca nowy token access.
+Odpowiedź (Błąd): Informacja o niepoprawnym lub wygasłym tokenie refresh.
+2. Użytkownicy (/users/)
+Endpoint: GET /api/v1/users/
+Cel: Pobranie listy wszystkich użytkowników.
+Metoda: GET
+Wymagania: Tylko dla administratorów. Wymaga uwierzytelnienia.
+Odpowiedź: Lista obiektów użytkowników.
+Endpoint: POST /api/v1/users/
+Cel: Stworzenie nowego użytkownika.
+Metoda: POST
+Wymagania: Tylko dla administratorów (do dostosowania). Wymaga uwierzytelnienia.
+Ciało żądania (JSON): Dane nowego użytkownika, takie jak email, username, password, first_name, last_name, user_type.
+Odpowiedź (Sukces): Dane nowo utworzonego użytkownika.
+Endpoint: GET /api/v1/users/{id}/
+Cel: Pobranie szczegółów konkretnego użytkownika o podanym id.
+Metoda: GET
+Wymagania: Właściciel profilu lub administrator. Wymaga uwierzytelnienia.
+Odpowiedź: Dane użytkownika.
+Endpoint: PUT /api/v1/users/{id}/
+Cel: Pełna aktualizacja danych użytkownika o podanym id.
+Metoda: PUT
+Wymagania: Właściciel profilu lub administrator. Wymaga uwierzytelnienia.
+Ciało żądania (JSON): Wszystkie pola użytkownika do aktualizacji.
+Odpowiedź: Zaktualizowane dane użytkownika.
+Endpoint: PATCH /api/v1/users/{id}/
+Cel: Częściowa aktualizacja danych użytkownika o podanym id.
+Metoda: PATCH
+Wymagania: Właściciel profilu lub administrator. Wymaga uwierzytelnienia.
+Ciało żądania (JSON): Tylko te pola użytkownika, które mają zostać zmienione.
+Odpowiedź: Zaktualizowane dane użytkownika.
+Endpoint: DELETE /api/v1/users/{id}/
+Cel: Usunięcie użytkownika o podanym id.
+Metoda: DELETE
+Wymagania: Właściciel profilu lub administrator. Wymaga uwierzytelnienia.
+Odpowiedź (Sukces): Pusta odpowiedź ze statusem 204 No Content.
+3. Sloty Czasowe (/timeslots/)
+Endpoint: GET /api/v1/timeslots/
+Cel: Pobranie listy slotów czasowych. Domyślnie administrator widzi wszystkie, inni użytkownicy mogą widzieć tylko dostępne sloty (logika do doprecyzowania w backendzie).
+Metoda: GET
+Wymagania: Wymaga uwierzytelnienia.
+Odpowiedź: Lista obiektów slotów czasowych.
+Endpoint: POST /api/v1/timeslots/
+Cel: Stworzenie nowego slotu czasowego przez korepetytora/administratora.
+Metoda: POST
+Wymagania: Wymaga uwierzytelnienia (tylko dla uprawnionych ról, np. ADMIN). Pole tutor jest przypisywane automatycznie do zalogowanego użytkownika.
+Ciało żądania (JSON): start_time (data i czas), end_time (data i czas), opcjonalnie is_available (domyślnie true).
+Odpowiedź (Sukces): Dane nowo utworzonego slotu czasowego.
+Endpoint: GET /api/v1/timeslots/{id}/
+Cel: Pobranie szczegółów konkretnego slotu czasowego o podanym id.
+Metoda: GET
+Wymagania: Wymaga uwierzytelnienia.
+Odpowiedź: Dane slotu czasowego.
+Endpoint: PUT /api/v1/timeslots/{id}/
+Cel: Pełna aktualizacja slotu czasowego.
+Metoda: PUT
+Wymagania: Tylko właściciel (korepetytor) lub administrator. Wymaga uwierzytelnienia.
+Ciało żądania (JSON): Wszystkie pola slotu do aktualizacji.
+Odpowiedź: Zaktualizowane dane slotu.
+Endpoint: PATCH /api/v1/timeslots/{id}/
+Cel: Częściowa aktualizacja slotu czasowego.
+Metoda: PATCH
+Wymagania: Tylko właściciel (korepetytor) lub administrator. Wymaga uwierzytelnienia.
+Ciało żądania (JSON): Pola slotu do zmiany.
+Odpowiedź: Zaktualizowane dane slotu.
+Endpoint: DELETE /api/v1/timeslots/{id}/
+Cel: Usunięcie slotu czasowego.
+Metoda: DELETE
+Wymagania: Tylko właściciel (korepetytor) lub administrator. Wymaga uwierzytelnienia. (Uwaga: jeśli slot ma powiązane spotkania, usunięcie może być zablokowane przez on_delete=PROTECT).
+Odpowiedź (Sukces): Pusta odpowiedź ze statusem 204 No Content.
+4. Spotkania (/meetings/)
+Endpoint: GET /api/v1/meetings/
+Cel: Pobranie listy spotkań. Administrator widzi wszystkie, student lub korepetytor widzi tylko te spotkania, w których uczestniczy.
+Metoda: GET
+Wymagania: Wymaga uwierzytelnienia.
+Odpowiedź: Lista obiektów spotkań.
+Endpoint: POST /api/v1/meetings/
+Cel: Utworzenie nowego spotkania (rezerwacja slotu).
+Metoda: POST
+Wymagania: Wymaga uwierzytelnienia (prawdopodobnie przez studenta).
+Ciało żądania (JSON): student (ID zalogowanego studenta, może być ustawiane automatycznie), tutor (ID korepetytora), time_slot (ID wybranego slotu czasowego), subject, opcjonalnie notes.
+Odpowiedź (Sukces): Dane nowo utworzonego spotkania.
+Endpoint: GET /api/v1/meetings/{id}/
+Cel: Pobranie szczegółów konkretnego spotkania o podanym id.
+Metoda: GET
+Wymagania: Uczestnik spotkania (student lub korepetytor) lub administrator. Wymaga uwierzytelnienia.
+Odpowiedź: Dane spotkania.
+Endpoint: PUT /api/v1/meetings/{id}/ lub PATCH /api/v1/meetings/{id}/
+Cel: Aktualizacja spotkania, np. zmiana statusu (potwierdzenie, anulowanie).
+Metoda: PUT lub PATCH
+Wymagania: Uczestnik spotkania lub administrator. Wymaga uwierzytelnienia.
+Ciało żądania (JSON): Pola do zmiany, np. {"status": "confirmed"}.
+Odpowiedź: Zaktualizowane dane spotkania.
+Endpoint: DELETE /api/v1/meetings/{id}/
+Cel: Usunięcie/anulowanie spotkania (logika do doprecyzowania – czy faktyczne usunięcie, czy zmiana statusu na "canceled").
+Metoda: DELETE
+Wymagania: Uczestnik spotkania lub administrator. Wymaga uwierzytelnienia.
+Odpowiedź (Sukces): Pusta odpowiedź ze statusem 204 No Content (jeśli usuwa) lub zaktualizowany obiekt (jeśli zmienia status).
+5. Powiadomienia (/notifications/)
+Endpoint: GET /api/v1/notifications/
+Cel: Pobranie listy powiadomień dla zalogowanego użytkownika.
+Metoda: GET
+Wymagania: Wymaga uwierzytelnienia.
+Odpowiedź: Lista obiektów powiadomień.
+Endpoint: GET /api/v1/notifications/{id}/
+Cel: Pobranie szczegółów konkretnego powiadomienia.
+Metoda: GET
+Wymagania: Właściciel powiadomienia. Wymaga uwierzytelnienia.
+Odpowiedź: Dane powiadomienia.
+Endpoint: PATCH /api/v1/notifications/{id}/
+Cel: Aktualizacja powiadomienia, np. oznaczenie jako przeczytane.
+Metoda: PATCH
+Wymagania: Właściciel powiadomienia. Wymaga uwierzytelnienia.
+Ciało żądania (JSON): np. {"is_read": true}.
+Odpowiedź: Zaktualizowane dane powiadomienia.
+Uwaga: Tworzenie i usuwanie powiadomień będzie prawdopodobnie realizowane automatycznie przez logikę serwera w odpowiedzi na inne zdarzenia (np. nowa rezerwacja), a nie bezpośrednio przez użytkownika przez API.
+
+
+# baza
+
+Schemat Bazy Danych
+
+User
+id: BigInt (PK, auto-increment) - Domyślnie Django
+username: Varchar(150) (NOT NULL, UNIQUE)
+email: Varchar(254) (NOT NULL, UNIQUE) - Służy jako login
+first_name: Varchar(150) (NULL) - Może być pusty
+last_name: Varchar(150) (NULL) - Może być pusty
+phone: Varchar(20) (NULL)
+password: Varchar(128) (NOT NULL) - Przechowuje zahaszowane hasło
+user_type: Varchar(20) (NOT NULL) - wartości: "student", "vip", "admin" (DEFAULT "student")
+is_staff: Boolean (NOT NULL, DEFAULT FALSE) - Dostęp do panelu admina, TRUE dla "admin"
+is_active: Boolean (NOT NULL, DEFAULT TRUE) - Czy konto jest aktywne
+is_superuser: Boolean (NOT NULL, DEFAULT FALSE) - Pełne uprawnienia, TRUE dla "admin"
+created_at: DateTime (NOT NULL, DEFAULT CURRENT_TIMESTAMP)
+last_login: DateTime (NULL) - Domyślnie Django
+
+TimeSlot
+id: BigInt (PK, auto-increment) - Domyślnie Django
+tutor_id: BigInt (FK do User.id) (NOT NULL) - Ograniczone do User.user_type = "admin"
+start_time: DateTime (NOT NULL)
+end_time: DateTime (NOT NULL)
+is_available: Boolean (NOT NULL, DEFAULT TRUE)
+created_at: DateTime (NOT NULL, DEFAULT CURRENT_TIMESTAMP)
+Constraint: end_time > start_time
+
+Meeting
+id: BigInt (PK, auto-increment) - Domyślnie Django
+student_id: BigInt (FK do User.id) (NULL) - Może być dowolny User.user_type
+tutor_id: BigInt (FK do User.id) (NOT NULL) - Ograniczone do User.user_type = "admin" (spójne z TimeSlot.tutor_id)
+time_slot_id: BigInt (FK do TimeSlot.id) (NOT NULL)
+subject: Varchar(100) (NOT NULL)
+notes: Text (NULL)
+status: Varchar(20) (NOT NULL, DEFAULT "pending") - wartości: "pending", "confirmed", "canceled", "completed"
+created_at: DateTime (NOT NULL, DEFAULT CURRENT_TIMESTAMP)
+
+Notification
+id: BigInt (PK, auto-increment) - Domyślnie Django
+user_id: BigInt (FK do User.id) (NOT NULL)
+meeting_id: BigInt (FK do Meeting.id) (NULL)
+title: Varchar(100) (NOT NULL)
+message: Text (NOT NULL)
+type: Varchar(50) (NOT NULL) - wartości: "new_reservation", "reservation_confirmed", "reservation_canceled", "reminder", "system"
+is_read: Boolean (NOT NULL, DEFAULT FALSE)
+created_at: DateTime (NOT NULL, DEFAULT CURRENT_TIMESTAMP)
+
+
+-------------------------------------------------------------------------
+POGLĄDOWE 
+będę to poprwiał
