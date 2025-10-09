@@ -1,0 +1,58 @@
+/* src/components/UI/Button.module.css */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+    text-align: center;
+    display: inline-block;
+    line-height: 1.5;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:disabled {
+    background-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.primary {
+    background-color: #007bff;
+    color: white;
+}
+.primary:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.secondary {
+    background-color: #6c757d;
+    color: white;
+}
+.secondary:hover:not(:disabled) {
+    background-color: #545b62;
+}
+
+.danger {
+    background-color: #dc3545;
+    color: white;
+}
+.danger:hover:not(:disabled) {
+    background-color: #b02a37;
+}
+
+.google {
+    background-color: #db4437;
+    color: white;
+}
+.google:hover:not(:disabled) {
+    background-color: #c23321;
+}

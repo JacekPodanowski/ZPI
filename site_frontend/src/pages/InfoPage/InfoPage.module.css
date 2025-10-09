@@ -1,0 +1,62 @@
+.infoPageContainer {
+    padding-top: 3rem;
+    padding-bottom: 4rem;
+}
+
+.sectionHeader {
+    text-align: center;
+    margin-bottom: 2.5rem !important;
+    font-weight: 600 !important;
+}
+
+.priceCard {
+    height: 100%;
+    text-align: center;
+    background-color: transparent !important;
+    border: 1px solid rgba(255, 140, 0, 0.5) !important;
+    border-radius: 12px !important;
+    padding: 1rem 0.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
+}
+
+.priceCard:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 140, 0, 1) !important;
+    box-shadow: 0 10px 25px rgba(255, 140, 0, 0.2) !important;
+}
+
+.cardIcon {
+    font-size: 2.5rem !important;
+    color: var(--primary-color) !important;
+    margin-bottom: 0.75rem;
+}
+
+.priceText {
+    font-weight: bold !important;
+    margin: 0.5rem 0 !important;
+}
+
+.priceUnit {
+    font-size: 1.5rem;
+    color: gray;
+    font-weight: normal;
+}
+
+.contactBox {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.contactItem {
+    display: flex;
+    align-items: center;
+    font-size: 1.1rem;
+    transition: color 0.2s ease;
+}
+
+.contactItem:hover {
+    color: var(--primary-color);
+}

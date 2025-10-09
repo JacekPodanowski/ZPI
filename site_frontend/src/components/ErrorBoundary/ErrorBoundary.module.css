@@ -1,0 +1,72 @@
+/* src/components/ErrorBoundary/ErrorBoundary.module.css */
+.errorBoundaryContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    margin: 2rem auto;
+    border: 1px solid #e74c3c;
+    background-color: #fdeded;
+    border-radius: 8px;
+    max-width: 800px;
+    color: #58151c;
+}
+
+.errorTitle {
+    font-size: 1.8rem;
+    color: #c0392b;
+    margin-bottom: 1rem;
+}
+
+.errorMessage {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.errorDetails {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    text-align: left;
+    max-width: 100%;
+    overflow-x: auto; /* Dla długich stosów wywołań */
+}
+
+.errorDetails summary {
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.errorDetails pre {
+    white-space: pre-wrap;       /* CSS3 */
+    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap;      /* Opera 4-6 */
+    white-space: -o-pre-wrap;    /* Opera 7 */
+    word-wrap: break-word;       /* Internet Explorer 5.5+ */
+    font-size: 0.85em;
+    color: #333;
+    background-color: #fff;
+    padding: 0.5rem;
+    border-radius: 3px;
+}
+
+.refreshButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.refreshButton:hover {
+    background-color: #2980b9;
+}

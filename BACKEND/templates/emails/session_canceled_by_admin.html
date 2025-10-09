@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Twoja sesja korepetycji została odwołana</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #d9534f;">Twoja sesja została odwołana</h2>
+    <p>Cześć {{ student_name }},</p>
+    <p>Z przykrością informuję, że sesja "<strong>{{ subject }}</strong>", zaplanowana na dzień {{ date }} w godzinach <strong>{{ start_time }} - {{ end_time }}</strong>, została przeze mnie odwołana.</p>
+    <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #d9534f; margin: 20px 0;">
+        <p style="margin: 0;">Bardzo przepraszam za tę sytuację, ale z nieprzewidzianych przyczyn musiałem odwołać nasze spotkanie.</p>
+    </div>
+    <p>Proszę, wybierz inny, dogodny dla Ciebie termin w kalendarzu. Jeśli żaden z dostępnych terminów Ci nie odpowiada, skontaktuj się ze mną bezpośrednio – postaram się dopasować do Twoich potrzeb.</p>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ calendar_url }}" style="background-color: #4CAF50; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Zobacz dostępne terminy</a>
+    </div>
+    <hr>
+    <p>Jeszcze raz przepraszam za wszelkie niedogodności.</p>
+    <p>Pozdrawiam,<br>Jacek</p>
+</body>
+</html>

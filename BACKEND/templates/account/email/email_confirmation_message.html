@@ -1,0 +1,21 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% trans "Potwierdź swój adres e-mail" %}</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #8A2BE2;">Witaj! Prawie gotowe...</h2>
+    <p>Dziękujemy za rejestrację. Aby dokończyć zakładanie konta, prosimy o potwierdzenie swojego adresu e-mail, klikając w poniższy przycisk.</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ activate_url }}" style="background-color: #8A2BE2; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Potwierdź adres e-mail</a>
+    </div>
+
+    <p>Jeśli przycisk nie działa, skopiuj i wklej poniższy link w swojej przeglądarce:</p>
+    <p style="word-break: break-all;">{{ activate_url }}</p>
+    <hr>
+    <p>Jeżeli to nie Ty zakładałeś/aś konto, po prostu zignoruj tę wiadomość.</p>
+    <p>Pozdrawiamy,<br>Zespół Korepetycji</p>
+</body>
+</html>

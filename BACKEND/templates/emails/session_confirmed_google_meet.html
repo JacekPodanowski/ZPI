@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Twoja sesja na Google Meet została potwierdzona!</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #8A2BE2;">Sesja Potwierdzona!</h2>
+    <p>Cześć {{ student_name }},</p>
+    <p>Dobra wiadomość! Twoja sesja "<strong>{{ subject }}</strong>" na platformie Google Meet została właśnie potwierdzona.</p>
+    <hr>
+    <p><strong>Przypomnienie szczegółów:</strong></p>
+    <ul>
+        <li><strong>Data:</strong> {{ date }}</li>
+        <li><strong>Godziny:</strong> {{ start_time }} - {{ end_time }}</li>
+    </ul>
+    <div style="background-color: #f0f0f0; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+        <p>Link do spotkania na Google Meet zostanie wysłany w osobnej wiadomości na kilka minut przed rozpoczęciem zajęć.</p>
+    </div>
+    <hr>
+    <p style="text-align: center; font-style: italic;">Do usłyszenia!</p>
+</body>
+</html>

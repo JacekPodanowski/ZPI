@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Twoja sesja na Discord została potwierdzona!</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #8A2BE2;">Sesja Potwierdzona!</h2>
+    <p>Cześć {{ student_name }},</p>
+    <p>Dobra wiadomość! Twoja sesja "<strong>{{ subject }}</strong>" na platformie Discord została właśnie potwierdzona.</p>
+    <hr>
+    <p><strong>Przypomnienie szczegółów:</strong></p>
+    <ul>
+        <li><strong>Data:</strong> {{ date }}</li>
+        <li><strong>Godziny:</strong> {{ start_time }} - {{ end_time }}</li>
+    </ul>
+    <div style="text-align: center; margin: 30px 0;">
+        <p>Spotkanie odbędzie się na naszym serwerze Discord. Możesz dołączyć już teraz, klikając w przycisk poniżej:</p>
+        <a href="{{ discord_url }}" style="background-color: #5865F2; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Dołącz do serwera Discord</a>
+    </div>
+    <hr>
+    <p style="text-align: center; font-style: italic;">Do usłyszenia!</p>
+</body>
+</html>
