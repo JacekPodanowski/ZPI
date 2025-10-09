@@ -220,3 +220,38 @@ Your `site_frontend` project is the source code for the new, unified frontend ap
     *   Your existing pages (`HomePage`, etc.) will become the foundation for the `site-template`. Move them into `src/site-template/pages/`.
 3.  **Create Editor Components:** Build the new UI for the editor (`TopBar`, `AIChat`, `Studio` pages) inside the `src/editor/` folder.
 4.  **Create Configurable Template Components:** This is the most significant task. Based on the components now in `site-template` and the shared folders, create a new set of highly flexible components. These new versions should be built to be completely "dumb," meaning they render everything based on props passed down from a `template_config` object. Instead of refactoring the existing files, you are creating their new, configurable counterparts that align with the more flexible new design.
+
+
+
+------------------------------------------------------------------------------------------------
+                       Part 7: Technology Stack Overview
+------------------------------------------------------------------------------------------------
+
+## Backend (Central API)
+
+*   **Django:** The core Python framework for building the application logic and database models.
+*   **Django REST Framework:** The toolkit for building our secure and scalable RESTful API endpoints.
+*   **PostgreSQL:** Our primary relational database for storing all user, site, and booking data.
+*   **Simple JWT (with dj-rest-auth):** Handles token-based authentication for both platform and site users.
+*   **Gunicorn:** The production-grade WSGI server for running the Django application.
+*   **Docker:** Used to containerize the backend application for consistent development and deployment.
+
+======================================================================================================
+
+## Frontend (Editor & Site Template)
+
+*   **React:** Builds the user interfaces for both the editor and site template.
+*   **React Router:** Manages all client-side page navigation within the applications.
+*   **Zustand:** A lightweight state management library used for the editor's "hot reload" feature.
+*   **Axios:** The HTTP client used to communicate with our Django REST API from the browser.
+*   **Material-UI (MUI):** The component library for building the user interface of the **Editor/Studio**.
+*   **Tailwind CSS:** The utility-first CSS framework for styling the generated **Personal Sites**.
+*   **@react-oauth/google:** The client-side library for integrating "Sign in with Google."
+
+====================================================================================================
+
+## Hosting & Deployment
+
+*   **Railway (or similar):** Hosts our containerized Django backend application and PostgreSQL database.
+*   **Vercel:** Hosts all our static frontend applications (the Editor and all user sites).
+*   **Vercel Build Hooks:** The core mechanism that allows our backend to trigger a new Vercel deployment when a user publishes their site.
