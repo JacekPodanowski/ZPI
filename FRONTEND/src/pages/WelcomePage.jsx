@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import useGlitchLite from '../effects/useGlitchLite';
+import useGlitchLite from '../hooks/useGlitchLite';
 import './WelcomePage.css';
 
 const WelcomePage = () => {
