@@ -3,9 +3,9 @@ Można używać mojej strony z `site_frontend` jako szablonów, wyciągać z nie
 
 Wszytsktkie instrukcje są dokałnie opisane w `Insturctions.md`
 
-# !!!
-# Robić branche i nazwyać je sensownie, żeby było wiadomo co tam jest
-    Prosze nie pracować na mainie, powoduje to duży chaos.
+# Robić branche :
+    Najlepeij małe i tematyczne np: HomePage
+    Nie pracować na mainie, powoduje to duży chaos.
 
 # Przed uruchomieniem upewinj się że masz 4 pliki .env :
     1 w katalogu ZPI
