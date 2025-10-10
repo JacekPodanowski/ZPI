@@ -40,8 +40,7 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 # Komendy do docera są w `docer_commands.md`
 
-# Technologie
-    Używane technologie zostały opisane w pliku `Technology_Stack.md`
+# Używane technologie są opisane w `Technology_Stack.md`
 
 
 Wszytskie dokładniejsze informacje można znaleść w plikach, jak sie nie uda to piszcie na grupie.
