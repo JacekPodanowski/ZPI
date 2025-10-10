@@ -17,23 +17,31 @@ Można używać mojej strony z `site_frontend` jako szablonów, wyciągać z nie
 
 Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zrobić `.env`
 
-# do uruchomiaia używać docera :
+# Do uruchomiaia używać docera :
     docker-compose up --build
     lub
     docker-compose up --build -d   (w tle, nie zawala konsoli logami)
 
-# docer uruchaminia:
+
+# Docer uruchaminia:
     Frontend edytora na   localhost:4000
     Backend na            localhost:8000
     Api backendu na       http://localhost:8000/api/v1/
 
-# hot realod :
+# Hot-realod :
     jak coś zmnienicie po paru sekundach odświerzcie strone i powinno być (jak nie to patrz na logi)
     na FRONTENDZIE jest hot-realod
     na BACKENDZIE jest hot-realod
 
+# Logi
+    wszystkie logi   - docker-compose logs -f                      
+    logi z backendu  - docker-compose logs -f backend
+    logi z frontendu - docker-compose logs -f editor_frontend
+
+# Komendy do docera są w `docer_commands.md`
+
 # Technologie
-    Używane technologie zostały opisane w pliku Technology_Stack.md
+    Używane technologie zostały opisane w pliku `Technology_Stack.md`
 
 
 Wszytskie dokładniejsze informacje można znaleść w plikach, jak sie nie uda to piszcie na grupie.
