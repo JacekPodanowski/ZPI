@@ -108,7 +108,8 @@ Główną funckjonalsoćą jest kalendarz integrujacy sie z google kalnadrzem, s
 # Struktura Infrastruktury
 strona użytkowika jest hostawana z ostaniej(najnowszej) wersji strony stworzonej w edytorze ale edytor działa tylko u nas a przycisk edycji przenosi go do naszego edytora gdzie może zmieniać swoją stronę.
 
-Po skończeniu edycji i  kliknięciu "Publikuj" następuje relunch prawdziwej strony z nową wersją.
+Po skończeniu edycji i kliknięciu "Publikuj" następuje relunch prawdziwej strony z nową wersją.
+* Szczegóły hostingu w instrukcji technicznej.
 
 Każdy użytkowik może mieć max 3 storny. 
 
@@ -119,8 +120,7 @@ Każdy frontend powinien więc zapisawć do bazy z której strony pochodzi dany 
 
 
 
-#  SZCZEGÓŁOWY OPIS CAŁEJ APLIKACJI (Wersja produkcyjna - najbardziej dokładna i najnowsza) 
-================================================================================================
+#  SZCZEGÓŁOWY OPIS CAŁEJ APLIKACJI (Wersja produkcyjna - najbardziej dokładna) ================================================================================================
                     Project Plan & Copilot Instructions: The Personal Site Generator
 ================================================================================================
 
@@ -139,7 +139,34 @@ for solo entrepreneurs who need a professional online presence without coding kn
 experience is centered around simplicity, intuition, and an integrated **AI Assistant** that
 makes changes through natural language.
 
-1.2. Core Architectural Principle: Multi-Tenant Single Backend
+App should guide the users using simple steps in site creation like : template, structure, colors etc...
+each step will be shortly explained and simple tools needed for this step will be displayed,
+**AI Assistant** should be always available and guide the users.
+
+1.2. Project Vision
+--------------------
+Our goal is to create a platform that empowers users to build and manage their personal websites.
+We want to eliminate the technical barriers and encourage users creativity and self expression.
+We want to help them create truly their own unique online presence.
+
+The theme is **"Modern Wellness"**. The design should be clean, calming, simple, minimalistic and inviting.
+
+1.3. Core Color Palette:
+-------------------------
+
+In light mode :
+    background       rgb(228, 229, 218)
+    Red accent color rgb(146, 0, 32)
+    Text             rgb(30, 30, 30)
+
+In dark mode :
+    background       rgb(12, 12, 12)
+    Red accent color rgb(114, 0, 21)
+    Text             rgb(220, 220, 220)
+
+The typography should be elegant and easy to read, with a focus on whitespace and simplicity.
+
+1.4. Core Architectural Principle: Multi-Tenant Single Backend
 -------------------------------------------------------------
 The system is built on a **"single backend, multiple frontends"** model. This is the industry
 standard for scalable SaaS applications and avoids the immense complexity, cost, and security
@@ -336,9 +363,44 @@ We are evolving your existing codebases into this new structure.
 -------------------------------------------------
 Your `site_frontend` project is the source code for the new, unified frontend application.
 
-1.  **Restructure `src`:** Create the `src/editor` and `src/site-template` folders in `FRONTEND`.
+1.  **Restructure `src`:** Create the `src/editor` and `src/site-template` folders.
 2.  **Migrate Code:**
     *   Move shared components (`CustomCalendar`, etc.) into `src/components/`. Do the same for `contexts` and `services`.
     *   Your existing pages (`HomePage`, etc.) will become the foundation for the `site-template`. Move them into `src/site-template/pages/`.
 3.  **Create Editor Components:** Build the new UI for the editor (`TopBar`, `AIChat`, `Studio` pages) inside the `src/editor/` folder.
 4.  **Create Configurable Template Components:** This is the most significant task. Based on the components now in `site-template` and the shared folders, create a new set of highly flexible components. These new versions should be built to be completely "dumb," meaning they render everything based on props passed down from a `template_config` object. Instead of refactoring the existing files, you are creating their new, configurable counterparts that align with the more flexible new design.
+
+
+
+------------------------------------------------------------------------------------------------
+                       Part 7: Technology Stack Overview
+------------------------------------------------------------------------------------------------
+
+## Backend (Central API)
+
+*   **Django:** The core Python framework for building the application logic and database models.
+*   **Django REST Framework:** The toolkit for building our secure and scalable RESTful API endpoints.
+*   **PostgreSQL:** Our primary relational database for storing all user, site, and booking data.
+*   **Simple JWT (with dj-rest-auth):** Handles token-based authentication for both platform and site users.
+*   **Gunicorn:** The production-grade WSGI server for running the Django application.
+*   **Docker:** Used to containerize the backend application for consistent development and deployment.
+
+======================================================================================================
+
+## Frontend (Editor & Site Template)
+
+*   **React:** Builds the user interfaces for both the editor and site template.
+*   **React Router:** Manages all client-side page navigation within the applications.
+*   **Zustand:** A lightweight state management library used for the editor's "hot reload" feature.
+*   **Axios:** The HTTP client used to communicate with our Django REST API from the browser.
+*   **Material-UI (MUI):** The component library for building the user interface of the **Editor/Studio**.
+*   **Tailwind CSS:** The utility-first CSS framework for styling the generated **Personal Sites**.
+*   **@react-oauth/google:** The client-side library for integrating "Sign in with Google."
+
+====================================================================================================
+
+## Hosting & Deployment
+
+*   **Railway (or similar):** Hosts our containerized Django backend application and PostgreSQL database.
+*   **Vercel:** Hosts all our static frontend applications (the Editor and all user sites).
+*   **Vercel Build Hooks:** The core mechanism that allows our backend to trigger a new Vercel deployment when a user publishes their site.

@@ -1,7 +1,11 @@
+# TO DO
 Główne zadanie to zbudować frontend apliakcji w katalogu `FRONTEND`
 Można używać mojej strony z `site_frontend` jako szablonów, wyciągać z niej moduły itd
 
+# INSTRUKCJE
 Wszytsktkie instrukcje są dokałnie opisane w `Insturctions.md`
+    Część 1 - Wstęp po polsku, wizja projektu i opis ekranów
+    Część 2 - Szczegółowy opis techniczny po angielsku
 
 # Robić branche :
     Najlepeij małe i tematyczne np: HomePage
@@ -32,8 +36,6 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 # Technologie
     Używane technologie zostały opisane w pliku Technology_Stack.md
-    Są dość dobrze przemyślane
-    Każcie Agentom AI ich używać, żeby nie zaśmiecali projektu 
 
 
-Wszytskie dokładniejsze informacje można znaleść w plikach.
+Wszytskie dokładniejsze informacje można znaleść w plikach, jak sie nie uda to piszcie na grupie.

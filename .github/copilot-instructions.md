@@ -17,7 +17,34 @@ for solo entrepreneurs who need a professional online presence without coding kn
 experience is centered around simplicity, intuition, and an integrated **AI Assistant** that
 makes changes through natural language.
 
-1.2. Core Architectural Principle: Multi-Tenant Single Backend
+App should guide the users using simple steps in site creation like : template, structure, colors etc...
+each step will be shortly explained and simple tools needed for this step will be displayed,
+**AI Assistant** should be always available and guide the users.
+
+1.2. Project Vision
+--------------------
+Our goal is to create a platform that empowers users to build and manage their personal websites.
+We want to eliminate the technical barriers and encourage users creativity and self expression.
+We want to help them create truly their own unique online presence.
+
+The theme is **"Modern Wellness"**. The design should be clean, calming, simple, minimalistic and inviting.
+
+1.3. Core Color Palette:
+-------------------------
+
+In light mode :
+    background       rgb(228, 229, 218)
+    Red accent color rgb(146, 0, 32)
+    Text             rgb(30, 30, 30)
+
+In dark mode :
+    background       rgb(12, 12, 12)
+    Red accent color rgb(114, 0, 21)
+    Text             rgb(220, 220, 220)
+
+The typography should be elegant and easy to read, with a focus on whitespace and simplicity.
+
+1.4. Core Architectural Principle: Multi-Tenant Single Backend
 -------------------------------------------------------------
 The system is built on a **"single backend, multiple frontends"** model. This is the industry
 standard for scalable SaaS applications and avoids the immense complexity, cost, and security
