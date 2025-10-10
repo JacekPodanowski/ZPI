@@ -1,13 +1,12 @@
 Główne zadanie to zbudować frontend apliakcji w katalogu `FRONTEND`
 Można używać mojej strony z `site_frontend` jako szablonów, wyciągać z niej moduły itd
 
-# INSTRUKCJE
-    Wszytsktkie instrukcje są dokałnie opisane `Insturctions.md`
+# Wszytsktkie instrukcje są dokałnie opisane w `Insturctions.md`
     Część 1 - Wstęp po polsku, wizja projektu i opis ekranów
     Część 2 - Szczegółowy opis techniczny po angielsku
 
 # Robić branche :
-    Najlepeij małe i tematyczne np: HomePage
+    Najlepiej małe i tematyczne np: HomePage
     Nie pracować na mainie, powoduje to problemy.
 
 # Przed uruchomieniem upewinj się że masz 4 pliki .env :
