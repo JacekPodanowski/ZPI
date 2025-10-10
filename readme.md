@@ -45,5 +45,4 @@ Opiszcie niżej co chcecie zrobić i dodajcie na koniec :
 Act as an expert consultant. Analyze my project description and my request. Based on this analysis, propose an optimal solution that aligns with my project's vision and reflects professional best practices. Shortly explain why your proposed solution is the most effective. If your proposal introduces significant strategic changes to my original request, present your solution and ask for my confirmation before you proceed. If your proposal only refines or details my request without major changes, present it and then create a detailed work plan.
 
 
-
-Wszytskie dokładniejsze informacje można znaleść w plikach, jak sie nie uda to piszcie na grupie.
+Jeśli po tym wszytkim dalej macie wątpliwości to piszcie na grupie.
