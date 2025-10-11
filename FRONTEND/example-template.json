@@ -1,0 +1,93 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-10-11T12:00:00.000Z",
+  "siteStructure": "multi-page",
+  "animations": {
+    "enabled": true,
+    "style": "smooth"
+  },
+  "config": {
+    "name": "Wellness Template",
+    "pages": {
+      "home": {
+        "id": "home",
+        "name": "Strona Główna",
+        "path": "/",
+        "modules": [
+          {
+            "id": "hero",
+            "name": "Strona Główna",
+            "enabled": true,
+            "order": 0,
+            "config": {
+              "title": "Witaj w Świecie Wellness",
+              "subtitle": "Odkryj harmonię ciała i umysłu",
+              "bgColor": "rgb(228, 229, 218)",
+              "textColor": "rgb(30, 30, 30)",
+              "backgroundImage": ""
+            }
+          }
+        ]
+      },
+      "about": {
+        "id": "about",
+        "name": "O Mnie",
+        "path": "/o-mnie",
+        "modules": [
+          {
+            "id": "about",
+            "name": "O Mnie",
+            "enabled": true,
+            "order": 0,
+            "config": {
+              "title": "O Mnie",
+              "description": "Jestem certyfikowanym instruktorem wellness z pasją do zdrowego stylu życia.",
+              "imageUrl": "",
+              "avatar": "",
+              "bgColor": "rgb(228, 229, 218)"
+            }
+          }
+        ]
+      },
+      "calendar": {
+        "id": "calendar",
+        "name": "Kalendarz",
+        "path": "/kalendarz",
+        "modules": [
+          {
+            "id": "calendar",
+            "name": "Kalendarz",
+            "enabled": true,
+            "order": 0,
+            "config": {
+              "title": "Zarezerwuj Termin",
+              "color": "rgb(146, 0, 32)",
+              "bgColor": "rgb(255, 255, 255)",
+              "minInterval": 15,
+              "allowIndividual": true,
+              "allowGroup": true
+            }
+          }
+        ]
+      },
+      "contact": {
+        "id": "contact",
+        "name": "Kontakt",
+        "path": "/kontakt",
+        "modules": [
+          {
+            "id": "contact",
+            "name": "Kontakt",
+            "enabled": true,
+            "order": 0,
+            "config": {
+              "email": "kontakt@wellness.pl",
+              "phone": "+48 123 456 789",
+              "bgColor": "rgb(255, 255, 255)"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

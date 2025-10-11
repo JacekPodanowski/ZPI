@@ -1273,6 +1273,259 @@ const Configurator = () => {
           </>
         )}
 
+        {/* Base Module - Hero Section */}
+        {module.id === 'hero' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Tytuł główny
+              </label>
+              <input
+                type="text"
+                value={module.config?.title || ''}
+                onChange={(e) => handleConfigChange('title', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="Witaj w Świecie Wellness"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Podtytuł
+              </label>
+              <input
+                type="text"
+                value={module.config?.subtitle || ''}
+                onChange={(e) => handleConfigChange('subtitle', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="Odkryj harmonię ciała i umysłu"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3" style={{ color: 'rgb(30, 30, 30)' }}>
+                Obrazek tła (opcjonalny)
+              </label>
+              <ImageUploader
+                label=""
+                value={module.config?.backgroundImage || ''}
+                onChange={(url) => handleConfigChange('backgroundImage', url)}
+              />
+              {module.config?.backgroundImage && (
+                <p className="text-xs mt-2 opacity-60">
+                  💡 Obrazek będzie wyświetlany z przeźroczystością 30%
+                </p>
+              )}
+            </div>
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || 'rgb(228, 229, 218)'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+          </>
+        )}
+
+        {/* Base Module - Calendar Section */}
+        {module.id === 'calendar' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Tytuł sekcji
+              </label>
+              <input
+                type="text"
+                value={module.config?.title || ''}
+                onChange={(e) => handleConfigChange('title', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="Zarezerwuj Termin"
+              />
+            </div>
+            <ColorPicker
+              label="Kolor akcentu kalendarza"
+              value={module.config?.color || 'rgb(146, 0, 32)'}
+              onChange={(color) => handleConfigChange('color', color)}
+            />
+            <ColorPicker
+              label="Kolor tła sekcji"
+              value={module.config?.bgColor || 'rgb(255, 255, 255)'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Minimalny odstęp między spotkaniami (minuty)
+              </label>
+              <input
+                type="number"
+                value={module.config?.minInterval || 15}
+                onChange={(e) => handleConfigChange('minInterval', parseInt(e.target.value))}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                min="5"
+                max="120"
+                step="5"
+              />
+            </div>
+            
+            {/* Rodzaje zajęć */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Rodzaje zajęć
+              </label>
+              
+              <label 
+                className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={module.config?.allowIndividual !== false}
+                  onChange={(e) => handleConfigChange('allowIndividual', e.target.checked)}
+                  className="w-6 h-6 rounded"
+                  style={{ accentColor: 'rgb(146, 0, 32)' }}
+                />
+                <div className="flex-1">
+                  <span className="font-medium block">Zajęcia indywidualne</span>
+                  <p className="text-xs opacity-60 mt-1">Rezerwacje 1:1 z instruktorem</p>
+                </div>
+              </label>
+
+              <label 
+                className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={module.config?.allowGroup !== false}
+                  onChange={(e) => handleConfigChange('allowGroup', e.target.checked)}
+                  className="w-6 h-6 rounded"
+                  style={{ accentColor: 'rgb(146, 0, 32)' }}
+                />
+                <div className="flex-1">
+                  <span className="font-medium block">Zajęcia grupowe</span>
+                  <p className="text-xs opacity-60 mt-1">Sesje dla wielu uczestników</p>
+                </div>
+              </label>
+            </div>
+          </>
+        )}
+
+        {/* Base Module - About Section */}
+        {module.id === 'about' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Tytuł sekcji
+              </label>
+              <input
+                type="text"
+                value={module.config?.title || ''}
+                onChange={(e) => handleConfigChange('title', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="O Mnie"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Opis
+              </label>
+              <textarea
+                value={module.config?.description || ''}
+                onChange={(e) => handleConfigChange('description', e.target.value)}
+                rows={6}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 resize-none"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="Opowiedz o sobie..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-3" style={{ color: 'rgb(30, 30, 30)' }}>
+                Zdjęcie profilowe
+              </label>
+              <ImageUploader
+                label=""
+                value={module.config?.imageUrl || module.config?.avatar || ''}
+                onChange={(url) => {
+                  handleConfigChange('imageUrl', url)
+                  handleConfigChange('avatar', url)
+                }}
+              />
+            </div>
+            <ColorPicker
+              label="Kolor tła sekcji"
+              value={module.config?.bgColor || 'rgb(228, 229, 218)'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+          </>
+        )}
+
+        {/* Base Module - Contact Section */}
+        {module.id === 'contact' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={module.config?.email || ''}
+                onChange={(e) => handleConfigChange('email', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="kontakt@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Numer telefonu
+              </label>
+              <input
+                type="tel"
+                value={module.config?.phone || ''}
+                onChange={(e) => handleConfigChange('phone', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{ 
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="+48 123 456 789"
+              />
+            </div>
+            <ColorPicker
+              label="Kolor tła sekcji"
+              value={module.config?.bgColor || 'rgb(255, 255, 255)'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+          </>
+        )}
+
         {/* Standardowe moduły */}
         <div className="mt-6">
           <p className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>

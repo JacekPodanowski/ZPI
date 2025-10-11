@@ -4,7 +4,7 @@ import CustomCalendar from '../../components/CustomCalendar'
 import BookingModal from './BookingModal'
 
 const CalendarSection = ({ config }) => {
-  const { title, color, minInterval, allowIndividual, allowGroup } = config
+  const { title, color, minInterval, allowIndividual, allowGroup, bgColor } = config
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -26,7 +26,7 @@ const CalendarSection = ({ config }) => {
   }
 
   return (
-    <section className="py-20 px-4 bg-white">
+    <section className="py-20 px-4" style={{ backgroundColor: bgColor || 'rgb(255, 255, 255)' }}>
       <div className="max-w-6xl mx-auto">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}

@@ -17,10 +17,13 @@ const TopBar = () => {
     setSiteStructure,
     animations,
     setAnimations,
-    convertToSinglePage
+    convertToSinglePage,
+    exportTemplate,
+    importTemplate
   } = useEditorStore()
 
   const [showSettings, setShowSettings] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const handleSave = async () => {
     try {
@@ -31,6 +34,67 @@ const TopBar = () => {
       console.error('Failed to save:', error)
       alert('Nie udało się zapisać zmian')
     }
+  }
+
+  const handleExportJSON = () => {
+    setShowExportModal(true)
+  }
+
+  const confirmExport = () => {
+    try {
+      const jsonString = exportTemplate()
+      const blob = new Blob([jsonString], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const timestamp = new Date().toISOString().split('T')[0]
+      const templateName = templateConfig.name.toLowerCase().replace(/\s+/g, '-')
+      link.download = `${templateName}-${timestamp}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      setShowExportModal(false)
+      alert('✅ Szablon został wyeksportowany jako JSON!')
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert('❌ Nie udało się wyeksportować szablonu')
+    }
+  }
+
+  const copyToClipboard = () => {
+    try {
+      const jsonString = exportTemplate()
+      navigator.clipboard.writeText(jsonString)
+      alert('✅ JSON został skopiowany do schowka!')
+      setShowExportModal(false)
+    } catch (error) {
+      console.error('Copy failed:', error)
+      alert('❌ Nie udało się skopiować do schowka')
+    }
+  }
+
+  const handleImportJSON = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = (e) => {
+      const file = e.target.files[0]
+      if (file) {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          try {
+            importTemplate(event.target.result)
+            alert('✅ Szablon został zaimportowany!')
+          } catch (error) {
+            console.error('Import failed:', error)
+            alert('❌ Nie udało się zaimportować szablonu')
+          }
+        }
+        reader.readAsText(file)
+      }
+    }
+    input.click()
   }
 
   const handlePublish = () => {
@@ -68,6 +132,26 @@ const TopBar = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Import JSON Button */}
+          <button
+            onClick={handleImportJSON}
+            className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-all"
+            style={{ color: 'rgb(30, 30, 30)' }}
+            title="Importuj szablon z pliku JSON"
+          >
+            📥 Importuj
+          </button>
+
+          {/* Export JSON Button */}
+          <button
+            onClick={handleExportJSON}
+            className="px-4 py-2 rounded-lg hover:bg-gray-100 transition-all"
+            style={{ color: 'rgb(30, 30, 30)' }}
+            title="Eksportuj szablon do pliku JSON"
+          >
+            📤 Eksportuj
+          </button>
+
           {/* Settings Button */}
           <button
             onClick={() => setShowSettings(true)}
@@ -198,6 +282,68 @@ const TopBar = () => {
             </Button>
             <Button onClick={() => setShowSettings(false)} className="flex-1">
               Zastosuj
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="Eksportuj szablon">
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(146, 0, 32, 0.05)' }}>
+            <p className="text-sm" style={{ color: 'rgb(30, 30, 30)' }}>
+              📦 Eksport zapisze całą konfigurację strony w formacie JSON.
+            </p>
+            <p className="text-sm mt-2 opacity-70">
+              Plik będzie zawierał wszystkie ustawienia sekcji, kolory, treści i strukturę strony.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">📄</span>
+                <span className="font-medium text-sm" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Nazwa szablonu:
+                </span>
+              </div>
+              <p className="text-sm opacity-70 ml-7">{templateConfig.name}</p>
+            </div>
+
+            <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">📊</span>
+                <span className="font-medium text-sm" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Struktura:
+                </span>
+              </div>
+              <p className="text-sm opacity-70 ml-7">
+                {siteStructure === 'single-page' ? 'Jedna strona (scrolling)' : 'Wiele podstron'}
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg border" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">🎬</span>
+                <span className="font-medium text-sm" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Animacje:
+                </span>
+              </div>
+              <p className="text-sm opacity-70 ml-7">
+                {animations.enabled ? `Włączone (${animations.style})` : 'Wyłączone'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+            <Button variant="secondary" onClick={() => setShowExportModal(false)} className="flex-1">
+              Anuluj
+            </Button>
+            <Button onClick={copyToClipboard} variant="secondary" className="flex-1">
+              📋 Kopiuj JSON
+            </Button>
+            <Button onClick={confirmExport} className="flex-1">
+              📥 Pobierz plik
             </Button>
           </div>
         </div>

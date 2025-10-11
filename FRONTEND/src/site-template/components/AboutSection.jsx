@@ -2,10 +2,10 @@ import React from 'react'
 import { motion } from 'framer-motion'
 
 const AboutSection = ({ config }) => {
-  const { title, description, imageUrl, avatar } = config
+  const { title, description, imageUrl, avatar, bgColor } = config
 
   return (
-    <section className="py-20 px-4" style={{ backgroundColor: 'rgb(228, 229, 218)' }}>
+    <section className="py-20 px-4" style={{ backgroundColor: bgColor || 'rgb(228, 229, 218)' }}>
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

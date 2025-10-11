@@ -49,7 +49,8 @@ const useEditorStore = create((set, get) => ({
               title: 'O Mnie', 
               description: 'Jestem certyfikowanym instruktorem wellness z pasją do zdrowego stylu życia.', 
               imageUrl: '',
-              avatar: ''
+              avatar: '',
+              bgColor: 'rgb(228, 229, 218)'
             } 
           },
         ]
@@ -67,6 +68,7 @@ const useEditorStore = create((set, get) => ({
             config: { 
               title: 'Zarezerwuj Termin', 
               color: 'rgb(146, 0, 32)',
+              bgColor: 'rgb(255, 255, 255)',
               minInterval: 15,
               allowIndividual: true,
               allowGroup: true
@@ -86,7 +88,8 @@ const useEditorStore = create((set, get) => ({
             order: 0,
             config: { 
               email: 'kontakt@wellness.pl', 
-              phone: '+48 123 456 789' 
+              phone: '+48 123 456 789',
+              bgColor: 'rgb(255, 255, 255)'
             } 
           },
         ]
