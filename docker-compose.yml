@@ -1,0 +1,98 @@
+services:
+  # --- Serwis Bazy Danych (PostgreSQL) ---
+  db:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_postgres_db
+    restart: unless-stopped
+    volumes:
+      # Utrwala dane bazy danych na dysku hosta, aby nie zniknęły po restarcie kontenera
+      - site_db_data:/var/lib/postgresql/data/
+    environment:
+      # Te zmienne są wczytywane z GŁÓWNEGO pliku .env (w katalogu z docker-compose.yml)
+      # i używane przez obraz Postgres do stworzenia bazy i użytkownika przy pierwszym uruchomieniu.
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      # Udostępnia port bazy danych na zewnątrz, aby można było się do niej podłączyć np. DBeaver.
+      - "${DB_PORT_HOST:-5432}:5432"
+    healthcheck:
+      # Sprawdza, czy baza danych jest gotowa na przyjmowanie połączeń. Kluczowe dla `depends_on`.
+      # Używamy $$ aby Docker Compose poprawnie przekazał zmienne do powłoki wewnątrz kontenera.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --- Serwis Backendu (Django) ---
+  backend:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
+    restart: unless-stopped
+    # Uruchamia serwer deweloperski Django z włączonym domyślnie auto-reloaderem.
+    # 0.0.0.0 sprawia, że serwer jest dostępny z zewnątrz kontenera.
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
+      - ./BACKEND:/home/appuser/app
+    ports:
+      - "${BACKEND_PORT_HOST:-8000}:8000"
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      db:
+        # Gwarantuje, że backend uruchomi się dopiero, gdy healthcheck bazy danych zakończy się sukcesem.
+        condition: service_healthy
+
+  # --- Serwis Edytora (React) ---
+  editor_frontend:
+    build:
+      context: ./FRONTEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_editor_app
+    restart: unless-stopped
+    volumes:
+      - ./FRONTEND:/app
+      - /app/node_modules
+    ports:
+      - "4000:3000"
+    environment:
+      - NODE_ENV=development
+      # Niezbędne do poprawnego działania hot-reload w Dockerze
+      - CHOKIDAR_USEPOLLING=true
+      # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
+
+  # --- Serwis Starego Frontendu (React) ---
+  frontend:
+    profiles: ["legacy_frontend"]
+    build:
+      context: ./site_frontend
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_react_app
+    restart: unless-stopped
+    volumes:
+      # POPRAWKA: Montuje kod z nowego katalogu frontendu dla hot-reloading
+      - ./site_frontend:/app
+      # Zapobiega nadpisaniu node_modules w kontenerze przez lokalny folder (ważne!)
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT_HOST:-3000}:3000"
+    environment:
+      # Zmienne środowiskowe dla serwera deweloperskiego React
+      - NODE_ENV=development
+      # Niezbędne do poprawnego działania hot-reload w Dockerze
+      - CHOKIDAR_USEPOLLING=true
+      # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
+
+volumes:
+  # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.
+  site_db_data: {}

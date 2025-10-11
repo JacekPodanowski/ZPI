@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Powiadomienie: Student anulował sesję</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #FF8C00;">Sesja Anulowana przez Studenta</h2>
+    <p>Student **{{ student_name }}** właśnie anulował swoją sesję.</p>
+    <hr>
+    <p><strong>Szczegóły anulowanej sesji:</strong></p>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px; font-weight: bold;">Temat:</td><td style="padding: 8px;">{{ subject }}</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px; font-weight: bold;">Data:</td><td style="padding: 8px;">{{ date }}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Godziny:</td><td style="padding: 8px;">{{ start_time }} - {{ end_time }}</td></tr>
+    </table>
+    <hr>
+    <div style="background-color: #e7f3fe; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0;">
+        <p style="margin: 0;"><strong>Informacja:</strong> Powiązane terminy zostały automatycznie zwolnione i są ponownie dostępne w kalendarzu.</p>
+    </div>
+</body>
+</html>

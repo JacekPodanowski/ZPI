@@ -1,0 +1,11 @@
+.calendarPageContainer {
+    display: flex; /* Umożliwia centrowanie i rozciąganie CustomCalendar */
+    flex-direction: column;
+    align-items: center; /* Wyśrodkowanie CustomCalendar w poziomie */
+    justify-content: center; /* Wyśrodkowanie CustomCalendar w pionie */
+    flex-grow: 1; /* Kluczowe, aby zajęło dostępną przestrzeń w .page-content */
+    width: 100%;
+    padding: 1rem; /* Minimalny padding, jeśli kalendarz nie jest 100% width */
+    /* Tło strony jest dziedziczone z body lub .page-content */
+    /* overflow: hidden;  Usuń, aby modal nie był ucięty, jeśli jest większy */
+}

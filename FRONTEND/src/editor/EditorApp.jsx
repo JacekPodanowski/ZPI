@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
 import WelcomePage from './pages/WelcomePage'
@@ -19,3 +20,16 @@ function EditorApp() {
 }
 
 export default EditorApp
+=======
+import React from 'react';
+
+const EditorApp = () => {
+    return (
+        <div>
+            <h1>Editor App</h1>
+        </div>
+    );
+};
+
+export default EditorApp;
+>>>>>>> origin/main

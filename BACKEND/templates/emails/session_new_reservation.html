@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Potwierdzenie rezerwacji sesji: {{ subject }}</title></head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #8A2BE2;">Dziękujemy za rezerwację sesji!</h2>
+    <p>Cześć {{ student_name }},</p>
+    <p>Twoja rezerwacja na sesję "<strong>{{ subject }}</strong>" została przyjęta i oczekuje na potwierdzenie.</p>
+    <hr><p><strong>Szczegóły sesji:</strong></p>
+    <ul><li><strong>Data:</strong> {{ date }}</li><li><strong>Godziny:</strong> {{ start_time }} - {{ end_time }}</li></ul>
+    <hr><p>Otrzymasz od nas kolejną wiadomość, gdy korepetytor potwierdzi spotkanie.</p>
+    <p>Pozdrawiamy,<br>Zespół Korepetycji</p>
+</body>
+</html>

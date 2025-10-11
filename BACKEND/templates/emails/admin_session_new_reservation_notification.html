@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nowa rezerwacja sesji oczekuje na potwierdzenie!</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd;">
+    <h2 style="color: #FF8C00;">Nowa Rezerwacja Sesji!</h2>
+    <p>Nowa sesja została zarezerwowana i oczekuje na Twoje potwierdzenie.</p>
+    <hr>
+    <p><strong>Szczegóły rezerwacji:</strong></p>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px; font-weight: bold;">Student:</td><td style="padding: 8px;">{{ student_name }}</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px; font-weight: bold;">Temat:</td><td style="padding: 8px;">{{ subject }}</td></tr>
+        <tr style="border-bottom: 1px solid #eee;"><td style="padding: 8px; font-weight: bold;">Data:</td><td style="padding: 8px;">{{ date }}</td></tr>
+        <tr><td style="padding: 8px; font-weight: bold;">Godziny:</td><td style="padding: 8px;">{{ start_time }} - {{ end_time }}</td></tr>
+    </table>
+    <hr>
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ admin_url }}" style="background-color: #4CAF50; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Przejdź do panelu admina</a>
+    </div>
+</body>
+</html>
