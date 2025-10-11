@@ -6,7 +6,7 @@
   --color-bg-light: rgb(228, 229, 218);
   --color-accent-light: rgb(146, 0, 32);
   --color-text-light: rgb(30, 30, 30);
-
+  
   --color-bg-dark: rgb(12, 12, 12);
   --color-accent-dark: rgb(114, 0, 21);
   --color-text-dark: rgb(220, 220, 220);
@@ -16,6 +16,10 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -30,4 +34,45 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+/* Hide scrollbar for carousel */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth scroll */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Scroll margin for sticky navigation */
+.scroll-mt-20 {
+  scroll-margin-top: 5rem;
+}
+
+/* Drag & drop styles */
+[draggable="true"] {
+  cursor: move;
+  user-select: none;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Drop zone highlight */
+.drop-zone-active {
+  border-color: rgb(146, 0, 32) !important;
+  background-color: rgba(146, 0, 32, 0.05) !important;
+}
+
+/* Smooth transitions for accordion */
+.accordion-content {
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
 }

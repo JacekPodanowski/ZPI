@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import useEditorStore from '../../store/editorStore'
@@ -7,9 +7,17 @@ import Button from '../../components/Button'
 const ModuleConfig = () => {
   const navigate = useNavigate()
   const { templateId } = useParams()
-  const { templateConfig, toggleModule, updateModuleConfig } = useEditorStore()
+  const { templateConfig, toggleModule, updateModuleConfig, currentPage } = useEditorStore()
   
-  const [localConfig, setLocalConfig] = useState(templateConfig.modules)
+  // Pobierz moduły z aktualnej strony
+  const currentPageData = templateConfig.pages[currentPage] || templateConfig.pages.home
+  const [localConfig, setLocalConfig] = useState(currentPageData?.modules || [])
+
+  // Aktualizuj localConfig gdy zmieni się strona
+  useEffect(() => {
+    const pageData = templateConfig.pages[currentPage] || templateConfig.pages.home
+    setLocalConfig(pageData?.modules || [])
+  }, [currentPage, templateConfig])
 
   const handleToggle = (moduleId) => {
     setLocalConfig(prev => 
@@ -30,12 +38,29 @@ const ModuleConfig = () => {
   const handleContinue = () => {
     // Zapisz konfigurację do store
     localConfig.forEach(module => {
-      if (module.enabled !== templateConfig.modules.find(m => m.id === module.id).enabled) {
+      const originalModule = currentPageData.modules.find(m => m.id === module.id)
+      if (originalModule && module.enabled !== originalModule.enabled) {
         toggleModule(module.id)
       }
       updateModuleConfig(module.id, module.config)
     })
     navigate('/editor')
+  }
+
+  // Guard clause - jeśli brak danych
+  if (!localConfig || localConfig.length === 0) {
+    return (
+      <div className="min-h-screen py-12 px-4" style={{ backgroundColor: 'rgb(228, 229, 218)' }}>
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-4xl font-bold mb-4" style={{ color: 'rgb(30, 30, 30)' }}>
+            Ładowanie...
+          </h1>
+          <Button onClick={() => navigate('/templates')}>
+            Wróć do szablonów
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -103,7 +128,7 @@ const ModuleConfig = () => {
                         </label>
                         <input
                           type="number"
-                          value={module.config.minInterval || 15}
+                          value={module.config?.minInterval || 15}
                           onChange={(e) => handleConfigChange(module.id, 'minInterval', parseInt(e.target.value))}
                           className="w-full px-4 py-2 rounded-lg border"
                           style={{ borderColor: 'rgba(30, 30, 30, 0.2)' }}
@@ -119,7 +144,7 @@ const ModuleConfig = () => {
                           <label className="flex items-center">
                             <input
                               type="checkbox"
-                              checked={module.config.allowIndividual !== false}
+                              checked={module.config?.allowIndividual !== false}
                               onChange={(e) => handleConfigChange(module.id, 'allowIndividual', e.target.checked)}
                               className="mr-2"
                               style={{ accentColor: 'rgb(146, 0, 32)' }}
@@ -129,7 +154,7 @@ const ModuleConfig = () => {
                           <label className="flex items-center">
                             <input
                               type="checkbox"
-                              checked={module.config.allowGroup !== false}
+                              checked={module.config?.allowGroup !== false}
                               onChange={(e) => handleConfigChange(module.id, 'allowGroup', e.target.checked)}
                               className="mr-2"
                               style={{ accentColor: 'rgb(146, 0, 32)' }}
@@ -142,7 +167,7 @@ const ModuleConfig = () => {
                   )}
 
                   {/* Ustawienia wspólne - tytuł */}
-                  {module.config.title !== undefined && (
+                  {module.config?.title !== undefined && (
                     <div>
                       <label className="block text-sm font-medium mb-2 opacity-70">
                         Tytuł sekcji
