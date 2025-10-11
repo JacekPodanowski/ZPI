@@ -1,1 +1,0 @@
-Frontend modułowego geneatora / edytora stron osobistych
