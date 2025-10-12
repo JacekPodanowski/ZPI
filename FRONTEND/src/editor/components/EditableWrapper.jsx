@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import useEditorStore from '../../store/editorStore'
 
 const EditableWrapper = ({ moduleId, children, label }) => {
-  const { mode, selectedModule, selectModule } = useEditorStore()
+  const { mode, selectedModule, selectModule, expertMode } = useEditorStore()
   const isSelected = selectedModule === moduleId
   const isEditMode = mode === 'edit'
 
@@ -23,8 +23,12 @@ const EditableWrapper = ({ moduleId, children, label }) => {
       onClick={handleClick}
       className="relative cursor-pointer transition-all"
       style={{
-        outline: isSelected ? '3px solid rgb(146, 0, 32)' : '2px dashed rgba(146, 0, 32, 0.2)',
-        outlineOffset: '4px',
+        outline: isSelected
+          ? '3px solid rgb(146, 0, 32)'
+          : expertMode
+            ? '2px dashed rgba(146, 0, 32, 0.2)'
+            : 'none',
+        outlineOffset: isSelected || expertMode ? '4px' : '0',
       }}
     >
       {/* Label na hover lub gdy zaznaczony */}
@@ -43,12 +47,14 @@ const EditableWrapper = ({ moduleId, children, label }) => {
       )}
 
       {/* Overlay na hover */}
-      <div
-        className="absolute inset-0 transition-all pointer-events-none"
-        style={{
-          backgroundColor: isSelected ? 'rgba(146, 0, 32, 0.05)' : 'transparent',
-        }}
-      />
+      {(expertMode || isSelected) && (
+        <div
+          className="absolute inset-0 transition-all pointer-events-none"
+          style={{
+            backgroundColor: isSelected ? 'rgba(146, 0, 32, 0.05)' : 'transparent',
+          }}
+        />
+      )}
 
       {children}
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Button, Card, CardContent, Container, Grid, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import AnimatedLogoHero from '../../components/Logo/AnimatedLogoHero';
 
 const steps = [
@@ -20,6 +21,15 @@ const steps = [
 
 const HomePage = () => {
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
+
+    const startCreationFlow = () => {
+        if (isAuthenticated) {
+            navigate('/studio/new');
+        } else {
+            navigate('/login', { state: { from: { pathname: '/studio/new' } } });
+        }
+    };
 
     return (
         <Container maxWidth="lg">
@@ -49,38 +59,13 @@ const HomePage = () => {
                         centralnym panelu, który zadba o Twoją obecność w sieci.
                     </Typography>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                        <Button variant="contained" size="large" onClick={() => navigate('/login')}>
+                        <Button variant="contained" size="large" onClick={startCreationFlow}>
                             Stwórz swoją stronę
                         </Button>
                         <Button variant="outlined" size="large" onClick={() => navigate('/calendar')}>
                             Zobacz kalendarz klienta
                         </Button>
                     </Stack>
-                </Box>
-
-                <Box>
-                    <Typography variant="overline" sx={{ color: 'secondary.main', letterSpacing: 2, mb: 2 }}>
-                        Jak to działa
-                    </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 600, mb: 4 }}>
-                        Trzy proste kroki do własnej strony
-                    </Typography>
-                    <Grid container spacing={3}>
-                        {steps.map((step) => (
-                            <Grid item xs={12} md={4} key={step.title}>
-                                <Card elevation={0} sx={{ height: '100%', backdropFilter: 'blur(6px)', borderRadius: 4, border: '1px solid rgba(160, 0, 22, 0.12)' }}>
-                                    <CardContent>
-                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                                            {step.title}
-                                        </Typography>
-                                        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-                                            {step.description}
-                                        </Typography>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
                 </Box>
 
                 <Box
@@ -100,7 +85,7 @@ const HomePage = () => {
                         Po zalogowaniu przejdziesz do panelu Studio. Tam dobierzesz moduły, ustawisz kolory i treści, 
                         a następnie opublikujesz swoją stronę. Wszystko w jednym miejscu, bez znajomości kodu.
                     </Typography>
-                    <Button variant="outlined" size="large" onClick={() => navigate('/login')}>
+                    <Button variant="outlined" size="large" onClick={startCreationFlow}>
                         Przejdź do Studio
                     </Button>
                 </Box>

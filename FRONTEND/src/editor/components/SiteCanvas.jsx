@@ -15,7 +15,22 @@ import RowModule from '../../site-template/components/RowModule'
 import ContainerModule from '../../site-template/components/ContainerModule'
 
 const SiteCanvas = () => {
-  const { currentPage, setCurrentPage, templateConfig, mode, siteStructure, animations } = useEditorStore()
+  const {
+    currentPage,
+    setCurrentPage,
+    templateConfig,
+    mode,
+    siteStructure,
+    animations,
+    clearSelection,
+    expertMode
+  } = useEditorStore()
+
+  const handleBackgroundClick = () => {
+    if (!expertMode) {
+      clearSelection()
+    }
+  }
 
   // Intersection Observer TYLKO dla single-page
   useEffect(() => {
@@ -156,7 +171,10 @@ const SiteCanvas = () => {
     })
     
     return (
-      <div className={`bg-background min-h-screen ${mode === 'preview' ? '' : 'select-none'}`}>
+      <div
+        className={`bg-background min-h-screen ${mode === 'preview' ? '' : 'select-none'}`}
+        onClick={handleBackgroundClick}
+      >
         <SiteNavigation />
         <div className="scroll-smooth">
           {allModules.map((module) => renderModule(module, true))}
@@ -184,7 +202,10 @@ const SiteCanvas = () => {
   }
 
   return (
-    <div className={`bg-background min-h-screen ${mode === 'preview' ? '' : 'select-none'}`}>
+    <div
+      className={`bg-background min-h-screen ${mode === 'preview' ? '' : 'select-none'}`}
+      onClick={handleBackgroundClick}
+    >
       <SiteNavigation />
       <AnimatePresence mode="wait">
         <motion.div

@@ -1,5 +1,90 @@
 import { create } from 'zustand'
 
+export const createDefaultTemplateConfig = () => ({
+  name: 'Wellness Template',
+  pages: {
+    home: {
+      id: 'home',
+      name: 'Strona Główna',
+      path: '/',
+      modules: [
+        {
+          id: 'hero',
+          name: 'Strona Główna',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Witaj w Świecie Wellness',
+            subtitle: 'Odkryj harmonię ciała i umysłu',
+            bgColor: 'rgb(228, 229, 218)',
+            textColor: 'rgb(30, 30, 30)',
+            backgroundImage: ''
+          }
+        }
+      ]
+    },
+    about: {
+      id: 'about',
+      name: 'O Mnie',
+      path: '/o-mnie',
+      modules: [
+        {
+          id: 'about',
+          name: 'O Mnie',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'O Mnie',
+            description: 'Jestem certyfikowanym instruktorem wellness z pasją do zdrowego stylu życia.',
+            imageUrl: '',
+            avatar: '',
+            bgColor: 'rgb(228, 229, 218)'
+          }
+        }
+      ]
+    },
+    calendar: {
+      id: 'calendar',
+      name: 'Kalendarz',
+      path: '/kalendarz',
+      modules: [
+        {
+          id: 'calendar',
+          name: 'Kalendarz',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Zarezerwuj Termin',
+            color: 'rgb(146, 0, 32)',
+            bgColor: 'rgb(255, 255, 255)',
+            minInterval: 15,
+            allowIndividual: true,
+            allowGroup: true
+          }
+        }
+      ]
+    },
+    contact: {
+      id: 'contact',
+      name: 'Kontakt',
+      path: '/kontakt',
+      modules: [
+        {
+          id: 'contact',
+          name: 'Kontakt',
+          enabled: true,
+          order: 0,
+          config: {
+            email: 'kontakt@wellness.pl',
+            phone: '+48 123 456 789',
+            bgColor: 'rgb(255, 255, 255)'
+          }
+        }
+      ]
+    }
+  }
+})
+
 const useEditorStore = create((set, get) => ({
   mode: 'edit',
   expertMode: false,
@@ -12,93 +97,14 @@ const useEditorStore = create((set, get) => ({
     style: 'smooth',
   },
   
-  templateConfig: {
-    name: 'Wellness Template',
-    pages: {
-      home: {
-        id: 'home',
-        name: 'Strona Główna',
-        path: '/',
-        modules: [
-          { 
-            id: 'hero', 
-            name: 'Strona Główna', 
-            enabled: true,
-            order: 0,
-            config: { 
-              title: 'Witaj w Świecie Wellness', 
-              subtitle: 'Odkryj harmonię ciała i umysłu', 
-              bgColor: 'rgb(228, 229, 218)', 
-              textColor: 'rgb(30, 30, 30)',
-              backgroundImage: ''
-            } 
-          },
-        ]
-      },
-      about: {
-        id: 'about',
-        name: 'O Mnie',
-        path: '/o-mnie',
-        modules: [
-          { 
-            id: 'about', 
-            name: 'O Mnie', 
-            enabled: true,
-            order: 0,
-            config: { 
-              title: 'O Mnie', 
-              description: 'Jestem certyfikowanym instruktorem wellness z pasją do zdrowego stylu życia.', 
-              imageUrl: '',
-              avatar: '',
-              bgColor: 'rgb(228, 229, 218)'
-            } 
-          },
-        ]
-      },
-      calendar: {
-        id: 'calendar',
-        name: 'Kalendarz',
-        path: '/kalendarz',
-        modules: [
-          { 
-            id: 'calendar', 
-            name: 'Kalendarz', 
-            enabled: true,
-            order: 0,
-            config: { 
-              title: 'Zarezerwuj Termin', 
-              color: 'rgb(146, 0, 32)',
-              bgColor: 'rgb(255, 255, 255)',
-              minInterval: 15,
-              allowIndividual: true,
-              allowGroup: true
-            } 
-          },
-        ]
-      },
-      contact: {
-        id: 'contact',
-        name: 'Kontakt',
-        path: '/kontakt',
-        modules: [
-          { 
-            id: 'contact', 
-            name: 'Kontakt', 
-            enabled: true,
-            order: 0,
-            config: { 
-              email: 'kontakt@wellness.pl', 
-              phone: '+48 123 456 789',
-              bgColor: 'rgb(255, 255, 255)'
-            } 
-          },
-        ]
-      }
-    },
-  },
-  
+  templateConfig: createDefaultTemplateConfig(),
+  siteMeta: null,
   history: [],
   currentVersion: 0,
+  setTemplateConfig: (config) => set({ templateConfig: JSON.parse(JSON.stringify(config || createDefaultTemplateConfig())) }),
+  resetTemplateConfig: () => set({ templateConfig: createDefaultTemplateConfig(), history: [], currentVersion: 0, siteMeta: null }),
+  setSiteMeta: (meta) => set({ siteMeta: meta }),
+  
 
   setMode: (mode) => set({ mode }),
   setExpertMode: (expertMode) => set({ expertMode }),
@@ -114,6 +120,8 @@ const useEditorStore = create((set, get) => ({
     selectedModule: moduleId, 
     selectedChild: { moduleId, childIndex } 
   }),
+
+  clearSelection: () => set({ selectedModule: null, selectedChild: null }),
 
   updateModuleConfig: (moduleId, config) => set((state) => {
     // Znajdź stronę zawierającą ten moduł

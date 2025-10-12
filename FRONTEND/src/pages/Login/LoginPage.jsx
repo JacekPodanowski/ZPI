@@ -40,13 +40,14 @@ const LoginPage = () => {
         }
     };
 
-    const handleMockAdminLogin = () => {
+    const handleMockAdminLogin = async () => {
         setError(null);
         setSubmitting(true);
         try {
-            mockLogin(redirectPath);
+            await mockLogin(redirectPath);
         } catch (err) {
-            setError('Logowanie demo nie powiodło się.');
+            const detail = err?.response?.data?.detail || 'Logowanie demo nie powiodło się.';
+            setError(detail);
         } finally {
             setSubmitting(false);
         }

@@ -2,7 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import useEditorStore from '../../store/editorStore'
 
-const PageNavigation = () => {
+const PageNavigation = ({ variant = 'panel' }) => {
   const { currentPage, setCurrentPage, templateConfig, siteStructure } = useEditorStore()
   const pages = Object.values(templateConfig.pages)
 
@@ -30,10 +30,45 @@ const PageNavigation = () => {
     }
   }
 
+  const buttons = pages.map((page) => (
+    <motion.button
+      key={page.id}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => handlePageClick(page)}
+      className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all flex items-center gap-2 ${
+        currentPage === page.id ? 'font-semibold' : 'opacity-60 hover:opacity-100'
+      }`}
+      style={{
+        backgroundColor: currentPage === page.id ? 'rgb(146, 0, 32)' : 'transparent',
+        color: currentPage === page.id ? 'rgb(228, 229, 218)' : 'rgb(30, 30, 30)'
+      }}
+    >
+      {currentPage === page.id && <span className="text-xs">📍</span>}
+      {page.name}
+      <span className="text-xs opacity-70">
+        ({page.modules.filter(m => m.enabled).length})
+      </span>
+    </motion.button>
+  ))
+
+  if (variant === 'inline') {
+    return (
+      <div className="flex flex-wrap gap-2 overflow-x-auto">
+        <div className="text-xs px-3 py-1 rounded-full" style={{ 
+          backgroundColor: siteStructure === 'single-page' ? 'rgba(146, 0, 32, 0.1)' : 'rgba(30, 30, 30, 0.1)',
+          color: siteStructure === 'single-page' ? 'rgb(146, 0, 32)' : 'rgb(30, 30, 30)'
+        }}>
+          {siteStructure === 'single-page' ? '📄 Jedna strona (scroll)' : '📑 Wiele stron'}
+        </div>
+        {buttons}
+      </div>
+    )
+  }
+
   return (
     <div className="bg-white border-b px-6 py-3" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
       <div className="flex items-center gap-4">
-        {/* Wskaźnik trybu */}
         <div className="flex items-center gap-2">
           <div className="text-xs px-3 py-1 rounded-full" style={{ 
             backgroundColor: siteStructure === 'single-page' ? 'rgba(146, 0, 32, 0.1)' : 'rgba(30, 30, 30, 0.1)',
@@ -43,54 +78,8 @@ const PageNavigation = () => {
           </div>
         </div>
 
-        {/* Przyciski stron - w multi-page pokazują tylko edytowaną stronę */}
         <div className="flex gap-2 overflow-x-auto flex-1">
-          {siteStructure === 'multi-page' ? (
-            // W multi-page pokazuj przyciski stron jako routing
-            pages.map((page) => (
-              <motion.button
-                key={page.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handlePageClick(page)}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all flex items-center gap-2 ${
-                  currentPage === page.id ? 'font-semibold' : 'opacity-60 hover:opacity-100'
-                }`}
-                style={{
-                  backgroundColor: currentPage === page.id ? 'rgb(146, 0, 32)' : 'transparent',
-                  color: currentPage === page.id ? 'rgb(228, 229, 218)' : 'rgb(30, 30, 30)'
-                }}
-              >
-                {currentPage === page.id && <span className="text-xs">📍</span>}
-                {page.name}
-                <span className="text-xs opacity-70">
-                  ({page.modules.filter(m => m.enabled).length})
-                </span>
-              </motion.button>
-            ))
-          ) : (
-            // W single-page pokazuj jako sekcje do scrollowania
-            pages.map((page) => (
-              <motion.button
-                key={page.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handlePageClick(page)}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
-                  currentPage === page.id ? 'font-semibold' : 'opacity-60 hover:opacity-100'
-                }`}
-                style={{
-                  backgroundColor: currentPage === page.id ? 'rgb(146, 0, 32)' : 'transparent',
-                  color: currentPage === page.id ? 'rgb(228, 229, 218)' : 'rgb(30, 30, 30)'
-                }}
-              >
-                {page.name}
-                <span className="ml-2 text-xs opacity-70">
-                  ({page.modules.filter(m => m.enabled).length})
-                </span>
-              </motion.button>
-            ))
-          )}
+          {buttons}
         </div>
       </div>
     </div>

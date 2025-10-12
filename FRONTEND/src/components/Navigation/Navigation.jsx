@@ -37,6 +37,7 @@ const Navigation = () => {
         ];
 
         if (isAuthenticated) {
+            base.push({ label: 'Studio', to: '/studio', requiresAuth: true });
             base.push({ label: 'Panel admina', to: '/admin', requiresAuth: true });
         }
 

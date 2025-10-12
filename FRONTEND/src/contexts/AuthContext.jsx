@@ -4,16 +4,10 @@ import { fetchMe, googleLogin as googleLoginService, login as loginService, logo
 
 const AuthContext = createContext(null);
 
-const MOCK_DEMO_KEY = 'mockDemoSession';
-
-const getMockAdminUser = () => ({
-    id: 'demo-admin',
-    email: 'mockadmin@example.com',
-    first_name: 'Demo',
-    last_name: 'Admin',
-    account_type: 'Pro',
-    role: 'admin'
-});
+const DEMO_CREDENTIALS = {
+    email: '777seeit@gmail.com',
+    password: 'BogMnieKocha777'
+};
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -22,15 +16,7 @@ export const AuthProvider = ({ children }) => {
 
     const hasTokens = () => Boolean(localStorage.getItem('accessToken'));
 
-    const isDemoSession = () => localStorage.getItem(MOCK_DEMO_KEY) === 'true';
-
     const loadCurrentUser = useCallback(async () => {
-        if (isDemoSession()) {
-            setUser(getMockAdminUser());
-            setLoading(false);
-            return;
-        }
-
         if (!hasTokens()) {
             setUser(null);
             setLoading(false);
@@ -61,7 +47,6 @@ export const AuthProvider = ({ children }) => {
 
     const login = useCallback(
         async (email, password, redirectTo) => {
-            localStorage.removeItem(MOCK_DEMO_KEY);
             await loginService(email, password);
             await loadCurrentUser();
             handlePostAuthNavigation(redirectTo);
@@ -80,7 +65,6 @@ export const AuthProvider = ({ children }) => {
 
     const googleLogin = useCallback(
         async (accessToken, redirectTo) => {
-            localStorage.removeItem(MOCK_DEMO_KEY);
             await googleLoginService(accessToken);
             await loadCurrentUser();
             handlePostAuthNavigation(redirectTo);
@@ -89,19 +73,23 @@ export const AuthProvider = ({ children }) => {
     );
 
     const mockLogin = useCallback(
-        (redirectTo) => {
-            localStorage.setItem(MOCK_DEMO_KEY, 'true');
-            setUser(getMockAdminUser());
-            setLoading(false);
-            handlePostAuthNavigation(redirectTo);
+        async (redirectTo) => {
+            try {
+                await loginService(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password);
+                await loadCurrentUser();
+                handlePostAuthNavigation(redirectTo);
+            } catch (error) {
+                logoutService();
+                setUser(null);
+                throw error;
+            }
         },
-        [handlePostAuthNavigation]
+        [handlePostAuthNavigation, loadCurrentUser]
     );
 
     const logout = useCallback(() => {
         logoutService();
         setUser(null);
-        localStorage.removeItem(MOCK_DEMO_KEY);
         navigate('/', { replace: true });
     }, [navigate]);
 

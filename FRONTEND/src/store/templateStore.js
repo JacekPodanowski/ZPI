@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createDefaultTemplateConfig } from './editorStore'
 
 const useTemplateStore = create((set) => ({
   templates: [
@@ -7,7 +8,8 @@ const useTemplateStore = create((set) => ({
       name: 'Wellness Template',
       description: 'Elegancki szablon dla instruktorów wellness i trenerów',
       thumbnail: '/templates/wellness-thumb.jpg',
-      modules: ['hero', 'calendar', 'about', 'contact'],
+      modules: ['Hero', 'Kalendarz', 'O mnie', 'Kontakt'],
+      presetConfig: createDefaultTemplateConfig(),
     },
   ],
   selectedTemplate: null,
