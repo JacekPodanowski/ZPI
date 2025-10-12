@@ -17,7 +17,7 @@ import GoogleIcon from '@mui/icons-material/Google';
 import { useAuth } from '../../contexts/AuthContext';
 
 const LoginPage = () => {
-    const { login, googleLogin } = useAuth();
+    const { login, googleLogin, mockLogin } = useAuth();
     const location = useLocation();
     const redirectPath = location.state?.from?.pathname ?? '/admin';
 
@@ -35,6 +35,18 @@ const LoginPage = () => {
         } catch (err) {
             const detail = err.response?.data?.detail || err.message || 'Nie udało się zalogować.';
             setError(detail);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleMockAdminLogin = () => {
+        setError(null);
+        setSubmitting(true);
+        try {
+            mockLogin(redirectPath);
+        } catch (err) {
+            setError('Logowanie demo nie powiodło się.');
         } finally {
             setSubmitting(false);
         }
@@ -115,6 +127,15 @@ const LoginPage = () => {
                         disabled={submitting}
                     >
                         Kontynuuj z Google
+                    </Button>
+
+                    <Button
+                        variant="text"
+                        size="large"
+                        onClick={handleMockAdminLogin}
+                        disabled={submitting}
+                    >
+                        Zaloguj jako admin demo
                     </Button>
 
                     <Stack direction="row" justifyContent="space-between" sx={{ color: 'text.secondary' }}>
