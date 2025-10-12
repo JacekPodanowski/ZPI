@@ -13,7 +13,7 @@ docker-compose up --build -d
 # Wyświetl logi (z czego):
 docker-compose logs -f                      
 docker-compose logs -f backend
-docker-compose logs -f editor_frontend
+docker-compose logs -f frontend
 
 # wyczyść całą pamięć docera (czasem nawet 30 GB)
 docker system prune -a --volumes
@@ -27,4 +27,3 @@ docker-compose exec backend python manage.py test api
 
 # Włącz z moją stroną (legacy frontend)
 docker-compose --profile legacy_frontend up --build -d
-docker-compose up -d --force-recreate --no-deps frontend

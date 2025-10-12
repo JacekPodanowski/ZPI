@@ -1,21 +1,21 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    UserViewSet, 
-    TimeSlotViewSet, 
-    MeetingViewSet, 
-    NotificationViewSet, 
-    DailyActivitySummaryViewSet,
+    PlatformUserViewSet,
+    SiteViewSet,
+    ClientViewSet,
+    EventViewSet,
+    BookingViewSet,
     CustomRegisterView,
     GoogleLogin,
 )
 
 router = DefaultRouter()
-router.register(r'users', UserViewSet, basename='user')
-router.register(r'timeslots', TimeSlotViewSet, basename='timeslot')
-router.register(r'meetings', MeetingViewSet, basename='meeting')
-router.register(r'notifications', NotificationViewSet, basename='notification')
-router.register(r'daily-summaries', DailyActivitySummaryViewSet, basename='dailysummary')
+router.register(r'users', PlatformUserViewSet, basename='user')
+router.register(r'sites', SiteViewSet, basename='site')
+router.register(r'clients', ClientViewSet, basename='client')
+router.register(r'events', EventViewSet, basename='event')
+router.register(r'bookings', BookingViewSet, basename='booking')
 
 urlpatterns = [
     path('', include(router.urls)),

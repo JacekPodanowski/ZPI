@@ -37,7 +37,7 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 
 # Docer uruchaminia:
-    Frontend edytora na   localhost:4000
+    Frontend  na          localhost:3000
     Backend na            localhost:8000
     Api backendu na       http://localhost:8000/api/v1/
 
