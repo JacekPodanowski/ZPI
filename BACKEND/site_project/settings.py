@@ -35,7 +35,7 @@ if not DEBUG:
 # --- Konfiguracja aplikacji Django ---
 ROOT_URLCONF = 'site_project.urls'
 WSGI_APPLICATION = 'site_project.wsgi.application'
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'api.PlatformUser'
 SITE_ID = 1
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'api.apps.ApiConfig',
     'rest_framework',
+    'drf_spectacular',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'allauth',
@@ -110,6 +111,7 @@ CORS_ALLOW_CREDENTIALS = True
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
@@ -145,6 +147,16 @@ ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
 SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'YourEasySite API',
+    'DESCRIPTION': (
+        'REST API for the multi-tenant personal site generator. '
+        'Core resources cover platform users, sites, clients, events and bookings.'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
 
 # --- Logowanie przez Google ---
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')

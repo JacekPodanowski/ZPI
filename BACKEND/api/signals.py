@@ -1,14 +1,20 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from .models import TimeSlot, Meeting
-from .utils import recalculate_daily_summary_for_date
 
-@receiver(post_save, sender=Meeting)
-def meeting_post_save_receiver(sender, instance, created, **kwargs):
-    if instance.time_slot and instance.time_slot.tutor_id and instance.time_slot.start_time:
-        recalculate_daily_summary_for_date(instance.time_slot.tutor_id, instance.time_slot.start_time.date())
+from .models import Booking
 
-@receiver(post_delete, sender=Meeting)
-def meeting_post_delete_receiver(sender, instance, **kwargs):
-    if instance.time_slot and instance.time_slot.tutor_id and instance.time_slot.start_time:
-        recalculate_daily_summary_for_date(instance.time_slot.tutor_id, instance.time_slot.start_time.date())
+
+@receiver(post_save, sender=Booking)
+def ensure_attendee_on_booking_save(sender, instance: Booking, created: bool, **kwargs):
+    """Ensure the client is attached to the event attendee list whenever a booking exists."""
+    if instance.client:
+        instance.event.attendees.add(instance.client)
+
+
+@receiver(post_delete, sender=Booking)
+def cleanup_attendee_on_booking_delete(sender, instance: Booking, **kwargs):
+    """Remove the attendee when their last booking for the event is deleted."""
+    if instance.client:
+        remaining = instance.event.bookings.filter(client=instance.client).exists()
+        if not remaining:
+            instance.event.attendees.remove(instance.client)

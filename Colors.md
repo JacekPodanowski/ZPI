@@ -3,26 +3,32 @@
 # LIGHT MODE:
 
 cnavas background:
-#E4E5DA
+#e8e7dc        (232, 231, 220)
 
 text:
-#1e1e1e         (30,30,30) 
+#1e1e1e         (30, 30, 30) 
 
 red :
-#920020
+#A00016         (160, 0, 22)
 
+grey :
+#bcbab3         (188, 186, 179)
 
 
 # DARK MODE :
 
 black background:
-#0c0c0c         (12,12,12)
+#0c0c0c         (12, 12, 12)
 
 text :
-#dcdcdc         (220,220,220)
+#dcdcdc         (220, 220 ,220)
 
 red :
-#720015
+#770016         (119, 0, 22)
+
+grey :
+#464644        (70, 70, 68)
+
 
 
 

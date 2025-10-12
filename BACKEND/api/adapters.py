@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
 
-from .models import User
+from .models import PlatformUser
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +53,19 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
             base_username = slugify(user.email.split('@')[0])
             username = base_username
             counter = 1
-            existing_usernames = set(User.objects.filter(username__startswith=base_username).values_list('username', flat=True))
-            
+            existing_usernames = set(
+                PlatformUser.objects.filter(username__startswith=base_username).values_list('username', flat=True)
+            )
+
             while username in existing_usernames:
                 username = f"{base_username}{counter}"
                 counter += 1
-            
+
             user.username = username
-            logger.info(f"CustomSocialAccountAdapter (pre_social_login): Ustawiono wygenerowany username '{username}' dla użytkownika {user.email}.")
+            logger.info(
+                "CustomSocialAccountAdapter (pre_social_login): Ustawiono wygenerowany username '%s' dla użytkownika %s.",
+                username,
+                user.email,
+            )
 
         return

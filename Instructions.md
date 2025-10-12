@@ -246,6 +246,11 @@ variable (`REACT_APP_BUILD_TARGET`).
                      Part 3: Detailed Backend Implementation Plan
 ------------------------------------------------------------------------------------------------
 
+We split the users of our application into 3 groups:
+1. Admins - us, the developers
+1. Creators - users of the editor (they create and manage their personal sites)
+2. Clients - users of the personal sites (they book appointments)
+
 3.1. Database Model Refactoring (api/models.py)
 -----------------------------------------------
 *   **`PlatformUser`** (replaces `User`): Represents your customers.
