@@ -1,18 +1,16 @@
 #!/bin/sh
-set -e
 
-echo "--- Entrypoint: Stosowanie migracji bazy danych..."
+echo "--- Entrypoint: Applying database migrations..."
 python manage.py migrate --noinput
-echo "--- Entrypoint: Migracje zakończone."
+echo "--- Entrypoint: Migrations complete."
 
-echo "--- Entrypoint: Zbieranie plików statycznych..."
-
+echo "--- Entrypoint: Collecting static files..."
 python manage.py collectstatic --noinput
-echo "--- Entrypoint: Pliki statyczne zebrane."
+echo "--- Entrypoint: Static files collected."
 
-echo "--- Entrypoint: Tworzenie superużytkownika (jeśli nie istnieje)..."
+echo "--- Entrypoint: Ensuring initial admin user exists..."
 python manage.py create_initial_superuser
-echo "--- Entrypoint: Proces tworzenia superużytkownika zakończony."
+echo "--- Entrypoint: Admin user check complete."
 
-echo "--- Entrypoint: Uruchamianie serwera Gunicorn..."
+echo "--- Entrypoint: Launching application command: $@"
 exec "$@"

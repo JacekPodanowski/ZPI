@@ -42,6 +42,9 @@ RUN pip install --no-cache-dir /wheels/*
 # KROK 5: Kopiujemy resztę plików aplikacji i ZMIENIAMY ICH WŁAŚCICIELA na `appuser`
 COPY --chown=appuser:appuser . .
 
+# Ensure entrypoint has Unix line endings and execute permission
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
+
 # KROK 6: Dopiero teraz, gdy wszystko jest gotowe, przełączamy się na użytkownika nie-root
 USER appuser
 # --- KONIEC POPRAWKI ---
@@ -50,7 +53,7 @@ USER appuser
 EXPOSE 8000
 
 # Definiujemy skrypt startowy (jest już w WORKDIR i ma nadane uprawnienia)
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["sh", "./entrypoint.sh"]
 
 # Domyślna komenda, która zostanie przekazana do entrypoint.sh.
 CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8000", "site_project.wsgi:application"]
