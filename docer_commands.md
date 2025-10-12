@@ -24,6 +24,3 @@ docker compose exec backend python manage.py dumpdata > backup_bazy.json
 # wykonaj testy
 docker-compose exec backend python manage.py test api
 
-
-# Włącz z moją stroną (legacy frontend)
-docker-compose --profile legacy_frontend up --build -d
