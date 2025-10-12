@@ -1,7 +1,7 @@
 Główne zadanie to zbudować frontend apliakcji w katalogu `FRONTEND`
 Można używać mojej strony z `site_frontend` jako szablonów, wyciągać z niej moduły itd
 
-# Wszytsktkie instrukcje są w `Insturctions.md`
+# Wszytsktkie instrukcje są w `.github/copilot-instructions.md`
     Część 1 - Wstęp po polsku, wizja projektu i opis ekranów
     Część 2 - Szczegółowy opis techniczny po angielsku
 
@@ -39,7 +39,7 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 # Konsultacje z AI
 * Przed rozpoczęciem pracy zróbcie sobie instrucje. (ratuje to masę czasu)
-* Wklejcie cały plik `Insturctions.md` w google AI Studio (model gemmini 2.5)
+* Wklejcie cały plik `copilot-instructions.md` w google AI Studio (model gemmini 2.5)
 * Opiszcie niżej co chcecie zrobić i dodajcie na koniec :
 
 `Act as an expert consultant. Analyze project description and my request. Based on this analysis, propose an optimal solution that aligns with project's vision and reflects professional best practices. Shortly explain why your proposed solution is the most effective. If your proposal introduces significant strategic changes to my original request, present your solution and ask for my confirmation before you proceed. If your proposal only refines or details my request without major changes, present it and then create a detailed work plan.`
