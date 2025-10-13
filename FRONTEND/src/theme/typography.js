@@ -11,7 +11,11 @@ export const typography = {
     body: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     accent: '"Cormorant Garamond", Georgia, "Times New Roman", serif',
     logo: '"Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    mono: '"JetBrains Mono", "Fira Code", "Courier New", monospace'
+    mono: '"JetBrains Mono", "Fira Code", "Courier New", monospace',
+    handwritten: '"Birthstone", cursive',
+    elegantScript: '"Satisfy", cursive',
+    artisticCasual: '"Amatic SC", cursive',
+    signature: '"Great Vibes", cursive'
   },
   sizes: {
     xs: '0.75rem',
@@ -151,10 +155,52 @@ export const textStyles = {
     fontWeight: typography.weights.extrabold,
     lineHeight: typography.lineHeights.tight,
     letterSpacing: typography.letterSpacing.tight
+  },
+  handwritten: {
+    fontFamily: typography.fonts.handwritten,
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.regular,
+    lineHeight: typography.lineHeights.normal,
+    letterSpacing: typography.letterSpacing.normal
+  },
+  elegantScript: {
+    fontFamily: typography.fonts.elegantScript,
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.regular,
+    lineHeight: typography.lineHeights.normal,
+    letterSpacing: typography.letterSpacing.normal
+  },
+  artisticCasual: {
+    fontFamily: typography.fonts.artisticCasual,
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.normal,
+    letterSpacing: typography.letterSpacing.normal
+  },
+  signature: {
+    fontFamily: typography.fonts.signature,
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.regular,
+    lineHeight: typography.lineHeights.normal,
+    letterSpacing: typography.letterSpacing.normal
+  },
+  handwritten1: {
+    fontFamily: typography.fonts.handwritten1,
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.regular,
+    lineHeight: typography.lineHeights.normal,
+    letterSpacing: typography.letterSpacing.normal
+  },
+  handwritten2: {
+    fontFamily: typography.fonts.handwritten2,
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.regular,
+    lineHeight: typography.lineHeights.normal,
+    letterSpacing: typography.letterSpacing.normal
   }
 };
 
-export const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&family=Raleway:ital,wght@0,600;0,700;0,800;1,600;1,700&family=Exo+2:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700;1,800;1,900&family=JetBrains+Mono:wght@400;500;600&display=swap';
+export const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:ital,wght@0,700;0,800;0,900;1,700;1,800;1,900&family=Raleway:ital,wght@0,600;0,700;0,800;1,600;1,700&family=Exo+2:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700;1,800;1,900&family=JetBrains+Mono:wght@400;500;600&family=Pacifico&family=Satisfy&family=Amatic+SC:wght@400;700&family=Great+Vibes&family=Birthstone&family=Ephesis&display=swap';
 
 export function getTextStyle(styleName) {
   return textStyles[styleName] || textStyles.body;

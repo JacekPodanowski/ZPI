@@ -6,6 +6,8 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Navigation from '../../../components/Navigation/Navigation';
 import AnimatedWordmark from '../../../components/Logo/AnimatedLogo';
 
+import { typography } from '../../../theme/typography.js';
+
 const NAVIGATION_ANIMATION_DELAY_MS = 100;
 const LOGO_ANIMATION_DELAY_MS = 250;
 const MONTSERRAT_BUTTON_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';
@@ -22,7 +24,9 @@ const HomePage = () => {
     const [isScrollIndicatorReady, setIsScrollIndicatorReady] = useState(false);
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const [navVisible, setNavVisible] = useState(true);
+    const [ctaVisible, setCtaVisible] = useState(false);
     const aboutRef = useRef(null);
+    const ctaRef = useRef(null);
     const lastScrollY = useRef(0);
 
     useEffect(() => {
@@ -51,6 +55,29 @@ const HomePage = () => {
                 });
             },
             { threshold: 0.05, rootMargin: '100px' }
+        );
+
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        const element = ctaRef.current;
+        if (!element) {
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => setCtaVisible(true), 500);
+                        observer.disconnect();
+                    }
+                });
+            },
+            { threshold: 0.3 }
         );
 
         observer.observe(element);
@@ -426,8 +453,9 @@ const HomePage = () => {
                         sx={{
                             position: 'relative',
                             py: { xs: 12, md: 16 },
-                            pb: { xs: 6, md: 7 },
-                            backgroundColor: 'transparent'
+                            pb: { xs: 8, md: 10 },
+                            backgroundColor: 'transparent',
+                            overflow: 'hidden'
                         }}
                     >
                     <Container maxWidth="lg">
@@ -467,17 +495,6 @@ const HomePage = () => {
                                     }}
                                 >
                                     Everyone Deserves Their Truly Own Online Place
-                                </Typography>
-                                <Typography
-                                    variant="h5"
-                                    sx={{
-                                        color: 'text.secondary',
-                                        fontWeight: 400,
-                                        maxWidth: 720,
-                                        mx: 'auto'
-                                    }}
-                                >
-                                    - Autorzy
                                 </Typography>
                             </Stack>
 
@@ -645,39 +662,104 @@ const HomePage = () => {
                                 </Stack>
                             </Box>
 
+                            {/* Integrated glow for CTA */}
                             <Box
+                                sx={{
+                                    position: 'absolute',
+                                    bottom: '-20%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: { xs: '90%', md: '60%' },
+                                    height: '60%',
+                                    background: (theme) => theme.palette.mode === 'dark'
+                                        ? 'radial-gradient(ellipse, rgba(146,0,32,0.12) 0%, rgba(146,0,32,0.06) 30%, transparent 60%)'
+                                        : 'radial-gradient(ellipse, rgba(146,0,32,0.1) 0%, rgba(146,0,32,0.05) 30%, transparent 60%)',
+                                    opacity: ctaVisible ? 0.4 : 0,
+                                    transition: 'opacity 3s ease',
+                                    pointerEvents: 'none',
+                                    animation: ctaVisible ? 'integratedGlowPulse 8s ease-in-out infinite' : 'none',
+                                    '@keyframes integratedGlowPulse': {
+                                        '0%': { opacity: 0.4, transform: 'translateX(-50%) scale(1)' },
+                                        '50%': { opacity: 0.55, transform: 'translateX(-50%) scale(1.05)' },
+                                        '100%': { opacity: 0.4, transform: 'translateX(-50%) scale(1)' }
+                                    }
+                                }}
+                            />
+
+                            {/* Final CTA */}
+                            <Box
+                                ref={ctaRef}
                                 sx={{
                                     display: 'flex',
                                     justifyContent: 'center',
-                                    mt: { xs: 6, md: 8 },
+                                    mt: { xs: 10, md: 12 },
                                     opacity: aboutVisible ? 1 : 0,
-                                    transform: aboutVisible ? 'translateY(0)' : 'translateY(40px)',
-                                    transition: 'opacity 1.2s ease, transform 1.2s ease',
-                                    transitionDelay: aboutVisible ? '0.8s' : '0s'
+                                    transform: aboutVisible ? 'translateY(0)' : 'translateY(64px)',
+                                    transition: 'opacity 0.9s ease, transform 0.9s ease',
+                                    transitionDelay: aboutVisible ? '0.05s' : '0s'
                                 }}
                             >
-                                <Button
-                                    size="large"
-                                    variant="contained"
-                                    color="primary"
+                                <Box
                                     onClick={proceedToNewSite}
                                     sx={{
-                                        px: { xs: 7, sm: 10 },
-                                        py: { xs: 2, sm: 2.5 },
-                                        fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                                        fontWeight: 600,
-                                        fontFamily: MONTSERRAT_BUTTON_FONT,
-                                        borderRadius: 5,
-                                        boxShadow: '0 20px 40px rgba(146,0,32,0.25)',
-                                        transition: 'transform 0.28s ease, box-shadow 0.28s ease',
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        px: { xs: 3, md: 4 },
+                                        py: { xs: 1.5, md: 2 },
+                                        opacity: ctaVisible ? 1 : 0,
+                                        transform: ctaVisible ? 'translateY(0)' : 'translateY(20px)',
+                                        transition: 'opacity 2s ease, transform 2s ease',
                                         '&:hover': {
-                                            transform: 'translateY(-4px) scale(1.03)',
-                                            boxShadow: '0 28px 50px rgba(146,0,32,0.35)'
+                                            '& .cta-text': {
+                                                letterSpacing: 12,
+                                                color: 'primary.main'
+                                            },
+                                            '& .cta-underline': {
+                                                width: '100%',
+                                                opacity: 1
+                                            }
                                         }
                                     }}
                                 >
-                                    Start Creating
-                                </Button>
+                                    {/* Main text */}
+                                    <Typography
+                                        className="cta-text"
+                                        variant="h5"
+                                        sx={{
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            fontWeight: 700,
+                                            fontFamily: MONTSERRAT_BUTTON_FONT,
+                                            color: 'text.primary',
+                                            letterSpacing: 4,
+                                            textTransform: 'uppercase',
+                                            fontSize: { xs: '1.2rem', md: '1.5rem' },
+                                            transition: 'letter-spacing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.4s ease',
+                                            userSelect: 'none'
+                                        }}
+                                    >
+                                        Start Creating
+                                    </Typography>
+
+                                    {/* Animated underline */}
+                                    <Box
+                                        className="cta-underline"
+                                        sx={{
+                                            position: 'absolute',
+                                            bottom: 0,
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            width: '30%',
+                                            height: 2,
+                                            backgroundColor: 'primary.main',
+                                            opacity: 0.4,
+                                            transition: 'width 0.6s ease, opacity 0.6s ease'
+                                        }}
+                                    />
+                                </Box>
                             </Box>
                         </Stack>
                     </Container>
