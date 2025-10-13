@@ -77,7 +77,14 @@ const ModuleSelector = () => {
     { type: 'text', icon: '📝', name: 'Tekst' },
     { type: 'button', icon: '🔘', name: 'Przycisk' },
     { type: 'gallery', icon: '🖼️', name: 'Galeria' },
+    { type: 'video', icon: '🎬', name: 'Wideo' },
     { type: 'spacer', icon: '↕️', name: 'Odstęp' },
+    { type: 'faq', icon: '❓', name: 'FAQ' },
+  { type: 'team', icon: '👥', name: 'Zespół' },
+    { type: 'blog', icon: '📰', name: 'Blog' },
+    { type: 'events', icon: '📅', name: 'Wydarzenia' },
+    { type: 'pricing', icon: '💳', name: 'Cennik' },
+    { type: 'services', icon: '🧰', name: 'Usługi' },
     { type: 'container', icon: '📦', name: 'Kontener' },
   ];
 

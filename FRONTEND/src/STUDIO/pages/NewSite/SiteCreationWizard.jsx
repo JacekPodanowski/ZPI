@@ -25,6 +25,101 @@ import useEditorStore, { createDefaultTemplateConfig } from '../../store/editorS
 
 const steps = ['Wybierz szablon', 'Dopasuj moduły', 'Gotowe'];
 
+const createDraftId = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `draft-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+};
+
+const VISIBLE_MODULE_TYPES = new Set(['services', 'pricing', 'faq', 'team', 'events', 'blog', 'video', 'gallery']);
+
+const VISIBLE_MODULE_KEYWORDS = [
+    'hero',
+    'about',
+    'calendar',
+    'contact',
+    'gallery',
+    'service',
+    'pricing',
+    'faq',
+    'team',
+    'event',
+    'blog',
+    'video'
+];
+
+const shouldDisplayModule = (module = {}) => {
+    const moduleType = module.type?.toLowerCase();
+    if (moduleType && VISIBLE_MODULE_TYPES.has(moduleType)) {
+        return true;
+    }
+
+    const moduleId = module.id?.toLowerCase() || '';
+    return VISIBLE_MODULE_KEYWORDS.some((keyword) => moduleId.includes(keyword));
+};
+
+const MODULE_DESCRIPTION_RULES = [
+    {
+        test: (module) => module.id?.toLowerCase().includes('hero'),
+        text: 'Sekcja powitalna z hasłem przewodnim.'
+    },
+    {
+        test: (module) => module.id?.toLowerCase().includes('about'),
+        text: 'Opowiedz o sobie i swoim doświadczeniu.'
+    },
+    {
+        test: (module) => module.id?.toLowerCase().includes('calendar'),
+        text: 'Harmonogram zajęć i szybkie rezerwacje.'
+    },
+    {
+        test: (module) => module.id?.toLowerCase().includes('contact'),
+        text: 'Dane kontaktowe i formularz zapisu.'
+    },
+    {
+        test: (module) => module.type === 'gallery' || module.id?.toLowerCase().includes('gallery'),
+        text: 'Galeria zdjęć z elastycznym układem.'
+    },
+    {
+        test: (module) => module.type === 'services' || module.id?.toLowerCase().includes('service'),
+        text: 'Karty usług z opisami i zdjęciami.'
+    },
+    {
+        test: (module) => module.type === 'pricing' || module.id?.toLowerCase().includes('pricing') || module.id?.toLowerCase().includes('cennik'),
+        text: 'Pakiety cenowe i warianty współpracy.'
+    },
+    {
+        test: (module) => module.type === 'faq' || module.id?.toLowerCase().includes('faq'),
+        text: 'Lista najczęściej zadawanych pytań.'
+    },
+    {
+        test: (module) => module.type === 'team' || module.id?.toLowerCase().includes('team'),
+        text: 'Prezentacja zespołu i ról.'
+    },
+    {
+        test: (module) => module.type === 'events' || module.id?.toLowerCase().includes('event'),
+        text: 'Lista wydarzeń i specjalnych spotkań.'
+    },
+    {
+        test: (module) => module.type === 'blog' || module.id?.toLowerCase().includes('blog'),
+        text: 'Aktualności i artykuły tworzące Twoją historię.'
+    },
+    {
+        test: (module) => module.type === 'video' || module.id?.toLowerCase().includes('video'),
+        text: 'Sekcja z osadzonym nagraniem wideo.'
+    }
+];
+
+const getModuleDescription = (module) => {
+    const match = MODULE_DESCRIPTION_RULES.find((rule) => rule.test(module));
+    return match ? match.text : 'Konfigurowalny moduł strony.';
+};
+
+const PENDING_CONFIG_KEY = 'editor:pendingTemplateConfig';
+const PENDING_META_KEY = 'editor:pendingSiteMeta';
+const ACTIVE_NEW_DRAFT_KEY = 'editor:activeNewDraft';
+const NEW_DRAFT_PREFIX = 'editor:draft:new:';
+
 const SiteCreationWizard = () => {
     const navigate = useNavigate();
     const templates = useTemplateStore((state) => state.templates);
@@ -36,9 +131,27 @@ const SiteCreationWizard = () => {
     const [activeStep, setActiveStep] = useState(0);
     const [siteName, setSiteName] = useState('Moja nowa strona');
     const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [draftId] = useState(() => {
+        if (typeof window === 'undefined') {
+            return createDraftId();
+        }
+        const previousActive = window.localStorage.getItem(ACTIVE_NEW_DRAFT_KEY);
+        if (previousActive) {
+            window.localStorage.removeItem(`${NEW_DRAFT_PREFIX}${previousActive}`);
+        }
+        const generated = createDraftId();
+        window.localStorage.setItem(ACTIVE_NEW_DRAFT_KEY, generated);
+        return generated;
+    });
 
     useEffect(() => {
         resetTemplateConfig();
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem(PENDING_CONFIG_KEY);
+            window.sessionStorage.removeItem(PENDING_META_KEY);
+            window.localStorage.removeItem(PENDING_CONFIG_KEY);
+            window.localStorage.removeItem(PENDING_META_KEY);
+        }
     }, [resetTemplateConfig]);
 
     useEffect(() => {
@@ -51,13 +164,13 @@ const SiteCreationWizard = () => {
         }
         const template = templates.find((item) => item.id === selectedTemplate);
         if (template?.presetConfig) {
-            setTemplateConfig(template.presetConfig);
+            setTemplateConfig(template.presetConfig, { restrictToDefaultPages: true });
         } else {
             const defaultConfig = createDefaultTemplateConfig();
             if (template?.name) {
                 defaultConfig.name = template.name;
             }
-            setTemplateConfig(defaultConfig);
+            setTemplateConfig(defaultConfig, { restrictToDefaultPages: true });
         }
 
         if (template?.name) {
@@ -71,19 +184,74 @@ const SiteCreationWizard = () => {
         }
     }, [loading, templates, selectedTemplate]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        if (templateConfig && Object.keys(templateConfig).length > 0) {
+            try {
+                const payload = {
+                    draftId,
+                    templateConfig,
+                    updatedAt: Date.now()
+                };
+                window.localStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(payload));
+                window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(templateConfig));
+            } catch (error) {
+                console.error('Nie udało się zapisać konfiguracji szablonu w sessionStorage.', error);
+            }
+        }
+    }, [templateConfig, draftId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        if (siteName) {
+            try {
+                const payload = {
+                    draftId,
+                    meta: { name: siteName },
+                    updatedAt: Date.now()
+                };
+                window.localStorage.setItem(PENDING_META_KEY, JSON.stringify(payload));
+                window.sessionStorage.setItem(PENDING_META_KEY, JSON.stringify({ name: siteName }));
+            } catch (error) {
+                console.error('Nie udało się zapisać metadanych strony w sessionStorage.', error);
+            }
+        }
+    }, [siteName, draftId]);
+
     const modulesByPage = useMemo(() => {
         if (!templateConfig?.pages) {
             return [];
         }
-        return Object.values(templateConfig.pages).map((page) => ({
-            ...page,
-            modules: page.modules || []
-        }));
+        const pageKeys = (templateConfig.pageOrder || Object.keys(templateConfig.pages))
+            .filter((key) => templateConfig.pages?.[key]);
+
+        return pageKeys.reduce((accumulator, key) => {
+            const page = templateConfig.pages[key];
+            const filteredModules = (page?.modules || []).filter(shouldDisplayModule);
+
+            if (filteredModules.length === 0) {
+                return accumulator;
+            }
+
+            accumulator.push({
+                ...page,
+                modules: filteredModules
+            });
+
+            return accumulator;
+        }, []);
     }, [templateConfig]);
 
     const handleNext = () => {
         if (activeStep === steps.length - 1) {
-            navigate('/studio/editor/new', { state: { isNewSite: true, siteName } });
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem('editor:activeNewDraft', draftId);
+            }
+            navigate('/studio/editor/new', { state: { isNewSite: true, siteName, draftId } });
             return;
         }
         setActiveStep((prev) => prev + 1);
@@ -236,11 +404,7 @@ const SiteCreationWizard = () => {
                                                         {module.name}
                                                     </Typography>
                                                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                                        {module.id === 'hero' && 'Sekcja powitalna z hasłem przewodnim'}
-                                                        {module.id === 'calendar' && 'Harmonogram zajęć i rezerwacje'}
-                                                        {module.id === 'about' && 'Opowiedz o sobie i swoim doświadczeniu'}
-                                                        {module.id === 'contact' && 'Dane kontaktowe i formularz'}
-                                                        {(module.type === 'gallery' || module.id.includes('gallery')) && 'Galeria zdjęć z elastycznym układem'}
+                                                        {getModuleDescription(module)}
                                                     </Typography>
                                                 </Box>
                                                 <Switch

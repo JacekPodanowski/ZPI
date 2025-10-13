@@ -10,10 +10,12 @@ const SiteNavigation = () => {
     templateConfig,
     siteMeta
   } = useEditorStore()
-  
-  const pages = Object.values(templateConfig.pages).filter(page => 
-    page.modules.some(m => m.enabled)
-  )
+
+  const orderedKeys = (templateConfig.pageOrder || Object.keys(templateConfig.pages || {}))
+    .filter((key) => templateConfig.pages?.[key])
+  const pages = orderedKeys
+    .map((key) => templateConfig.pages[key])
+    .filter((page) => page?.modules?.some((m) => m.enabled))
 
   const handlePageClick = (page) => {
     if (siteStructure === 'single-page') {

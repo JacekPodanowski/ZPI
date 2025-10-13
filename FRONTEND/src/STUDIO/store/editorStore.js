@@ -1,8 +1,24 @@
 import { create } from 'zustand'
 
+const DEFAULT_ANIMATIONS = { enabled: true, style: 'smooth' }
+
 export const createDefaultTemplateConfig = () => ({
   name: 'Wellness Template',
   themeId: 'modernWellness',
+  pageOrder: [
+    'home',
+    'about',
+    'services',
+    'calendar',
+    'pricing',
+    'events',
+    'faq',
+    'team',
+    'blog',
+    'gallery',
+    'contact'
+  ],
+  siteStructure: 'multi-page',
   pages: {
     home: {
       id: 'home',
@@ -12,6 +28,7 @@ export const createDefaultTemplateConfig = () => ({
         {
           id: 'hero',
           name: 'Strona Główna',
+          type: 'hero',
           enabled: true,
           order: 0,
           config: {
@@ -32,6 +49,7 @@ export const createDefaultTemplateConfig = () => ({
         {
           id: 'about',
           name: 'O Mnie',
+          type: 'about',
           enabled: true,
           order: 0,
           config: {
@@ -52,6 +70,7 @@ export const createDefaultTemplateConfig = () => ({
         {
           id: 'calendar',
           name: 'Kalendarz',
+          type: 'calendar',
           enabled: true,
           order: 0,
           config: {
@@ -73,6 +92,7 @@ export const createDefaultTemplateConfig = () => ({
         {
           id: 'contact',
           name: 'Kontakt',
+          type: 'contact',
           enabled: true,
           order: 0,
           config: {
@@ -102,9 +122,336 @@ export const createDefaultTemplateConfig = () => ({
           }
         }
       ]
+    },
+    services: {
+      id: 'services',
+      name: 'Usługi',
+      path: '/uslugi',
+      modules: [
+        {
+          id: 'default_services',
+          type: 'services',
+          name: 'Oferta',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Nasze Usługi',
+            subtitle: 'Poznaj sposoby, w jakie możemy Cię wesprzeć',
+            bgColor: '#FFFFFF',
+            textColor: 'rgb(30, 30, 30)',
+            accentColor: 'rgb(146, 0, 32)',
+              items: [
+                {
+                  id: `service-${Date.now()}-1`,
+                  name: 'Sesja indywidualna',
+                  category: '1:1',
+                  description: '<p>60 minut pracy dopasowanej do Twoich potrzeb. Otrzymujesz plan praktyki domowej.</p>',
+                  image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=900&q=60'
+                },
+                {
+                  id: `service-${Date.now()}-2`,
+                  name: 'Warsztaty grupowe',
+                  category: 'Grupa',
+                  description: '<p>Kameralne spotkania tematyczne rozwijające świadomość ciała i oddechu.</p>',
+                  image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=60'
+                },
+                {
+                  id: `service-${Date.now()}-3`,
+                  name: 'Program oddechowy',
+                  category: 'Online',
+                  description: '<p>Czterotygodniowy cykl spotkań online z nagraniami i materiałami PDF.</p>',
+                  image: 'https://images.unsplash.com/photo-1526674183561-3a54354ceaba?auto=format&fit=crop&w=900&q=60'
+                }
+              ]
+          }
+        }
+      ]
+    },
+    pricing: {
+      id: 'pricing',
+      name: 'Cennik',
+      path: '/cennik',
+      modules: [
+        {
+          id: 'default_pricing',
+          type: 'pricing',
+          name: 'Pakiety cenowe',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Przejrzyste pakiety',
+            subtitle: 'Wybierz opcję dopasowaną do Twojego planu',
+            bgColor: '#FFFFFF',
+            textColor: 'rgb(30, 30, 30)',
+            accentColor: 'rgb(146, 0, 32)',
+              currency: 'PLN',
+              items: [
+                {
+                  id: `pricing-${Date.now()}-1`,
+                  name: 'Sesja 1:1',
+                  price: '180',
+                  description: '<ul><li>60 minut praktyki</li><li>Plan utrwalenia</li><li>Wsparcie mailowe</li></ul>',
+                  image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=60'
+                },
+                {
+                  id: `pricing-${Date.now()}-2`,
+                  name: 'Karnet 4 spotkania',
+                  price: '640',
+                  description: '<ul><li>4 tygodnie praktyki</li><li>Dostęp do nagrań</li><li>Zniżki na warsztaty</li></ul>',
+                  image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=900&q=60'
+                },
+                {
+                  id: `pricing-${Date.now()}-3`,
+                  name: 'Program regeneracyjny',
+                  price: '920',
+                  description: '<ul><li>Weekend w kameralnej grupie</li><li>Pełne wyżywienie</li><li>Zestaw nagrań medytacyjnych</li></ul>',
+                  image: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=60'
+                }
+              ]
+          }
+        }
+      ]
+    },
+    faq: {
+      id: 'faq',
+      name: 'FAQ',
+      path: '/faq',
+      modules: [
+        {
+          id: 'default_faq',
+          type: 'faq',
+          name: 'Najczęstsze pytania',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Najczęściej zadawane pytania',
+            intro: 'Szybkie odpowiedzi na podstawowe zagadnienia organizacyjne.',
+            bgColor: '#FFFFFF',
+            textColor: 'rgb(30, 30, 30)',
+            items: []
+          }
+        }
+      ]
+    },
+    team: {
+      id: 'team',
+      name: 'Zespół',
+      path: '/zespol',
+      modules: [
+        {
+          id: 'default_team',
+          type: 'team',
+          name: 'Zespół',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Poznaj nasz zespół',
+            subtitle: 'Instruktorzy i specjalistki, które czuwają nad Twoją praktyką',
+            bgColor: '#FFFFFF',
+            textColor: 'rgb(30, 30, 30)',
+            accentColor: 'rgb(146, 0, 32)',
+            members: []
+          }
+        }
+      ]
+    },
+    events: {
+      id: 'events',
+      name: 'Wydarzenia',
+      path: '/wydarzenia',
+      modules: [
+        {
+          id: 'default_events',
+          type: 'events',
+          name: 'Nadchodzące wydarzenia',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Nadchodzące wydarzenia',
+            subtitle: 'Dołącz do wyjątkowych spotkań i warsztatów',
+            bgColor: '#FFFFFF',
+            textColor: 'rgb(30, 30, 30)',
+            accentColor: 'rgb(146, 0, 32)',
+            events: []
+          }
+        }
+      ]
+    },
+    blog: {
+      id: 'blog',
+      name: 'Blog',
+      path: '/blog',
+      modules: [
+        {
+          id: 'default_blog',
+          type: 'blog',
+          name: 'Aktualności',
+          enabled: true,
+          order: 0,
+          config: {
+            title: 'Aktualności',
+            subtitle: 'Bądź na bieżąco z naszymi projektami',
+            bgColor: '#FFFFFF',
+            textColor: 'rgb(30, 30, 30)',
+            posts: []
+          }
+        }
+      ]
     }
   }
 })
+
+const deepClone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)))
+
+const normalizeModule = (module, expectedModule, index) => {
+  const fallback = expectedModule ? deepClone(expectedModule) : {
+    id: module?.id || `module-${index}`,
+    name: module?.name || 'Moduł',
+    enabled: module?.enabled !== undefined ? module.enabled : true,
+    config: module?.config ? { ...module.config } : {}
+  }
+
+  if (!module) {
+    const clone = fallback ? deepClone(fallback) : {
+      id: `module-${index}`,
+      name: 'Moduł',
+      enabled: true,
+      config: {}
+    }
+    clone.order = index
+    return clone
+  }
+
+  const moduleKey = module.type || module.id
+  const expectedKey = expectedModule ? (expectedModule.type || expectedModule.id) : moduleKey
+
+  if (expectedModule && moduleKey && moduleKey !== expectedKey) {
+    const clone = deepClone(expectedModule)
+    clone.order = index
+    return clone
+  }
+
+  const normalized = {
+    ...(fallback || {}),
+    ...module
+  }
+
+  if (expectedModule?.type && !normalized.type) {
+    normalized.type = expectedModule.type
+  }
+
+  normalized.enabled = module.enabled !== undefined
+    ? module.enabled
+    : (fallback?.enabled !== undefined ? fallback.enabled : true)
+
+  normalized.config = {
+    ...(fallback?.config || {}),
+    ...(module.config || {})
+  }
+
+  normalized.order = index
+  return normalized
+}
+
+const normalizePage = (pageKey, page, defaultPage) => {
+  const sourcePage = page || defaultPage || {}
+  const normalizedPage = {
+    id: sourcePage.id || defaultPage?.id || pageKey,
+    name: sourcePage.name || defaultPage?.name || pageKey,
+    path: sourcePage.path || defaultPage?.path || `/${pageKey}`
+  }
+
+  const modules = Array.isArray(sourcePage.modules)
+    ? [...sourcePage.modules].sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0))
+    : []
+  const defaultModules = Array.isArray(defaultPage?.modules)
+    ? [...defaultPage.modules].sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0))
+    : []
+
+  let normalizedModules = modules.map((mod, idx) => normalizeModule(mod, defaultModules[idx], idx))
+
+  if (normalizedModules.length === 0 && defaultModules.length) {
+    normalizedModules = defaultModules.map((mod, idx) => {
+      const clone = deepClone(mod)
+      if (clone) {
+        clone.order = idx
+      }
+      return clone
+    })
+  } else {
+    for (let idx = modules.length; idx < defaultModules.length; idx += 1) {
+      const clone = deepClone(defaultModules[idx])
+      if (clone) {
+        clone.order = normalizedModules.length
+        normalizedModules.push(clone)
+      }
+    }
+  }
+
+  normalizedPage.modules = normalizedModules
+    .filter(Boolean)
+    .map((mod, idx) => ({ ...mod, order: idx }))
+
+  return normalizedPage
+}
+
+const migrateTemplateConfig = (incomingConfig, defaultConfig, options = {}) => {
+  const cloned = deepClone(incomingConfig) || {}
+  cloned.pages = cloned.pages ? { ...cloned.pages } : {}
+
+  const defaultPages = defaultConfig.pages || {}
+  const defaultOrder = defaultConfig.pageOrder || Object.keys(defaultPages)
+  const restrictToDefaultPages = Boolean(options?.restrictToDefaultPages)
+
+  const resolvedOrder = []
+  const seen = new Set()
+
+  defaultOrder.forEach((pageKey) => {
+    const defaultPage = defaultPages[pageKey]
+    const page = cloned.pages[pageKey]
+
+    if (page) {
+      cloned.pages[pageKey] = normalizePage(pageKey, page, defaultPage)
+      resolvedOrder.push(pageKey)
+      seen.add(pageKey)
+    } else if (!page && pageKey === 'home' && defaultPage) {
+      cloned.pages[pageKey] = normalizePage(pageKey, defaultPage, defaultPage)
+      resolvedOrder.push(pageKey)
+      seen.add(pageKey)
+    }
+  })
+
+  if (!restrictToDefaultPages) {
+    const existingOrder = Array.isArray(cloned.pageOrder) ? cloned.pageOrder : Object.keys(cloned.pages)
+    existingOrder.forEach((pageKey) => {
+      if (seen.has(pageKey)) {
+        return
+      }
+      const defaultPage = defaultPages[pageKey]
+      const page = cloned.pages[pageKey]
+      if (page) {
+        cloned.pages[pageKey] = normalizePage(pageKey, page, defaultPage)
+        resolvedOrder.push(pageKey)
+        seen.add(pageKey)
+      }
+    })
+  }
+
+  if (restrictToDefaultPages) {
+    Object.keys(cloned.pages).forEach((pageKey) => {
+      if (!seen.has(pageKey)) {
+        delete cloned.pages[pageKey]
+      }
+    })
+  }
+
+  cloned.pageOrder = resolvedOrder
+  cloned.name = cloned.name || defaultConfig.name
+  cloned.themeId = cloned.themeId || defaultConfig.themeId
+  cloned.siteStructure = cloned.siteStructure || defaultConfig.siteStructure || 'multi-page'
+
+  return cloned
+}
 
 const useEditorStore = create((set, get) => ({
   mode: 'edit',
@@ -113,10 +460,7 @@ const useEditorStore = create((set, get) => ({
   selectedChild: null, // { moduleId: string, childIndex: number }
   currentPage: 'home',
   siteStructure: 'multi-page', // 'single-page' | 'multi-page'
-  animations: {
-    enabled: true,
-    style: 'smooth',
-  },
+  animations: { ...DEFAULT_ANIMATIONS },
   
   templateConfig: createDefaultTemplateConfig(),
   siteMeta: null,
@@ -124,16 +468,54 @@ const useEditorStore = create((set, get) => ({
   currentVersion: -1,
   previewDevice: 'desktop',
   hasUnsavedChanges: false,
-  setTemplateConfig: (config, options = {}) => set({
-    templateConfig: JSON.parse(JSON.stringify(config || createDefaultTemplateConfig())),
-    hasUnsavedChanges: Boolean(options.markDirty)
+  setTemplateConfig: (config, options = {}) => set(() => {
+    const defaultConfig = createDefaultTemplateConfig()
+    const rawConfig = config ? JSON.parse(JSON.stringify(config)) : JSON.parse(JSON.stringify(defaultConfig))
+    const normalisedConfig = migrateTemplateConfig(rawConfig, defaultConfig, options)
+    const pageOrder = Array.isArray(normalisedConfig.pageOrder) && normalisedConfig.pageOrder.length
+      ? normalisedConfig.pageOrder
+      : Object.keys(normalisedConfig.pages || {})
+    const targetPage = normalisedConfig.currentPage && normalisedConfig.pages?.[normalisedConfig.currentPage]
+      ? normalisedConfig.currentPage
+      : pageOrder[0] || 'home'
+
+    normalisedConfig.pageOrder = pageOrder
+    normalisedConfig.currentPage = targetPage
+    normalisedConfig.animations = { ...DEFAULT_ANIMATIONS, ...(normalisedConfig.animations || {}) }
+
+    return {
+      templateConfig: normalisedConfig,
+      currentPage: targetPage,
+      selectedModule: null,
+      selectedChild: null,
+      siteStructure: normalisedConfig.siteStructure || 'multi-page',
+      animations: { ...normalisedConfig.animations },
+      history: [],
+      currentVersion: -1,
+      hasUnsavedChanges: Boolean(options.markDirty)
+    }
   }),
-  resetTemplateConfig: () => set({
-    templateConfig: createDefaultTemplateConfig(),
-    history: [],
-    currentVersion: 0,
-    siteMeta: null,
-    hasUnsavedChanges: false
+  resetTemplateConfig: () => set(() => {
+    const defaultConfig = createDefaultTemplateConfig()
+    const freshConfig = migrateTemplateConfig(JSON.parse(JSON.stringify(defaultConfig)), defaultConfig, { restrictToDefaultPages: true })
+    const pageOrder = freshConfig.pageOrder && freshConfig.pageOrder.length
+      ? freshConfig.pageOrder
+      : Object.keys(freshConfig.pages || {})
+    const firstPageKey = pageOrder[0] || 'home'
+    freshConfig.animations = { ...DEFAULT_ANIMATIONS, ...(freshConfig.animations || {}) }
+
+    return {
+      templateConfig: freshConfig,
+      currentPage: firstPageKey,
+      selectedModule: null,
+      selectedChild: null,
+      siteStructure: freshConfig.siteStructure || 'multi-page',
+      animations: { ...freshConfig.animations },
+      history: [],
+      currentVersion: -1,
+      siteMeta: null,
+      hasUnsavedChanges: false
+    }
   }),
   setSiteMeta: (meta) => set({ siteMeta: meta }),
   setHasUnsavedChanges: (value) => set({ hasUnsavedChanges: value }),
@@ -158,13 +540,20 @@ const useEditorStore = create((set, get) => ({
       modules: []
     }
 
+    const updatedPages = {
+      ...state.templateConfig.pages,
+      [uniqueId]: newPage
+    }
+    const existingOrder = Array.isArray(state.templateConfig.pageOrder)
+      ? state.templateConfig.pageOrder
+      : Object.keys(updatedPages)
+    const updatedOrder = [...existingOrder.filter((key) => key !== uniqueId), uniqueId]
+
     return {
       templateConfig: {
         ...state.templateConfig,
-        pages: {
-          ...state.templateConfig.pages,
-          [uniqueId]: newPage
-        }
+        pages: updatedPages,
+        pageOrder: updatedOrder
       },
       currentPage: uniqueId,
       hasUnsavedChanges: true
@@ -185,12 +574,17 @@ const useEditorStore = create((set, get) => ({
     const updatedPages = { ...state.templateConfig.pages }
     delete updatedPages[pageId]
 
+    const updatedOrder = (state.templateConfig.pageOrder || Object.keys(updatedPages)).filter((key) => key !== pageId && updatedPages[key])
+    const fallbackPage = updatedOrder[0] || 'home'
+    const nextPage = fallbackPage in updatedPages ? fallbackPage : Object.keys(updatedPages)[0] || 'home'
+
     return {
       templateConfig: {
         ...state.templateConfig,
-        pages: updatedPages
+        pages: updatedPages,
+        pageOrder: updatedOrder
       },
-      currentPage: 'home',
+      currentPage: nextPage,
       hasUnsavedChanges: true
     }
   }),
@@ -285,10 +679,10 @@ const useEditorStore = create((set, get) => ({
     }
   }),
 
-  addModule: (moduleType) => set((state) => {
-    const currentPageModules = state.templateConfig.pages[state.currentPage].modules
+  addModule: (moduleType, insertIndex = null) => set((state) => {
+    const currentPageModules = [...state.templateConfig.pages[state.currentPage].modules]
     const newId = `${moduleType}-${Date.now()}`
-    
+
     const defaultConfigs = {
       text: {
         content: 'Nowy tekst',
@@ -313,23 +707,120 @@ const useEditorStore = create((set, get) => ({
         height: '2rem'
       },
       container: {
-        direction: 'horizontal', // 'horizontal' | 'vertical'
+        direction: 'horizontal',
         gap: '1rem',
-        align: 'center', // 'start' | 'center' | 'end'
-        justify: 'center', // 'start' | 'center' | 'end' | 'between' | 'around'
+        align: 'center',
+        justify: 'center',
         wrap: true,
-        children: [] // Array of child module objects
+        children: []
+      },
+      video: {
+        videoUrl: '',
+        caption: 'Mój film',
+        captionColor: '#4B5563',
+        bgColor: '#FFFFFF',
+        muted: false
+      },
+      faq: {
+        title: 'Najczęściej zadawane pytania',
+        intro: 'Poznaj odpowiedzi na najpopularniejsze pytania naszych klientów.',
+        bgColor: '#FFFFFF',
+        textColor: 'rgb(30, 30, 30)',
+        items: [
+          {
+            id: `faq-${Date.now()}`,
+            question: 'Jak przygotować się do zajęć?',
+            answer: '<p>Wystarczy wygodny strój i mata. Przyjdź 10 minut przed rozpoczęciem, aby się wyciszyć.</p>'
+          }
+        ]
+      },
+      team: {
+        title: 'Poznaj nasz zespół',
+        subtitle: 'Instruktorzy i specjaliści, którzy wspierają Cię w praktyce',
+        bgColor: '#FFFFFF',
+        textColor: 'rgb(30, 30, 30)',
+        accentColor: 'rgb(146, 0, 32)',
+        members: [
+          {
+            id: `team-${Date.now()}`,
+            name: 'Anna Kowalska',
+            role: 'Instruktorka yin jogi',
+            bio: '<p>Prowadzi łagodne sekwencje skupione na wyciszeniu i pracy z oddechem.</p>',
+            focus: '<p>Specjalizacja: rozluźnianie napięć, relaksacja, praca z oddechem.</p>',
+            image: ''
+          }
+        ]
+      },
+      blog: {
+        title: 'Aktualności zespołu',
+        subtitle: 'Bądź na bieżąco z naszymi działaniami',
+        bgColor: '#FFFFFF',
+        textColor: 'rgb(30, 30, 30)',
+        posts: []
+      },
+      events: {
+        title: 'Nadchodzące wydarzenia',
+        subtitle: 'Dołącz do naszych wyjątkowych spotkań',
+        bgColor: '#FFFFFF',
+        accentColor: 'rgb(146, 0, 32)',
+        textColor: 'rgb(30, 30, 30)',
+        events: [
+          {
+            id: `event-${Date.now()}`,
+            title: 'Warsztat oddechowy',
+            date: new Date().toISOString().split('T')[0],
+            summary: '<p>Intensywna sesja pracy z oddechem i relaksacją.</p>',
+            location: 'Studio Wellness'
+          }
+        ]
+      },
+      pricing: {
+        title: 'Cennik',
+        subtitle: 'Transparentne pakiety dopasowane do Twoich potrzeb',
+        bgColor: '#FFFFFF',
+        textColor: 'rgb(30, 30, 30)',
+        accentColor: 'rgb(146, 0, 32)',
+        currency: 'PLN',
+        items: []
+      },
+      services: {
+        title: 'Nasze usługi',
+        subtitle: 'Odkryj jak możemy Ci pomóc',
+        bgColor: '#FFFFFF',
+        textColor: 'rgb(30, 30, 30)',
+        accentColor: 'rgb(146, 0, 32)',
+        items: []
       }
+    }
+
+    const moduleNameMap = {
+      text: 'Tekst',
+      button: 'Przycisk',
+      gallery: 'Galeria',
+      spacer: 'Odstęp',
+      container: 'Kontener',
+      video: 'Wideo',
+      faq: 'FAQ',
+      team: 'Zespół',
+      blog: 'Blog',
+      events: 'Wydarzenia',
+      pricing: 'Cennik',
+      services: 'Usługi'
     }
 
     const newModule = {
       id: newId,
       type: moduleType,
-      name: moduleType.charAt(0).toUpperCase() + moduleType.slice(1),
+      name: moduleNameMap[moduleType] || moduleType.charAt(0).toUpperCase() + moduleType.slice(1),
       enabled: true,
       order: currentPageModules.length,
       config: defaultConfigs[moduleType] || {}
     }
+
+    const targetIndex = typeof insertIndex === 'number' ? Math.min(Math.max(insertIndex, 0), currentPageModules.length) : currentPageModules.length
+    currentPageModules.splice(targetIndex, 0, newModule)
+
+    const orderedModules = currentPageModules.map((module, index) => ({ ...module, order: index }))
 
     return {
       templateConfig: {
@@ -338,7 +829,7 @@ const useEditorStore = create((set, get) => ({
           ...state.templateConfig.pages,
           [state.currentPage]: {
             ...state.templateConfig.pages[state.currentPage],
-            modules: [...currentPageModules, newModule]
+            modules: orderedModules
           }
         }
       },

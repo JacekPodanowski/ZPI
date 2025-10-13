@@ -4,6 +4,14 @@ import { motion } from 'framer-motion'
 import useEditorStore from '../../store/editorStore'
 import Button from '../../../components/Button'
 
+const isHeroModule = (module) => {
+  if (!module) return false
+  const type = (module.type || '').toLowerCase()
+  if (type === 'hero') return true
+  const id = (module.id || '').toLowerCase()
+  return id === 'hero' || id.startsWith('hero') || id.endsWith('hero')
+}
+
 const ModuleConfig = () => {
   const navigate = useNavigate()
   const { templateId } = useParams()
@@ -94,7 +102,7 @@ const ModuleConfig = () => {
                     {module.name}
                   </h3>
                   <p className="text-sm opacity-60">
-                    {module.id === 'hero' && 'Sekcja powitalna na górze strony'}
+                    {isHeroModule(module) && 'Sekcja powitalna na górze strony'}
                     {module.id === 'calendar' && 'Kalendarz rezerwacji i spotkań'}
                     {module.id === 'about' && 'Informacje o Tobie i Twojej działalności'}
                     {module.id === 'contact' && 'Formularz kontaktowy i dane'}

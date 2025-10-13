@@ -3,6 +3,14 @@ import useEditorStore from '../store/editorStore'
 import ColorPicker from '../../components/ColorPicker'
 import ImageUploader from '../../components/ImageUploader'
 
+const isHeroModule = (module) => {
+  if (!module) return false
+  const type = (module.type || '').toLowerCase()
+  if (type === 'hero') return true
+  const id = (module.id || '').toLowerCase()
+  return id === 'hero' || id.startsWith('hero') || id.endsWith('hero')
+}
+
 const Configurator = () => {
   const { 
     selectedModule, 
@@ -40,6 +48,27 @@ const Configurator = () => {
       }
     }
     handleConfigChange('children', children)
+  }
+
+  const updateCollectionItem = (collectionKey, index, changes) => {
+    const collection = [...(module.config?.[collectionKey] || [])]
+    collection[index] = {
+      ...collection[index],
+      ...changes
+    }
+    handleConfigChange(collectionKey, collection)
+  }
+
+  const removeCollectionItem = (collectionKey, index) => {
+    const collection = [...(module.config?.[collectionKey] || [])]
+    collection.splice(index, 1)
+    handleConfigChange(collectionKey, collection)
+  }
+
+  const addCollectionItem = (collectionKey, item) => {
+    const collection = [...(module.config?.[collectionKey] || [])]
+    collection.push(item)
+    handleConfigChange(collectionKey, collection)
   }
 
   if (!selectedModule || !module) {
@@ -884,6 +913,1103 @@ const Configurator = () => {
           </>
         )}
 
+        {/* Expert Mode - Video Module */}
+        {module.type === 'video' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Link do wideo
+              </label>
+              <input
+                type="text"
+                value={module.config?.videoUrl || ''}
+                onChange={(e) => handleConfigChange('videoUrl', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <p className="text-xs mt-2 opacity-60">
+                Wklej adres z YouTube lub Vimeo. Automatycznie zamienimy go na wersję osadzoną.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Podpis pod wideo
+              </label>
+              <textarea
+                value={module.config?.caption || ''}
+                onChange={(e) => handleConfigChange('caption', e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 resize-none"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="Krótki opis lub wezwanie do działania..."
+              />
+            </div>
+
+            <ColorPicker
+              label="Kolor podpisu"
+              value={module.config?.captionColor || '#4B5563'}
+              onChange={(color) => handleConfigChange('captionColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tła sekcji"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <label
+              className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+              style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}
+            >
+              <input
+                type="checkbox"
+                checked={module.config?.muted === true}
+                onChange={(e) => handleConfigChange('muted', e.target.checked)}
+                className="w-6 h-6 rounded"
+                style={{ accentColor: 'rgb(146, 0, 32)' }}
+              />
+              <div className="flex-1">
+                <span className="font-medium block">Domyślnie wycisz</span>
+                <p className="text-xs opacity-60 mt-1">Przydatne gdy planujesz automatyczne odtwarzanie wideo.</p>
+              </div>
+            </label>
+          </>
+        )}
+
+        {module.type === 'faq' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Tytuł sekcji
+              </label>
+              <input
+                type="text"
+                value={module.config?.title || ''}
+                onChange={(e) => handleConfigChange('title', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Wprowadzenie
+              </label>
+              <textarea
+                value={module.config?.intro || ''}
+                onChange={(e) => handleConfigChange('intro', e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 resize-none"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                placeholder="Krótka zachęta do przeczytania FAQ"
+              />
+            </div>
+
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+
+            <div className="flex items-center justify-between mt-6">
+              <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                Pytania ({module.config?.items?.length || 0})
+              </h3>
+              <button
+                onClick={() => addCollectionItem('items', {
+                  id: `faq-${Date.now()}`,
+                  question: 'Nowe pytanie',
+                  answer: '<p>Dodaj odpowiedź...</p>'
+                })}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                style={{
+                  borderColor: 'rgb(146, 0, 32)',
+                  color: 'rgb(146, 0, 32)'
+                }}
+              >
+                + Dodaj pytanie
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(module.config?.items || []).map((item, index) => (
+                <div key={item.id || index} className="p-4 rounded-xl border" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">❓</span>
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                          Pytanie
+                        </label>
+                        <input
+                          type="text"
+                          value={item.question || ''}
+                          onChange={(e) => updateCollectionItem('items', index, { question: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.15)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                          Odpowiedź (obsługuje HTML)
+                        </label>
+                        <textarea
+                          value={item.answer || ''}
+                          onChange={(e) => updateCollectionItem('items', index, { answer: e.target.value })}
+                          rows={4}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.15)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                          placeholder="<p>Dodaj odpowiedź...</p>"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeCollectionItem('items', index)}
+                      className="p-2 rounded-lg hover:bg-red-50"
+                      style={{ color: 'rgb(146, 0, 32)' }}
+                      title="Usuń pytanie"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(module.config?.items || []).length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'rgba(30, 30, 30, 0.4)' }}>
+                  Dodaj pierwsze pytanie, aby uzupełnić sekcję.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {module.type === 'blog' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Tytuł sekcji
+              </label>
+              <input
+                type="text"
+                value={module.config?.title || ''}
+                onChange={(e) => handleConfigChange('title', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Podtytuł
+              </label>
+              <input
+                type="text"
+                value={module.config?.subtitle || ''}
+                onChange={(e) => handleConfigChange('subtitle', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+              />
+            </div>
+
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+
+            <div className="flex items-center justify-between mt-6">
+              <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                Wpisy ({module.config?.posts?.length || 0})
+              </h3>
+              <button
+                onClick={() => addCollectionItem('posts', {
+                  id: `post-${Date.now()}`,
+                  title: 'Nowy wpis',
+                  author: '',
+                  date: new Date().toISOString().split('T')[0],
+                  excerpt: 'Dodaj opis wpisu',
+                  image: ''
+                })}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                style={{
+                  borderColor: 'rgb(146, 0, 32)',
+                  color: 'rgb(146, 0, 32)'
+                }}
+              >
+                + Dodaj wpis
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(module.config?.posts || []).map((post, index) => (
+                <div key={post.id || index} className="p-4 rounded-xl border" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+                  <div className="flex items-start gap-4">
+                    <ImageUploader
+                      label="Zdjęcie"
+                      value={post.image || ''}
+                      onChange={(url) => updateCollectionItem('posts', index, { image: url })}
+                      aspectRatio="4/5"
+                    />
+                    <div className="flex-1 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                            Tytuł wpisu
+                          </label>
+                          <input
+                            type="text"
+                            value={post.title || ''}
+                            onChange={(e) => updateCollectionItem('posts', index, { title: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                            style={{
+                              borderColor: 'rgba(30, 30, 30, 0.15)',
+                              '--tw-ring-color': 'rgb(146, 0, 32)'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                            Data
+                          </label>
+                          <input
+                            type="date"
+                            value={post.date || ''}
+                            onChange={(e) => updateCollectionItem('posts', index, { date: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                            style={{
+                              borderColor: 'rgba(30, 30, 30, 0.15)',
+                              '--tw-ring-color': 'rgb(146, 0, 32)'
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                          Autor
+                        </label>
+                        <input
+                          type="text"
+                          value={post.author || ''}
+                          onChange={(e) => updateCollectionItem('posts', index, { author: e.target.value })}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.15)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                          Krótki opis (pojawia się po najechaniu)
+                        </label>
+                        <textarea
+                          value={post.excerpt || ''}
+                          onChange={(e) => updateCollectionItem('posts', index, { excerpt: e.target.value })}
+                          rows={3}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.15)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-3">
+                    <button
+                      onClick={() => removeCollectionItem('posts', index)}
+                      className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50"
+                      style={{
+                        borderColor: 'rgb(146, 0, 32)',
+                        color: 'rgb(146, 0, 32)'
+                      }}
+                    >
+                      Usuń wpis
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(module.config?.posts || []).length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'rgba(30, 30, 30, 0.4)' }}>
+                  Dodaj wpis, aby zbudować sekcję aktualności.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {module.type === 'events' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Tytuł sekcji
+              </label>
+              <input
+                type="text"
+                value={module.config?.title || ''}
+                onChange={(e) => handleConfigChange('title', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Podtytuł
+              </label>
+              <input
+                type="text"
+                value={module.config?.subtitle || ''}
+                onChange={(e) => handleConfigChange('subtitle', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+              />
+            </div>
+
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor akcentu"
+              value={module.config?.accentColor || 'rgb(146, 0, 32)'}
+              onChange={(color) => handleConfigChange('accentColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+
+            <div className="flex items-center justify-between mt-6">
+              <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                Wydarzenia ({module.config?.events?.length || 0})
+              </h3>
+              <button
+                onClick={() => addCollectionItem('events', {
+                  id: `event-${Date.now()}`,
+                  title: 'Nowe wydarzenie',
+                  date: new Date().toISOString().split('T')[0],
+                  summary: '<p>Dodaj krótki opis wydarzenia.</p>',
+                  fullDescription: '<p>Dodaj pełny opis wraz z harmonogramem i korzyściami.</p>',
+                  location: '',
+                  images: []
+                })}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                style={{
+                  borderColor: 'rgb(146, 0, 32)',
+                  color: 'rgb(146, 0, 32)'
+                }}
+              >
+                + Dodaj wydarzenie
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(module.config?.events || []).map((event, index) => (
+                <div key={event.id || index} className="p-4 rounded-xl border space-y-4" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                        Nazwa wydarzenia
+                      </label>
+                      <input
+                        type="text"
+                        value={event.title || ''}
+                        onChange={(e) => updateCollectionItem('events', index, { title: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.15)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                        Data
+                      </label>
+                      <input
+                        type="date"
+                        value={event.date || ''}
+                        onChange={(e) => updateCollectionItem('events', index, { date: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.15)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Lokalizacja / format
+                    </label>
+                    <input
+                      type="text"
+                      value={event.location || ''}
+                      onChange={(e) => updateCollectionItem('events', index, { location: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                      placeholder="np. Studio Wellness / Online na Zoomie"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Krótkie streszczenie (lista wydarzeń)
+                    </label>
+                    <textarea
+                      value={event.summary || ''}
+                      onChange={(e) => updateCollectionItem('events', index, { summary: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                      placeholder="<p>Opis widoczny w liście wydarzeń...</p>"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Pełny opis (modal)
+                    </label>
+                    <textarea
+                      value={event.fullDescription || ''}
+                      onChange={(e) => updateCollectionItem('events', index, { fullDescription: e.target.value })}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                      placeholder="<p>Opis rozszerzony wraz z harmonogramem...</p>"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1 mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Galeria zdjęć
+                    </label>
+                    <ImageUploader
+                      multiple
+                      value=""
+                      onChange={(urls) => {
+                        const newImages = [...(event.images || []), ...urls]
+                        updateCollectionItem('events', index, { images: newImages })
+                      }}
+                    />
+                    {event.images && event.images.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mt-3">
+                        {event.images.map((image, imageIdx) => (
+                          <div key={imageIdx} className="relative group">
+                            <img src={image} alt={`Event ${index} ${imageIdx}`} className="w-full h-32 object-cover rounded-lg" />
+                            <button
+                              onClick={() => {
+                                const images = event.images.filter((_, i) => i !== imageIdx)
+                                updateCollectionItem('events', index, { images })
+                              }}
+                              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => removeCollectionItem('events', index)}
+                      className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50"
+                      style={{
+                        borderColor: 'rgb(146, 0, 32)',
+                        color: 'rgb(146, 0, 32)'
+                      }}
+                    >
+                      Usuń wydarzenie
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(module.config?.events || []).length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'rgba(30, 30, 30, 0.4)' }}>
+                  Dodaj wydarzenia, aby zachęcić klientów do udziału.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {module.type === 'pricing' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Tytuł sekcji
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.title || ''}
+                  onChange={(e) => handleConfigChange('title', e.target.value)}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Podtytuł
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.subtitle || ''}
+                  onChange={(e) => handleConfigChange('subtitle', e.target.value)}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Waluta
+              </label>
+              <input
+                type="text"
+                value={module.config?.currency || 'PLN'}
+                onChange={(e) => handleConfigChange('currency', e.target.value)}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 uppercase"
+                style={{
+                  borderColor: 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+              />
+            </div>
+
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor akcentu"
+              value={module.config?.accentColor || 'rgb(146, 0, 32)'}
+              onChange={(color) => handleConfigChange('accentColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+
+            <div className="flex items-center justify-between mt-6">
+              <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                Pozycje ({module.config?.items?.length || 0})
+              </h3>
+              <button
+                onClick={() => addCollectionItem('items', {
+                  id: `pricing-${Date.now()}`,
+                  name: 'Nowa pozycja',
+                  price: '',
+                  description: '<p>Dodaj opis usługi.</p>',
+                  image: ''
+                })}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                style={{
+                  borderColor: 'rgb(146, 0, 32)',
+                  color: 'rgb(146, 0, 32)'
+                }}
+              >
+                + Dodaj pozycję
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(module.config?.items || []).map((item, index) => (
+                <div key={item.id || index} className="p-4 rounded-xl border space-y-4" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                        Nazwa pozycji
+                      </label>
+                      <input
+                        type="text"
+                        value={item.name || ''}
+                        onChange={(e) => updateCollectionItem('items', index, { name: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.15)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                        Cena
+                      </label>
+                      <input
+                        type="text"
+                        value={item.price || ''}
+                        onChange={(e) => updateCollectionItem('items', index, { price: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.15)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                        placeholder="np. 180"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Opis (może zawierać HTML)
+                    </label>
+                    <textarea
+                      value={item.description || ''}
+                      onChange={(e) => updateCollectionItem('items', index, { description: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                      placeholder="<ul><li>Zawiera...</li></ul>"
+                    />
+                  </div>
+
+                  <ImageUploader
+                    label="Zdjęcie podglądowe"
+                    value={item.image || ''}
+                    onChange={(url) => updateCollectionItem('items', index, { image: url })}
+                    aspectRatio="16/9"
+                  />
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => removeCollectionItem('items', index)}
+                      className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50"
+                      style={{
+                        borderColor: 'rgb(146, 0, 32)',
+                        color: 'rgb(146, 0, 32)'
+                      }}
+                    >
+                      Usuń pozycję
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(module.config?.items || []).length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'rgba(30, 30, 30, 0.4)' }}>
+                  Dodaj pozycję cennika, aby zachęcić klientów do rezerwacji.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {module.type === 'services' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Tytuł sekcji
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.title || ''}
+                  onChange={(e) => handleConfigChange('title', e.target.value)}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Podtytuł
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.subtitle || ''}
+                  onChange={(e) => handleConfigChange('subtitle', e.target.value)}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                />
+              </div>
+            </div>
+
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor akcentu"
+              value={module.config?.accentColor || 'rgb(146, 0, 32)'}
+              onChange={(color) => handleConfigChange('accentColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+
+            <div className="flex items-center justify-between mt-6">
+              <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                Usługi ({module.config?.items?.length || 0})
+              </h3>
+              <button
+                onClick={() => addCollectionItem('items', {
+                  id: `service-${Date.now()}`,
+                  name: 'Nowa usługa',
+                  category: '',
+                  description: '<p>Dodaj opis usługi.</p>',
+                  image: ''
+                })}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                style={{
+                  borderColor: 'rgb(146, 0, 32)',
+                  color: 'rgb(146, 0, 32)'
+                }}
+              >
+                + Dodaj usługę
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(module.config?.items || []).map((item, index) => (
+                <div key={item.id || index} className="p-4 rounded-xl border space-y-4" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                        Nazwa usługi
+                      </label>
+                      <input
+                        type="text"
+                        value={item.name || ''}
+                        onChange={(e) => updateCollectionItem('items', index, { name: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.15)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                        Kategoria / tag
+                      </label>
+                      <input
+                        type="text"
+                        value={item.category || ''}
+                        onChange={(e) => updateCollectionItem('items', index, { category: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.15)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                        placeholder="np. Indywidualne / Online"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Opis (może zawierać HTML)
+                    </label>
+                    <textarea
+                      value={item.description || ''}
+                      onChange={(e) => updateCollectionItem('items', index, { description: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                      placeholder="<p>Opis usługi...</p>"
+                    />
+                  </div>
+
+                  <ImageUploader
+                    label="Zdjęcie ilustrujące"
+                    value={item.image || ''}
+                    onChange={(url) => updateCollectionItem('items', index, { image: url })}
+                    aspectRatio="4/3"
+                  />
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => removeCollectionItem('items', index)}
+                      className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50"
+                      style={{
+                        borderColor: 'rgb(146, 0, 32)',
+                        color: 'rgb(146, 0, 32)'
+                      }}
+                    >
+                      Usuń usługę
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(module.config?.items || []).length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'rgba(30, 30, 30, 0.4)' }}>
+                  Dodaj usługi, aby zaprezentować kompetencje zespołu.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {module.type === 'team' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Tytuł sekcji
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.title || ''}
+                  onChange={(e) => handleConfigChange('title', e.target.value)}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Podtytuł
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.subtitle || ''}
+                  onChange={(e) => handleConfigChange('subtitle', e.target.value)}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                />
+              </div>
+            </div>
+
+            <ColorPicker
+              label="Kolor tła"
+              value={module.config?.bgColor || '#FFFFFF'}
+              onChange={(color) => handleConfigChange('bgColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor akcentu"
+              value={module.config?.accentColor || 'rgb(146, 0, 32)'}
+              onChange={(color) => handleConfigChange('accentColor', color)}
+            />
+
+            <ColorPicker
+              label="Kolor tekstu"
+              value={module.config?.textColor || 'rgb(30, 30, 30)'}
+              onChange={(color) => handleConfigChange('textColor', color)}
+            />
+
+            <div className="flex items-center justify-between mt-6">
+              <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                Członkowie zespołu ({module.config?.members?.length || 0})
+              </h3>
+              <button
+                onClick={() => addCollectionItem('members', {
+                  id: `team-${Date.now()}`,
+                  name: 'Nowa osoba',
+                  role: 'Instruktor',
+                  bio: '<p>Dodaj opis specjalizacji i doświadczenia.</p>',
+                  focus: '<p>W czym pomaga uczestnikom?</p>',
+                  image: ''
+                })}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                style={{
+                  borderColor: 'rgb(146, 0, 32)',
+                  color: 'rgb(146, 0, 32)'
+                }}
+              >
+                + Dodaj osobę
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(module.config?.members || []).map((member, index) => (
+                <div key={member.id || index} className="p-4 rounded-xl border space-y-4" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-4">
+                    <ImageUploader
+                      label="Zdjęcie"
+                      value={member.image || ''}
+                      onChange={(url) => updateCollectionItem('members', index, { image: url })}
+                      aspectRatio="3/4"
+                    />
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                            Imię i nazwisko
+                          </label>
+                          <input
+                            type="text"
+                            value={member.name || ''}
+                            onChange={(e) => updateCollectionItem('members', index, { name: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                            style={{
+                              borderColor: 'rgba(30, 30, 30, 0.15)',
+                              '--tw-ring-color': 'rgb(146, 0, 32)'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                            Rola / specjalizacja
+                          </label>
+                          <input
+                            type="text"
+                            value={member.role || ''}
+                            onChange={(e) => updateCollectionItem('members', index, { role: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                            style={{
+                              borderColor: 'rgba(30, 30, 30, 0.15)',
+                              '--tw-ring-color': 'rgb(146, 0, 32)'
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                          Bio (pokazywane po najechaniu)
+                        </label>
+                        <textarea
+                          value={member.bio || ''}
+                          onChange={(e) => updateCollectionItem('members', index, { bio: e.target.value })}
+                          rows={3}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.15)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                          placeholder="<p>Doświadczona instruktorka yin jogi...</p>"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
+                          Kluczowe obszary wsparcia (pod kartą)
+                        </label>
+                        <textarea
+                          value={member.focus || ''}
+                          onChange={(e) => updateCollectionItem('members', index, { focus: e.target.value })}
+                          rows={3}
+                          className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.15)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                          placeholder="<p>Prowadzi: sesje relaksacyjne, warsztaty oddechowe...</p>"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => removeCollectionItem('members', index)}
+                      className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50"
+                      style={{
+                        borderColor: 'rgb(146, 0, 32)',
+                        color: 'rgb(146, 0, 32)'
+                      }}
+                    >
+                      Usuń osobę
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(module.config?.members || []).length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'rgba(30, 30, 30, 0.4)' }}>
+                  Dodaj członków zespołu, aby zbudować zaufanie odwiedzających.
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Expert Mode - Spacer Module */}
         {module.type === 'spacer' && (
           <>
@@ -1276,8 +2402,8 @@ const Configurator = () => {
           </>
         )}
 
-        {/* Base Module - Hero Section */}
-        {module.id === 'hero' && (
+  {/* Base Module - Hero Section */}
+  {isHeroModule(module) && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
