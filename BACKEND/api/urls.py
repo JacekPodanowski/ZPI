@@ -8,6 +8,7 @@ from .views import (
     BookingViewSet,
     CustomRegisterView,
     GoogleLogin,
+    TemplateViewSet,
 )
 
 router = DefaultRouter()
@@ -16,6 +17,7 @@ router.register(r'sites', SiteViewSet, basename='site')
 router.register(r'clients', ClientViewSet, basename='client')
 router.register(r'events', EventViewSet, basename='event')
 router.register(r'bookings', BookingViewSet, basename='booking')
+router.register(r'templates', TemplateViewSet, basename='template')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -4,7 +4,9 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 import os
 
-from api.models import Site
+import json
+
+from api.models import Site, Template
 
 User = get_user_model()
 
@@ -63,6 +65,7 @@ class Command(BaseCommand):
                     'name': 'Pracownia Jogi',
                     'template_config': {
                         'name': 'Pracownia Jogi',
+                        'themeId': 'modernWellness',
                         'pages': {
                             'home': {
                                 'id': 'home',
@@ -101,6 +104,26 @@ class Command(BaseCommand):
                                             'minInterval': 15,
                                             'allowIndividual': True,
                                             'allowGroup': True
+                                        }
+                                    }
+                                ]
+                            },
+                            'gallery': {
+                                'id': 'gallery',
+                                'name': 'Galeria',
+                                'path': '/galeria',
+                                'modules': [
+                                    {
+                                        'id': 'gallery_module_main',
+                                        'type': 'gallery',
+                                        'name': 'Nasze Prace',
+                                        'enabled': True,
+                                        'order': 0,
+                                        'config': {
+                                            'images': [],
+                                            'columns': 3,
+                                            'gap': '1rem',
+                                            'style': 'masonry'
                                         }
                                     }
                                 ]
@@ -150,6 +173,7 @@ class Command(BaseCommand):
                     'name': 'Studio Oddechu',
                     'template_config': {
                         'name': 'Studio Oddechu',
+                        'themeId': 'modernWellness',
                         'pages': {
                             'home': {
                                 'id': 'home',
@@ -188,6 +212,26 @@ class Command(BaseCommand):
                                             'minInterval': 30,
                                             'allowIndividual': True,
                                             'allowGroup': False
+                                        }
+                                    }
+                                ]
+                            },
+                            'gallery': {
+                                'id': 'gallery',
+                                'name': 'Galeria',
+                                'path': '/galeria',
+                                'modules': [
+                                    {
+                                        'id': 'gallery_module_main',
+                                        'type': 'gallery',
+                                        'name': 'Nasze Prace',
+                                        'enabled': True,
+                                        'order': 0,
+                                        'config': {
+                                            'images': [],
+                                            'columns': 4,
+                                            'gap': '1rem',
+                                            'style': 'grid'
                                         }
                                     }
                                 ]
@@ -232,6 +276,72 @@ class Command(BaseCommand):
                             }
                         }
                     }
+                },
+                {
+                    'name': 'Fotograf Portfolio',
+                    'template_config': {
+                        'name': 'Fotograf Portfolio',
+                        'themeId': 'oceanCalm',
+                        'pages': {
+                            'home': {
+                                'id': 'home',
+                                'name': 'Główna',
+                                'path': '/',
+                                'modules': [
+                                    {
+                                        'id': 'hero',
+                                        'name': 'Hero',
+                                        'enabled': True,
+                                        'order': 0,
+                                        'config': {
+                                            'title': 'Anna Nowak',
+                                            'subtitle': 'Fotografia Portretowa',
+                                            'bgColor': '#111111',
+                                            'textColor': '#FFFFFF',
+                                            'backgroundImage': 'https://via.placeholder.com/1500x800'
+                                        }
+                                    }
+                                ]
+                            },
+                            'gallery': {
+                                'id': 'gallery',
+                                'name': 'Portfolio',
+                                'path': '/portfolio',
+                                'modules': [
+                                    {
+                                        'id': 'gallery_module',
+                                        'type': 'gallery',
+                                        'name': 'Moje Prace',
+                                        'enabled': True,
+                                        'order': 0,
+                                        'config': {
+                                            'images': [],
+                                            'columns': 3,
+                                            'style': 'masonry'
+                                        }
+                                    }
+                                ]
+                            },
+                            'contact': {
+                                'id': 'contact',
+                                'name': 'Kontakt',
+                                'path': '/kontakt',
+                                'modules': [
+                                    {
+                                        'id': 'contact',
+                                        'name': 'Kontakt',
+                                        'enabled': True,
+                                        'order': 0,
+                                        'config': {
+                                            'email': 'anna.nowak@photo.pl',
+                                            'phone': '+48 111 222 333',
+                                            'bgColor': '#FFFFFF'
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
                 }
             ]
 
@@ -246,3 +356,36 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING(f'Updated demo site "{site.name}" configuration.'))
                 else:
                     self.stdout.write(self.style.SUCCESS(f'Created demo site "{site.name}" for superuser.'))
+
+            template_catalog = [
+                {
+                    'name': 'Wellness Starter',
+                    'description': 'Elegancki szablon dla instruktorów wellness i studiów jogi.',
+                    'template_config': demo_sites[0]['template_config'],
+                    'thumbnail_url': None
+                },
+                {
+                    'name': 'Mindfulness Studio',
+                    'description': 'Delikatny motyw dla studiów oddechu i pracy z uważnością.',
+                    'template_config': demo_sites[1]['template_config'],
+                    'thumbnail_url': None
+                },
+                {
+                    'name': 'Fotograf Portfolio',
+                    'description': 'Nowoczesny układ dla fotografów i twórców wizualnych.',
+                    'template_config': demo_sites[2]['template_config'],
+                    'thumbnail_url': None
+                }
+            ]
+
+            for template_data in template_catalog:
+                config_copy = json.loads(json.dumps(template_data['template_config']))
+                config_copy['name'] = template_data['name']
+                Template.objects.update_or_create(
+                    name=template_data['name'],
+                    defaults={
+                        'description': template_data['description'],
+                        'template_config': config_copy,
+                        'thumbnail_url': template_data['thumbnail_url']
+                    }
+                )

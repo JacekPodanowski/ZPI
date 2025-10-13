@@ -91,6 +91,17 @@ class Site(models.Model):
         return f"{self.name} ({self.identifier})"
 
 
+class Template(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    template_config = models.JSONField(default=dict)
+    thumbnail_url = models.URLField(blank=True, null=True)
+    is_public = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Client(models.Model):
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='clients')
     email = models.EmailField()

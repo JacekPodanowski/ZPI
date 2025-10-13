@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { useLocation, useParams } from 'react-router-dom';
 import ModuleSelector from '../../components/ModuleSelector';
@@ -8,6 +8,9 @@ import AIChat from '../../components/AIChat';
 import useEditorStore, { createDefaultTemplateConfig } from '../../store/editorStore';
 import EditorNavigation from '../../components/EditorNavigation/EditorNavigation';
 import { fetchSiteById } from '../../../services/siteService';
+import { ThemeProvider as MuiThemeProvider, createTheme as createMuiTheme } from '@mui/material/styles';
+import { createTheme as createSemanticTheme, assignCssVariables } from '../../../theme/colorSystem';
+import { themeDefinitions } from '../../../theme/themeDefinitions';
 
 const EditorPage = () => {
   const { siteId } = useParams();
@@ -20,11 +23,46 @@ const EditorPage = () => {
     setSiteMeta,
     siteMeta,
     expertMode,
-    selectedModule
+    selectedModule,
+    templateConfig
   } = useEditorStore();
 
   const [loading, setLoading] = useState(Boolean(siteId));
   const [error, setError] = useState(null);
+  const canvasContainerRef = useRef(null);
+
+  const siteThemeDefinition = useMemo(() => {
+    const themeId = templateConfig?.themeId || templateConfig?.theme?.id || 'modernWellness';
+    return themeDefinitions[themeId] || themeDefinitions.modernWellness;
+  }, [templateConfig]);
+
+  const siteSemanticTheme = useMemo(
+    () => createSemanticTheme(siteThemeDefinition, 'light'),
+    [siteThemeDefinition]
+  );
+
+  const siteMuiTheme = useMemo(
+    () =>
+      createMuiTheme({
+        palette: {
+          mode: siteSemanticTheme.mode,
+          primary: { main: siteSemanticTheme.colors.brand.primary },
+          secondary: { main: siteSemanticTheme.colors.brand.secondary },
+          background: {
+            default: siteSemanticTheme.colors.bg.page,
+            paper: siteSemanticTheme.colors.bg.surface
+          },
+          text: {
+            primary: siteSemanticTheme.colors.text.primary,
+            secondary: siteSemanticTheme.colors.text.secondary
+          }
+        },
+        typography: {
+          fontFamily: siteSemanticTheme.typography.fonts.body
+        }
+      }),
+    [siteSemanticTheme]
+  );
 
   useEffect(() => {
     let active = true;
@@ -72,6 +110,17 @@ const EditorPage = () => {
       active = false;
     };
   }, [location.state, resetTemplateConfig, setMode, setSiteMeta, setTemplateConfig, siteId]);
+
+  useEffect(() => {
+    const element = canvasContainerRef.current;
+    if (!element) {
+      return;
+    }
+    assignCssVariables(element, siteSemanticTheme);
+    element.setAttribute('data-site-theme', siteSemanticTheme.id);
+    element.style.backgroundColor = siteSemanticTheme.colors.bg.page;
+    element.style.color = siteSemanticTheme.colors.text.primary;
+  }, [siteSemanticTheme]);
 
   const title = useMemo(() => {
     if (siteMeta?.name) {
@@ -151,18 +200,23 @@ const EditorPage = () => {
               </Paper>
             )}
 
-            <Paper
-              variant="outlined"
-              sx={{
-                borderRadius: 4,
-                overflow: 'hidden',
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              <SiteCanvas />
-            </Paper>
+            <MuiThemeProvider theme={siteMuiTheme}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  borderRadius: 4,
+                  overflow: 'hidden',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  backgroundColor: 'background.default',
+                  color: 'text.primary'
+                }}
+                ref={canvasContainerRef}
+              >
+                <SiteCanvas />
+              </Paper>
+            </MuiThemeProvider>
 
             {showConfigurator && (
               <Paper

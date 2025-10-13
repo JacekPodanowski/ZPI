@@ -17,7 +17,7 @@ if (!googleClientId) {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={googleClientId || 'missing-google-client-id'}>
-      <ThemeProvider>
+  <ThemeProvider initialTheme="studio">
         <ErrorBoundary>
           <BrowserRouter>
             <AuthProvider>

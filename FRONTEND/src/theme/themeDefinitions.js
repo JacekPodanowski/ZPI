@@ -13,6 +13,23 @@ const createBaseOptions = () => ({
 });
 
 export const themeDefinitions = {
+  studio: {
+    id: 'studio',
+    name: 'Studio Default',
+    description: 'Domyślny motyw dla interfejsu edytora.',
+    light: {
+      background: '#f4f5f7',
+      text: '#172B4D',
+      primary: '#0052CC',
+      secondary: '#5E6C84'
+    },
+    dark: {
+      background: '#0d1117',
+      text: '#c9d1d9',
+      primary: '#58a6ff',
+      secondary: '#8b949e'
+    }
+  },
   modernWellness: {
     id: 'modernWellness',
     name: 'Modern Wellness',

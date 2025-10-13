@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PlatformUser, Site, Client, Event, Booking
+from .models import PlatformUser, Site, Client, Event, Booking, Template
 
 
 @admin.register(PlatformUser)
@@ -37,3 +37,10 @@ class BookingAdmin(admin.ModelAdmin):
 	list_display = ('event', 'site', 'client', 'guest_email', 'created_at')
 	search_fields = ('guest_email', 'guest_name', 'notes')
 	autocomplete_fields = ('site', 'event', 'client')
+
+
+@admin.register(Template)
+class TemplateAdmin(admin.ModelAdmin):
+	list_display = ('name', 'is_public')
+	search_fields = ('name',)
+	list_filter = ('is_public',)

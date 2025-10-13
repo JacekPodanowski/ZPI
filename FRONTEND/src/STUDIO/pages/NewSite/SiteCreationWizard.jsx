@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+    Alert,
     Box,
     Button,
     Card,
@@ -26,7 +27,10 @@ const steps = ['Wybierz szablon', 'Dopasuj moduły', 'Gotowe'];
 
 const SiteCreationWizard = () => {
     const navigate = useNavigate();
-    const { templates } = useTemplateStore();
+    const templates = useTemplateStore((state) => state.templates);
+    const fetchTemplates = useTemplateStore((state) => state.fetchTemplates);
+    const loading = useTemplateStore((state) => state.loading);
+    const error = useTemplateStore((state) => state.error);
     const { templateConfig, resetTemplateConfig, setTemplateConfig, toggleModule } = useEditorStore();
 
     const [activeStep, setActiveStep] = useState(0);
@@ -36,6 +40,10 @@ const SiteCreationWizard = () => {
     useEffect(() => {
         resetTemplateConfig();
     }, [resetTemplateConfig]);
+
+    useEffect(() => {
+        fetchTemplates();
+    }, [fetchTemplates]);
 
     useEffect(() => {
         if (!selectedTemplate) {
@@ -56,6 +64,12 @@ const SiteCreationWizard = () => {
             setSiteName((prev) => (prev === 'Moja nowa strona' ? template.name : prev));
         }
     }, [selectedTemplate, setTemplateConfig, templates]);
+
+    useEffect(() => {
+        if (!loading && templates.length > 0 && !selectedTemplate) {
+            setSelectedTemplate(templates[0].id);
+        }
+    }, [loading, templates, selectedTemplate]);
 
     const modulesByPage = useMemo(() => {
         if (!templateConfig?.pages) {
@@ -118,7 +132,22 @@ const SiteCreationWizard = () => {
 
                 {activeStep === 0 && (
                     <Grid container spacing={3}>
-                        {templates.map((template) => (
+                        {loading && (
+                            <Grid item xs={12}>
+                                <Typography>Ładowanie szablonów...</Typography>
+                            </Grid>
+                        )}
+                        {error && (
+                            <Grid item xs={12}>
+                                <Alert severity="error">{error}</Alert>
+                            </Grid>
+                        )}
+                        {!loading && !error && templates.length === 0 && (
+                            <Grid item xs={12}>
+                                <Typography>Brak dostępnych szablonów.</Typography>
+                            </Grid>
+                        )}
+                        {!loading && !error && templates.map((template) => (
                             <Grid item xs={12} md={4} key={template.id}>
                                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                                     <Card
@@ -211,6 +240,7 @@ const SiteCreationWizard = () => {
                                                         {module.id === 'calendar' && 'Harmonogram zajęć i rezerwacje'}
                                                         {module.id === 'about' && 'Opowiedz o sobie i swoim doświadczeniu'}
                                                         {module.id === 'contact' && 'Dane kontaktowe i formularz'}
+                                                        {(module.type === 'gallery' || module.id.includes('gallery')) && 'Galeria zdjęć z elastycznym układem'}
                                                     </Typography>
                                                 </Box>
                                                 <Switch
