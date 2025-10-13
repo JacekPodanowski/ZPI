@@ -5,6 +5,9 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Navigation from '../../../components/Navigation/Navigation';
 import AnimatedWordmark from '../../../components/Logo/AnimatedWordmark';
 
+const NAVIGATION_ANIMATION_DELAY_MS = 100;
+const LOGO_ANIMATION_DELAY_MS = 250;
+
 const HomePage = () => {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
@@ -15,7 +18,7 @@ const HomePage = () => {
 
     useEffect(() => {
         const raf = requestAnimationFrame(() => setPageVisible(true));
-        const showLogoTimer = setTimeout(() => setLogoExpanded(true), 1600);
+        const showLogoTimer = setTimeout(() => setLogoExpanded(true), LOGO_ANIMATION_DELAY_MS);
 
         return () => {
             cancelAnimationFrame(raf);
@@ -38,7 +41,7 @@ const HomePage = () => {
                     }
                 });
             },
-            { threshold: 0.2 }
+            { threshold: 0.05, rootMargin: '100px' }
         );
 
         observer.observe(element);
@@ -62,11 +65,6 @@ const HomePage = () => {
     const goToLogin = useCallback(() => {
         setLogoExpanded(false);
         setTimeout(() => navigate('/login'), 420);
-    }, [navigate]);
-
-    const goToStyles = useCallback(() => {
-        setLogoExpanded(false);
-        setTimeout(() => navigate('/styles'), 420);
     }, [navigate]);
 
     const narrativeSlices = useMemo(
@@ -96,8 +94,21 @@ const HomePage = () => {
 
     return (
         <>
-            <Navigation />
-            <Box component="main" sx={{ position: 'relative', overflow: 'hidden', backgroundColor: (theme) => theme.palette.background.default }}>
+            <Navigation initialDelay={NAVIGATION_ANIMATION_DELAY_MS} />
+            <Box 
+                component="main" 
+                sx={{ 
+                    position: 'relative', 
+                    overflow: 'hidden', 
+                    backgroundColor: (theme) => theme.palette.background.default,
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    perspective: 1000,
+                    transform: 'translateZ(0)',
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale'
+                }}
+            >
                 <Box
                     sx={{
                         position: 'absolute',
@@ -199,7 +210,7 @@ const HomePage = () => {
                                     allowToggle={false}
                                     align="center"
                                     size="hero"
-                                    duration={1.4}
+                                    duration={1.2}
                                 />
                             </Box>
 
@@ -209,20 +220,24 @@ const HomePage = () => {
                                     sx={{
                                         fontWeight: 600,
                                         color: 'text.primary',
-                                        letterSpacing: { xs: 1, md: 1.5 }
+                                        letterSpacing: { xs: 0.5, md: 1 },
+                                        lineHeight: 1.4
                                     }}
                                 >
-                                    Zmień pomysł w stronę, która oddycha spokojem i profesjonalizmem.
+                                    Zmień swój pomysł w stronę,<br />
+                                    która oddycha spokojem i&nbsp;profesjonalizmem.
                                 </Typography>
                                 <Typography
                                     variant="h6"
                                     sx={{
                                         color: 'text.secondary',
                                         maxWidth: 640,
-                                        mx: 'auto'
+                                        mx: 'auto',
+                                        lineHeight: 1.6
                                     }}
                                 >
-                                    Poprowadzimy cię krok po kroku — od inspiracji, aż po publikację na własnej domenie.
+                                    Poprowadzimy cię krok po kroku — od&nbsp;inspiracji,<br />
+                                    aż po publikację na własnej domenie.
                                 </Typography>
                             </Stack>
 
@@ -235,15 +250,17 @@ const HomePage = () => {
                                     onClick={goToLogin}
                                     size="large"
                                     sx={{
-                                        px: { xs: 5, sm: 6 },
-                                        py: { xs: 1.4, sm: 1.6 },
+                                        px: { xs: 6, sm: 8 },
+                                        py: { xs: 1.8, sm: 2 },
+                                        fontSize: { xs: '1rem', sm: '1.1rem' },
                                         fontWeight: 600,
+                                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
                                         backgroundColor: (theme) =>
                                             theme.palette.mode === 'dark'
                                                 ? 'rgba(255,255,255,0.12)'
                                                 : '#ffffff',
                                         color: 'primary.main',
-                                        borderRadius: 999,
+                                        borderRadius: 5,
                                         boxShadow: '0 12px 28px rgba(146,0,32,0.12)',
                                         border: '1px solid',
                                         borderColor: 'primary.main',
@@ -277,10 +294,12 @@ const HomePage = () => {
                                     color="primary"
                                     onClick={proceedToNewSite}
                                     sx={{
-                                        px: { xs: 5.5, sm: 7 },
-                                        py: { xs: 1.4, sm: 1.6 },
+                                        px: { xs: 6.5, sm: 8.5 },
+                                        py: { xs: 1.8, sm: 2 },
+                                        fontSize: { xs: '1rem', sm: '1.1rem' },
                                         fontWeight: 600,
-                                        borderRadius: 999,
+                                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+                                        borderRadius: 5,
                                         boxShadow: '0 16px 36px rgba(146,0,32,0.2)',
                                         transition: 'transform 0.28s ease',
                                         '&:hover': {
@@ -292,21 +311,6 @@ const HomePage = () => {
                                     Stwórz swoją stronę
                                 </Button>
                             </Stack>
-
-                            <Button
-                                variant="text"
-                                onClick={goToStyles}
-                                sx={{
-                                    textTransform: 'none',
-                                    color: 'secondary.main',
-                                    fontWeight: 500,
-                                    '&:hover': {
-                                        color: 'primary.main'
-                                    }
-                                }}
-                            >
-                                Zobacz style aplikacji
-                            </Button>
                         </Stack>
                     </Container>
 
@@ -316,7 +320,8 @@ const HomePage = () => {
                         ref={aboutRef}
                         sx={{
                             position: 'relative',
-                            py: { xs: 14, md: 18 },
+                            py: { xs: 12, md: 16 },
+                            pb: { xs: 6, md: 7 },
                             backgroundColor: 'transparent'
                         }}
                     >
@@ -442,46 +447,41 @@ const HomePage = () => {
                                                     order: { xs: 2, md: index % 2 === 0 ? 2 : 1 },
                                                     position: 'relative',
                                                     aspectRatio: '1 / 1',
-                                                    borderRadius: 6,
-                                                    overflow: 'hidden',
-                                                    background: (muiTheme) =>
-                                                        muiTheme.palette.mode === 'dark'
-                                                            ? 'linear-gradient(135deg, rgba(30,30,30,0.95) 0%, rgba(20,20,20,0.85) 100%)'
-                                                            : 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(245,244,238,0.88) 100%)',
-                                                    border: '1px solid',
-                                                    borderColor: 'rgba(146,0,32,0.15)',
-                                                    boxShadow: '0 32px 64px rgba(0,0,0,0.12)',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    justifyContent: 'center'
+                                                    justifyContent: 'center',
+                                                    transformStyle: 'preserve-3d',
+                                                    perspective: '1200px'
                                                 }}
                                             >
                                                 {slice.visual === 'wave' && (
                                                     <Box
                                                         sx={{
                                                             position: 'absolute',
-                                                            inset: 0,
+                                                            inset: '-40%',
                                                             background: `
-                                                                radial-gradient(circle at 30% 40%, rgba(146,0,32,0.3) 0%, transparent 50%),
-                                                                radial-gradient(circle at 70% 60%, rgba(255,255,255,0.15) 0%, transparent 50%)
+                                                                radial-gradient(circle at 35% 45%, rgba(146,0,32,0.4) 0%, transparent 55%),
+                                                                radial-gradient(circle at 65% 55%, rgba(255,255,255,0.25) 0%, transparent 55%)
                                                             `,
-                                                            animation: 'waveFlow 12s ease-in-out infinite',
+                                                            animation: 'waveFlow 10s ease-in-out infinite',
+                                                            filter: 'blur(40px)',
+                                                            willChange: 'transform, opacity',
                                                             '@keyframes waveFlow': {
                                                                 '0%': {
-                                                                    transform: 'translate3d(0,0,0) scale(1) rotate(0deg)',
-                                                                    opacity: 0.8
+                                                                    transform: 'translate3d(0, 0, 0) scale(1) rotate(0deg)',
+                                                                    opacity: 0.75
                                                                 },
                                                                 '33%': {
-                                                                    transform: 'translate3d(-20px, 15px, 0) scale(1.1) rotate(3deg)',
-                                                                    opacity: 1
+                                                                    transform: 'translate3d(-8px, -12px, 0) scale(1.12) rotate(2deg)',
+                                                                    opacity: 0.95
                                                                 },
                                                                 '66%': {
-                                                                    transform: 'translate3d(15px, -20px, 0) scale(0.95) rotate(-2deg)',
-                                                                    opacity: 0.85
+                                                                    transform: 'translate3d(8px, 12px, 0) scale(0.92) rotate(-2deg)',
+                                                                    opacity: 0.8
                                                                 },
                                                                 '100%': {
-                                                                    transform: 'translate3d(0,0,0) scale(1) rotate(0deg)',
-                                                                    opacity: 0.8
+                                                                    transform: 'translate3d(0, 0, 0) scale(1) rotate(0deg)',
+                                                                    opacity: 0.75
                                                                 }
                                                             }
                                                         }}
@@ -497,9 +497,10 @@ const HomePage = () => {
                                                                     inset: `${i * 12}%`,
                                                                     borderRadius: '50%',
                                                                     border: '2px solid',
-                                                                    borderColor: 'rgba(146,0,32,0.25)',
-                                                                    animation: `ripplePulse 8s ease-in-out infinite`,
-                                                                    animationDelay: `${i * 0.4}s`,
+                                                                    borderColor: 'rgba(146,0,32,0.35)',
+                                                                    animation: `ripplePulse 7s ease-in-out infinite`,
+                                                                    animationDelay: `${i * 0.35}s`,
+                                                                    willChange: 'transform, opacity',
                                                                     '@keyframes ripplePulse': {
                                                                         '0%': { transform: 'scale(0.92)', opacity: 0 },
                                                                         '40%': { transform: 'scale(1)', opacity: 0.6 },
@@ -515,15 +516,19 @@ const HomePage = () => {
                                                     <Box
                                                         sx={{
                                                             position: 'absolute',
-                                                            inset: 0,
+                                                            inset: '-30%',
                                                             background: `
-                                                                radial-gradient(circle at 50% 50%, rgba(146,0,32,0.25) 0%, transparent 40%),
-                                                                conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.15) 90deg, transparent 180deg, rgba(146,0,32,0.15) 270deg, transparent 360deg)
+                                                                radial-gradient(circle at 50% 50%, rgba(146,0,32,0.35) 0%, transparent 45%),
+                                                                conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.25) 90deg, transparent 180deg, rgba(146,0,32,0.25) 270deg, transparent 360deg)
                                                             `,
-                                                            animation: 'bloomRotate 20s linear infinite',
+                                                            animation: 'bloomRotate 16s linear infinite',
+                                                            filter: 'blur(28px)',
+                                                            willChange: 'transform',
                                                             '@keyframes bloomRotate': {
                                                                 '0%': { transform: 'rotate(0deg) scale(1)' },
-                                                                '50%': { transform: 'rotate(180deg) scale(1.05)' },
+                                                                '25%': { transform: 'rotate(90deg) scale(1.06)' },
+                                                                '50%': { transform: 'rotate(180deg) scale(1)' },
+                                                                '75%': { transform: 'rotate(270deg) scale(1.06)' },
                                                                 '100%': { transform: 'rotate(360deg) scale(1)' }
                                                             }
                                                         }}
@@ -533,6 +538,41 @@ const HomePage = () => {
                                         </Box>
                                     ))}
                                 </Stack>
+                            </Box>
+
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    mt: { xs: 6, md: 8 },
+                                    opacity: aboutVisible ? 1 : 0,
+                                    transform: aboutVisible ? 'translateY(0)' : 'translateY(40px)',
+                                    transition: 'opacity 1.2s ease, transform 1.2s ease',
+                                    transitionDelay: aboutVisible ? '0.8s' : '0s'
+                                }}
+                            >
+                                <Button
+                                    size="large"
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={proceedToNewSite}
+                                    sx={{
+                                        px: { xs: 7, sm: 10 },
+                                        py: { xs: 2, sm: 2.5 },
+                                        fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                                        fontWeight: 600,
+                                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+                                        borderRadius: 5,
+                                        boxShadow: '0 20px 40px rgba(146,0,32,0.25)',
+                                        transition: 'transform 0.28s ease, box-shadow 0.28s ease',
+                                        '&:hover': {
+                                            transform: 'translateY(-4px) scale(1.03)',
+                                            boxShadow: '0 28px 50px rgba(146,0,32,0.35)'
+                                        }
+                                    }}
+                                >
+                                    Start Creating
+                                </Button>
                             </Box>
                         </Stack>
                     </Container>

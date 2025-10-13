@@ -25,7 +25,7 @@ import useTheme from '../../theme/useTheme';
 
 const drawerWidth = 280;
 
-const Navigation = () => {
+const Navigation = ({ initialDelay = 1250 }) => {
     const { isAuthenticated, user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
@@ -67,10 +67,10 @@ const Navigation = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             setNavVisible(true);
-        }, 1250);
+        }, initialDelay);
 
         return () => clearTimeout(timer);
-    }, []);
+    }, [initialDelay]);
 
     const drawer = (
         <Box sx={{ textAlign: 'center', height: '100%' }} role="presentation" onClick={handleDrawerToggle}>

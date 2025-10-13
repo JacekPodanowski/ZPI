@@ -1,15 +1,9 @@
-import React, { useMemo } from 'react';
+import React, {useMemo} from 'react';
 import PropTypes from 'prop-types';
 import { Box, Typography } from '@mui/material';
 import useTheme from '../../theme/useTheme';
 
 const ACCENT_LETTERS = new Set(['Y', 'E', 'S']);
-
-const LETTER_GROUPS = [
-    { lead: 'Y', trail: 'our' },
-    { lead: 'E', trail: 'asy' },
-    { lead: 'S', trail: 'ite' }
-];
 
 const sizeMap = (typography = {}) => {
     const sizes = typography.sizes || {};
@@ -17,9 +11,16 @@ const sizeMap = (typography = {}) => {
         small: sizes.xl ?? '1.75rem',
         medium: sizes['2xl'] ?? '2.5rem',
         large: sizes['4xl'] ?? '3.5rem',
-        xlarge: sizes['5xl'] ?? '4.5rem'
+        hero: sizes['5xl'] ?? '4.5rem'
     };
 };
+
+// The 'width' now controls the entire space the word takes up, including the gap after it.
+const LETTER_GROUPS = [
+    { lead: 'Y', trail: 'our', width: 6.05},
+    { lead: 'E', trail: 'asy', width: 6.3},
+    { lead: 'S', trail: 'ite', width: 4.0}
+];
 
 const AnimatedWordmark = ({
     expanded,
@@ -28,7 +29,7 @@ const AnimatedWordmark = ({
     size,
     duration,
     allowToggle,
-    className
+    className,
 }) => {
     const theme = useTheme();
     const palette = theme?.colors || {};
@@ -37,11 +38,11 @@ const AnimatedWordmark = ({
     const glowColor = palette?.brand?.primary ?? '#82001F';
     const textPrimary = palette?.text?.primary ?? '#1D1D1D';
     const sizes = sizeMap(typography);
-    const fontSize = sizes[size] ?? sizes.xlarge;
+    const fontSize = sizes[size] ?? sizes.hero;
     const fontFamily = typography?.fonts?.logo ?? '"Montserrat", sans-serif';
 
     const transition = useMemo(
-        () => `${duration}s cubic-bezier(0.66, 0, 0.2, 1)`,
+        () => `${duration}s cubic-bezier(0.4, 0.0, 0.2, 1)`,
         [duration]
     );
 
@@ -50,6 +51,30 @@ const AnimatedWordmark = ({
         if (align === 'right') return 'flex-end';
         return 'center';
     }, [align]);
+
+    // This calculation now correctly uses only 'width'
+    const { expandedTranslations } = useMemo(() => {
+        const expandedPositions = [0];
+        
+        for (let i = 1; i < LETTER_GROUPS.length; i++) {
+            const prevGroup = LETTER_GROUPS[i - 1];
+            expandedPositions[i] = expandedPositions[i - 1] + prevGroup.width;
+        }
+
+        const lastGroup = LETTER_GROUPS[LETTER_GROUPS.length - 1];
+        const totalExpandedWidth = expandedPositions[expandedPositions.length - 1] + lastGroup.width;
+
+        const totalCollapsedWidth = LETTER_GROUPS.length;
+        const centerOffset = (totalExpandedWidth - totalCollapsedWidth) / 2;
+
+        const translations = expandedPositions.map((expandedPos, i) => {
+            const collapsedPos = i;
+            return expandedPos - collapsedPos - centerOffset;
+        });
+
+        return { expandedTranslations: translations };
+    }, []);
+
 
     return (
         <Box
@@ -83,11 +108,15 @@ const AnimatedWordmark = ({
                 sx={{
                     display: 'inline-flex',
                     alignItems: 'baseline',
-                    gap: { xs: '0.1em', md: '0.15em' }
+                    justifyContent: 'center',
+                    position: 'relative'
                 }}
             >
-                {LETTER_GROUPS.map(({ lead, trail }, index) => {
-                    const stagger = index * 0.08;
+                {LETTER_GROUPS.map(({ lead, trail, width }, index) => {
+                    const stagger = index * 0.05;
+                    const expandDelay = expanded ? stagger : (LETTER_GROUPS.length - 1 - index) * 0.05;
+                    const moveDistance = expandedTranslations[index];
+                    
                     return (
                         <Box
                             key={lead}
@@ -95,7 +124,12 @@ const AnimatedWordmark = ({
                             sx={{
                                 position: 'relative',
                                 display: 'inline-flex',
-                                alignItems: 'baseline'
+                                alignItems: 'baseline',
+                                transform: expanded 
+                                    ? `translateX(${moveDistance}em)` 
+                                    : 'translateX(0)',
+                                transition: `transform ${duration * 1.2}s cubic-bezier(0.4, 0.0, 0.2, 1)`,
+                                transitionDelay: `${expandDelay}s`
                             }}
                         >
                             <Typography
@@ -126,16 +160,18 @@ const AnimatedWordmark = ({
                                     lineHeight: 1,
                                     fontStyle: 'italic',
                                     color: textPrimary,
-                                    ml: '-0.06em',
-                                    position: 'relative',
+                                    position: 'absolute',
+                                    left: '100%',
                                     transformOrigin: 'left center',
                                     transform: expanded
                                         ? 'translateX(0) scaleX(1)'
-                                        : 'translateX(-100%) scaleX(0)',
+                                        : 'translateX(-50%) scaleX(0.01)',
                                     opacity: expanded ? 1 : 0,
-                                    transition: `transform ${transition}, opacity ${transition}`,
-                                    transitionDelay: expanded ? `${stagger}s` : `${(LETTER_GROUPS.length - 1 - index) * 0.08}s`,
-                                    zIndex: 1
+                                    transition: `transform ${duration * 1.2}s cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${duration * 0.8}s ease`,
+                                    transitionDelay: `${expandDelay}s`,
+                                    zIndex: 1,
+                                    whiteSpace: 'nowrap',
+                                    ml: '-0.05em'
                                 }}
                             >
                                 {trail}

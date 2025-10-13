@@ -15,17 +15,17 @@ if (!googleClientId) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <GoogleOAuthProvider clientId={googleClientId || 'missing-google-client-id'}>
-  <ThemeProvider initialTheme="studio">
-        <ErrorBoundary>
+  <ErrorBoundary>
+    <React.StrictMode>
+      <GoogleOAuthProvider clientId={googleClientId || 'missing-google-client-id'}>
+        <ThemeProvider initialTheme="studio">
           <BrowserRouter>
             <AuthProvider>
               <App />
             </AuthProvider>
           </BrowserRouter>
-        </ErrorBoundary>
-      </ThemeProvider>
-    </GoogleOAuthProvider>
-  </React.StrictMode>
+        </ThemeProvider>
+      </GoogleOAuthProvider>
+    </React.StrictMode>
+  </ErrorBoundary>
 );
