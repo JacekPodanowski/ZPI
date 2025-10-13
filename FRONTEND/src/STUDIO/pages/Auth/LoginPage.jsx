@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import { useAuth } from '../../../contexts/AuthContext';
+import Logo from '../../../components/Logo/Logo';
 
 const LoginPage = () => {
     const { login, googleLogin, mockLogin } = useAuth();
@@ -80,17 +81,13 @@ const LoginPage = () => {
                 }}
             >
                 <Stack spacing={3}>
-                    <Box>
-                        <Typography variant="overline" sx={{ letterSpacing: 2, color: 'secondary.main' }}>
-                            Studio Mindful Sites
-                        </Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
-                            Zaloguj się do panelu
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
-                            Zarządzaj stronami, publikuj nowe wersje i organizuj kalendarz spotkań.
-                        </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                        <Logo size="large" variant="shadow" />
                     </Box>
+
+                    <Typography variant="h4" sx={{ fontWeight: 700, textAlign: 'center' }}>
+                        Zaloguj się lub stwórz konto
+                    </Typography>
 
                     {error && <Alert severity="error">{error}</Alert>}
 
@@ -113,7 +110,7 @@ const LoginPage = () => {
                                 autoComplete="current-password"
                             />
                             <Button type="submit" variant="contained" size="large" disabled={submitting}>
-                                {submitting ? 'Logowanie...' : 'Zaloguj się'}
+                                {submitting ? 'Przetwarzanie...' : 'Dalej'}
                             </Button>
                         </Stack>
                     </Box>
@@ -132,21 +129,37 @@ const LoginPage = () => {
 
                     <Button
                         variant="text"
-                        size="large"
+                        size="xlarge"
                         onClick={handleMockAdminLogin}
                         disabled={submitting}
+                        sx={{ 
+                            fontWeight: 650,
+                            position: 'relative',
+                            '@keyframes glitch': {
+                                '0%': {
+                                    textShadow: '2px 2px 0 rgba(255, 0, 0, 0.7), -2px -2px 0 rgba(0, 255, 255, 0.7)'
+                                },
+                                '25%': {
+                                    textShadow: '-2px 2px 0 rgba(0, 255, 0, 0.7), 2px -2px 0 rgba(255, 0, 255, 0.7)'
+                                },
+                                '50%': {
+                                    textShadow: '3px -3px 0 rgba(255, 255, 0, 0.7), -3px 3px 0 rgba(0, 0, 255, 0.7)'
+                                },
+                                '75%': {
+                                    textShadow: '-3px -2px 0 rgba(255, 0, 255, 0.7), 3px 2px 0 rgba(0, 255, 0, 0.7)'
+                                },
+                                '100%': {
+                                    textShadow: '2px 2px 0 rgba(0, 255, 255, 0.7), -2px -2px 0 rgba(255, 0, 0, 0.7)'
+                                }
+                            },
+                            animation: 'glitch 0.3s infinite',
+                            '&:hover': {
+                                animation: 'glitch 0.15s infinite'
+                            }
+                        }}
                     >
-                        Zaloguj jako admin demo
+                        --- DEV Zaloguj jako ADMIN ---
                     </Button>
-
-                    <Stack direction="row" justifyContent="space-between" sx={{ color: 'text.secondary' }}>
-                        <Link component={RouterLink} to="/" underline="hover">
-                            Wróć na stronę główną
-                        </Link>
-                        <Link component={RouterLink} to="/styles" underline="hover">
-                            Zobacz style aplikacji
-                        </Link>
-                    </Stack>
                 </Stack>
             </Paper>
         </Container>
