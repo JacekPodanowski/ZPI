@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
 import {
     AppBar,
@@ -31,6 +31,7 @@ const Navigation = () => {
     const navigate = useNavigate();
     const theme = useTheme();
     const { mode, toggleMode } = theme;
+    const [navVisible, setNavVisible] = useState(false);
 
     const navGroups = useMemo(() => {
         const primary = [
@@ -62,6 +63,14 @@ const Navigation = () => {
         logout();
         setMobileOpen(false);
     };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setNavVisible(true);
+        }, 1250);
+
+        return () => clearTimeout(timer);
+    }, []);
 
     const drawer = (
         <Box sx={{ textAlign: 'center', height: '100%' }} role="presentation" onClick={handleDrawerToggle}>
@@ -139,17 +148,35 @@ const Navigation = () => {
 
     return (
         <Box sx={{ flexGrow: 1 }}>
-            <AppBar
-                position="static"
-                elevation={0}
+            <Box
                 sx={{
-                    backgroundColor: 'transparent',
-                    color: 'text.primary',
-                    borderBottom: '1px solid',
-                    borderColor: 'divider'
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: (muiTheme) => muiTheme.zIndex.appBar + 2,
+                    transform: navVisible ? 'translateY(0)' : 'translateY(-110%)',
+                    opacity: navVisible ? 1 : 0,
+                    transition: 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease',
+                    pointerEvents: navVisible ? 'auto' : 'none'
                 }}
+                onFocusCapture={() => setNavVisible(true)}
             >
-                <Toolbar sx={{ minHeight: 72, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
+                <AppBar
+                    position="static"
+                    elevation={0}
+                    sx={{
+                        backgroundColor: (muiTheme) =>
+                            muiTheme.palette.mode === 'dark'
+                                ? 'rgba(12, 12, 12, 0.96)'
+                                : 'rgba(228, 229, 218, 0.92)',
+                        backdropFilter: 'blur(12px)',
+                        color: 'text.primary',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider'
+                    }}
+                >
+                    <Toolbar sx={{ minHeight: 72, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <IconButton
                             color="inherit"
@@ -244,7 +271,8 @@ const Navigation = () => {
                         )}
                     </Box>
                 </Toolbar>
-            </AppBar>
+                </AppBar>
+            </Box>
 
             <Box component="nav">
                 <Drawer

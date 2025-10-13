@@ -231,10 +231,10 @@ const StylesPage = () => {
               }}
             />
             <Typography variant="h3" sx={{ fontWeight: fontWeightVar('bold') }}>
-              Globalne style i motywy
+              STYL
             </Typography>
-            <Typography variant="body1" sx={{ maxWidth: 720, color: colors.text.secondary }}>
-              Zarządzaj motywami, eksperymentuj z trybem jasnym i ciemnym oraz dopasuj krągłości, cienie, obramowania i gęstość interfejsu dla całej aplikacji w czasie rzeczywistym.
+            <Typography variant="body1" sx={{ maxWidth: 1000, color: colors.text.secondary }}>
+              Według nas każdy powinien mieć możliwość kreatywnego wyrażenia siebie poprzez dostosowanie wyglądu.
             </Typography>
             <Stack direction="row" spacing={0} sx={{ gap: spacingVar(3) }}>
               <Button
