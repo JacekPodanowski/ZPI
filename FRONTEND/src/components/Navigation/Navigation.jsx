@@ -101,7 +101,12 @@ const Navigation = () => {
             )}
             <Divider sx={{ my: 2 }} />
             {isAuthenticated ? (
-                <Button fullWidth variant="outlined" color="secondary" onClick={handleLogout}>
+                <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    onClick={handleLogout}
+                >
                     Wyloguj ({user?.first_name || user?.email})
                 </Button>
             ) : (
@@ -225,7 +230,11 @@ const Navigation = () => {
                             {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
                         </IconButton>
                         {isAuthenticated ? (
-                            <Button variant="outlined" color="secondary" onClick={handleLogout}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleLogout}
+                            >
                                 Wyloguj ({user?.first_name || user?.email})
                             </Button>
                         ) : (

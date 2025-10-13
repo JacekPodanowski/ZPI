@@ -110,7 +110,7 @@ const StudioDashboard = () => {
         };
     }, []);
 
-    const availableSlots = useMemo(() => Math.max(0, 3 - sites.length), [sites.length]);
+    const availableSlots = useMemo(() => Math.max(0, 10 - sites.length), [sites.length]);  // DEV Limit to 10 sites
 
     return (
         <Container maxWidth="lg">
@@ -134,7 +134,7 @@ const StudioDashboard = () => {
                         + Stwórz nową stronę
                     </Button>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        Możesz posiadać maksymalnie trzy aktywne strony. Pozostało miejsc: {availableSlots}
+                        Możesz posiadać maksymalnie ? aktywne strony. Pozostało miejsc: {availableSlots}
                     </Typography>
                 </Stack>
 

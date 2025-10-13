@@ -72,24 +72,6 @@ const StylesPage = () => {
               {mode === 'light' ? '🌙 Włącz tryb ciemny' : '☀️ Włącz tryb jasny'}
             </Button>
           </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 1 }}>
-            <Button
-              component={RouterLink}
-              to="/studio/calendar/public"
-              variant="outlined"
-              color="primary"
-            >
-              Podgląd kalendarza publicznego
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/studio/calendar/creator"
-              variant="outlined"
-              color="secondary"
-            >
-              Podgląd kalendarza twórcy
-            </Button>
-          </Stack>
         </Stack>
 
         <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, borderRadius: 3, border: `1px solid ${theme.colors.border.default}` }}>

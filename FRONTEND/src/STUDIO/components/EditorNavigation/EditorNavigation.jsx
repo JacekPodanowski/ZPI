@@ -5,6 +5,11 @@ import {
     Button,
     Checkbox,
     Collapse,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    CircularProgress,
     Divider,
     FormControlLabel,
     IconButton,
@@ -28,11 +33,13 @@ import {
     Publish as PublishIcon,
     Redo as RedoIcon,
     Save as SaveIcon,
-    Undo as UndoIcon
+    Undo as UndoIcon,
+    WarningAmberRounded as WarningIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import useEditorStore from '../../store/editorStore';
-import { createSite, updateSiteTemplate } from '../../../services/siteService';
+import { createSite, renameSite, updateSiteTemplate } from '../../../services/siteService';
+import useNavigationBlocker, { BLOCK_STATES } from '../../../hooks/useNavigationBlocker';
 
 const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
     const {
@@ -52,13 +59,18 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
         mode,
         setMode,
         history,
-        currentVersion
+        currentVersion,
+        hasUnsavedChanges,
+        setHasUnsavedChanges
     } = useEditorStore();
 
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
     const [status, setStatus] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [nameSaving, setNameSaving] = useState(false);
+    const [exitDialogOpen, setExitDialogOpen] = useState(false);
+    const blocker = useNavigationBlocker(hasUnsavedChanges && !saving && !nameSaving && !disabled);
     const originalName = useMemo(() => siteName || '', [siteName]);
     const [nameDraft, setNameDraft] = useState(originalName);
 
@@ -80,7 +92,10 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
         const clamped = Math.min(48, Math.max(16, length + 4));
         return `${clamped}ch`;
     }, [nameDraft]);
-    const canCommitName = useMemo(() => isNameDirty && nameDraft.trim().length > 0, [isNameDirty, nameDraft]);
+    const canCommitName = useMemo(
+        () => isNameDirty && nameDraft.trim().length > 0 && !nameSaving,
+        [isNameDirty, nameDraft, nameSaving]
+    );
 
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
@@ -89,6 +104,15 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
     const handleMenuClose = () => {
         setAnchorEl(null);
     };
+
+    useEffect(() => {
+        if (blocker.state === BLOCK_STATES.BLOCKED) {
+            setExitDialogOpen(true);
+        }
+        if ((blocker.state === BLOCK_STATES.UNBLOCKED || blocker.state === BLOCK_STATES.PROCEEDING) && exitDialogOpen) {
+            setExitDialogOpen(false);
+        }
+    }, [blocker.state, exitDialogOpen]);
 
     const handleImport = () => {
         const input = document.createElement('input');
@@ -138,21 +162,68 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
         setNameDraft(value);
     };
 
-    const handleCommitName = () => {
+    const handleCommitName = useCallback(async () => {
+        if (nameSaving) {
+            return;
+        }
         const trimmedName = nameDraft.trim();
         if (!trimmedName) {
             setStatus({ type: 'error', message: 'Nazwa strony nie może być pusta.' });
             return;
         }
 
-        setSiteMeta({ id: siteId || null, name: trimmedName });
-        setNameDraft(trimmedName);
-        setStatus({ type: 'info', message: 'Zmieniono nazwę strony. Pamiętaj o zapisaniu wersji.' });
-    };
+        if (!isNameDirty) {
+            return;
+        }
+
+        if (!siteId) {
+            setSiteMeta({ id: null, name: trimmedName });
+            setNameDraft(trimmedName);
+            setHasUnsavedChanges(true);
+            setStatus({
+                type: 'info',
+                message: 'Zmieniono nazwę roboczą. Zapisz stronę, aby ją utworzyć.'
+            });
+            return;
+        }
+
+        try {
+            setNameSaving(true);
+            const updated = await renameSite(siteId, trimmedName);
+            setSiteMeta({ id: updated.id, name: updated.name });
+            setNameDraft(trimmedName);
+            setStatus({ type: 'success', message: 'Nazwa strony została zapisana.' });
+        } catch (error) {
+            setStatus({ type: 'error', message: 'Nie udało się zapisać nowej nazwy.' });
+        } finally {
+            setNameSaving(false);
+        }
+    }, [isNameDirty, nameDraft, nameSaving, setHasUnsavedChanges, setNameSaving, setSiteMeta, setStatus, siteId]);
 
     const handleRevertName = () => {
         setNameDraft(originalName);
         setStatus(null);
+    };
+
+    const handleNameBlur = () => {
+        if (isNameDirty && !nameSaving) {
+            handleCommitName().catch(() => undefined);
+        }
+    };
+
+    const handleNameKeyDown = (event) => {
+        if (nameSaving) {
+            event.preventDefault();
+            return;
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleCommitName().catch(() => undefined);
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            handleRevertName();
+        }
     };
 
     const handleSave = useCallback(async ({ redirectToEditor = true } = {}) => {
@@ -165,51 +236,77 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
 
         try {
             setSaving(true);
-            saveVersion();
+            let resultingId = siteId;
             if (!siteId) {
                 const created = await createSite({
                     name: trimmedName,
                     template_config: templateConfig
                 });
+                resultingId = created.id;
                 setSiteMeta({ id: created.id, name: created.name });
-                setStatus({ type: 'success', message: 'Nowa strona zapisana. Możesz kontynuować edycję.' });
+                setStatus({ type: 'success', message: 'Nowa strona została zapisana.' });
+                saveVersion();
+                setHasUnsavedChanges(false);
                 if (redirectToEditor) {
                     navigate(`/studio/editor/${created.id}`, { replace: true });
                 }
-                return created.id;
+                return resultingId;
             }
 
             await updateSiteTemplate(siteId, templateConfig, trimmedName);
             setSiteMeta({ id: siteId, name: trimmedName });
             setStatus({ type: 'success', message: 'Zmiany zapisane.' });
-            return siteId;
+            saveVersion();
+            setHasUnsavedChanges(false);
+            return resultingId;
         } catch (error) {
             setStatus({ type: 'error', message: 'Nie udało się zapisać zmian.' });
             return false;
         } finally {
             setSaving(false);
         }
-    }, [navigate, nameDraft, saveVersion, setSiteMeta, siteId, templateConfig]);
+    }, [navigate, nameDraft, saveVersion, setHasUnsavedChanges, setSiteMeta, siteId, templateConfig]);
 
     const handlePublish = () => {
         setStatus({ type: 'info', message: 'Przygotowujemy proces publikacji. Wkrótce będzie dostępny.' });
         handleMenuClose();
     };
 
-    const handleExit = async () => {
-        if (disabled || saving) {
-            navigate('/studio/dashboard');
+    const attemptExit = () => {
+        if (disabled || saving || nameSaving) {
             return;
         }
+        navigate('/studio/dashboard');
+    };
 
-        const shouldSave = window.confirm('Czy chcesz zapisać zmiany przed powrotem do panelu Studio?');
-        if (shouldSave) {
-            const saved = await handleSave({ redirectToEditor: false });
-            if (!saved) {
-                // jeśli zapis się nie powiódł, nie opuszczaj strony
-                return;
-            }
+    const handleExitWithoutSaving = () => {
+        if (blocker.state === BLOCK_STATES.BLOCKED) {
+            setExitDialogOpen(false);
+            blocker.proceed();
+            return;
         }
+        setExitDialogOpen(false);
+        navigate('/studio/dashboard');
+    };
+
+    const handleCancelExit = () => {
+        if (blocker.state === BLOCK_STATES.BLOCKED) {
+            blocker.reset();
+        }
+        setExitDialogOpen(false);
+    };
+
+    const handleSaveAndExit = async () => {
+        const saved = await handleSave({ redirectToEditor: false });
+        if (!saved) {
+            return;
+        }
+        if (blocker.state === BLOCK_STATES.BLOCKED) {
+            setExitDialogOpen(false);
+            blocker.proceed();
+            return;
+        }
+        setExitDialogOpen(false);
         navigate('/studio/dashboard');
     };
 
@@ -242,7 +339,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                     <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: 1, minWidth: 0 }}>
                         <Tooltip title="Wróć do panelu Studio">
                             <span>
-                                <IconButton onClick={handleExit} disabled={saving}>
+                                <IconButton onClick={attemptExit} disabled={saving || nameSaving || disabled}>
                                     <ArrowBackIcon />
                                 </IconButton>
                             </span>
@@ -251,9 +348,12 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                             <TextField
                                 value={nameDraft}
                                 onChange={handleNameChange}
+                                onBlur={handleNameBlur}
+                                onKeyDown={handleNameKeyDown}
                                 placeholder="Nazwa projektu"
                                 variant="outlined"
                                 size="small"
+                                disabled={nameSaving || disabled}
                                 sx={{
                                     width: nameFieldWidth,
                                     '& .MuiOutlinedInput-root': {
@@ -298,23 +398,29 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                                         boxShadow: (theme) => theme.shadows[1]
                                     }}
                                 >
-                                    <Tooltip title="Zapisz nową nazwę">
-                                        <span>
-                                            <IconButton
-                                                size="small"
-                                                color="success"
-                                                onClick={handleCommitName}
-                                                disabled={!canCommitName}
-                                            >
-                                                <CheckIcon fontSize="small" />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Odrzuć zmiany">
-                                        <IconButton size="small" color="inherit" onClick={handleRevertName}>
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
+                                    {nameSaving ? (
+                                        <CircularProgress size={16} thickness={6} />
+                                    ) : (
+                                        <>
+                                            <Tooltip title="Zapisz nową nazwę">
+                                                <span>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="success"
+                                                        onClick={() => handleCommitName().catch(() => undefined)}
+                                                        disabled={!canCommitName}
+                                                    >
+                                                        <CheckIcon fontSize="small" />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+                                            <Tooltip title="Odrzuć zmiany">
+                                                <IconButton size="small" color="inherit" onClick={handleRevertName}>
+                                                    <CloseIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </>
+                                    )}
                                 </Box>
                             </Collapse>
                         </Box>
@@ -368,7 +474,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                                     variant="outlined"
                                     startIcon={<SaveIcon />}
                                     onClick={() => handleSave()}
-                                    disabled={disabled || saving}
+                                    disabled={disabled || saving || nameSaving}
                                 >
                                     Zapisz
                                 </Button>
@@ -380,7 +486,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                                     variant="contained"
                                     startIcon={<PublishIcon />}
                                     onClick={handlePublish}
-                                    disabled={disabled || saving || (!siteId && !isNewSite)}
+                                    disabled={disabled || saving || nameSaving || (!siteId && !isNewSite)}
                                 >
                                     Publikuj
                                 </Button>
@@ -403,6 +509,58 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                     </Alert>
                 </Box>
             )}
+
+            <Dialog
+                open={exitDialogOpen}
+                onClose={handleCancelExit}
+                fullWidth
+                maxWidth="xs"
+                aria-labelledby="unsaved-changes-title"
+            >
+                <DialogTitle id="unsaved-changes-title" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <WarningIcon color="warning" />
+                    Czy chcesz opuścić edytor?
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                        Wykryliśmy niezapisane zmiany.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Zapisz aktualną wersję, aby zachować konfigurację, lub kontynuuj bez zapisywania. Możesz też
+                        wrócić do edycji i kontynuować pracę.
+                    </Typography>
+                </DialogContent>
+                <DialogActions
+                    sx={{
+                        px: 3,
+                        pb: 3,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                        gap: 1
+                    }}
+                >
+                    <Button
+                        variant="contained"
+                        onClick={handleSaveAndExit}
+                        disabled={saving || nameSaving}
+                        fullWidth
+                    >
+                        Zapisz i wróć do Studio
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={handleExitWithoutSaving}
+                        disabled={saving || nameSaving}
+                        fullWidth
+                    >
+                        Opuść bez zapisu
+                    </Button>
+                    <Button onClick={handleCancelExit} disabled={saving || nameSaving} fullWidth>
+                        Kontynuuj edycję
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleMenuClose} keepMounted>
                 <Box sx={{ px: 2, py: 1.5, minWidth: 320 }}>

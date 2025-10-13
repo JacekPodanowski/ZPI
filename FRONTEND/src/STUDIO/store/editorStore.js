@@ -102,17 +102,29 @@ const useEditorStore = create((set, get) => ({
   history: [],
   currentVersion: -1,
   previewDevice: 'desktop',
-  setTemplateConfig: (config) => set({ templateConfig: JSON.parse(JSON.stringify(config || createDefaultTemplateConfig())) }),
-  resetTemplateConfig: () => set({ templateConfig: createDefaultTemplateConfig(), history: [], currentVersion: 0, siteMeta: null }),
+  hasUnsavedChanges: false,
+  setTemplateConfig: (config, options = {}) => set({
+    templateConfig: JSON.parse(JSON.stringify(config || createDefaultTemplateConfig())),
+    hasUnsavedChanges: Boolean(options.markDirty)
+  }),
+  resetTemplateConfig: () => set({
+    templateConfig: createDefaultTemplateConfig(),
+    history: [],
+    currentVersion: 0,
+    siteMeta: null,
+    hasUnsavedChanges: false
+  }),
   setSiteMeta: (meta) => set({ siteMeta: meta }),
+  setHasUnsavedChanges: (value) => set({ hasUnsavedChanges: value }),
   
 
   setMode: (mode) => set({ mode }),
   setExpertMode: (expertMode) => set({ expertMode }),
   setCurrentPage: (page) => set({ currentPage: page }),
-  setSiteStructure: (structure) => set({ siteStructure: structure }),
+  setSiteStructure: (structure) => set({ siteStructure: structure, hasUnsavedChanges: true }),
   setAnimations: (animations) => set((state) => ({
-    animations: { ...state.animations, ...animations }
+    animations: { ...state.animations, ...animations },
+    hasUnsavedChanges: true
   })),
   
   selectModule: (moduleId) => set({ selectedModule: moduleId, selectedChild: null }),
@@ -151,7 +163,8 @@ const useEditorStore = create((set, get) => ({
             )
           }
         }
-      }
+      },
+      hasUnsavedChanges: true
     }
   }),
   
@@ -181,7 +194,8 @@ const useEditorStore = create((set, get) => ({
             )
           }
         }
-      }
+      },
+      hasUnsavedChanges: true
     }
   }),
 
@@ -242,7 +256,8 @@ const useEditorStore = create((set, get) => ({
           }
         }
       },
-      selectedModule: newId
+      selectedModule: newId,
+      hasUnsavedChanges: true
     }
   }),
 
@@ -259,7 +274,8 @@ const useEditorStore = create((set, get) => ({
           }
         }
       },
-      selectedModule: null
+      selectedModule: null,
+      hasUnsavedChanges: true
     }
   }),
 
@@ -280,7 +296,8 @@ const useEditorStore = create((set, get) => ({
             modules: reordered
           }
         }
-      }
+      },
+      hasUnsavedChanges: true
     }
   }),
 
@@ -333,7 +350,8 @@ const useEditorStore = create((set, get) => ({
             modules: updatedModules
           }
         }
-      }
+      },
+      hasUnsavedChanges: true
     }
   }),
 
@@ -341,6 +359,7 @@ const useEditorStore = create((set, get) => ({
     // W single-page wszystkie moduły są na stronie home, ale pages struktura pozostaje
     // aby można było wracać do multi-page
     siteStructure: 'single-page',
+    hasUnsavedChanges: true,
   })),
   
   setPreviewDevice: (device) => set({ previewDevice: device }),
@@ -364,7 +383,8 @@ const useEditorStore = create((set, get) => ({
     }
     return {
       templateConfig: JSON.parse(JSON.stringify(snapshot)),
-      currentVersion: version
+      currentVersion: version,
+      hasUnsavedChanges: true
     };
   }),
 
@@ -379,7 +399,8 @@ const useEditorStore = create((set, get) => ({
     }
     return {
       templateConfig: JSON.parse(JSON.stringify(snapshot)),
-      currentVersion: previousVersion
+      currentVersion: previousVersion,
+      hasUnsavedChanges: true
     };
   }),
 
@@ -394,7 +415,8 @@ const useEditorStore = create((set, get) => ({
     }
     return {
       templateConfig: JSON.parse(JSON.stringify(snapshot)),
-      currentVersion: nextVersion
+      currentVersion: nextVersion,
+      hasUnsavedChanges: true
     };
   }),
 
@@ -416,7 +438,8 @@ const useEditorStore = create((set, get) => ({
       return { 
         templateConfig: data.config,
         siteStructure: data.siteStructure || 'multi-page',
-        animations: data.animations || state.animations
+        animations: data.animations || state.animations,
+        hasUnsavedChanges: true
       }
     } catch (error) {
       console.error('Failed to import template:', error)

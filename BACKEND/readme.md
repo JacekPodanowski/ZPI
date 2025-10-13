@@ -7,9 +7,6 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
 ```
-## common crashes
-jeśli w logach backend pisze że `entyrpoint.sh` nie intnieje to trzbea zmienic zakończenie pliku z CRLF na LF.
-
 
 ## API w pigułce
 

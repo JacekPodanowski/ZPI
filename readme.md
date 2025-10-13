@@ -2,7 +2,8 @@
     1. Plan budowania stron i prowadzenie użytkowiników
     2. Płynny i przyjemny edytor
     3. Połaczenie z AI
-    4. Design
+    4. Biblioteka wyskakujących okienek (Toast)
+    5. Design
 
 # Instrukcje są w `.github/copilot-instructions.md`
 

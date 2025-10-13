@@ -23,6 +23,11 @@ export const updateSiteTemplate = async (siteId, templateConfig, name) => {
     return response.data;
 };
 
+export const renameSite = async (siteId, name) => {
+    const response = await apiClient.patch(`/sites/${siteId}/`, { name });
+    return response.data;
+};
+
 export const createSite = async (payload) => {
     const response = await apiClient.post('/sites/', payload);
     return response.data;
