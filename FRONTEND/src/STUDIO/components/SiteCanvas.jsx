@@ -155,7 +155,7 @@ const SiteCanvas = () => {
 
   // SINGLE-PAGE MODE - wszystkie moduły na jednej stronie ze scrollingiem
   if (siteStructure === 'single-page') {
-    const pageOrder = ['home', 'about', 'calendar', 'contact']
+  const pageOrder = ['home', 'about', 'calendar', 'gallery', 'contact']
     const allModules = []
     
     pageOrder.forEach(pageKey => {

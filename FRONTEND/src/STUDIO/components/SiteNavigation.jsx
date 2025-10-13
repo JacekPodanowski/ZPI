@@ -3,7 +3,13 @@ import { motion } from 'framer-motion'
 import useEditorStore from '../store/editorStore'
 
 const SiteNavigation = () => {
-  const { siteStructure, currentPage, setCurrentPage, templateConfig } = useEditorStore()
+  const {
+    siteStructure,
+    currentPage,
+    setCurrentPage,
+    templateConfig,
+    siteMeta
+  } = useEditorStore()
   
   const pages = Object.values(templateConfig.pages).filter(page => 
     page.modules.some(m => m.enabled)
@@ -43,7 +49,7 @@ const SiteNavigation = () => {
       <div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="font-bold text-xl" style={{ color: 'rgb(30, 30, 30)' }}>
-            Wellness
+            {siteMeta?.name || 'Moja Strona'}
           </div>
           <div className="flex gap-1">
             {pages.map((page) => (

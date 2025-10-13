@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 export const createDefaultTemplateConfig = () => ({
   name: 'Wellness Template',
+  themeId: 'modernWellness',
   pages: {
     home: {
       id: 'home',
@@ -81,6 +82,26 @@ export const createDefaultTemplateConfig = () => ({
           }
         }
       ]
+    },
+    gallery: {
+      id: 'gallery',
+      name: 'Galeria',
+      path: '/galeria',
+      modules: [
+        {
+          id: 'gallery_module_main',
+          type: 'gallery',
+          name: 'Nasze Prace',
+          enabled: true,
+          order: 0,
+          config: {
+            images: [],
+            columns: 3,
+            gap: '1rem',
+            style: 'masonry'
+          }
+        }
+      ]
     }
   }
 })
@@ -126,6 +147,71 @@ const useEditorStore = create((set, get) => ({
     animations: { ...state.animations, ...animations },
     hasUnsavedChanges: true
   })),
+
+  addPage: (pageName) => set((state) => {
+    const baseId = pageName.trim().toLowerCase().replace(/\s+/g, '-') || 'nowa-strona'
+    const uniqueId = `${baseId}-${Date.now()}`
+    const newPage = {
+      id: uniqueId,
+      name: pageName.trim() || 'Nowa strona',
+      path: `/${uniqueId}`,
+      modules: []
+    }
+
+    return {
+      templateConfig: {
+        ...state.templateConfig,
+        pages: {
+          ...state.templateConfig.pages,
+          [uniqueId]: newPage
+        }
+      },
+      currentPage: uniqueId,
+      hasUnsavedChanges: true
+    }
+  }),
+
+  removePage: (pageId) => set((state) => {
+    const pageCount = Object.keys(state.templateConfig.pages).length
+    if (pageCount <= 1) {
+      window.alert('Nie można usunąć ostatniej strony.')
+      return state
+    }
+    if (pageId === 'home') {
+      window.alert('Nie można usunąć strony głównej.')
+      return state
+    }
+
+    const updatedPages = { ...state.templateConfig.pages }
+    delete updatedPages[pageId]
+
+    return {
+      templateConfig: {
+        ...state.templateConfig,
+        pages: updatedPages
+      },
+      currentPage: 'home',
+      hasUnsavedChanges: true
+    }
+  }),
+
+  updatePage: (pageId, newPageData) => set((state) => {
+    const existingPage = state.templateConfig.pages[pageId]
+    if (!existingPage) {
+      return state
+    }
+
+    return {
+      templateConfig: {
+        ...state.templateConfig,
+        pages: {
+          ...state.templateConfig.pages,
+          [pageId]: { ...existingPage, ...newPageData }
+        }
+      },
+      hasUnsavedChanges: true
+    }
+  }),
   
   selectModule: (moduleId) => set({ selectedModule: moduleId, selectedChild: null }),
   

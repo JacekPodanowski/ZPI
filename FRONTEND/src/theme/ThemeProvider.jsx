@@ -76,12 +76,23 @@ const ensureFontsLoaded = () => {
   document.head.appendChild(link);
 };
 
+<<<<<<< Updated upstream
 const deepClone = (value) => {
   if (typeof structuredClone === 'function') {
     return structuredClone(value);
   }
   return JSON.parse(JSON.stringify(value));
 };
+=======
+export function ThemeProvider({ children, initialTheme = defaultThemeId, initialMode }) {
+  const [currentThemeId, setCurrentThemeId] = useState(() => {
+    if (initialTheme === 'studio') {
+      return 'studio';
+    }
+    return readStorage('editorTheme', initialTheme);
+  });
+  const [mode, setMode] = useState(() => readStorage('editorMode', initialMode || (prefersDarkMode() ? 'dark' : 'light')));
+>>>>>>> Stashed changes
 
 const slugify = (value) => value
   .toLowerCase()
@@ -439,6 +450,7 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
       mode,
       themeId: themeDefinition.id,
       toggleMode,
+<<<<<<< Updated upstream
       selectTheme,
       updateWorkingTheme,
       saveCustomTheme,
@@ -448,6 +460,12 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
       workingTheme,
       hasUnsavedChanges,
       themeConfig
+=======
+      switchTheme,
+      availableThemes: Object.values(themeDefinitions)
+        .filter(({ id }) => id !== 'studio')
+        .map(({ id, name, description }) => ({ id, name, description }))
+>>>>>>> Stashed changes
     }),
     [workingTheme, muiTheme, mode, themeDefinition.id, toggleMode, selectTheme, updateWorkingTheme, saveCustomTheme, deleteCustomTheme, availableThemes, customThemes, hasUnsavedChanges, themeConfig]
   );

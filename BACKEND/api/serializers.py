@@ -4,7 +4,7 @@ import logging
 from django.utils.text import slugify
 from rest_framework import serializers
 
-from .models import PlatformUser, Site, Client, Event, Booking
+from .models import PlatformUser, Site, Client, Event, Booking, Template
 
 logger = logging.getLogger(__name__)
 
@@ -137,3 +137,9 @@ class BookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'guest_email': 'Provide a client or guest contact details.'})
 
         return attrs
+
+
+class TemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Template
+        fields = ['id', 'name', 'description', 'template_config', 'thumbnail_url']

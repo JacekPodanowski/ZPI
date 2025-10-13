@@ -12,7 +12,7 @@ from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 
-from .models import PlatformUser, Site, Client, Event, Booking
+from .models import PlatformUser, Site, Client, Event, Booking, Template
 from .serializers import (
     PlatformUserSerializer,
     SiteSerializer,
@@ -20,6 +20,7 @@ from .serializers import (
     EventSerializer,
     BookingSerializer,
     CustomRegisterSerializer,
+    TemplateSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -205,3 +206,9 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     def _sync_attendance(self, booking: Booking):
         if booking.client:
             booking.event.attendees.add(booking.client)
+
+
+class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Template.objects.filter(is_public=True)
+    serializer_class = TemplateSerializer
+    permission_classes = [AllowAny]
