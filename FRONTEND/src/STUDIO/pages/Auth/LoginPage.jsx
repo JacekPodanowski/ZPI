@@ -134,6 +134,7 @@ const LoginPage = () => {
                         disabled={submitting}
                         sx={{ 
                             fontWeight: 650,
+                            color: 'black',
                             position: 'relative',
                             '@keyframes glitch': {
                                 '0%': {
