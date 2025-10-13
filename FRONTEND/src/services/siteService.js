@@ -10,10 +10,16 @@ export const fetchSiteById = async (siteId) => {
     return response.data;
 };
 
-export const updateSiteTemplate = async (siteId, templateConfig) => {
-    const response = await apiClient.patch(`/sites/${siteId}/`, {
+export const updateSiteTemplate = async (siteId, templateConfig, name) => {
+    const payload = {
         template_config: templateConfig
-    });
+    };
+
+    if (name) {
+        payload.name = name;
+    }
+
+    const response = await apiClient.patch(`/sites/${siteId}/`, payload);
     return response.data;
 };
 

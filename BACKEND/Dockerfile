@@ -23,8 +23,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # --- POCZĄTEK POPRAWKI ---
-# KROK 1: Jako `root`, instalujemy zależności systemowe potrzebne do działania aplikacji
-RUN apt-get update && apt-get install -y libpq5 && rm -rf /var/lib/apt/lists/*
+# KROK 1: Jako `root`, instalujemy zależności systemowe, w tym dos2unix
+RUN apt-get update && apt-get install -y libpq5 dos2unix && rm -rf /var/lib/apt/lists/*
 
 # KROK 2: Tworzymy użytkownika nie-root i katalog domowy
 RUN useradd --create-home --shell /bin/bash appuser
@@ -42,8 +42,10 @@ RUN pip install --no-cache-dir /wheels/*
 # KROK 5: Kopiujemy resztę plików aplikacji i ZMIENIAMY ICH WŁAŚCICIELA na `appuser`
 COPY --chown=appuser:appuser . .
 
-# Ensure entrypoint has Unix line endings and execute permission
-RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
+# --- FIX LINE ENDINGS ---
+# Używamy dos2unix, aby zapewnić, że skrypt ma zakończenia linii w formacie Unix (LF)
+# i nadajemy mu uprawnienia do wykonywania.
+RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
 
 # KROK 6: Dopiero teraz, gdy wszystko jest gotowe, przełączamy się na użytkownika nie-root
 USER appuser

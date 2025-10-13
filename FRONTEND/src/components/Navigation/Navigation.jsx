@@ -4,6 +4,7 @@ import {
     AppBar,
     Box,
     Button,
+    Chip,
     Divider,
     Drawer,
     IconButton,
@@ -11,7 +12,9 @@ import {
     ListItem,
     ListItemButton,
     ListItemText,
-    Toolbar
+    ListSubheader,
+    Toolbar,
+    Typography
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -29,19 +32,26 @@ const Navigation = () => {
     const theme = useTheme();
     const { mode, toggleMode } = theme;
 
-    const navItems = useMemo(() => {
-        const base = [
+    const navGroups = useMemo(() => {
+        const primary = [
             { label: 'Strona główna', to: '/' },
-            { label: 'Kalendarz', to: '/calendar' },
             { label: 'Style', to: '/styles' }
         ];
 
         if (isAuthenticated) {
-            base.push({ label: 'Studio', to: '/studio', requiresAuth: true });
-            base.push({ label: 'Panel admina', to: '/admin', requiresAuth: true });
+            primary.push({ label: 'Studio', to: '/studio/dashboard', requiresAuth: true });
         }
 
-        return base;
+        const dev = [
+            { label: 'Publiczny kalendarz', to: '/studio/calendar/public' },
+            { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true },
+            { label: 'Admin', to: '/studio/admin', requiresAuth: true }
+        ];
+
+        return {
+            primary,
+            dev: dev.filter((item) => !item.requiresAuth || isAuthenticated)
+        };
     }, [isAuthenticated]);
 
     const handleDrawerToggle = () => {
@@ -60,7 +70,7 @@ const Navigation = () => {
             </Box>
             <Divider />
             <List>
-                {navItems.map((item) => (
+                {navGroups.primary.map((item) => (
                     <ListItem key={item.label} disablePadding>
                         <ListItemButton component={RouterLink} to={item.to} sx={{ textAlign: 'center' }}>
                             <ListItemText primary={item.label} />
@@ -68,6 +78,27 @@ const Navigation = () => {
                     </ListItem>
                 ))}
             </List>
+            <Divider sx={{ my: 2 }} />
+            {navGroups.dev.length > 0 && (
+                <List
+                    subheader={(
+                        <ListSubheader component="div" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                            <Chip label="DEV" color="secondary" size="small" />
+                            <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: 2 }}>
+                                Podglądy kalendarza
+                            </Typography>
+                        </ListSubheader>
+                    )}
+                >
+                    {navGroups.dev.map((item) => (
+                        <ListItem key={item.label} disablePadding>
+                            <ListItemButton component={RouterLink} to={item.to} sx={{ textAlign: 'center' }}>
+                                <ListItemText primary={item.label} />
+                            </ListItemButton>
+                        </ListItem>
+                    ))}
+                </List>
+            )}
             <Divider sx={{ my: 2 }} />
             {isAuthenticated ? (
                 <Button fullWidth variant="outlined" color="secondary" onClick={handleLogout}>
@@ -138,7 +169,7 @@ const Navigation = () => {
                     </Box>
 
                     <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
-                        {navItems.map((item) => (
+                        {navGroups.primary.map((item) => (
                             <Button
                                 key={item.label}
                                 component={NavLink}
@@ -155,6 +186,28 @@ const Navigation = () => {
                             </Button>
                         ))}
                     </Box>
+
+                    {navGroups.dev.length > 0 && (
+                        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
+                            <Chip label="DEV" color="secondary" size="small" sx={{ fontWeight: 600 }} />
+                            {navGroups.dev.map((item) => (
+                                <Button
+                                    key={item.label}
+                                    component={NavLink}
+                                    to={item.to}
+                                    sx={{
+                                        color: 'text.secondary',
+                                        '&.active': {
+                                            color: 'primary.main',
+                                            backgroundColor: 'rgba(160, 0, 22, 0.08)'
+                                        }
+                                    }}
+                                >
+                                    {item.label}
+                                </Button>
+                            ))}
+                        </Box>
+                    )}
 
                     <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
                         <IconButton

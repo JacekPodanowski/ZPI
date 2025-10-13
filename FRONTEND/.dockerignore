@@ -1,0 +1,30 @@
+# Git and version control
+.git
+.gitignore
+
+# Docker specific files
+Dockerfile
+.dockerignore
+
+# Dependencies - these should be installed inside the container
+node_modules
+
+# Build output - this is generated inside the container
+dist
+build
+
+# Local environment variables - never include these in an image
+.env
+.env.*
+
+# Logs and temporary files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# IDE and OS specific files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

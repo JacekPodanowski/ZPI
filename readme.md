@@ -1,9 +1,10 @@
-Główne zadanie to zbudować frontend apliakcji w katalogu `FRONTEND`
-Można używać mojej strony z `site_frontend` jako szablonów, wyciągać z niej moduły itd
+# TO DO
+    1. Plan budowania stron i prowadzenie użytkowiników
+    2. Płynny i przyjemny edytor
+    3. Połaczenie z AI
+    4. Design
 
-# Wszytsktkie instrukcje są w `.github/copilot-instructions.md`
-    Część 1 - Wstęp po polsku, wizja projektu i opis ekranów
-    Część 2 - Szczegółowy opis techniczny po angielsku
+# Instrukcje są w `.github/copilot-instructions.md`
 
 # Robić branche :
     Najlepiej małe i tematyczne np: HomePage

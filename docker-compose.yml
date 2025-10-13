@@ -48,11 +48,11 @@ services:
         condition: service_healthy
 
   # --- Serwis Frontendu (React) ---
-  fornted:
+  frontend:
     build:
       context: ./FRONTEND
       dockerfile: Dockerfile
-    container_name: ${COMPOSE_PROJECT_NAME:-site777}_fornted_app
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_frontend_app
     restart: unless-stopped
     volumes:
       - ./FRONTEND:/app
