@@ -2,6 +2,16 @@
 // Defines base colors for each theme in light and dark modes.
 // Users select only these base colors; the rest of the palette is generated automatically.
 
+const createBaseOptions = () => ({
+  roundness: 'soft',
+  shadowPreset: 'floating',
+  borderWidthPreset: 'hairline',
+  density: 1,
+  fontScale: 1,
+  primaryColor: null,
+  secondaryColor: null
+});
+
 export const themeDefinitions = {
   modernWellness: {
     id: 'modernWellness',
@@ -18,7 +28,8 @@ export const themeDefinitions = {
       text: '#dcdcdc',
       primary: '#720015',
       secondary: '#464644'
-    }
+    },
+    options: createBaseOptions()
   },
   sereneForest: {
     id: 'sereneForest',
@@ -35,7 +46,8 @@ export const themeDefinitions = {
       text: '#dfe8d9',
       primary: '#2f6a37',
       secondary: '#5a4f34'
-    }
+    },
+    options: createBaseOptions()
   },
   oceanCalm: {
     id: 'oceanCalm',
@@ -52,7 +64,8 @@ export const themeDefinitions = {
       text: '#d6e0eb',
       primary: '#1b5c91',
       secondary: '#3e5062'
-    }
+    },
+    options: createBaseOptions()
   },
   sunsetWarmth: {
     id: 'sunsetWarmth',
@@ -69,7 +82,8 @@ export const themeDefinitions = {
       text: '#f2e2d7',
       primary: '#a74324',
       secondary: '#704a24'
-    }
+    },
+    options: createBaseOptions()
   },
   lavenderDream: {
     id: 'lavenderDream',
@@ -86,7 +100,8 @@ export const themeDefinitions = {
       text: '#e6ddf8',
       primary: '#6a4fb4',
       secondary: '#5a4a75'
-    }
+    },
+    options: createBaseOptions()
   }
 };
 

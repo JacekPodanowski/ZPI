@@ -27,7 +27,17 @@ Our goal is to create a platform that empowers users to build and manage their p
 
 The guiding theme is **"Modern Wellness."** The design must be clean, calming, simple, minimalist, and inviting.
 
-1.3. Core Color Palette & Typography
+1.3. Key Principles
+-------------------
+App motto is simplicity.
+Do not over-engineer. If something can be done in a simpler way, do it that way.
+The system prioritizes discoverability and prevents complexity from overwhelming the user.
+Always think how user journey can be made smooth as possible.
+
+Before implementing any feature, think if it can be done in the simpler way !
+
+
+1.4. Core Color Palette & Typography
 ------------------------------------
 *   **Light Mode:**
     *   background: `rgb(228, 229, 218)`
@@ -43,7 +53,7 @@ The guiding theme is **"Modern Wellness."** The design must be clean, calming, s
 
 *   **Typography:** Elegant and easy to read, with a focus on whitespace and simplicity.
 
-1.4. Core Architectural Principle: Multi-Tenant Single Backend
+1.5. Core Architectural Principle: Multi-Tenant Single Backend
 -------------------------------------------------------------
 The system is built on a **"single backend, multiple frontends"** model, which is the industry standard for scalable SaaS applications. Each user can have a maximum of three personal sites, all managed by one central backend and database.
 
@@ -83,10 +93,7 @@ ZPI/
     ├── App.jsx              # Top-level router
     └── main.jsx
 ```
-2.2. Key Principles
--------------------
 Keep the project structure clean and simple. App motto is simplicity.
-Do not over-engineer. If something can be done in a simpler way, do it that way.
 
 ------------------------------------------
 We will maintain ONE React project in the `FRONTEND` folder. This simplifies dependency

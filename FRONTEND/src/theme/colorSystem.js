@@ -154,4 +154,46 @@ export function assignCssVariables(root, theme) {
   Object.entries(theme.typography.lineHeights).forEach(([key, value]) => {
     root.style.setProperty(`--line-height-${toKebabCase(key)}`, value.toString());
   });
+
+  if (theme.radii) {
+    Object.entries(theme.radii).forEach(([key, value]) => {
+      root.style.setProperty(`--radius-${toKebabCase(key)}`, value);
+    });
+    if (theme.roundness && theme.radii[theme.roundness]) {
+      root.style.setProperty('--radius-default', theme.radii[theme.roundness]);
+    }
+  }
+
+  if (theme.shadows) {
+    Object.entries(theme.shadows).forEach(([key, value]) => {
+      root.style.setProperty(`--shadow-${toKebabCase(key)}`, value);
+    });
+    if (theme.shadowPreset && theme.shadows[theme.shadowPreset]) {
+      root.style.setProperty('--shadow-default', theme.shadows[theme.shadowPreset]);
+    }
+  }
+
+  if (theme.borderWidths) {
+    Object.entries(theme.borderWidths).forEach(([key, value]) => {
+      root.style.setProperty(`--border-${toKebabCase(key)}`, value);
+    });
+  }
+
+  if (typeof theme.density === 'number') {
+    root.style.setProperty('--density-multiplier', theme.density.toString());
+  }
+
+  if (theme.spacing) {
+    Object.entries(theme.spacing).forEach(([key, value]) => {
+      root.style.setProperty(`--spacing-${key}`, value);
+    });
+  }
+
+  if (theme.primaryColor) {
+    root.style.setProperty('--color-interactive-default', theme.primaryColor);
+  }
+
+  if (theme.secondaryColor) {
+    root.style.setProperty('--color-interactive-alternative', theme.secondaryColor);
+  }
 }
