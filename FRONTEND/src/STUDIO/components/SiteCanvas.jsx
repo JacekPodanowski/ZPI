@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import useEditorStore from '../store/editorStore'
 import EditableWrapper from './EditableWrapper'
@@ -13,6 +13,13 @@ import GalleryModule from '../../SITES/components/GalleryModule'
 import SpacerModule from '../../SITES/components/SpacerModule'
 import RowModule from '../../SITES/components/RowModule'
 import ContainerModule from '../../SITES/components/ContainerModule'
+import VideoModule from '../../SITES/components/VideoModule'
+import FAQModule from '../../SITES/components/FAQModule'
+import BlogModule from '../../SITES/components/BlogModule'
+import EventsModule from '../../SITES/components/EventsModule'
+import PricingModule from '../../SITES/components/PricingModule'
+import ServicesModule from '../../SITES/components/ServicesModule'
+import TeamModule from '../../SITES/components/TeamModule'
 
 const SiteCanvas = () => {
   const {
@@ -25,6 +32,12 @@ const SiteCanvas = () => {
     clearSelection,
     expertMode
   } = useEditorStore()
+
+  const orderedPageKeys = useMemo(
+    () => (templateConfig.pageOrder || Object.keys(templateConfig.pages || {}))
+      .filter((key) => templateConfig.pages?.[key]),
+    [templateConfig.pageOrder, templateConfig.pages]
+  )
 
   const handleBackgroundClick = () => {
     if (!expertMode) {
@@ -50,8 +63,9 @@ const SiteCanvas = () => {
 
         if (mostVisible && mostVisible.isIntersecting && maxRatio > 0.3) {
           const sectionId = mostVisible.target.id.replace('section-', '')
-          for (const [pageKey, page] of Object.entries(templateConfig.pages)) {
-            if (page.modules.some(m => m.id === sectionId)) {
+          for (const pageKey of orderedPageKeys) {
+            const page = templateConfig.pages[pageKey]
+            if (page?.modules?.some((m) => m.id === sectionId)) {
               setCurrentPage(pageKey)
               break
             }
@@ -65,8 +79,9 @@ const SiteCanvas = () => {
     )
 
     // Obserwuj sekcje w single-page
-    Object.values(templateConfig.pages).forEach(page => {
-      page.modules.forEach(module => {
+    orderedPageKeys.forEach((pageKey) => {
+      const page = templateConfig.pages[pageKey]
+      page?.modules?.forEach((module) => {
         if (module.enabled) {
           const element = document.getElementById(`section-${module.id}`)
           if (element) observer.observe(element)
@@ -75,13 +90,20 @@ const SiteCanvas = () => {
     })
 
     return () => observer.disconnect()
-  }, [siteStructure, templateConfig.pages, setCurrentPage])
+  }, [orderedPageKeys, setCurrentPage, siteStructure, templateConfig.pages])
 
-  const baseComponents = {
+  const baseComponentsById = {
     hero: HeroSection,
     calendar: CalendarSection,
     about: AboutSection,
-    contact: ContactSection,
+    contact: ContactSection
+  }
+
+  const baseComponentsByType = {
+    hero: HeroSection,
+    calendar: CalendarSection,
+    about: AboutSection,
+    contact: ContactSection
   }
 
   const expertComponents = {
@@ -90,12 +112,36 @@ const SiteCanvas = () => {
     gallery: GalleryModule,
     spacer: SpacerModule,
     container: ContainerModule,
+    video: VideoModule,
+    faq: FAQModule,
+    blog: BlogModule,
+    events: EventsModule,
+    pricing: PricingModule,
+    services: ServicesModule,
+    team: TeamModule,
   }
 
   const renderModule = (module, inSinglePage = false) => {
     if (!module.enabled) return null
 
-    const Component = baseComponents[module.id] || expertComponents[module.type]
+    const moduleTypeKey = (module.type || '').toLowerCase()
+    const moduleIdKey = (module.id || '').toLowerCase()
+
+    let Component = baseComponentsByType[moduleTypeKey]
+      || baseComponentsById[moduleIdKey]
+      || expertComponents[moduleTypeKey]
+
+    if (!Component) {
+      if (moduleTypeKey.includes('hero') || moduleIdKey.includes('hero')) {
+        Component = HeroSection
+      } else if (moduleTypeKey.includes('about') || moduleIdKey.includes('about')) {
+        Component = AboutSection
+      } else if (moduleTypeKey.includes('calendar') || moduleIdKey.includes('calendar')) {
+        Component = CalendarSection
+      } else if (moduleTypeKey.includes('contact') || moduleIdKey.includes('contact')) {
+        Component = ContactSection
+      }
+    }
     if (!Component) return null
 
     const animationVariants = {
@@ -155,16 +201,15 @@ const SiteCanvas = () => {
 
   // SINGLE-PAGE MODE - wszystkie moduły na jednej stronie ze scrollingiem
   if (siteStructure === 'single-page') {
-  const pageOrder = ['home', 'about', 'calendar', 'gallery', 'contact']
     const allModules = []
-    
-    pageOrder.forEach(pageKey => {
+
+    orderedPageKeys.forEach((pageKey) => {
       const page = templateConfig.pages[pageKey]
       if (page?.modules) {
         page.modules
-          .filter(m => m.enabled)
+          .filter((m) => m.enabled)
           .sort((a, b) => a.order - b.order)
-          .forEach(module => {
+          .forEach((module) => {
             allModules.push(module)
           })
       }

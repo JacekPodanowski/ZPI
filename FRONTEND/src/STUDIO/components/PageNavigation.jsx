@@ -15,7 +15,9 @@ const PageNavigation = ({ variant = 'panel', onNavigate }) => {
   } = useEditorStore()
   const [renamingPageId, setRenamingPageId] = useState(null)
   const [newName, setNewName] = useState('')
-  const pages = Object.values(templateConfig.pages)
+  const pageKeys = (templateConfig.pageOrder || Object.keys(templateConfig.pages || {}))
+    .filter((key) => templateConfig.pages?.[key])
+  const pages = pageKeys.map((key) => templateConfig.pages[key])
 
   const handlePageClick = (page) => {
     if (siteStructure === 'single-page') {

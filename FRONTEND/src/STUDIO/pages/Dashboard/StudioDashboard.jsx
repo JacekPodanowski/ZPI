@@ -16,6 +16,15 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { fetchSites } from '../../../services/siteService';
 
+const isHeroModule = (module = {}) => {
+    const type = (module.type || '').toLowerCase();
+    if (type === 'hero') {
+        return true;
+    }
+    const id = (module.id || '').toLowerCase();
+    return id === 'hero' || id.startsWith('hero') || id.endsWith('hero');
+};
+
 const formatDate = (value) => {
     if (!value) {
         return 'Brak danych';
@@ -34,7 +43,7 @@ const formatDate = (value) => {
 
 const SitePreview = ({ site }) => {
     const config = site?.template_config || {};
-    const heroModule = config?.pages?.home?.modules?.find((module) => module.id === 'hero');
+    const heroModule = (config?.pages?.home?.modules || []).find(isHeroModule);
 
     const backgroundColor = heroModule?.config?.bgColor || 'rgba(228, 229, 218, 0.8)';
     const textColor = heroModule?.config?.textColor || 'rgb(30, 30, 30)';

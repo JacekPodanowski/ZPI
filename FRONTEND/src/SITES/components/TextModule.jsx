@@ -12,9 +12,10 @@ const TextModule = ({ config }) => {
         fontSize: fontSize
       }}
     >
-      <div className={layout === 'inline' ? 'inline-block' : 'max-w-4xl mx-auto'}>
-        {content}
-      </div>
+      <div
+        className={layout === 'inline' ? 'inline-block' : 'max-w-4xl mx-auto'}
+        dangerouslySetInnerHTML={{ __html: content || '' }}
+      />
     </div>
   )
 }
