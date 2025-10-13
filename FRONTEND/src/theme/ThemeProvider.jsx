@@ -3,19 +3,36 @@
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState
 } from 'react';
 import PropTypes from 'prop-types';
+import chroma from 'chroma-js';
 import { ThemeProvider as MuiThemeProvider, createTheme as createMuiTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { createTheme as createSemanticTheme, assignCssVariables } from './colorSystem';
+import { createTheme as createSemanticTheme, assignCssVariables, generateColorScale } from './colorSystem';
 import { themeDefinitions, defaultThemeId } from './themeDefinitions';
 import { typography, textStyles, GOOGLE_FONTS_URL } from './typography';
+import {
+  defaultRoundness,
+  defaultShadowPreset,
+  defaultBorderWidthPreset,
+  getRadiiTokens,
+  getShadowTokens,
+  getBorderWidthTokens
+} from './shape';
+import { spacingScale, defaultDensity } from './spacing';
 
 const ThemeContext = createContext(null);
+
+const STORAGE_KEYS = {
+  theme: 'editorTheme',
+  mode: 'editorMode',
+  customThemes: 'customThemes'
+};
 
 const prefersDarkMode = () => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -59,11 +76,128 @@ const ensureFontsLoaded = () => {
   document.head.appendChild(link);
 };
 
-export function ThemeProvider({ children, initialTheme = defaultThemeId, initialMode }) {
-  const [currentThemeId, setCurrentThemeId] = useState(() => readStorage('editorTheme', initialTheme));
-  const [mode, setMode] = useState(() => readStorage('editorMode', initialMode || (prefersDarkMode() ? 'dark' : 'light')));
+const deepClone = (value) => {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value));
+};
 
-  const themeDefinition = themeDefinitions[currentThemeId] || themeDefinitions[defaultThemeId];
+const slugify = (value) => value
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/(^-|-$)+/g, '')
+  .replace(/-{2,}/g, '-');
+
+const buildBaseConfig = (definition) => {
+  const options = definition?.options || {};
+  return {
+    roundness: options.roundness || defaultRoundness,
+    shadowPreset: options.shadowPreset || defaultShadowPreset,
+    borderWidthPreset: options.borderWidthPreset || defaultBorderWidthPreset,
+    density: typeof options.density === 'number' ? options.density : defaultDensity,
+    fontScale: typeof options.fontScale === 'number' ? options.fontScale : 1,
+    primaryColor: options.primaryColor || null,
+    secondaryColor: options.secondaryColor || null
+  };
+};
+
+const applyColorOverrides = (theme, config) => {
+  const next = {
+    ...theme,
+    colors: {
+      ...theme.colors,
+      interactive: { ...theme.colors.interactive },
+      calendar: { ...theme.colors.calendar },
+      states: { ...theme.colors.states }
+    }
+  };
+
+  if (config.primaryColor) {
+    const primaryScale = generateColorScale(config.primaryColor);
+    const isLight = theme.mode === 'light';
+    next.primaryColor = config.primaryColor;
+    next.colors.interactive.default = primaryScale[500];
+    next.colors.interactive.hover = primaryScale[600];
+    next.colors.interactive.active = primaryScale[700];
+    next.colors.interactive.disabled = chroma(primaryScale[500]).alpha(isLight ? 0.4 : 0.5).hex();
+    next.colors.interactive.subtle = chroma(primaryScale[500]).alpha(isLight ? 0.12 : 0.2).hex();
+    next.colors.states.focus = chroma(primaryScale[500]).alpha(0.25).hex();
+    next.colors.states.info = primaryScale[400];
+    next.colors.states.critical = primaryScale[700];
+    next.colors.calendar.event = chroma.mix(primaryScale[500], '#ffffff', 0.05, 'lab').hex();
+  } else {
+    next.primaryColor = null;
+  }
+
+  if (config.secondaryColor) {
+    const secondaryScale = generateColorScale(config.secondaryColor);
+    const isLight = theme.mode === 'light';
+    next.secondaryColor = config.secondaryColor;
+    next.colors.interactive.alternative = secondaryScale[500];
+    next.colors.calendar.eventGroup = chroma.mix(secondaryScale[500], '#ffffff', 0.05, 'lab').hex();
+    next.colors.calendar.availability = chroma(secondaryScale[400]).alpha(isLight ? 0.65 : 0.55).hex();
+    next.colors.calendar.otherSiteEvent = chroma(secondaryScale[600]).alpha(0.35).hex();
+  } else {
+    next.secondaryColor = null;
+  }
+
+  return next;
+};
+
+const mergeWithBase = (baseTheme, config) => {
+  const merged = deepClone(baseTheme);
+  const roundness = config.roundness || defaultRoundness;
+  const shadowPreset = config.shadowPreset || defaultShadowPreset;
+  const borderPreset = config.borderWidthPreset || defaultBorderWidthPreset;
+
+  merged.roundness = roundness;
+  merged.shadowPreset = shadowPreset;
+  merged.borderWidthPreset = borderPreset;
+  merged.radii = getRadiiTokens(roundness);
+  merged.shadows = getShadowTokens(shadowPreset);
+  merged.borderWidths = getBorderWidthTokens(borderPreset);
+  merged.density = typeof config.density === 'number' ? config.density : defaultDensity;
+  merged.fontScale = typeof config.fontScale === 'number' ? config.fontScale : 1;
+  merged.spacing = { ...spacingScale };
+
+  return applyColorOverrides(merged, config);
+};
+
+export function ThemeProvider({ children, initialTheme = defaultThemeId, initialMode }) {
+  const [customThemes, setCustomThemes] = useState(() => {
+    const stored = readStorage(STORAGE_KEYS.customThemes, null);
+    if (!stored) return [];
+    try {
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((theme) => ({ ...theme, isCustom: true }));
+    } catch (error) {
+      return [];
+    }
+  });
+
+  const customThemeMap = useMemo(() => (
+    customThemes.reduce((acc, theme) => {
+      acc[theme.id] = theme;
+      return acc;
+    }, {})
+  ), [customThemes]);
+
+  const [currentThemeId, setCurrentThemeId] = useState(() => readStorage(STORAGE_KEYS.theme, initialTheme));
+  const [mode, setMode] = useState(() => readStorage(STORAGE_KEYS.mode, initialMode || (prefersDarkMode() ? 'dark' : 'light')));
+
+  const themeDefinition = useMemo(() => (
+    customThemeMap[currentThemeId] || themeDefinitions[currentThemeId] || themeDefinitions[defaultThemeId]
+  ), [currentThemeId, customThemeMap]);
+
+  const defaultConfig = useMemo(() => buildBaseConfig(themeDefinition), [themeDefinition]);
+
+  const [themeConfig, setThemeConfig] = useState(defaultConfig);
+
+  useEffect(() => {
+    setThemeConfig(defaultConfig);
+  }, [defaultConfig, themeDefinition.id]);
 
   const semanticTheme = useMemo(
     () => ({
@@ -73,41 +207,46 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
     [themeDefinition, mode]
   );
 
+  const workingTheme = useMemo(
+    () => mergeWithBase(semanticTheme, themeConfig),
+    [semanticTheme, themeConfig]
+  );
+
   const muiTheme = useMemo(() => {
     const base = createMuiTheme({
       palette: {
-        mode: semanticTheme.mode,
+        mode: workingTheme.mode,
         background: {
-          default: semanticTheme.colors.bg.page,
-          paper: semanticTheme.colors.bg.surface
+          default: workingTheme.colors.bg.page,
+          paper: workingTheme.colors.bg.surface
         },
         text: {
-          primary: semanticTheme.colors.text.primary,
-          secondary: semanticTheme.colors.text.secondary,
-          disabled: semanticTheme.colors.text.disabled
+          primary: workingTheme.colors.text.primary,
+          secondary: workingTheme.colors.text.secondary,
+          disabled: workingTheme.colors.text.disabled
         },
         primary: {
-          main: semanticTheme.colors.interactive.default,
-          light: semanticTheme.colors.interactive.hover,
-          dark: semanticTheme.colors.interactive.active,
-          contrastText: semanticTheme.colors.text.inverse
+          main: workingTheme.colors.interactive.default,
+          light: workingTheme.colors.interactive.hover,
+          dark: workingTheme.colors.interactive.active,
+          contrastText: workingTheme.colors.text.inverse
         },
         secondary: {
-          main: semanticTheme.colors.interactive.alternative,
-          contrastText: semanticTheme.colors.text.inverse
+          main: workingTheme.colors.interactive.alternative,
+          contrastText: workingTheme.colors.text.inverse
         },
-        divider: semanticTheme.colors.border.subtle,
+        divider: workingTheme.colors.border.subtle,
         success: {
-          main: semanticTheme.colors.states.success
+          main: workingTheme.colors.states.success
         },
         info: {
-          main: semanticTheme.colors.states.info
+          main: workingTheme.colors.states.info
         },
         warning: {
-          main: semanticTheme.palettes.secondary[500]
+          main: workingTheme.palettes.secondary[500]
         },
         error: {
-          main: semanticTheme.colors.states.critical
+          main: workingTheme.colors.states.critical
         }
       },
       typography: {
@@ -126,25 +265,25 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
         caption: { ...textStyles.caption },
         overline: { ...textStyles.label, textTransform: 'uppercase', letterSpacing: '0.12em' }
       },
-      shape: {
-        borderRadius: 16
-      },
       components: {
         MuiCssBaseline: {
           styleOverrides: {
+            html: {
+              fontSize: `${16 * (workingTheme.fontScale || 1)}px`
+            },
             body: {
-              backgroundColor: semanticTheme.colors.bg.page,
-              color: semanticTheme.colors.text.primary
+              backgroundColor: workingTheme.colors.bg.page,
+              color: workingTheme.colors.text.primary
             },
             a: {
-              color: semanticTheme.colors.text.link
+              color: workingTheme.colors.text.link
             }
           }
         },
         MuiButton: {
           styleOverrides: {
             root: {
-              borderRadius: 999,
+              borderRadius: workingTheme.radii?.soft || 16,
               fontWeight: typography.weights.semibold
             }
           }
@@ -154,53 +293,163 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
 
     base.typography.tokens = typography;
     base.typography.textStyles = textStyles;
-    base.semantic = semanticTheme;
-    base.semanticColors = semanticTheme.colors;
+    base.semantic = workingTheme;
+    base.semanticColors = workingTheme.colors;
     return base;
-  }, [semanticTheme]);
+  }, [workingTheme]);
 
   useEffect(() => {
     ensureFontsLoaded();
   }, []);
 
   useEffect(() => {
-    writeStorage('editorTheme', currentThemeId);
-  }, [currentThemeId]);
+    writeStorage(STORAGE_KEYS.theme, themeDefinition.id);
+  }, [themeDefinition.id]);
 
   useEffect(() => {
-    writeStorage('editorMode', mode);
+    writeStorage(STORAGE_KEYS.mode, mode);
   }, [mode]);
+
+  useEffect(() => {
+    writeStorage(STORAGE_KEYS.customThemes, JSON.stringify(customThemes));
+  }, [customThemes]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    assignCssVariables(root, semanticTheme);
-    root.setAttribute('data-theme', semanticTheme.mode);
-    document.body.style.backgroundColor = semanticTheme.colors.bg.page;
-    document.body.style.color = semanticTheme.colors.text.primary;
-  }, [semanticTheme]);
+    assignCssVariables(root, workingTheme);
+    root.setAttribute('data-theme', workingTheme.mode);
+    document.body.style.backgroundColor = workingTheme.colors.bg.page;
+    document.body.style.color = workingTheme.colors.text.primary;
+  }, [workingTheme]);
 
-  const toggleMode = () => {
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.style.fontSize = `${16 * (workingTheme.fontScale || 1)}px`;
+  }, [workingTheme.fontScale]);
+
+  const toggleMode = useCallback(() => {
     setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
-  };
+  }, []);
 
-  const switchTheme = (themeId) => {
-    if (themeDefinitions[themeId]) {
+  const selectTheme = useCallback((themeId) => {
+    if (themeId === themeDefinition.id) return;
+    if (themeDefinitions[themeId] || customThemeMap[themeId]) {
       setCurrentThemeId(themeId);
     }
+  }, [themeDefinition.id, customThemeMap]);
+
+  const setNestedValue = (target, path, value) => {
+    const segments = path.split('.');
+    const next = { ...target };
+    let cursor = next;
+    segments.forEach((segment, index) => {
+      if (index === segments.length - 1) {
+        cursor[segment] = value;
+      } else {
+        cursor[segment] = { ...(cursor[segment] || {}) };
+        cursor = cursor[segment];
+      }
+    });
+    return next;
   };
+
+  const updateWorkingTheme = useCallback((path, value) => {
+    setThemeConfig((prev) => {
+      let next = { ...prev };
+      switch (path) {
+        case 'roundness':
+          next.roundness = value;
+          break;
+        case 'shadows':
+          next.shadowPreset = value;
+          break;
+        case 'borderWidths':
+          next.borderWidthPreset = value;
+          break;
+        case 'density':
+          next.density = typeof value === 'number' ? value : parseFloat(value);
+          break;
+        case 'fontScale':
+          next.fontScale = typeof value === 'number' ? value : parseFloat(value);
+          break;
+        case 'primaryColor':
+          next.primaryColor = value || null;
+          break;
+        case 'secondaryColor':
+          next.secondaryColor = value || null;
+          break;
+        default:
+          next = setNestedValue(next, path, value);
+      }
+      return next;
+    });
+  }, []);
+
+  const saveCustomTheme = useCallback((name) => {
+    const trimmedName = (name || '').trim();
+    if (!trimmedName) {
+      return { success: false, error: 'Wpisz nazwę motywu, aby go zapisać.' };
+    }
+
+    const baseSlug = slugify(trimmedName) || 'motyw';
+    let candidateId = `custom-${baseSlug}`;
+    if (themeDefinitions[candidateId] || customThemeMap[candidateId]) {
+      candidateId = `custom-${baseSlug}-${Date.now()}`;
+    }
+
+    const newTheme = {
+      id: candidateId,
+      name: trimmedName,
+      description: `${trimmedName} · Personalizowany motyw`,
+      light: deepClone(themeDefinition.light),
+      dark: deepClone(themeDefinition.dark),
+      options: { ...themeConfig },
+      isCustom: true
+    };
+
+    setCustomThemes((prev) => [...prev, newTheme]);
+    setCurrentThemeId(candidateId);
+    return { success: true, id: candidateId };
+  }, [themeConfig, themeDefinition, customThemeMap]);
+
+  const deleteCustomTheme = useCallback((themeId) => {
+    setCustomThemes((prev) => prev.filter((theme) => theme.id !== themeId));
+    if (currentThemeId === themeId) {
+      setCurrentThemeId(defaultThemeId);
+    }
+  }, [currentThemeId]);
+
+  const hasUnsavedChanges = useMemo(() => (
+    JSON.stringify(themeConfig) !== JSON.stringify(defaultConfig)
+  ), [themeConfig, defaultConfig]);
+
+  const availableThemes = useMemo(() => (
+    [
+      ...Object.values(themeDefinitions).map((definition) => ({ ...definition, isCustom: false })),
+      ...customThemes
+    ]
+  ), [customThemes]);
 
   const value = useMemo(
     () => ({
-      theme: semanticTheme,
+      theme: workingTheme,
       muiTheme,
       mode,
-      themeId: currentThemeId,
+      themeId: themeDefinition.id,
       toggleMode,
-      switchTheme,
-      availableThemes: Object.values(themeDefinitions).map(({ id, name, description }) => ({ id, name, description }))
+      selectTheme,
+      updateWorkingTheme,
+      saveCustomTheme,
+      deleteCustomTheme,
+      availableThemes,
+      customThemes,
+      workingTheme,
+      hasUnsavedChanges,
+      themeConfig
     }),
-    [semanticTheme, muiTheme, mode, currentThemeId]
+    [workingTheme, muiTheme, mode, themeDefinition.id, toggleMode, selectTheme, updateWorkingTheme, saveCustomTheme, deleteCustomTheme, availableThemes, customThemes, hasUnsavedChanges, themeConfig]
   );
 
   return (
