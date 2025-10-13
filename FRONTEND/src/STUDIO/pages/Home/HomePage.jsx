@@ -453,7 +453,7 @@ const HomePage = () => {
                         sx={{
                             position: 'relative',
                             py: { xs: 12, md: 16 },
-                            pb: { xs: 8, md: 10 },
+                            pb: { xs: 5, md: 6 },
                             backgroundColor: 'transparent',
                             overflow: 'hidden'
                         }}
