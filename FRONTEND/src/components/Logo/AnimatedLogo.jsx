@@ -11,7 +11,10 @@ const sizeMap = (typography = {}) => {
         small: sizes.xl ?? '1.75rem',
         medium: sizes['2xl'] ?? '2.5rem',
         large: sizes['4xl'] ?? '3.5rem',
-        hero: sizes['5xl'] ?? '4.5rem'
+        hero: sizes['5xl'] ?? '4.5rem',
+        heroLarge: sizes['6xl'] ?? '5.25rem',
+        heroXL: sizes['7xl'] ?? '6rem',
+        heroXXL: sizes['8xl'] ?? '7rem'
     };
 };
 
@@ -27,7 +30,8 @@ const AnimatedWordmark = ({
     onToggle,
     align,
     size,
-    duration,
+    expandDuration,
+    collapseDuration,
     allowToggle,
     className,
 }) => {
@@ -40,10 +44,11 @@ const AnimatedWordmark = ({
     const sizes = sizeMap(typography);
     const fontSize = sizes[size] ?? sizes.hero;
     const fontFamily = typography?.fonts?.logo ?? '"Montserrat", sans-serif';
+    const activeDuration = expanded ? expandDuration : collapseDuration;
 
     const transition = useMemo(
-        () => `${duration}s cubic-bezier(0.4, 0.0, 0.2, 1)`,
-        [duration]
+        () => `${activeDuration}s cubic-bezier(0.4, 0.0, 0.2, 1)`,
+        [activeDuration]
     );
 
     const alignment = useMemo(() => {
@@ -128,7 +133,7 @@ const AnimatedWordmark = ({
                                 transform: expanded 
                                     ? `translateX(${moveDistance}em)` 
                                     : 'translateX(0)',
-                                transition: `transform ${duration * 1.2}s cubic-bezier(0.4, 0.0, 0.2, 1)`,
+                                transition: `transform ${activeDuration * 1.2}s cubic-bezier(0.4, 0.0, 0.2, 1)`,
                                 transitionDelay: `${expandDelay}s`
                             }}
                         >
@@ -167,7 +172,7 @@ const AnimatedWordmark = ({
                                         ? 'translateX(0) scaleX(1)'
                                         : 'translateX(-50%) scaleX(0.01)',
                                     opacity: expanded ? 1 : 0,
-                                    transition: `transform ${duration * 1.2}s cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${duration * 0.8}s ease`,
+                                    transition: `transform ${activeDuration * 1.2}s cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${activeDuration * 0.8}s ease`,
                                     transitionDelay: `${expandDelay}s`,
                                     zIndex: 1,
                                     whiteSpace: 'nowrap',
@@ -188,8 +193,9 @@ AnimatedWordmark.propTypes = {
     expanded: PropTypes.bool,
     onToggle: PropTypes.func,
     align: PropTypes.oneOf(['left', 'center', 'right']),
-    size: PropTypes.oneOf(['small', 'medium', 'large', 'hero']),
-    duration: PropTypes.number,
+    size: PropTypes.oneOf(['small', 'medium', 'large', 'hero', 'heroLarge', 'heroXL', 'heroXXL']),
+    expandDuration: PropTypes.number,
+    collapseDuration: PropTypes.number,
     allowToggle: PropTypes.bool,
     className: PropTypes.string
 };
@@ -199,7 +205,8 @@ AnimatedWordmark.defaultProps = {
     onToggle: null,
     align: 'center',
     size: 'hero',
-    duration: 1.2,
+    expandDuration: 1.2,
+    collapseDuration: 0.9,
     allowToggle: true,
     className: undefined
 };

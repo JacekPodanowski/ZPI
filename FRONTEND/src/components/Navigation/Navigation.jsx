@@ -25,13 +25,15 @@ import useTheme from '../../theme/useTheme';
 
 const drawerWidth = 280;
 
-const Navigation = ({ initialDelay = 1250 }) => {
+const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = null }) => {
     const { isAuthenticated, user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
     const theme = useTheme();
     const { mode, toggleMode } = theme;
-    const [navVisible, setNavVisible] = useState(false);
+    const [navVisible, setNavVisible] = useState(initialDelay <= 0);
+
+    const effectiveNavVisible = hideOnScroll && externalVisible !== null ? externalVisible : navVisible;
 
     const navGroups = useMemo(() => {
         const primary = [
@@ -65,6 +67,11 @@ const Navigation = ({ initialDelay = 1250 }) => {
     };
 
     useEffect(() => {
+        if (initialDelay <= 0) {
+            setNavVisible(true);
+            return undefined;
+        }
+
         const timer = setTimeout(() => {
             setNavVisible(true);
         }, initialDelay);
@@ -155,10 +162,10 @@ const Navigation = ({ initialDelay = 1250 }) => {
                     left: 0,
                     right: 0,
                     zIndex: (muiTheme) => muiTheme.zIndex.appBar + 2,
-                    transform: navVisible ? 'translateY(0)' : 'translateY(-110%)',
-                    opacity: navVisible ? 1 : 0,
+                    transform: effectiveNavVisible ? 'translateY(0)' : 'translateY(-110%)',
+                    opacity: effectiveNavVisible ? 1 : 0,
                     transition: 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease',
-                    pointerEvents: navVisible ? 'auto' : 'none'
+                    pointerEvents: effectiveNavVisible ? 'auto' : 'none'
                 }}
                 onFocusCapture={() => setNavVisible(true)}
             >

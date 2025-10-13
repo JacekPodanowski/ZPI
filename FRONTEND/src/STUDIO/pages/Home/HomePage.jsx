@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Button, Container, Grid, Stack, Typography } from '@mui/material';
+import { Box, Button, Container, Stack, Typography } from '@mui/material';
+import KeyboardArrowDownOutlinedIcon from '@mui/icons-material/KeyboardArrowDownOutlined';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import Navigation from '../../../components/Navigation/Navigation';
-import AnimatedWordmark from '../../../components/Logo/AnimatedWordmark';
+import AnimatedWordmark from '../../../components/Logo/AnimatedLogo';
 
 const NAVIGATION_ANIMATION_DELAY_MS = 100;
 const LOGO_ANIMATION_DELAY_MS = 250;
+const MONTSERRAT_BUTTON_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';
+const WORDMARK_EXPAND_DURATION_S = 1.2;
+const WORDMARK_COLLAPSE_DURATION_S = 0.3;
+const SCROLL_INDICATOR_APPEAR_DELAY_MS = LOGO_ANIMATION_DELAY_MS + WORDMARK_EXPAND_DURATION_S * 1000 + 1000;
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -14,7 +19,11 @@ const HomePage = () => {
     const [pageVisible, setPageVisible] = useState(false);
     const [logoExpanded, setLogoExpanded] = useState(false);
     const [aboutVisible, setAboutVisible] = useState(false);
+    const [isScrollIndicatorReady, setIsScrollIndicatorReady] = useState(false);
+    const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+    const [navVisible, setNavVisible] = useState(true);
     const aboutRef = useRef(null);
+    const lastScrollY = useRef(0);
 
     useEffect(() => {
         const raf = requestAnimationFrame(() => setPageVisible(true));
@@ -47,6 +56,58 @@ const HomePage = () => {
         observer.observe(element);
 
         return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsScrollIndicatorReady(true);
+            if (typeof window !== 'undefined') {
+                setShowScrollIndicator(window.scrollY < 80);
+            } else {
+                setShowScrollIndicator(true);
+            }
+        }, SCROLL_INDICATOR_APPEAR_DELAY_MS);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!isScrollIndicatorReady || typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const updateVisibility = () => {
+            setShowScrollIndicator(window.scrollY < 80);
+        };
+
+        updateVisibility();
+        window.addEventListener('scroll', updateVisibility, { passive: true });
+
+        return () => window.removeEventListener('scroll', updateVisibility);
+    }, [isScrollIndicatorReady]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+
+            if (currentScrollY < 10) {
+                setNavVisible(true);
+            } else if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+                setNavVisible(false);
+            } else if (currentScrollY < lastScrollY.current) {
+                setNavVisible(true);
+            }
+
+            lastScrollY.current = currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     const proceedToNewSite = useCallback(() => {
@@ -94,7 +155,11 @@ const HomePage = () => {
 
     return (
         <>
-            <Navigation initialDelay={NAVIGATION_ANIMATION_DELAY_MS} />
+            <Navigation 
+                initialDelay={NAVIGATION_ANIMATION_DELAY_MS}
+                hideOnScroll={true}
+                externalVisible={navVisible}
+            />
             <Box 
                 component="main" 
                 sx={{ 
@@ -210,7 +275,8 @@ const HomePage = () => {
                                     allowToggle={false}
                                     align="center"
                                     size="hero"
-                                    duration={1.2}
+                                    expandDuration={WORDMARK_EXPAND_DURATION_S}
+                                    collapseDuration={WORDMARK_COLLAPSE_DURATION_S}
                                 />
                             </Box>
 
@@ -245,6 +311,7 @@ const HomePage = () => {
                                 direction={{ xs: 'column', sm: 'row' }}
                                 alignItems="center"
                                 spacing={{ xs: 2.5, sm: 3 }}
+                                sx={{ mt: { xs: 4, md: 6 } }}
                             >
                                 <Button
                                     onClick={goToLogin}
@@ -254,7 +321,7 @@ const HomePage = () => {
                                         py: { xs: 1.8, sm: 2 },
                                         fontSize: { xs: '1rem', sm: '1.1rem' },
                                         fontWeight: 600,
-                                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+                                        fontFamily: MONTSERRAT_BUTTON_FONT,
                                         backgroundColor: (theme) =>
                                             theme.palette.mode === 'dark'
                                                 ? 'rgba(255,255,255,0.12)'
@@ -298,7 +365,7 @@ const HomePage = () => {
                                         py: { xs: 1.8, sm: 2 },
                                         fontSize: { xs: '1rem', sm: '1.1rem' },
                                         fontWeight: 600,
-                                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+                                        fontFamily: MONTSERRAT_BUTTON_FONT,
                                         borderRadius: 5,
                                         boxShadow: '0 16px 36px rgba(146,0,32,0.2)',
                                         transition: 'transform 0.28s ease',
@@ -313,6 +380,44 @@ const HomePage = () => {
                             </Stack>
                         </Stack>
                     </Container>
+
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                bottom: { xs: 32, md: 48 },
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                pointerEvents: 'none',
+                                opacity: showScrollIndicator ? 1 : 0,
+                                transition: 'opacity 0.6s ease',
+                                color: 'text.secondary',
+                                '@keyframes scrollIndicatorPulse': {
+                                    '0%': { transform: 'translateY(0)', opacity: 1 },
+                                    '50%': { transform: 'translateY(1.5px)', opacity: 0.82 },
+                                    '100%': { transform: 'translateY(0)', opacity: 1 }
+                                }
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    transform: 'scaleX(2)',
+                                    transformOrigin: 'center'
+                                }}
+                            >
+                                <KeyboardArrowDownOutlinedIcon
+                                    sx={{
+                                        fontSize: 42,
+                                        color: (theme) => (theme.palette.mode === 'dark'
+                                            ? 'rgba(220,220,220,0.35)'
+                                            : 'rgba(30,30,30,0.32)'),
+                                        animation: showScrollIndicator ? 'scrollIndicatorPulse 3s ease-in-out infinite' : 'none'
+                                    }}
+                                />
+                            </Box>
+                        </Box>
 
                     </Box>
 
@@ -361,7 +466,7 @@ const HomePage = () => {
                                         backgroundClip: 'text'
                                     }}
                                 >
-                                    Tworzymy sztukę, która żyje w sieci
+                                    Everyone Deserves Their Truly Own Online Place
                                 </Typography>
                                 <Typography
                                     variant="h5"
@@ -372,7 +477,7 @@ const HomePage = () => {
                                         mx: 'auto'
                                     }}
                                 >
-                                    Gdzie kod spotyka emocję, a technologia staje się niewidzialna – pozostaje tylko doświadczenie.
+                                    - Autorzy
                                 </Typography>
                             </Stack>
 
@@ -561,7 +666,7 @@ const HomePage = () => {
                                         py: { xs: 2, sm: 2.5 },
                                         fontSize: { xs: '1.1rem', sm: '1.25rem' },
                                         fontWeight: 600,
-                                        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+                                        fontFamily: MONTSERRAT_BUTTON_FONT,
                                         borderRadius: 5,
                                         boxShadow: '0 20px 40px rgba(146,0,32,0.25)',
                                         transition: 'transform 0.28s ease, box-shadow 0.28s ease',

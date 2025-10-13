@@ -1,5 +1,36 @@
 import React from 'react';
 import { Box, Button, Typography } from '@mui/material';
+import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
+
+const FALLBACK_THEME = createTheme({
+    palette: {
+        mode: 'light',
+        background: {
+            default: 'rgb(228, 229, 218)',
+            paper: 'rgba(255, 255, 255, 0.96)'
+        },
+        text: {
+            primary: 'rgb(30, 30, 30)',
+            secondary: 'rgba(30, 30, 30, 0.72)'
+        },
+        primary: {
+            main: 'rgb(146, 0, 32)',
+            contrastText: '#ffffff'
+        },
+        secondary: {
+            main: 'rgb(188, 186, 179)'
+        },
+        divider: 'rgba(30, 30, 30, 0.12)'
+    },
+    typography: {
+        fontFamily: '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        button: {
+            textTransform: 'none',
+            fontWeight: 600
+        }
+    }
+});
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -7,8 +38,7 @@ class ErrorBoundary extends React.Component {
         this.state = {
             hasError: false,
             error: null,
-            errorInfo: null,
-            showDetails: false
+            errorInfo: null
         };
     }
 
@@ -24,25 +54,23 @@ class ErrorBoundary extends React.Component {
         this.setState({ error, errorInfo });
     }
 
+    getErrorDetails = () => {
+        const { error, errorInfo } = this.state;
+        const detailString = [error?.stack, errorInfo?.componentStack]
+            .filter(Boolean)
+            .join('\n\n');
+
+        return detailString || 'Brak dodatkowych szczegółów dotyczących błędu.';
+    };
+
     handleReload = () => {
         if (typeof window !== 'undefined') {
             window.location.reload();
         }
     };
 
-    handleToggleDetails = () => {
-        this.setState((prevState) => ({ showDetails: !prevState.showDetails }));
-    };
-
     handleCopyDetails = async () => {
-        const { error, errorInfo } = this.state;
-        const details = [error?.stack, errorInfo?.componentStack]
-            .filter(Boolean)
-            .join('\n\n');
-
-        if (!details) {
-            return;
-        }
+        const details = this.getErrorDetails();
 
         try {
             if (navigator?.clipboard?.writeText) {
@@ -54,71 +82,68 @@ class ErrorBoundary extends React.Component {
     };
 
     render() {
-        const { hasError, error, errorInfo, showDetails } = this.state;
+        const { hasError, error } = this.state;
 
         if (hasError) {
             const errorMessage = error?.message || 'Wystąpił nieoczekiwany błąd.';
-            const errorDetails = [error?.stack, errorInfo?.componentStack]
-                .filter(Boolean)
-                .join('\n\n');
+            const errorDetails = this.getErrorDetails();
 
             return (
-                <Box
-                    sx={{
-                        minHeight: '100vh',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                        px: 3,
-                        textAlign: 'center',
-                        backgroundColor: '#f5f5f5',
-                        color: '#1e1e1e'
-                    }}
-                >
-                    <Typography variant="h4" component="h1" fontWeight={600} gutterBottom>
-                        Coś poszło nie tak
-                    </Typography>
-                    <Typography variant="body1" maxWidth={520}>
-                        {errorMessage}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                        <Button variant="contained" color="primary" onClick={this.handleReload}>
-                            Odśwież stronę
-                        </Button>
-                        {errorDetails && (
-                            <Button variant="outlined" color="primary" onClick={this.handleToggleDetails}>
-                                {showDetails ? 'Ukryj szczegóły' : 'Pokaż szczegóły'}
+                <MuiThemeProvider theme={FALLBACK_THEME}>
+                    <CssBaseline />
+                    <Box
+                        sx={{
+                            minHeight: '100vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 3,
+                            px: 3,
+                            py: 6,
+                            textAlign: 'center',
+                            backgroundColor: (theme) => theme.palette.background.default,
+                            color: (theme) => theme.palette.text.primary
+                        }}
+                    >
+                        <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
+                            Coś poszło nie tak
+                        </Typography>
+                        <Typography variant="body1" maxWidth={520} color="text.secondary">
+                            {errorMessage}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            <Button variant="contained" color="primary" onClick={this.handleReload}>
+                                Odśwież stronę
                             </Button>
-                        )}
-                    </Box>
-                    {showDetails && errorDetails && (
+                            <Button variant="outlined" color="primary" onClick={this.handleCopyDetails}>
+                                Skopiuj szczegóły
+                            </Button>
+                        </Box>
                         <Box
                             component="pre"
                             sx={{
-                                mt: 3,
-                                p: 2,
+                                mt: 1,
+                                p: 3,
                                 maxWidth: 720,
-                                maxHeight: 320,
+                                maxHeight: 360,
                                 overflow: 'auto',
                                 textAlign: 'left',
-                                backgroundColor: '#ffffff',
-                                borderRadius: 1,
-                                border: '1px solid rgba(0, 0, 0, 0.1)',
+                                backgroundColor: (theme) => theme.palette.background.paper,
+                                borderRadius: 2,
+                                border: (theme) => `1px solid ${theme.palette.divider}`,
                                 width: '100%',
-                                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.12)'
+                                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
+                                fontFamily: '"Roboto Mono", "Menlo", "Monaco", monospace',
+                                fontSize: '0.875rem',
+                                lineHeight: 1.5,
+                                whiteSpace: 'pre-wrap'
                             }}
                         >
                             {errorDetails}
                         </Box>
-                    )}
-                    {showDetails && errorDetails && (
-                        <Button variant="text" color="primary" onClick={this.handleCopyDetails} sx={{ mt: 1 }}>
-                            Skopiuj szczegóły
-                        </Button>
-                    )}
-                </Box>
+                    </Box>
+                </MuiThemeProvider>
             );
         }
 
