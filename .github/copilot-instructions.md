@@ -55,6 +55,26 @@ When reviewing or writing code, if you identify patterns, implementations, or ar
 - Recommended refactoring approach or alternative solution
 - Urgency level (Low/Medium/High/Critical)
 
+**7. AI Summary Format**
+Every response involving code changes MUST include a summary structured as follows:
+
+**Summary:**
+- [One sentence describing first change made]
+- [One sentence describing second change made]
+- [One sentence describing third change made]
+- [etc.]
+
+**Result:** [One sentence describing the overall outcome/impact of all changes]
+
+**Code Quality Alerts:** (only include if issues are identified, otherwise omit this section entirely)
+- **Issue:** [Clear description of the potential problem]
+  **Impact:** [Why it will cause problems as the system grows]
+  **Solution:** [Recommended refactoring approach or alternative]
+  **Urgency:** [Low/Medium/High/Critical]
+
+**8. Development Environment**
+All services run in Docker containers with hot-reload enabled, ensuring that code changes are applied instantly without requiring manual restarts or rebuilds.
+
 1.5. Core Color Palette & Typography
 ------------------------------------
 *   **Light Mode:**
