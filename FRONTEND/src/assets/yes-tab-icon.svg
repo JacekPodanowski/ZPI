@@ -3,6 +3,6 @@
   <title>YES Tab Icon 05 - -15° tilt</title>
   <!-- Variant 05: same as Variant 01 but with skewX(-15) for one degree less left tilt -->
   <g transform="skewX(-15) scale(0.68 1.12)">
-    <text x="75" y="256" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="360" font-weight="700" font-style="italic" fill="#d0003a" letter-spacing="2">YES</text>
+    <text x="65" y="256" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="370" font-weight="700" font-style="italic" fill="#d0003a" letter-spacing="2">YES</text>
   </g>
 </svg>

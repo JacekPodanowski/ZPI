@@ -23,6 +23,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import useTheme from '../../../theme/useTheme';
 import Navigation from '../../../components/Navigation/Navigation';
 import ColorPicker from '../../../components/ColorPicker';
+import { StandardFooter } from '../../../components/Footer';
 
 const spacingVar = (step) => `calc(var(--spacing-${step}) * var(--density-multiplier, 1))`;
 const radiusVar = (token) => `var(--radius-${token})`;
@@ -206,8 +207,9 @@ const StylesPage = () => {
 
   return (
     <>
-      <Navigation />
+      <Navigation variant="permanent" />
       <Box
+        component="main"
         sx={{
           backgroundColor: colors.bg.page,
           minHeight: '100vh',
@@ -585,6 +587,7 @@ const StylesPage = () => {
           </Paper>
         </Stack>
       </Box>
+      <StandardFooter />
     </>
   );
 };

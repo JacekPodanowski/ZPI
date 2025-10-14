@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <title>YES Avatar - 3D Graffiti Shadow</title>
+  <defs>
+    <filter id="redGlow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g transform="skewX(-15) scale(0.68 1.12)">
+    <!-- 3D shadow layers (bigger offset) -->
+    <text x="128" y="266" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#000000" letter-spacing="2">YES</text>
+    <text x="126" y="264" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#000000" letter-spacing="2">YES</text>
+    <text x="124" y="262" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#000000" letter-spacing="2">YES</text>
+    <text x="122" y="260" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#000000" letter-spacing="2">YES</text>
+    <text x="120" y="258" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#000000" letter-spacing="2">YES</text>
+    
+    <!-- Main red text WITHOUT filter -->
+    <text x="118" y="256" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#d0003a" letter-spacing="2">YES</text>
+    
+    <!-- Red glow layer on top -->
+    <text x="118" y="256" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#d0003a" letter-spacing="2" filter="url(#redGlow)" opacity="0.8">YES</text>
+  </g>
+</svg>

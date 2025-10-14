@@ -10,14 +10,14 @@ import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
 import PublicCalendarPage from './pages/Home/PublicCalendarPage';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
-import MainLayout from './layouts/MainLayout';
+import StudioLayout from './layouts/StudioLayout';
 
 const StudioApp = () => (
   <Routes>
     {/* Default redirect when visiting /studio */}
     <Route index element={<Navigate to="dashboard" replace />} />
 
-    <Route element={<MainLayout />}>
+    <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}
       <Route path="dashboard" element={<ProtectedRoute><StudioDashboard /></ProtectedRoute>} />
       <Route path="sites" element={<ProtectedRoute><StudioDashboard /></ProtectedRoute>} />

@@ -373,18 +373,6 @@ const EditorPage = () => {
         isNewSite={!siteId}
         disabled={loading}
       />
-      <Box sx={{ px: { xs: 2, md: 4 }, pt: 2 }}>
-        <Stack spacing={1.5}>
-          <Typography variant="overline" sx={{ letterSpacing: 2, color: 'secondary.main' }}>
-            EDYTOR
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            W trybie edycji możesz eksperymentować z modułami, konfiguracją i natychmiastowym podglądem.
-          </Typography>
-          {error && <Alert severity="error">{error}</Alert>}
-        </Stack>
-      </Box>
-
       <Box
         sx={{
           flex: 1,

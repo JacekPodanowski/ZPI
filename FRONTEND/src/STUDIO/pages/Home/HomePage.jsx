@@ -183,8 +183,9 @@ const HomePage = () => {
     return (
         <>
             <Navigation 
+                variant="animated"
                 initialDelay={NAVIGATION_ANIMATION_DELAY_MS}
-                hideOnScroll={true}
+                hideOnScroll
                 externalVisible={navVisible}
             />
             <Box 

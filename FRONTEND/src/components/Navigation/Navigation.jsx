@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
 import {
     AppBar,
+    Avatar,
     Box,
     Button,
     Chip,
@@ -11,8 +13,10 @@ import {
     List,
     ListItem,
     ListItemButton,
+    ListItemIcon,
     ListItemText,
     ListSubheader,
+    Stack,
     Toolbar,
     Typography
 } from '@mui/material';
@@ -22,18 +26,63 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../Logo/Logo';
 import useTheme from '../../theme/useTheme';
+import UserAvatarMenu from './UserAvatarMenu';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
 const drawerWidth = 280;
+const NAV_HEIGHT = 72;
+const NAV_BORDER_WIDTH = 1;
+const NAV_TOTAL_HEIGHT = NAV_HEIGHT + NAV_BORDER_WIDTH;
 
-const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = null }) => {
+const Navigation = ({ 
+    variant = 'permanent', 
+    initialDelay = 0, 
+    hideOnScroll = false, 
+    externalVisible = null 
+}) => {
     const { isAuthenticated, user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
     const theme = useTheme();
     const { mode, toggleMode } = theme;
-    const [navVisible, setNavVisible] = useState(initialDelay <= 0);
+    const isAnimated = variant === 'animated';
+    const resolvedInitialDelay = isAnimated ? initialDelay : 0;
+    const resolvedHideOnScroll = isAnimated ? hideOnScroll : false;
+    const [navVisible, setNavVisible] = useState(!isAnimated || resolvedInitialDelay <= 0);
 
-    const effectiveNavVisible = hideOnScroll && externalVisible !== null ? externalVisible : navVisible;
+    const avatarSrc = ShadowAvatarSrc;
+
+    const displayName = useMemo(() => {
+        if (!user) {
+            return 'Gość';
+        }
+        const combined = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+        return combined.length > 0 ? combined : user.email;
+    }, [user]);
+
+    const userMenuItems = useMemo(
+        () => ([
+            {
+                label: 'Ustawienia profilu',
+                icon: <PersonOutlineIcon fontSize="small" />,
+                path: '/studio/settings/profile'
+            },
+            {
+                label: 'Płatności',
+                icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
+                path: '/studio/settings/payments'
+            },
+            {
+                label: 'Ustawienia',
+                icon: <SettingsOutlinedIcon fontSize="small" />,
+                path: '/studio/settings'
+            }
+        ]),
+        []
+    );
 
     const navGroups = useMemo(() => {
         const primary = [
@@ -67,17 +116,31 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
     };
 
     useEffect(() => {
-        if (initialDelay <= 0) {
+        if (!isAnimated) {
+            setNavVisible(true);
+            return undefined;
+        }
+
+        if (resolvedInitialDelay <= 0) {
             setNavVisible(true);
             return undefined;
         }
 
         const timer = setTimeout(() => {
             setNavVisible(true);
-        }, initialDelay);
+        }, resolvedInitialDelay);
 
         return () => clearTimeout(timer);
-    }, [initialDelay]);
+    }, [isAnimated, resolvedInitialDelay]);
+
+    const effectiveNavVisible = isAnimated
+        ? (resolvedHideOnScroll && externalVisible !== null ? (navVisible && externalVisible) : navVisible)
+        : true;
+
+    const navTransform = effectiveNavVisible ? 'translateY(0)' : 'translateY(-110%)';
+    const navOpacity = effectiveNavVisible ? 1 : 0;
+    const navPointerEvents = effectiveNavVisible ? 'auto' : 'none';
+    const spacerHeight = effectiveNavVisible ? NAV_TOTAL_HEIGHT : 0;
 
     const drawer = (
         <Box sx={{ textAlign: 'center', height: '100%' }} role="presentation" onClick={handleDrawerToggle}>
@@ -117,25 +180,75 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
             )}
             <Divider sx={{ my: 2 }} />
             {isAuthenticated ? (
-                <Button
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    onClick={handleLogout}
-                >
-                    Wyloguj ({user?.first_name || user?.email})
-                </Button>
+                <Box sx={{ px: 2, pb: 3, textAlign: 'left' }}>
+                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                        <Avatar src={avatarSrc} alt={displayName} sx={{ width: 48, height: 48 }} />
+                        <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                {displayName}
+                            </Typography>
+                            {user?.email && (
+                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                    {user.email}
+                                </Typography>
+                            )}
+                        </Box>
+                    </Stack>
+                    <List sx={{ mb: 2 }}>
+                        {userMenuItems.map((item) => (
+                            <ListItem key={item.label} disablePadding>
+                                <ListItemButton
+                                    component={RouterLink}
+                                    to={item.path}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        setMobileOpen(false);
+                                    }}
+                                    sx={{
+                                        borderRadius: 2,
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>
+                                        {item.icon}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={item.label}
+                                        primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                                    />
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                    </List>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        color="error"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            handleLogout();
+                        }}
+                        sx={{ borderRadius: 2, fontWeight: 600 }}
+                    >
+                        Wyloguj
+                    </Button>
+                </Box>
             ) : (
-                <Button
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    component={RouterLink}
-                    to="/login"
-                    onClick={() => setMobileOpen(false)}
-                >
-                    Zaloguj
-                </Button>
+                <Box sx={{ px: 2 }}>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        component={RouterLink}
+                        to="/login"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setMobileOpen(false);
+                        }}
+                    >
+                        Zaloguj
+                    </Button>
+                </Box>
             )}
             <Box sx={{ mt: 2, px: 2 }}>
                 <Button
@@ -154,7 +267,7 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
     );
 
     return (
-        <Box sx={{ flexGrow: 1 }}>
+        <Box sx={{ flex: '0 0 auto', width: '100%' }}>
             <Box
                 sx={{
                     position: 'fixed',
@@ -162,10 +275,12 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
                     left: 0,
                     right: 0,
                     zIndex: (muiTheme) => muiTheme.zIndex.appBar + 2,
-                    transform: effectiveNavVisible ? 'translateY(0)' : 'translateY(-110%)',
-                    opacity: effectiveNavVisible ? 1 : 0,
-                    transition: 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease',
-                    pointerEvents: effectiveNavVisible ? 'auto' : 'none'
+                    transform: navTransform,
+                    opacity: navOpacity,
+                    transition: isAnimated
+                        ? 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease'
+                        : 'none',
+                    pointerEvents: navPointerEvents
                 }}
                 onFocusCapture={() => setNavVisible(true)}
             >
@@ -183,7 +298,7 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
                         borderColor: 'divider'
                     }}
                 >
-                    <Toolbar sx={{ minHeight: 72, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
+                    <Toolbar sx={{ minHeight: NAV_HEIGHT, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <IconButton
                             color="inherit"
@@ -264,13 +379,11 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
                             {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
                         </IconButton>
                         {isAuthenticated ? (
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={handleLogout}
-                            >
-                                Wyloguj ({user?.first_name || user?.email})
-                            </Button>
+                            <UserAvatarMenu
+                                user={user}
+                                onLogout={handleLogout}
+                                menuItems={userMenuItems}
+                            />
                         ) : (
                             <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
                                 Zaloguj
@@ -280,6 +393,14 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
                 </Toolbar>
                 </AppBar>
             </Box>
+
+            <Box
+                sx={{
+                    height: `${spacerHeight}px`,
+                    transition: isAnimated ? 'height 0.35s ease' : 'none'
+                }}
+                aria-hidden="true"
+            />
 
             <Box component="nav">
                 <Drawer
@@ -297,6 +418,13 @@ const Navigation = ({ initialDelay = 0, hideOnScroll = false, externalVisible = 
             </Box>
         </Box>
     );
+};
+
+Navigation.propTypes = {
+    variant: PropTypes.oneOf(['animated', 'permanent']),
+    initialDelay: PropTypes.number,
+    hideOnScroll: PropTypes.bool,
+    externalVisible: PropTypes.bool
 };
 
 export default Navigation;
