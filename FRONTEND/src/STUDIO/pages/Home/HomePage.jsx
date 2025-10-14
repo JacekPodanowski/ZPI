@@ -4,7 +4,7 @@ import KeyboardArrowDownOutlinedIcon from '@mui/icons-material/KeyboardArrowDown
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import Navigation from '../../../components/Navigation/Navigation';
-import AnimatedWordmark from '../../../components/Logo/AnimatedLogo';
+import AnimatedLogo from '../../../components/Logo/AnimatedLogo';
 
 import { typography } from '../../../theme/typography.js';
 
@@ -293,11 +293,11 @@ const HomePage = () => {
                     <Box
                         sx={{
                             position: 'relative',
-                            minHeight: '100vh',
+                            minHeight: { xs: '85vh', md: '80vh' },
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            py: { xs: 8, md: 12 },
+                            py: { xs: 6, md: 8 },
                             backgroundColor: 'transparent'
                         }}
                     >
@@ -323,11 +323,11 @@ const HomePage = () => {
                                     transformOrigin: 'center top'
                                 }}
                             >
-                                <AnimatedWordmark
+                                <AnimatedLogo
                                     expanded={logoExpanded}
                                     allowToggle={false}
                                     align="center"
-                                    size="hero"
+                                    size="heroLarge"
                                     expandDuration={WORDMARK_EXPAND_DURATION_S}
                                     collapseDuration={WORDMARK_COLLAPSE_DURATION_S}
                                 />

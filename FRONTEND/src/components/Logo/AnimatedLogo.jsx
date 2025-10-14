@@ -12,20 +12,32 @@ const sizeMap = (typography = {}) => {
         medium: sizes['2xl'] ?? '2.5rem',
         large: sizes['4xl'] ?? '3.5rem',
         hero: sizes['5xl'] ?? '4.5rem',
-        heroLarge: sizes['6xl'] ?? '5.25rem',
+        heroLarge: sizes['6xl'] ?? '5.5rem',
         heroXL: sizes['7xl'] ?? '6rem',
         heroXXL: sizes['8xl'] ?? '7rem'
     };
 };
 
-// The 'width' now controls the entire space the word takes up, including the gap after it.
-const LETTER_GROUPS = [
-    { lead: 'Y', trail: 'our', width: 6.05},
-    { lead: 'E', trail: 'asy', width: 6.3},
-    { lead: 'S', trail: 'ite', width: 4.0}
-];
+// Width values tuned per size to keep the expanded logo optically centered.
+const LETTER_SPACING_TABLES = Object.freeze({
+    hero: [
+        { lead: 'Y', trail: 'our', width: 6.05 },
+        { lead: 'E', trail: 'asy', width: 6.3 },
+        { lead: 'S', trail: 'ite', width: 4.0 }
+    ],
+    heroLarge: [
+        { lead: 'Y', trail: 'our', width: 7.4 },
+        { lead: 'E', trail: 'asy', width: 7.65 },
+        { lead: 'S', trail: 'ite', width: 4.0 }
+    ],
+    heroXL: [
+        { lead: 'Y', trail: 'our', width: 11 },
+        { lead: 'E', trail: 'asy', width: 11.5},
+        { lead: 'S', trail: 'ite', width: 4.0 }
+    ]
+});
 
-const AnimatedWordmark = ({
+const AnimatedLogo = ({
     expanded,
     onToggle,
     align,
@@ -57,19 +69,24 @@ const AnimatedWordmark = ({
         return 'center';
     }, [align]);
 
+    const currentLetterGroups = useMemo(
+        () => LETTER_SPACING_TABLES[size] ?? LETTER_SPACING_TABLES.hero,
+        [size]
+    );
+
     // This calculation now correctly uses only 'width'
     const { expandedTranslations } = useMemo(() => {
         const expandedPositions = [0];
-        
-        for (let i = 1; i < LETTER_GROUPS.length; i++) {
-            const prevGroup = LETTER_GROUPS[i - 1];
+
+        for (let i = 1; i < currentLetterGroups.length; i++) {
+            const prevGroup = currentLetterGroups[i - 1];
             expandedPositions[i] = expandedPositions[i - 1] + prevGroup.width;
         }
 
-        const lastGroup = LETTER_GROUPS[LETTER_GROUPS.length - 1];
+        const lastGroup = currentLetterGroups[currentLetterGroups.length - 1];
         const totalExpandedWidth = expandedPositions[expandedPositions.length - 1] + lastGroup.width;
 
-        const totalCollapsedWidth = LETTER_GROUPS.length;
+        const totalCollapsedWidth = currentLetterGroups.length;
         const centerOffset = (totalExpandedWidth - totalCollapsedWidth) / 2;
 
         const translations = expandedPositions.map((expandedPos, i) => {
@@ -78,7 +95,7 @@ const AnimatedWordmark = ({
         });
 
         return { expandedTranslations: translations };
-    }, []);
+    }, [currentLetterGroups]);
 
 
     return (
@@ -117,9 +134,11 @@ const AnimatedWordmark = ({
                     position: 'relative'
                 }}
             >
-                {LETTER_GROUPS.map(({ lead, trail, width }, index) => {
+                {currentLetterGroups.map(({ lead, trail, width }, index) => {
                     const stagger = index * 0.05;
-                    const expandDelay = expanded ? stagger : (LETTER_GROUPS.length - 1 - index) * 0.05;
+                    const expandDelay = expanded
+                        ? stagger
+                        : (currentLetterGroups.length - 1 - index) * 0.05;
                     const moveDistance = expandedTranslations[index];
                     
                     return (
@@ -189,7 +208,7 @@ const AnimatedWordmark = ({
     );
 };
 
-AnimatedWordmark.propTypes = {
+AnimatedLogo.propTypes = {
     expanded: PropTypes.bool,
     onToggle: PropTypes.func,
     align: PropTypes.oneOf(['left', 'center', 'right']),
@@ -200,7 +219,7 @@ AnimatedWordmark.propTypes = {
     className: PropTypes.string
 };
 
-AnimatedWordmark.defaultProps = {
+AnimatedLogo.defaultProps = {
     expanded: false,
     onToggle: null,
     align: 'center',
@@ -211,4 +230,4 @@ AnimatedWordmark.defaultProps = {
     className: undefined
 };
 
-export default AnimatedWordmark;
+export default AnimatedLogo;
