@@ -2,8 +2,8 @@
 
 # Opis projektu w `.github/copilot-instructions.md`
 
-# Robić branche :
-    Najlepiej małe i tematyczne np: HomePage
+# Szybkie małe zmiany 
+    Branche najlepiej małe i tematyczne np: HomePage
     Jak działa wrzucać na maina
 
 # Przed uruchomieniem upewinj się że masz 3 pliki .env :
