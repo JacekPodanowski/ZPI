@@ -13,7 +13,7 @@ This document outlines the complete architecture and Phase 2 implementation plan
 -------------------------
 We are building a minimalist, elegant, and modern **Personal Site Generator**. This platform is for solo entrepreneurs who need a professional online presence without technical knowledge. The user experience is centered around simplicity, intuition, and an integrated **AI Assistant** that makes changes through natural language.
 
-The application guides users through simple, explained steps in site creation (template selection, structure, colors). The AI Assistant is always available to guide users and execute their requests.
+The application guides users through simple steps in site creation (template selection, structure, colors, etc.). The AI Assistant is always available to guide users and execute their requests.
 
 1.2. Project Vision
 --------------------
@@ -26,12 +26,36 @@ The guiding theme is **"Modern Wellness."** The design must be clean, calming, s
 App motto is simplicity.
 Do not over-engineer. If something can be done in a simpler way, do it that way.
 The system prioritizes discoverability and prevents complexity from overwhelming the user.
-Always think how user journey can be made smooth as possible.
 
 Before implementing any feature, think if it can be done in the simpler way !
 
 
-1.4. Core Color Palette & Typography
+1.4. AI Agent Development Standards
+------------------------------------
+
+**1. SOLID Principles Always**
+Every component must follow Single Responsibility, be Open for extension but Closed for modification, use proper abstractions over concrete implementations, and maintain clear dependency hierarchies pointing inward.
+
+**2. Simple, Clean Architecture**
+Separate business logic from infrastructure, use clear layers (Presentation → Application → Domain → Infrastructure), and abstract all external dependencies for easy testing and replacement.
+
+**3. Code Quality & Maintainability**
+Write self-documenting code with clear naming, follow DRY/YAGNI/KISS principles, and favor composition over inheritance.
+
+**4. Design for Future Growth**
+Use dependency injection, design for horizontal scaling and multi-tenancy from day one, implement event-driven patterns for decoupling, and write code that's easy to delete or modify.
+
+**5. Before Writing Code, Validate**
+Ask: Is this the simplest solution? Does it follow SOLID? Can it be easily tested and extended? Are dependencies properly abstracted? What happens when requirements change?
+
+**6. Code Quality Alerts**
+When reviewing or writing code, if you identify patterns, implementations, or architectural decisions that could cause maintenance issues, scalability problems, or technical debt in the future, you MUST flag these in your summary with:
+- Clear description of the potential issue
+- Why it will cause problems as the system grows
+- Recommended refactoring approach or alternative solution
+- Urgency level (Low/Medium/High/Critical)
+
+1.5. Core Color Palette & Typography
 ------------------------------------
 *   **Light Mode:**
     *   background: `rgb(228, 229, 218)`
@@ -47,13 +71,13 @@ Before implementing any feature, think if it can be done in the simpler way !
 
 *   **Typography:** Elegant and easy to read, with a focus on whitespace and simplicity.
 
-1.5. Core Architectural Principle: Multi-Tenant Single Backend
+1.6. Core Architectural Principle: Multi-Tenant Single Backend
 -------------------------------------------------------------
 The system is built on a **"single backend, multiple frontends"** model, which is the industry standard for scalable SaaS applications. Each user can have a maximum of three personal sites, all managed by one central backend and database.
 
 *   **Core Components:**
-    *   **The Studio (SaaS Platform):** The main application where site owners log in. It consists of the central backend API and a frontend "Studio" interface for high-level management (listing sites, managing billing, launching the editor). The Studio itself does not contain the calendar or site design tools.
-    *   **The Editor:** A dedicated interface launched from the Studio for a specific site. This is where all visual editing, content management, and calendar scheduling occurs.
+    *   **The Studio (SaaS Platform):** The main application where site owners log in. It consists of the central backend API and a frontend "Studio" interface for high-level management (listing sites, managing billing, launching the editor and and calendar scheduling).
+    *   **The Editor:** A dedicated interface launched from the Studio for a specific site. This is where all visual editing happens, with the integrated AI Assistant.
     *   **Personal Sites (Frontends):** The live, statically-hosted websites generated for users. These are separate frontend applications that fetch data from the central API.
     *   **Central API (The Multi-Tenant Backend):** A single, unified Django backend that handles authentication, data storage (with strict data separation per site via a `site` identifier), and all business logic.
 
@@ -143,13 +167,17 @@ We split the users of our application into 3 groups:
 
 4.1. User Flow Implementation
 -----------------------------
-1.  **Welcome Page:** Create the initial landing page with the logo on the themed background and a single primary button: **"Create Your Site"**. A "Log In" button in the top-right corner navigates to the Studio/Login page.
-2.  **Template Selection:** "Create Your Site" leads to a simple menu to select a site template (start with one test template).
-3.  **Module Configuration:** The user then sees a detailed menu to check/uncheck the modules (pages) they want (e.g., Home, Calendar). Each module will have specific settings.
-4.  **Launch Editor:** After confirmation, the user is taken to the main Editor view.
+1.  **HomePage:** The landing page with a "Start Creating" button.
+2.  **Site Creation Wizard:** A multi-step form to gather site details (name, type, colors, etc.). On completion, it calls `POST /api/v1/SITES/` to create a new `Site` and redirects to the Editor.
+3.  **Studio Dashboard:** Lists all sites owned by the user, with options to create a new site or open the editor for an existing one.
+4.  **Editor Launch:** Clicking "Edit" on a site opens the Editor interface for that specific site.
 
 4.2. The Editor Interface
 -------------------------
+EDITOR is the most complex part of Phase 2. It must be intuitive, responsive, and seamlessly integrate the AI Assistant.
+
+It should be overlay on top of the `SiteCanvas`, allowing users to see their site as they edit it.
+
 *   **Structure:** The main component will be an `<Editor>` wrapper that contains the user's `<SiteCanvas>`.
 *   **Site Canvas:** The `<SiteCanvas>` component renders the actual user site based on the state-managed `template_config` JSON.
 *   **Minimalist Top Bar:** A small, unobtrusive toolbar at the top with essential tools: Save, Undo/Redo, Mobile/Desktop view toggle.
@@ -165,14 +193,17 @@ Implement **Zustand** as the state management library. The entire `template_conf
 *   **Versioning:** Each save will also create a timestamped snapshot of the `template_config` and add it to the `version_history` field.
 *   **Templates:** The `template_config` is the "template." Loading a template means fetching its JSON and setting it as the current state in the Zustand store.
 
-4.5. Complete Rework of the Admin Calendar
+4.5. Calendar Component
 ------------------------------------------
-The existing `AdminCalendar` component must be overhauled to become the central scheduling tool.
+The calendar is a critical feature for scheduling and must be intuitive and powerful.
 
+There are two calendar views:
+*   **Creator Calendar:** The calendar used by the site owners (creators) in the Studio. It should display all the events from all the sites owned by the user.
+*   **Public Calendar:** Part of the creator sites; it is used by the clients of the creators. It should display only the events from the specific site.
+
+Key Features:
 *   **Multi-Site View:** The calendar must display events from **all** sites owned by the user.
-    -   Events from the current site are fully editable.
-    -   Events from other sites are displayed as read-only, gray blocks. Clicking them shows a popup: "Edit in [Other Site Name]," which opens that site's editor in a new tab.
-
+    -   Events from each site are displayed with the site's name and color.
 *   **Day/Week Templates:**
     -   **UI:** Implement a "Templates" section on the left side of the calendar, with "Day" and "Week" areas. Each section has a `+` icon to create new templates.
     -   **Drag-and-Drop:** Templates must be draggable. Implement animations: the template element shrinks and follows the cursor; the target calendar area is highlighted with a red, animated, dotted "edit grid."
