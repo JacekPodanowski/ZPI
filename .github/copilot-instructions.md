@@ -1,9 +1,9 @@
 ================================================================================================
                     Project Plan & Copilot Instructions: The Personal Site Generator
-                                                Phase 2
+                                                Phase 3
 ================================================================================================
 
-This document outlines the complete architecture and Phase 2 implementation plan for the multi-tenant personal site generator. The core of the platform is a single, powerful backend that serves multiple, independent frontend sites, providing a scalable and manageable solution. Phase 2 focuses on building the core user-facing features: the editor experience, the advanced admin calendar, and the template management system.
+This document outlines the complete architecture and implementation plan for the multi-tenant personal site generator. The core of the platform is a single, powerful backend that serves multiple, independent frontend sites, providing a scalable and manageable solution. Phase 3 focuses on building the core user-facing features: the editor experience and the advanced creator calendar.
 
 ------------------------------------------------------------------------------------------------
                              Part 1: Vision & High-Level Architecture (Established)
