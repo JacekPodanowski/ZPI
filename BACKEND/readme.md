@@ -10,7 +10,9 @@ python manage.py runserver
 
 ## API w pigułce
 
-Interfejs REST służy do obsługi trzech typów użytkowników platformy YourEasySite: administratorów, twórców witryn oraz klientów rezerwujących sesje. Rdzeń API obejmuje pięć zasobów:
+Interfejs REST służy do obsługi trzech typów użytkowników platformy YourEasySite: administratorów, twórców witryn oraz klientów rezerwujących sesje.
+
+Rdzeń API obejmuje pięć zasobów:
 
 - **Auth** – JWT (`/api/v1/token/`, `/api/v1/token/refresh/`) oraz rejestracja Google/dedykowana.
 - **Platform users** – zarządzanie właścicielami kont (`/api/v1/users/`).

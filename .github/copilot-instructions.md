@@ -1,5 +1,5 @@
 ================================================================================================
-                    Project Plan & Copilot Instructions: The Personal Site Generator
+                    Project Plan & Copilot Instructions: YourEasySite.com
                                                 Phase 3
 ================================================================================================
 
