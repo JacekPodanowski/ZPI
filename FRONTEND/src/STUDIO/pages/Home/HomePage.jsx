@@ -14,6 +14,8 @@ const MONTSERRAT_BUTTON_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "A
 const WORDMARK_EXPAND_DURATION_S = 1.2;
 const WORDMARK_COLLAPSE_DURATION_S = 0.3;
 const SCROLL_INDICATOR_APPEAR_DELAY_MS = LOGO_ANIMATION_DELAY_MS + WORDMARK_EXPAND_DURATION_S * 1000 + 1000;
+const NAV_SCROLL_DIRECTION_THRESHOLD_PX = 4;
+const NAV_BOTTOM_LOCK_THRESHOLD_PX = 12;
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -120,12 +122,19 @@ const HomePage = () => {
 
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
+            const maxScrollY = Math.max(
+                document.documentElement.scrollHeight - window.innerHeight,
+                0
+            );
+            const isNearTop = currentScrollY < 10;
+            const isNearBottom = maxScrollY - currentScrollY <= NAV_BOTTOM_LOCK_THRESHOLD_PX;
+            const delta = currentScrollY - lastScrollY.current;
 
-            if (currentScrollY < 10) {
+            if (isNearTop) {
                 setNavVisible(true);
-            } else if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+            } else if (delta > NAV_SCROLL_DIRECTION_THRESHOLD_PX && currentScrollY > 100) {
                 setNavVisible(false);
-            } else if (currentScrollY < lastScrollY.current) {
+            } else if (delta < -NAV_SCROLL_DIRECTION_THRESHOLD_PX && !isNearBottom) {
                 setNavVisible(true);
             }
 

@@ -26,6 +26,7 @@ import useTheme from '../../theme/useTheme';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
 const AVATAR_BUTTON_SIZE = 44;
+const GLOW_MAX_RANGE = 7;
 
 const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
   const navigate = useNavigate();
@@ -33,11 +34,10 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
   const menuSurface = theme.colors?.bg?.surface || theme.palette.background.paper;
   const subduedText = theme.colors?.text?.secondary || theme.palette.text.secondary;
-  const hoverGlow = alpha(accentColor, theme.palette.mode === 'dark' ? 0.12 : 0.18);
   const activeShadow = `0 12px 28px ${alpha(accentColor, theme.palette.mode === 'dark' ? 0.28 : 0.2)}`;
-  const glowGradient = `radial-gradient(circle, ${alpha(accentColor, 0.22)} 0%, ${alpha(accentColor, 0)} 72%)`;
 
   const [anchorEl, setAnchorEl] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
   const open = Boolean(anchorEl);
 
   const displayName = useMemo(() => {
@@ -91,53 +91,82 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
     onLogout();
   };
 
-  //const avatarSrc = theme.mode === 'light' ? darkAvatarSrc : lightAvatarSrc;
   const avatarSrc = ShadowAvatarSrc;
+
+  // Calculate the percentage where avatar edge is in the gradient
+  const avatarEdgePercent = (AVATAR_BUTTON_SIZE / (AVATAR_BUTTON_SIZE + GLOW_MAX_RANGE * 2)) * 100;
 
   return (
     <>
-      <IconButton
-        onClick={handleOpen}
-        size="small"
+      <Box
         sx={{
-          p: 0,
+          position: 'relative',
           width: AVATAR_BUTTON_SIZE,
           height: AVATAR_BUTTON_SIZE,
-          position: 'relative',
-          borderRadius: '50%',
-          border: 'none',
-          backgroundColor: open ? hoverGlow : 'transparent',
-          transition: 'transform 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease',
-          boxShadow: open ? activeShadow : 'none',
-          overflow: 'visible',
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            inset: '-14px',
-            borderRadius: '50%',
-            background: glowGradient,
-            opacity: open ? 0.35 : 0,
-            transform: open ? 'scale(1)' : 'scale(0.85)',
-            transition: 'opacity 0.35s ease, transform 0.35s ease',
-            pointerEvents: 'none'
-          },
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            backgroundColor: hoverGlow,
-            boxShadow: activeShadow
-          },
-          '&:hover::after': {
-            opacity: 0.32,
-            transform: 'scale(1)'
-          }
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <Avatar
-          src={avatarSrc}
-          alt={displayName}
-          sx={{ width: AVATAR_BUTTON_SIZE - 2, height: AVATAR_BUTTON_SIZE - 2 }}
+        {/* Glow effect layer - BEHIND avatar */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: AVATAR_BUTTON_SIZE + GLOW_MAX_RANGE * 2,
+            height: AVATAR_BUTTON_SIZE + GLOW_MAX_RANGE * 2,
+            transform: 'translate(-50%, -50%)',
+            borderRadius: '50%',
+            background: `radial-gradient(circle, 
+              transparent 0%, 
+              transparent ${avatarEdgePercent - 2}%, 
+              ${alpha(accentColor, 0.6)} ${avatarEdgePercent}%, 
+              ${alpha(accentColor, 0.35)} ${avatarEdgePercent + 8}%, 
+              ${alpha(accentColor, 0.15)} ${avatarEdgePercent + 20}%, 
+              ${alpha(accentColor, 0.05)} ${avatarEdgePercent + 40}%, 
+              transparent 100%)`,
+            opacity: (open || isHovered) ? 1 : 0,
+            transition: 'opacity 0.4s ease',
+            pointerEvents: 'none',
+            filter: 'blur(12px)',
+            zIndex: 0,
+          }}
         />
-      </IconButton>
+
+        <IconButton
+          onClick={handleOpen}
+          size="small"
+          sx={{
+            p: 0,
+            width: AVATAR_BUTTON_SIZE,
+            height: AVATAR_BUTTON_SIZE,
+            position: 'relative',
+            zIndex: 1,
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: 'transparent',
+            transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            boxShadow: open ? activeShadow : 'none',
+            overflow: 'visible',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              backgroundColor: 'transparent',
+              boxShadow: activeShadow,
+            }
+          }}
+        >
+          <Avatar
+            src={avatarSrc}
+            alt={displayName}
+            sx={{ 
+              width: AVATAR_BUTTON_SIZE - 2, 
+              height: AVATAR_BUTTON_SIZE - 2,
+              position: 'relative',
+              zIndex: 2,
+            }}
+          />
+        </IconButton>
+      </Box>
 
       <Menu
         anchorEl={anchorEl}
@@ -146,6 +175,7 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         TransitionComponent={Grow}
+        disableScrollLock
         PaperProps={{
           elevation: 8,
           sx: {
