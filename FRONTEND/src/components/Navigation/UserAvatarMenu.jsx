@@ -21,6 +21,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PhotoCameraBackOutlinedIcon from '@mui/icons-material/PhotoCameraBackOutlined';
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useNavigate } from 'react-router-dom';
 import useTheme from '../../theme/useTheme';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
@@ -51,19 +52,24 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
   const defaultMenuItems = useMemo(
     () => ([
       {
-        label: 'Ustawienia profilu',
+        label: 'Profile Settings',
         icon: <PersonOutlineIcon fontSize="small" />,
-        path: null
+        path: '/studio/account/profile'
       },
       {
-        label: 'Płatności',
+        label: 'Billing & Plans',
         icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
-        path: null
+        path: '/studio/account/billing'
       },
       {
-        label: 'Ustawienia',
+        label: 'Appearance',
+        icon: <PaletteOutlinedIcon fontSize="small" />,
+        path: '/studio/account/appearance'
+      },
+      {
+        label: 'Settings',
         icon: <SettingsOutlinedIcon fontSize="small" />,
-        path: null
+        path: '/studio/account/settings'
       }
     ]),
     []

@@ -269,14 +269,20 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
         MuiCssBaseline: {
           styleOverrides: {
             html: {
-              fontSize: `${16 * (workingTheme.fontScale || 1)}px`
+              fontSize: `${16 * (workingTheme.fontScale || 1)}px`,
+              transition: 'font-size 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
             },
             body: {
               backgroundColor: workingTheme.colors.bg.page,
-              color: workingTheme.colors.text.primary
+              color: workingTheme.colors.text.primary,
+              transition: 'background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
             },
             a: {
-              color: workingTheme.colors.text.link
+              color: workingTheme.colors.text.link,
+              transition: 'color 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+            },
+            '*': {
+              transition: 'background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), fill 0.35s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
             }
           }
         },
@@ -284,7 +290,15 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
           styleOverrides: {
             root: {
               borderRadius: workingTheme.radii?.soft || 16,
-              fontWeight: typography.weights.semibold
+              fontWeight: typography.weights.semibold,
+              transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+            }
+          }
+        },
+        MuiPaper: {
+          styleOverrides: {
+            root: {
+              transition: 'background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
             }
           }
         }
@@ -317,10 +331,15 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
+    
+    // Ensure smooth transition timing
+    root.style.transition = 'background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
+    
     assignCssVariables(root, workingTheme);
     root.setAttribute('data-theme', workingTheme.mode);
     document.body.style.backgroundColor = workingTheme.colors.bg.page;
     document.body.style.color = workingTheme.colors.text.primary;
+    document.body.style.transition = 'background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.35s cubic-bezier(0.4, 0, 0.2, 1)';
   }, [workingTheme]);
 
   useEffect(() => {
@@ -330,6 +349,17 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
   }, [workingTheme.fontScale]);
 
   const toggleMode = useCallback(() => {
+    // Add a class to coordinate the transition
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      root.classList.add('theme-transitioning');
+      
+      // Remove the class after transition completes
+      setTimeout(() => {
+        root.classList.remove('theme-transitioning');
+      }, 400);
+    }
+    
     setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
 

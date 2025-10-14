@@ -10,6 +10,7 @@ import { useThemeContext } from './ThemeProvider';
 const useTheme = () => {
 	const context = useThemeContext();
 	const muiTheme = useMuiTheme();
+	const contextMuiTheme = context?.muiTheme;
 
 	return useMemo(() => {
 		const semanticTheme = context?.theme;
@@ -17,6 +18,7 @@ const useTheme = () => {
 		if (!semanticTheme || !muiTheme) {
 			return {
 				...semanticTheme,
+				muiTheme: contextMuiTheme || muiTheme,
 				mode: context?.mode,
 				toggleMode: context?.toggleMode,
 				selectTheme: context?.selectTheme,
@@ -34,6 +36,7 @@ const useTheme = () => {
 
 		return {
 			...muiTheme,
+			muiTheme: muiTheme || contextMuiTheme,
 			mode: context.mode,
 			themeId: context.themeId,
 			toggleMode: context.toggleMode,
@@ -60,7 +63,7 @@ const useTheme = () => {
 					},
 			semantic: semanticTheme
 		};
-	}, [context, muiTheme]);
+	}, [context, muiTheme, contextMuiTheme]);
 };
 
 export default useTheme;

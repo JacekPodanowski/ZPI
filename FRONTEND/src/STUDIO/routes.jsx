@@ -11,6 +11,11 @@ import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
 import PublicCalendarPage from './pages/Home/PublicCalendarPage';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import StudioLayout from './layouts/StudioLayout';
+import SettingsLayout from './layouts/SettingsLayout';
+import ProfilePage from './pages/ProfilePage';
+import BillingPage from './pages/BillingPage';
+import AppearancePage from './pages/AppearancePage';
+import SettingsPage from './pages/SettingsPage';
 
 const StudioApp = () => (
   <Routes>
@@ -34,6 +39,15 @@ const StudioApp = () => (
       {/* Admin area */}
       <Route path="admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
       <Route path="creator" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
+    </Route>
+
+    {/* Account settings routes with shared layout */}
+    <Route path="account" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
+      <Route index element={<Navigate to="profile" replace />} />
+      <Route path="profile" element={<ProfilePage />} />
+      <Route path="billing" element={<BillingPage />} />
+      <Route path="appearance" element={<AppearancePage />} />
+      <Route path="settings" element={<SettingsPage />} />
     </Route>
 
     {/* Editor routes remain outside the main layout to use editor-specific navigation */}

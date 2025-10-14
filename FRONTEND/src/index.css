@@ -7,11 +7,21 @@
 * {
   box-sizing: border-box;
   transition:
-    background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease,
-    fill 0.3s ease,
-    stroke 0.3s ease;
+    background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    fill 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Disable transitions during theme switch for better sync */
+html.theme-transitioning * {
+  transition:
+    background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    fill 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 html,

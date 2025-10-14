@@ -1,0 +1,172 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Avatar,
+  Stack,
+  Divider,
+  Alert
+} from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import SaveIcon from '@mui/icons-material/Save';
+import useTheme from '../../theme/useTheme';
+import { useAuth } from '../../contexts/AuthContext';
+
+const ProfilePage = () => {
+  const theme = useTheme();
+  const { user } = useAuth();
+
+  const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
+  const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
+
+  const [formData, setFormData] = useState({
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
+    email: user?.email || '',
+    bio: ''
+  });
+
+  const handleChange = (field) => (e) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  };
+
+  const handleSave = () => {
+    // TODO: Implement API call to save profile data
+    console.log('Saving profile:', formData);
+  };
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        backgroundColor: surfaceColor,
+        borderRadius: '16px',
+        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        p: 4
+      }}
+    >
+      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+        Profile Settings
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary }}>
+        Manage your personal information
+      </Typography>
+
+      <Alert severity="info" sx={{ mb: 3, borderRadius: '12px' }}>
+        <strong>TODO:</strong> API integration for saving profile data is not yet implemented.
+      </Alert>
+
+      <Stack spacing={4}>
+        {/* Avatar Section */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+            Profile Picture
+          </Typography>
+          <Stack direction="row" spacing={3} alignItems="center">
+            <Avatar
+              sx={{
+                width: 100,
+                height: 100,
+                border: `2px solid ${alpha(accentColor, 0.2)}`
+              }}
+            >
+              {formData.firstName?.[0]?.toUpperCase() || 'U'}
+            </Avatar>
+            <Button
+              variant="outlined"
+              startIcon={<PhotoCameraIcon />}
+              disabled
+              sx={{ borderRadius: '12px' }}
+            >
+              Upload Photo (Coming Soon)
+            </Button>
+          </Stack>
+        </Box>
+
+        <Divider />
+
+        {/* Personal Information */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+            Personal Information
+          </Typography>
+          <Stack spacing={3}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                label="First Name"
+                value={formData.firstName}
+                onChange={handleChange('firstName')}
+                sx={{ borderRadius: '12px' }}
+              />
+              <TextField
+                fullWidth
+                label="Last Name"
+                value={formData.lastName}
+                onChange={handleChange('lastName')}
+                sx={{ borderRadius: '12px' }}
+              />
+            </Stack>
+
+            <TextField
+              fullWidth
+              label="Email"
+              value={formData.email}
+              onChange={handleChange('email')}
+              type="email"
+              sx={{ borderRadius: '12px' }}
+            />
+
+            <TextField
+              fullWidth
+              label="Bio"
+              value={formData.bio}
+              onChange={handleChange('bio')}
+              multiline
+              rows={4}
+              placeholder="Tell us a bit about yourself..."
+              sx={{ borderRadius: '12px' }}
+            />
+          </Stack>
+        </Box>
+
+        <Divider />
+
+        {/* Password Section */}
+        <Box>
+          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+            Password
+          </Typography>
+          <Button variant="outlined" disabled sx={{ borderRadius: '12px' }}>
+            Change Password (TODO)
+          </Button>
+        </Box>
+
+        {/* Save Button */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleSave}
+            sx={{
+              borderRadius: '12px',
+              px: 4,
+              backgroundColor: accentColor,
+              '&:hover': {
+                backgroundColor: alpha(accentColor, 0.9)
+              }
+            }}
+          >
+            Save Changes
+          </Button>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+};
+
+export default ProfilePage;

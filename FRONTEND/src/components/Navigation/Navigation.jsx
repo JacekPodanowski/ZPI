@@ -30,6 +30,7 @@ import UserAvatarMenu from './UserAvatarMenu';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
 {/* TODO: Animated variant currently glitches by retriggering when mid-page scroll oscillates.*/}
@@ -71,19 +72,24 @@ const Navigation = ({
     const userMenuItems = useMemo(
         () => ([
             {
-                label: 'Ustawienia profilu',
+                label: 'Profile Settings',
                 icon: <PersonOutlineIcon fontSize="small" />,
-                path: '/studio/settings/profile'
+                path: '/studio/account/profile'
             },
             {
-                label: 'Płatności',
+                label: 'Billing & Plans',
                 icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
-                path: '/studio/settings/payments'
+                path: '/studio/account/billing'
             },
             {
-                label: 'Ustawienia',
+                label: 'Appearance',
+                icon: <PaletteOutlinedIcon fontSize="small" />,
+                path: '/studio/account/appearance'
+            },
+            {
+                label: 'Settings',
                 icon: <SettingsOutlinedIcon fontSize="small" />,
-                path: '/studio/settings'
+                path: '/studio/account/settings'
             }
         ]),
         []
