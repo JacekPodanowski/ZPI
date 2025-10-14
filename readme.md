@@ -1,21 +1,13 @@
-# TO DO
-    1. Plan budowania stron i prowadzenie użytkowiników
-    2. Płynny i przyjemny edytor
-    3. Połaczenie z AI
-    4. Biblioteka wyskakujących okienek (Toast)
-    5. Design
-
 # Instrukcje są w `.github/copilot-instructions.md`
 
 # Robić branche :
     Najlepiej małe i tematyczne np: HomePage
-    Nie pracować na mainie, powoduje to problemy.
+    Jak działa wrzucać na maina
 
-# Przed uruchomieniem upewinj się że masz 4 pliki .env :
+# Przed uruchomieniem upewinj się że masz 3 pliki .env :
     1 w katalogu ZPI
     2 w ZPI/BACKEND
     3 w ZPI/FRONTEND
-    4 w ZPI/site_frontend (opcjonalnie)
 
 Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zrobić `.env`
 
@@ -41,7 +33,7 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 # Konsultacje z AI
 * Przed rozpoczęciem pracy zróbcie sobie instrucje. (ratuje to masę czasu)
-* Wklejcie cały plik `copilot-instructions.md` w google AI Studio (model gemmini 2.5)
+* Wklejcie cały plik `copilot-instructions.md` w google AI Studio (gemmini 2.5)
 * Opiszcie niżej co chcecie zrobić i dodajcie na koniec :
 
 `Act as an expert consultant. Analyze project description and my request. Based on this analysis, propose an optimal solution that aligns with project's vision and reflects professional best practices. Shortly explain why your proposed solution is the most effective. If your proposal introduces significant strategic changes to my original request, present your solution and ask for my confirmation before you proceed. If your proposal only refines or details my request without major changes, present it and then create a detailed work plan.`
