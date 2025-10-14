@@ -1,4 +1,6 @@
-# Instrukcje są w `.github/copilot-instructions.md`
+# Zadania są na Jirze
+
+# Opis projektu w `.github/copilot-instructions.md`
 
 # Robić branche :
     Najlepiej małe i tematyczne np: HomePage
