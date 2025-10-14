@@ -4,7 +4,8 @@
 
 # Szybkie małe zmiany 
     Branche najlepiej małe i tematyczne np: HomePage
-    Jak działa to wrzucać na maina
+    Jak działa to wrzucać na Maina
+    Main powinien być akutalny
 
 # Przed uruchomieniem upewinj się że masz 3 pliki .env :
     1 w katalogu ZPI
@@ -26,8 +27,8 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 # Hot-reload
     Wszystko działa w trybie deweloperskim
-    zmiany w kodzie od razu automatycznie się ładują.
-    Jeśli nie widzisz zmian, sprawdź logi.
+    Zmiany w kodzie od razu automatycznie się ładują
+    Jeśli nie widzisz zmian, sprawdź logi
 
 # Komendy do docera są w `docer_commands.md`
 
