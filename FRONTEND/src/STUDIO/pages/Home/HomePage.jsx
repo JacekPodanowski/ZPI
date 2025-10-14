@@ -30,6 +30,7 @@ const HomePage = () => {
     const aboutRef = useRef(null);
     const ctaRef = useRef(null);
     const lastScrollY = useRef(0);
+    const navVisibleRef = useRef(true);
 
     useEffect(() => {
         const raf = requestAnimationFrame(() => setPageVisible(true));
@@ -131,11 +132,17 @@ const HomePage = () => {
             const delta = currentScrollY - lastScrollY.current;
 
             if (isNearTop) {
-                setNavVisible(true);
+                if (!navVisibleRef.current) {
+                    setNavVisible(true);
+                }
             } else if (delta > NAV_SCROLL_DIRECTION_THRESHOLD_PX && currentScrollY > 100) {
-                setNavVisible(false);
+                if (navVisibleRef.current) {
+                    setNavVisible(false);
+                }
             } else if (delta < -NAV_SCROLL_DIRECTION_THRESHOLD_PX && !isNearBottom) {
-                setNavVisible(true);
+                if (!navVisibleRef.current) {
+                    setNavVisible(true);
+                }
             }
 
             lastScrollY.current = currentScrollY;
@@ -145,6 +152,20 @@ const HomePage = () => {
 
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+        navVisibleRef.current = navVisible;
+
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
+
+        const raf = requestAnimationFrame(() => {
+            lastScrollY.current = window.scrollY;
+        });
+
+        return () => cancelAnimationFrame(raf);
+    }, [navVisible]);
 
     const proceedToNewSite = useCallback(() => {
         const go = () => {
@@ -191,12 +212,7 @@ const HomePage = () => {
 
     return (
         <>
-            <Navigation 
-                variant="animated"
-                initialDelay={NAVIGATION_ANIMATION_DELAY_MS}
-                hideOnScroll
-                externalVisible={navVisible}
-            />
+            <Navigation variant="permanent" />
             <Box 
                 component="main" 
                 sx={{ 

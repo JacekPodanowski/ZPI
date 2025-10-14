@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
 import {
@@ -32,6 +32,9 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
+{/* TODO: Animated variant currently glitches by retriggering when mid-page scroll oscillates.*/}
+// maybe even delete it entirely if it won't be used
+
 const drawerWidth = 280;
 const NAV_HEIGHT = 72;
 const NAV_BORDER_WIDTH = 1;
@@ -52,6 +55,8 @@ const Navigation = ({
     const resolvedInitialDelay = isAnimated ? initialDelay : 0;
     const resolvedHideOnScroll = isAnimated ? hideOnScroll : false;
     const [navVisible, setNavVisible] = useState(!isAnimated || resolvedInitialDelay <= 0);
+    const appBarRef = useRef(null);
+    const [measuredNavHeight, setMeasuredNavHeight] = useState(NAV_TOTAL_HEIGHT);
 
     const avatarSrc = ShadowAvatarSrc;
 
@@ -140,7 +145,29 @@ const Navigation = ({
     const navTransform = effectiveNavVisible ? 'translateY(0)' : 'translateY(-110%)';
     const navOpacity = effectiveNavVisible ? 1 : 0;
     const navPointerEvents = effectiveNavVisible ? 'auto' : 'none';
-    const spacerHeight = effectiveNavVisible ? NAV_TOTAL_HEIGHT : 0;
+    const spacerHeight = effectiveNavVisible ? measuredNavHeight : 0;
+
+    useLayoutEffect(() => {
+        if (!appBarRef.current) {
+            return undefined;
+        }
+
+        const element = appBarRef.current;
+        const updateHeight = () => {
+            setMeasuredNavHeight(element.offsetHeight || NAV_TOTAL_HEIGHT);
+        };
+
+        updateHeight();
+
+        if (typeof ResizeObserver === 'undefined') {
+            return undefined;
+        }
+
+        const resizeObserver = new ResizeObserver(updateHeight);
+        resizeObserver.observe(element);
+
+        return () => resizeObserver.disconnect();
+    }, []);
 
     const drawer = (
         <Box sx={{ textAlign: 'center', height: '100%' }} role="presentation" onClick={handleDrawerToggle}>
@@ -285,6 +312,7 @@ const Navigation = ({
                 onFocusCapture={() => setNavVisible(true)}
             >
                 <AppBar
+                    ref={appBarRef}
                     position="static"
                     elevation={0}
                     sx={{
