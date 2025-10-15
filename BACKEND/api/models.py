@@ -82,7 +82,10 @@ class Site(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        desired_identifier = generate_site_identifier(self.pk, self.name)
+        owner = getattr(self, 'owner', None)
+        owner_first = getattr(owner, 'first_name', '') if owner else ''
+        owner_last = getattr(owner, 'last_name', '') if owner else ''
+        desired_identifier = generate_site_identifier(self.pk, self.name, owner_first, owner_last)
         if self.identifier != desired_identifier:
             Site.objects.filter(pk=self.pk).update(identifier=desired_identifier)
             self.identifier = desired_identifier

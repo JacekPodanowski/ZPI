@@ -59,7 +59,7 @@ const SettingsLayout = () => {
       }}
     >
       {/* Add Navigation at the top */}
-      <Navigation variant="permanent" />
+      <Navigation />
 
       <Box sx={{ pt: 4, pb: 8 }}>
         <Container maxWidth="xl">

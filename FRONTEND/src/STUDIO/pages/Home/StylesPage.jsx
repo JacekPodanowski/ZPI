@@ -207,7 +207,7 @@ const StylesPage = () => {
 
   return (
     <>
-      <Navigation variant="permanent" />
+      <Navigation />
       <Box
         component="main"
         sx={{

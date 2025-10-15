@@ -1,5 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import PropTypes from 'prop-types';
+import React, { useMemo, useState } from 'react';
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
 import {
     AppBar,
@@ -33,31 +32,15 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
-{/* TODO: Animated variant currently glitches by retriggering when mid-page scroll oscillates.*/}
-// maybe even delete it entirely if it won't be used
-
 const drawerWidth = 280;
 const NAV_HEIGHT = 72;
-const NAV_BORDER_WIDTH = 1;
-const NAV_TOTAL_HEIGHT = NAV_HEIGHT + NAV_BORDER_WIDTH;
 
-const Navigation = ({ 
-    variant = 'permanent', 
-    initialDelay = 0, 
-    hideOnScroll = false, 
-    externalVisible = null 
-}) => {
+const Navigation = () => {
     const { isAuthenticated, user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
     const theme = useTheme();
     const { mode, toggleMode } = theme;
-    const isAnimated = variant === 'animated';
-    const resolvedInitialDelay = isAnimated ? initialDelay : 0;
-    const resolvedHideOnScroll = isAnimated ? hideOnScroll : false;
-    const [navVisible, setNavVisible] = useState(!isAnimated || resolvedInitialDelay <= 0);
-    const appBarRef = useRef(null);
-    const [measuredNavHeight, setMeasuredNavHeight] = useState(NAV_TOTAL_HEIGHT);
 
     const avatarSrc = ShadowAvatarSrc;
 
@@ -125,55 +108,6 @@ const Navigation = ({
         logout();
         setMobileOpen(false);
     };
-
-    useEffect(() => {
-        if (!isAnimated) {
-            setNavVisible(true);
-            return undefined;
-        }
-
-        if (resolvedInitialDelay <= 0) {
-            setNavVisible(true);
-            return undefined;
-        }
-
-        const timer = setTimeout(() => {
-            setNavVisible(true);
-        }, resolvedInitialDelay);
-
-        return () => clearTimeout(timer);
-    }, [isAnimated, resolvedInitialDelay]);
-
-    const effectiveNavVisible = isAnimated
-        ? (resolvedHideOnScroll && externalVisible !== null ? (navVisible && externalVisible) : navVisible)
-        : true;
-
-    const navTransform = effectiveNavVisible ? 'translateY(0)' : 'translateY(-110%)';
-    const navOpacity = effectiveNavVisible ? 1 : 0;
-    const navPointerEvents = effectiveNavVisible ? 'auto' : 'none';
-    const spacerHeight = effectiveNavVisible ? measuredNavHeight : 0;
-
-    useLayoutEffect(() => {
-        if (!appBarRef.current) {
-            return undefined;
-        }
-
-        const element = appBarRef.current;
-        const updateHeight = () => {
-            setMeasuredNavHeight(element.offsetHeight || NAV_TOTAL_HEIGHT);
-        };
-
-        updateHeight();
-
-        if (typeof ResizeObserver === 'undefined') {
-            return undefined;
-        }
-
-        const resizeObserver = new ResizeObserver(updateHeight);
-        resizeObserver.observe(element);
-
-        return () => resizeObserver.disconnect();
-    }, []);
 
     const drawer = (
         <Box sx={{ textAlign: 'center', height: '100%' }} role="presentation" onClick={handleDrawerToggle}>
@@ -301,38 +235,21 @@ const Navigation = ({
 
     return (
         <Box sx={{ flex: '0 0 auto', width: '100%' }}>
-            <Box
+            <AppBar
+                position="sticky"
+                elevation={0}
                 sx={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: (muiTheme) => muiTheme.zIndex.appBar + 2,
-                    transform: navTransform,
-                    opacity: navOpacity,
-                    transition: isAnimated
-                        ? 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease'
-                        : 'none',
-                    pointerEvents: navPointerEvents
+                    backgroundColor: (muiTheme) =>
+                        muiTheme.palette.mode === 'dark'
+                            ? 'rgba(12, 12, 12, 0.96)'
+                            : 'rgba(228, 229, 218, 0.92)',
+                    backdropFilter: 'blur(12px)',
+                    color: 'text.primary',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
                 }}
-                onFocusCapture={() => setNavVisible(true)}
             >
-                <AppBar
-                    ref={appBarRef}
-                    position="static"
-                    elevation={0}
-                    sx={{
-                        backgroundColor: (muiTheme) =>
-                            muiTheme.palette.mode === 'dark'
-                                ? 'rgba(12, 12, 12, 0.96)'
-                                : 'rgba(228, 229, 218, 0.92)',
-                        backdropFilter: 'blur(12px)',
-                        color: 'text.primary',
-                        borderBottom: '1px solid',
-                        borderColor: 'divider'
-                    }}
-                >
-                    <Toolbar sx={{ minHeight: NAV_HEIGHT, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
+                <Toolbar sx={{ minHeight: NAV_HEIGHT, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <IconButton
                             color="inherit"
@@ -425,16 +342,7 @@ const Navigation = ({
                         )}
                     </Box>
                 </Toolbar>
-                </AppBar>
-            </Box>
-
-            <Box
-                sx={{
-                    height: `${spacerHeight}px`,
-                    transition: isAnimated ? 'height 0.35s ease' : 'none'
-                }}
-                aria-hidden="true"
-            />
+            </AppBar>
 
             <Box component="nav">
                 <Drawer
@@ -452,13 +360,6 @@ const Navigation = ({
             </Box>
         </Box>
     );
-};
-
-Navigation.propTypes = {
-    variant: PropTypes.oneOf(['animated', 'permanent']),
-    initialDelay: PropTypes.number,
-    hideOnScroll: PropTypes.bool,
-    externalVisible: PropTypes.bool
 };
 
 export default Navigation;

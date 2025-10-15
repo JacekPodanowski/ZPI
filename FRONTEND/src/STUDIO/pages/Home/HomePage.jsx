@@ -212,7 +212,7 @@ const HomePage = () => {
 
     return (
         <>
-            <Navigation variant="permanent" />
+            <Navigation />
             <Box 
                 component="main" 
                 sx={{ 

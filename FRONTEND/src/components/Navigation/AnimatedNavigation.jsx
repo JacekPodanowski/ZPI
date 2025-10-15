@@ -1,3 +1,18 @@
+/**
+ * ⚠️ BUGGY COMPONENT - NEEDS FIXING ⚠️
+ * 
+ * This animated navigation has a bug where it enters an infinite loop
+ * of showing/hiding when scroll position oscillates near the threshold.
+ * 
+ * DO NOT USE in production until the scroll detection logic is fixed.
+ * 
+ * Known issues:
+ * - Glitches when mid-page scroll oscillates
+ * - Visibility toggle triggers unnecessarily during small scroll movements
+ * 
+ * TODO: Fix scroll detection to use proper debouncing or threshold logic
+ */
+
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
@@ -33,16 +48,12 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
-{/* TODO: Animated variant currently glitches by retriggering when mid-page scroll oscillates.*/}
-// maybe even delete it entirely if it won't be used
-
 const drawerWidth = 280;
 const NAV_HEIGHT = 72;
 const NAV_BORDER_WIDTH = 1;
 const NAV_TOTAL_HEIGHT = NAV_HEIGHT + NAV_BORDER_WIDTH;
 
-const Navigation = ({ 
-    variant = 'permanent', 
+const AnimatedNavigation = ({ 
     initialDelay = 0, 
     hideOnScroll = false, 
     externalVisible = null 
@@ -52,10 +63,7 @@ const Navigation = ({
     const navigate = useNavigate();
     const theme = useTheme();
     const { mode, toggleMode } = theme;
-    const isAnimated = variant === 'animated';
-    const resolvedInitialDelay = isAnimated ? initialDelay : 0;
-    const resolvedHideOnScroll = isAnimated ? hideOnScroll : false;
-    const [navVisible, setNavVisible] = useState(!isAnimated || resolvedInitialDelay <= 0);
+    const [navVisible, setNavVisible] = useState(initialDelay <= 0);
     const appBarRef = useRef(null);
     const [measuredNavHeight, setMeasuredNavHeight] = useState(NAV_TOTAL_HEIGHT);
 
@@ -127,26 +135,21 @@ const Navigation = ({
     };
 
     useEffect(() => {
-        if (!isAnimated) {
-            setNavVisible(true);
-            return undefined;
-        }
-
-        if (resolvedInitialDelay <= 0) {
+        if (initialDelay <= 0) {
             setNavVisible(true);
             return undefined;
         }
 
         const timer = setTimeout(() => {
             setNavVisible(true);
-        }, resolvedInitialDelay);
+        }, initialDelay);
 
         return () => clearTimeout(timer);
-    }, [isAnimated, resolvedInitialDelay]);
+    }, [initialDelay]);
 
-    const effectiveNavVisible = isAnimated
-        ? (resolvedHideOnScroll && externalVisible !== null ? (navVisible && externalVisible) : navVisible)
-        : true;
+    const effectiveNavVisible = hideOnScroll && externalVisible !== null 
+        ? (navVisible && externalVisible) 
+        : navVisible;
 
     const navTransform = effectiveNavVisible ? 'translateY(0)' : 'translateY(-110%)';
     const navOpacity = effectiveNavVisible ? 1 : 0;
@@ -310,9 +313,7 @@ const Navigation = ({
                     zIndex: (muiTheme) => muiTheme.zIndex.appBar + 2,
                     transform: navTransform,
                     opacity: navOpacity,
-                    transition: isAnimated
-                        ? 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease'
-                        : 'none',
+                    transition: 'transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.4s ease',
                     pointerEvents: navPointerEvents
                 }}
                 onFocusCapture={() => setNavVisible(true)}
@@ -333,52 +334,31 @@ const Navigation = ({
                     }}
                 >
                     <Toolbar sx={{ minHeight: NAV_HEIGHT, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <IconButton
-                            color="inherit"
-                            aria-label="open navigation"
-                            edge="start"
-                            onClick={handleDrawerToggle}
-                            sx={{ display: { sm: 'none' } }}
-                        >
-                            <MenuIcon />
-                        </IconButton>
-                        <Box
-                            component={RouterLink}
-                            to="/"
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                textDecoration: 'none'
-                            }}
-                        >
-                            <Logo size="small" variant="default" animated />
-                        </Box>
-                    </Box>
-
-                    <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
-                        {navGroups.primary.map((item) => (
-                            <Button
-                                key={item.label}
-                                component={NavLink}
-                                to={item.to}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <IconButton
+                                color="inherit"
+                                aria-label="open navigation"
+                                edge="start"
+                                onClick={handleDrawerToggle}
+                                sx={{ display: { sm: 'none' } }}
+                            >
+                                <MenuIcon />
+                            </IconButton>
+                            <Box
+                                component={RouterLink}
+                                to="/"
                                 sx={{
-                                    color: 'text.secondary',
-                                    '&.active': {
-                                        color: 'primary.main',
-                                        backgroundColor: 'rgba(160, 0, 22, 0.08)'
-                                    }
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    textDecoration: 'none'
                                 }}
                             >
-                                {item.label}
-                            </Button>
-                        ))}
-                    </Box>
+                                <Logo size="small" variant="default" animated />
+                            </Box>
+                        </Box>
 
-                    {navGroups.dev.length > 0 && (
-                        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                            <Chip label="DEV" color="secondary" size="small" sx={{ fontWeight: 600 }} />
-                            {navGroups.dev.map((item) => (
+                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
+                            {navGroups.primary.map((item) => (
                                 <Button
                                     key={item.label}
                                     component={NavLink}
@@ -395,43 +375,64 @@ const Navigation = ({
                                 </Button>
                             ))}
                         </Box>
-                    )}
 
-                    <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
-                        <IconButton
-                            onClick={toggleMode}
-                            color="inherit"
-                            aria-label="toggle theme"
-                            sx={{
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                    transform: 'scale(1.1)',
-                                    backgroundColor: 'action.hover'
-                                }
-                            }}
-                        >
-                            {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
-                        </IconButton>
-                        {isAuthenticated ? (
-                            <UserAvatarMenu
-                                user={user}
-                                onLogout={handleLogout}
-                                menuItems={userMenuItems}
-                            />
-                        ) : (
-                            <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
-                                Zaloguj
-                            </Button>
+                        {navGroups.dev.length > 0 && (
+                            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
+                                <Chip label="DEV" color="secondary" size="small" sx={{ fontWeight: 600 }} />
+                                {navGroups.dev.map((item) => (
+                                    <Button
+                                        key={item.label}
+                                        component={NavLink}
+                                        to={item.to}
+                                        sx={{
+                                            color: 'text.secondary',
+                                            '&.active': {
+                                                color: 'primary.main',
+                                                backgroundColor: 'rgba(160, 0, 22, 0.08)'
+                                            }
+                                        }}
+                                    >
+                                        {item.label}
+                                    </Button>
+                                ))}
+                            </Box>
                         )}
-                    </Box>
-                </Toolbar>
+
+                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
+                            <IconButton
+                                onClick={toggleMode}
+                                color="inherit"
+                                aria-label="toggle theme"
+                                sx={{
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                        transform: 'scale(1.1)',
+                                        backgroundColor: 'action.hover'
+                                    }
+                                }}
+                            >
+                                {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
+                            </IconButton>
+                            {isAuthenticated ? (
+                                <UserAvatarMenu
+                                    user={user}
+                                    onLogout={handleLogout}
+                                    menuItems={userMenuItems}
+                                />
+                            ) : (
+                                <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
+                                    Zaloguj
+                                </Button>
+                            )}
+                        </Box>
+                    </Toolbar>
                 </AppBar>
             </Box>
 
             <Box
                 sx={{
                     height: `${spacerHeight}px`,
-                    transition: isAnimated ? 'height 0.35s ease' : 'none'
+                    transition: 'height 0.35s ease'
                 }}
                 aria-hidden="true"
             />
@@ -454,11 +455,10 @@ const Navigation = ({
     );
 };
 
-Navigation.propTypes = {
-    variant: PropTypes.oneOf(['animated', 'permanent']),
+AnimatedNavigation.propTypes = {
     initialDelay: PropTypes.number,
     hideOnScroll: PropTypes.bool,
     externalVisible: PropTypes.bool
 };
 
-export default Navigation;
+export default AnimatedNavigation;

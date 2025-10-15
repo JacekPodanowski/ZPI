@@ -39,6 +39,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import useEditorStore from '../../store/editorStore';
 import { createSite, renameSite, updateSiteTemplate } from '../../../services/siteService';
+import apiClient from '../../../services/apiClient';
 import useNavigationBlocker, { BLOCK_STATES } from '../../../hooks/useNavigationBlocker';
 
 const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
@@ -69,6 +70,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
     const [status, setStatus] = useState(null);
     const [saving, setSaving] = useState(false);
     const [nameSaving, setNameSaving] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
     const [exitDialogOpen, setExitDialogOpen] = useState(false);
     const blocker = useNavigationBlocker(hasUnsavedChanges && !saving && !nameSaving && !disabled);
     const originalName = useMemo(() => siteName || '', [siteName]);
@@ -267,9 +269,28 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
         }
     }, [navigate, nameDraft, saveVersion, setHasUnsavedChanges, setSiteMeta, siteId, templateConfig]);
 
-    const handlePublish = () => {
-        setStatus({ type: 'info', message: 'Przygotowujemy proces publikacji. Wkrótce będzie dostępny.' });
-        handleMenuClose();
+    const handlePublish = async () => {
+        if (!siteId) {
+            setStatus({ type: 'error', message: 'You must save the site first before publishing.' });
+            return;
+        }
+
+        await handleSave();
+
+        setIsPublishing(true);
+        setStatus({ type: 'info', message: 'Publishing process initiated...' });
+        try {
+            await apiClient.post(`/sites/${siteId}/publish/`);
+            setStatus({
+                type: 'success',
+                message: 'Publish command sent successfully! Your site will be live shortly.'
+            });
+        } catch (error) {
+            console.error('Publish failed:', error);
+            setStatus({ type: 'error', message: 'Failed to publish site. Please check the console and try again.' });
+        } finally {
+            setIsPublishing(false);
+        }
     };
 
     const attemptExit = () => {
@@ -480,15 +501,19 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
                                 </Button>
                             </span>
                         </Tooltip>
-                        <Tooltip title="Opublikuj stronę">
+                        <Tooltip title="Publish site">
                             <span>
                                 <Button
                                     variant="contained"
-                                    startIcon={<PublishIcon />}
+                                    startIcon={isPublishing ? (
+                                        <CircularProgress size={20} color="inherit" />
+                                    ) : (
+                                        <PublishIcon />
+                                    )}
                                     onClick={handlePublish}
-                                    disabled={disabled || saving || nameSaving || (!siteId && !isNewSite)}
+                                    disabled={disabled || saving || nameSaving || isPublishing || !siteId}
                                 >
-                                    Publikuj
+                                    {isPublishing ? 'Publishing' : 'Publish'}
                                 </Button>
                             </span>
                         </Tooltip>

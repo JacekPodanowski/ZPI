@@ -10,6 +10,8 @@ from .views import (
     GoogleLogin,
     TemplateViewSet,
     PublicSiteView,
+    PublicSiteByIdView,
+    publish_site,
 )
 
 router = DefaultRouter()
@@ -24,5 +26,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('auth/register/', CustomRegisterView.as_view(), name='custom_register'),
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
+    path('public-sites/by-id/<int:site_id>/', PublicSiteByIdView.as_view(), name='public_site_detail_by_id'),
     path('public-sites/<slug:identifier>/', PublicSiteView.as_view(), name='public_site_detail'),
+    path('sites/<int:site_id>/publish/', publish_site, name='publish-site'),
 ]

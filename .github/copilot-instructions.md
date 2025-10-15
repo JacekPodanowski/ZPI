@@ -75,6 +75,10 @@ Every response involving code changes MUST include a summary structured as follo
 **8. Development Environment**
 All services run in Docker containers with hot-reload enabled, ensuring that code changes are applied instantly without requiring manual restarts or rebuilds.
 
+**9. Readme files**
+Create max 1 readme file describing changes made. Do it only if changes are really really significant. Do not make new documents for every small change.
+Do not change original readme files.
+
 1.5. Core Color Palette & Typography
 ------------------------------------
 *   **Light Mode:**

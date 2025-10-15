@@ -26,7 +26,7 @@ const StudioLayout = ({
 
   return (
     <>
-      {showNavigation ? <Navigation variant="permanent" /> : null}
+      {showNavigation ? <Navigation /> : null}
 
       <Box
         sx={{

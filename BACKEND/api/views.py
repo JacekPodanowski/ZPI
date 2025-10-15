@@ -1,9 +1,10 @@
 """REST API views for the multi-tenant Personal Site Generator backend."""
 
 import logging
+import requests
 from django.conf import settings
 from rest_framework import viewsets, permissions, status, generics
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -220,3 +221,36 @@ class PublicSiteView(generics.RetrieveAPIView):
     serializer_class = PublicSiteSerializer
     permission_classes = [AllowAny]
     lookup_field = 'identifier'
+
+
+class PublicSiteByIdView(generics.RetrieveAPIView):
+    queryset = Site.objects.select_related('owner')
+    serializer_class = PublicSiteSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'pk'
+    lookup_url_kwarg = 'site_id'
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def publish_site(request, site_id):
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response({'error': 'Site not found'}, status=404)
+
+    base_hook_url = getattr(settings, 'VERCEL_BUILD_HOOK_URL', None)
+    if not base_hook_url:
+        logger.error("VERCEL_BUILD_HOOK_URL is not configured in the environment.")
+        return Response({'error': 'Vercel Build Hook URL is not configured on the server.'}, status=500)
+
+    hook_url = f"{base_hook_url}?siteId={site.id}"
+
+    try:
+        response = requests.post(hook_url)
+        response.raise_for_status()
+        logger.info("Successfully triggered Vercel build for site ID %s (%s)", site.id, site.identifier)
+        return Response({'message': 'Site publish initiated successfully', 'site_identifier': site.identifier})
+    except requests.RequestException as exc:
+        logger.error("Failed to trigger Vercel build for site ID %s: %s", site.id, exc)
+        return Response({'error': 'Failed to trigger Vercel build', 'details': str(exc)}, status=500)

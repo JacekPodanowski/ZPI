@@ -208,3 +208,5 @@ if not DEBUG:
     DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+VERCEL_BUILD_HOOK_URL = os.environ.get('VERCEL_BUILD_HOOK_URL')
