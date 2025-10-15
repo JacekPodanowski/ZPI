@@ -3,9 +3,9 @@ import moment from 'moment';
 import 'moment/locale/pl';
 import { Box, Chip, CircularProgress, Container, Stack, Typography } from '@mui/material';
 import PublicCalendar from '../../../SITES/components/PublicCalendar/PublicCalendar';
-import useSiteCalendarData from '../../../SITES/hooks/useSiteCalendarData';
-import { CALENDAR_DATA_SOURCES, toEventsByDateMap } from '../../../SITES/services/siteCalendarService';
-import { MOCK_SITE_IDENTIFIER } from '../../../SITES/data/mockSiteCalendar';
+import useSiteCalendarData from '../../hooks/useSiteCalendarData';
+import { CALENDAR_DATA_SOURCES, toEventsByDateMap } from '../../services/siteCalendarService';
+import { MOCK_SITE_IDENTIFIER } from '../../data/mockSiteCalendar';
 
 moment.locale('pl');
 

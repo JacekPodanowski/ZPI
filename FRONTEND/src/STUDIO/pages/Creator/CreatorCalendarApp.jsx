@@ -1,9 +1,9 @@
 import React from 'react';
 import { Box, Button, Chip, CircularProgress, Container, CssBaseline, Stack, Typography } from '@mui/material';
-import CreatorCalendar from '../../../SITES/components/CreatorCalendar/CreatorCalendar';
-import useSiteCalendarData from '../../../SITES/hooks/useSiteCalendarData';
-import { CALENDAR_DATA_SOURCES } from '../../../SITES/services/siteCalendarService';
-import { MOCK_SITE_IDENTIFIER } from '../../../SITES/data/mockSiteCalendar';
+import CreatorCalendar from '../../components/CreatorCalendar/CreatorCalendar';
+import useSiteCalendarData from '../../hooks/useSiteCalendarData';
+import { CALENDAR_DATA_SOURCES } from '../../services/siteCalendarService';
+import { MOCK_SITE_IDENTIFIER } from '../../data/mockSiteCalendar';
 
 const CreatorCalendarApp = () => {
     const { status, error, creator, refresh, siteIdentifier, dataSource } = useSiteCalendarData();
