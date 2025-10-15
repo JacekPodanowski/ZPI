@@ -19,7 +19,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckIcon from '@mui/icons-material/Check';
-import useTheme from '../../theme/useTheme';
+import useTheme from '../../../theme/useTheme';
 
 const ThemeCard = ({
   preset,

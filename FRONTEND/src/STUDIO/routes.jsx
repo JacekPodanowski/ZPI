@@ -12,10 +12,10 @@ import PublicCalendarPage from './pages/Home/PublicCalendarPage';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import StudioLayout from './layouts/StudioLayout';
 import SettingsLayout from './layouts/SettingsLayout';
-import ProfilePage from './pages/ProfilePage';
-import BillingPage from './pages/BillingPage';
-import AppearancePage from './pages/AppearancePage';
-import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/Settings/ProfilePage';
+import BillingPage from './pages/Settings/BillingPage';
+import AppearancePage from './pages/Settings/AppearancePage';
+import SettingsPage from './pages/Settings/SettingsPage';
 
 const StudioApp = () => (
   <Routes>

@@ -13,8 +13,8 @@ import {
 import { alpha } from '@mui/material/styles';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import SaveIcon from '@mui/icons-material/Save';
-import useTheme from '../../theme/useTheme';
-import { useAuth } from '../../contexts/AuthContext';
+import useTheme from '../../../theme/useTheme';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const ProfilePage = () => {
   const theme = useTheme();

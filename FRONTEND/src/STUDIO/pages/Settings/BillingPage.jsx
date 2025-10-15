@@ -18,7 +18,7 @@ import {
 import { alpha } from '@mui/material/styles';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import useTheme from '../../theme/useTheme';
+import useTheme from '../../../theme/useTheme';
 
 const plans = [
   {
@@ -105,9 +105,9 @@ const BillingPage = () => {
     <Paper
       elevation={0}
       sx={{
-  backgroundColor: surfaceColor,
-  borderRadius: '16px',
-  border: `1px solid ${alpha(dividerColor, 0.1)}`,
+        backgroundColor: surfaceColor,
+        borderRadius: '16px',
+        border: `1px solid ${alpha(dividerColor, 0.1)}`,
         p: 4
       }}
     >

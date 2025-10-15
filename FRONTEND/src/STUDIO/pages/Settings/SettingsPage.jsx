@@ -17,7 +17,7 @@ import {
 import { alpha } from '@mui/material/styles';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import useTheme from '../../theme/useTheme';
+import useTheme from '../../../theme/useTheme';
 
 const SettingsPage = () => {
   const theme = useTheme();
