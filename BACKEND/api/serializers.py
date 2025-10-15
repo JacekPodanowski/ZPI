@@ -75,6 +75,13 @@ class SiteSerializer(serializers.ModelSerializer):
         read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner']
 
 
+class PublicSiteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Site
+        fields = ['identifier', 'name', 'template_config', 'updated_at']
+        read_only_fields = ['identifier', 'name', 'template_config', 'updated_at']
+
+
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client

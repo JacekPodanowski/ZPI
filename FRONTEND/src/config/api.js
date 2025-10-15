@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.0.102:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.0.104:8000'
 
 export const API_PAGE = `${API_BASE}/api/page`
 export const API_AUTH = `${API_BASE}/api/auth`

@@ -18,7 +18,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 DISCORD_SERVER_URL = os.environ.get("DISCORD_SERVER_URL")
 
 # --- Konfiguracja sieci i bezpieczeństwa ---
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -111,6 +111,8 @@ if DEBUG:
         "http://192.168.0.104:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://192.168.0.104:3001",
+        "http://localhost:3001",
     })
 
 CORS_ALLOWED_ORIGINS = sorted(cors_origins)

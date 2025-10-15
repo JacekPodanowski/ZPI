@@ -21,6 +21,7 @@ from .serializers import (
     BookingSerializer,
     CustomRegisterSerializer,
     TemplateSerializer,
+    PublicSiteSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -212,3 +213,10 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Template.objects.filter(is_public=True)
     serializer_class = TemplateSerializer
     permission_classes = [AllowAny]
+
+
+class PublicSiteView(generics.RetrieveAPIView):
+    queryset = Site.objects.select_related('owner')
+    serializer_class = PublicSiteSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'identifier'

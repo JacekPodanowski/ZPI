@@ -9,6 +9,7 @@ from .views import (
     CustomRegisterView,
     GoogleLogin,
     TemplateViewSet,
+    PublicSiteView,
 )
 
 router = DefaultRouter()
@@ -23,4 +24,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('auth/register/', CustomRegisterView.as_view(), name='custom_register'),
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
+    path('public-sites/<slug:identifier>/', PublicSiteView.as_view(), name='public_site_detail'),
 ]

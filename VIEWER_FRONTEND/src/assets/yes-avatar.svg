@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <title>YES Avatar</title>
+  <g transform="skewX(-15) scale(0.68 1.12)">
+    <text x="118" y="256" text-anchor="start" dominant-baseline="middle" font-family="'Montserrat', 'Montserrat Alternates', sans-serif" font-size="330" font-weight="700" font-style="italic" fill="#d0003a" letter-spacing="2">YES</text>
+  </g>
+</svg>

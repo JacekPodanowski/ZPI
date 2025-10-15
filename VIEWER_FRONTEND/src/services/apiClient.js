@@ -1,6 +1,42 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.104:8000/api/v1';
+const resolveApiBaseUrl = () => {
+    const fallbackHost = import.meta.env.VITE_API_FALLBACK_HOST || '192.168.0.104';
+
+    if (import.meta.env.VITE_API_BASE_URL) {
+        try {
+            const configuredUrl = new URL(import.meta.env.VITE_API_BASE_URL);
+            const isLocalHost = ['localhost', '127.0.0.1'].includes(configuredUrl.hostname);
+
+            if (isLocalHost && typeof window !== 'undefined' && window.location) {
+                const windowHost = window.location.hostname;
+                if (windowHost && !['localhost', '127.0.0.1'].includes(windowHost)) {
+                    configuredUrl.hostname = windowHost;
+                    return configuredUrl.toString();
+                }
+            }
+
+            if (isLocalHost) {
+                configuredUrl.hostname = fallbackHost;
+                return configuredUrl.toString();
+            }
+
+            return configuredUrl.toString();
+        } catch (error) {
+            return `http://${fallbackHost}:8000/api/v1`;
+        }
+    }
+
+    if (typeof window !== 'undefined' && window.location) {
+        const { protocol, hostname } = window.location;
+        const port = import.meta.env.VITE_API_PORT || '8000';
+        return `${protocol}//${hostname}:${port}/api/v1`;
+    }
+
+    return `http://${fallbackHost}:8000/api/v1`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
