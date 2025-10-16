@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Box } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Navigation from '../../components/Navigation/Navigation';
 import { OwnerFooter, StandardFooter } from '../../components/Footer';
 
@@ -19,10 +19,48 @@ const StudioLayout = ({
   contentMaxWidth,
   contentWrapperProps
 }) => {
+  const location = useLocation();
   const FooterComponent = useMemo(
     () => FOOTER_VARIANTS[footerVariant] || FOOTER_VARIANTS.standard,
     [footerVariant]
   );
+
+  const isDashboardRoute = useMemo(() => (
+    location.pathname.startsWith('/studio/dashboard') ||
+    location.pathname.startsWith('/studio/sites')
+  ), [location.pathname]);
+
+  const effectiveShowFooter = isDashboardRoute ? false : showFooter;
+
+  const paddingX = isDashboardRoute
+    ? 0
+    : contentPadding?.x ?? { xs: 3, md: 6 };
+
+  const paddingY = isDashboardRoute
+    ? 0
+    : contentPadding?.y ?? { xs: 4, md: 8 };
+
+  const effectiveContentMaxWidth = isDashboardRoute
+    ? '100%'
+    : contentMaxWidth ?? 1200;
+
+  const wrapperBaseSx = {
+    width: '100%',
+    maxWidth: effectiveContentMaxWidth,
+    mx: 'auto',
+    ...(contentWrapperProps?.sx || {})
+  };
+
+  const wrapperSx = isDashboardRoute
+    ? {
+        ...wrapperBaseSx,
+        maxWidth: '100%',
+        flex: '1 1 auto',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column'
+      }
+    : wrapperBaseSx;
 
   return (
     <>
@@ -39,28 +77,27 @@ const StudioLayout = ({
         <Box
           component="main"
           sx={{
-            flex: '1 0 auto',
+            flex: '1 1 auto',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            py: contentPadding?.y ?? { xs: 4, md: 8 },
-            px: contentPadding?.x ?? { xs: 3, md: 6 }
+            alignItems: isDashboardRoute ? 'stretch' : 'center',
+            py: paddingY,
+            px: paddingX,
+            minHeight: 0,
+            overflow: isDashboardRoute ? 'hidden' : 'visible'
           }}
         >
           <Box
             {...contentWrapperProps}
             sx={{
-              width: '100%',
-              maxWidth: contentMaxWidth ?? 1200,
-              mx: 'auto',
-              ...(contentWrapperProps?.sx || {})
+              ...wrapperSx
             }}
           >
             <Outlet />
           </Box>
         </Box>
 
-        {showFooter ? <FooterComponent {...footerProps} /> : null}
+        {effectiveShowFooter ? <FooterComponent {...footerProps} /> : null}
       </Box>
     </>
   );

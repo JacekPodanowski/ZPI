@@ -16,6 +16,7 @@ import ProfilePage from './pages/Settings/ProfilePage';
 import BillingPage from './pages/Settings/BillingPage';
 import AppearancePage from './pages/Settings/AppearancePage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import SiteLabPage from './pages/Lab/SiteLabPage';
 
 const StudioApp = () => (
   <Routes>
@@ -39,6 +40,7 @@ const StudioApp = () => (
       {/* Admin area */}
       <Route path="admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
       <Route path="creator" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
+      <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
     </Route>
 
     {/* Account settings routes with shared layout */}

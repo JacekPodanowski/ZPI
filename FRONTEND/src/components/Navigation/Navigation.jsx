@@ -33,7 +33,7 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
 const drawerWidth = 280;
-const NAV_HEIGHT = 72;
+const NAV_HEIGHT = 70;
 
 const Navigation = () => {
     const { isAuthenticated, user, logout } = useAuth();

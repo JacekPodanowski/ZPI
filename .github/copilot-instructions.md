@@ -19,7 +19,27 @@ The application guides users through simple steps in site creation (template sel
 --------------------
 Our goal is to create a platform that empowers users to build and manage their personal websites. We aim to eliminate technical barriers, encourage creativity, and help them create a unique online presence.
 
-The guiding theme is **"Modern Wellness."** The design must be clean, calming, simple, minimalist, and inviting.
+The guiding theme is **"Ethereal Minimalism"** with a Cinematic and Atmospheric user experience. It's designed to feel calming, professional, and immersive, guiding the user through a narrative rather than just presenting information. The "high vibe" of our app comes from a careful blend of spaciousness, subtle motion, and a focus on emotional connection.
+
+Layout and Structure:
+Use a clean, spacious, and uncluttered layout with a strong emphasis on whitespace.
+The design should be mobile-responsive, adapting seamlessly to different screen sizes.
+
+Typography:
+Employ a strong typographic hierarchy. Use a clean and highly legible sans-serif font (like Inter, Roboto, or Montserrat) for body copy.
+For headlines, use a bold, elegant font that adds personality. This could be a slightly more stylized sans-serif or a modern serif font.
+Vary font weights and sizes to guide the user's attention to the most important information.
+
+Animations and Interactions:
+All animations should be smooth, subtle, and purposeful. Avoid anything jarring or overly fast.
+Implement "scrollytelling" effects: elements should gracefully fade in or slide into view as the user scrolls down the page.
+
+Include micro-interactions on buttons and interactive elements. For example, buttons could have a subtle glow, a slight lift, or a change in color on hover.
+
+Content and Imagery:
+Use high-quality, professional images and graphics. Abstract visuals, like animated waves, ripples, or blooming effects, are preferred over generic stock photos.
+
+The written content should be concise, evocative, and emotionally resonant. Use a tone that is both professional and inspiring.
 
 1.3. Key Principles
 -------------------
@@ -56,17 +76,9 @@ When reviewing or writing code, if you identify patterns, implementations, or ar
 - Urgency level (Low/Medium/High/Critical)
 
 **7. AI Summary Format**
-Every response involving code changes MUST include a summary structured as follows:
+Every response involving code changes MUST include a short max 5 sentence summary of the changes made. 
 
-**Summary:**
-- [One sentence describing first change made]
-- [One sentence describing second change made]
-- [One sentence describing third change made]
-- [etc.]
-
-**Result:** [One sentence describing the overall outcome/impact of all changes]
-
-**Code Quality Alerts:** (only include if issues are identified, otherwise omit this section entirely)
+**Code Quality Alerts in summary:** (only include if issues are identified, otherwise omit this section entirely)
 - **Issue:** [Clear description of the potential problem]
   **Impact:** [Why it will cause problems as the system grows]
   **Solution:** [Recommended refactoring approach or alternative]
@@ -76,8 +88,7 @@ Every response involving code changes MUST include a summary structured as follo
 All services run in Docker containers with hot-reload enabled, ensuring that code changes are applied instantly without requiring manual restarts or rebuilds.
 
 **9. Readme files**
-Create max 1 readme file describing changes made. Do it only if changes are really really significant. Do not make new documents for every small change.
-Do not change original readme files.
+DO NOT CREATE README FILES ABOUT CHANGES MADE. just write it in summary.
 
 1.5. Core Color Palette & Typography
 ------------------------------------
