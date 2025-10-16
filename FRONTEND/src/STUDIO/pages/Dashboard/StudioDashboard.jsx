@@ -3,7 +3,7 @@ import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import useDashboardStore from '../../store/dashboardStore';
 import { fetchSites } from '../../../services/siteService';
-import SiteSelector from '../../components/Dashboard/SiteSelector';
+import SiteDetails from '../../components/Dashboard/SiteDetails';
 import CalendarGrid from '../../components/Dashboard/Calendar/CalendarGrid';
 import TemplateLibrary from '../../components/Dashboard/Templates/TemplateLibrary';
 
@@ -124,7 +124,7 @@ const StudioDashboard = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         px: { xs: 2, md: 3, lg: 4 },
-                        py: { xs: 0.75, md: 1.75 },
+                        py: { xs: 0.5, md: 1.25 },
                         gap: mode === 'site-focus' ? 0 : 2,
                         minHeight: 0,
                         overflow: 'hidden'
@@ -137,7 +137,7 @@ const StudioDashboard = () => {
                     ) : null}
 
                     {mode === 'site-focus' ? (
-                        <SiteSelector sites={sites} />
+                        <SiteDetails sites={sites} />
                     ) : null}
 
                     <motion.div

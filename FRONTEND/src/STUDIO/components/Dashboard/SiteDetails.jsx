@@ -23,7 +23,7 @@ const buildSparklinePoints = (data) => {
         .join(' ');
 };
 
-const SiteSelector = ({ sites }) => {
+const SiteDetails = ({ sites }) => {
     const navigate = useNavigate();
     const { selectedSiteId, switchMode } = useDashboardStore((state) => ({
         selectedSiteId: state.selectedSiteId,
@@ -233,18 +233,37 @@ const SiteSelector = ({ sites }) => {
                             gap: 1
                         }}
                     >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                             <Typography
-                                variant="body2"
+                                variant="caption"
                                 sx={{
                                     fontWeight: 600,
+                                    letterSpacing: 2,
+                                    textTransform: 'uppercase',
+                                    color: 'primary.main',
+                                    fontSize: '0.78rem',
+                                    lineHeight: 1.2,
+                                    opacity: 0.82,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap'
                                 }}
                                 title={isActive ? targetUrl : 'Witryna nieaktywna'}
                             >
-                                URL: {isActive ? targetUrl : 'Witryna nieaktywna'}
+                                URL:&nbsp;
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        textTransform: 'none',
+                                        letterSpacing: 0,
+                                        fontWeight: 600,
+                                        color: 'primary.main',
+                                        fontSize: '0.86rem',
+                                        opacity: 0.88
+                                    }}
+                                >
+                                    {isActive ? targetUrl : 'Witryna nieaktywna'}
+                                </Box>
                             </Typography>
                         </Box>
 
@@ -355,7 +374,7 @@ const SiteSelector = ({ sites }) => {
     );
 };
 
-SiteSelector.propTypes = {
+SiteDetails.propTypes = {
     sites: PropTypes.arrayOf(
         PropTypes.shape({
             id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
@@ -373,5 +392,5 @@ SiteSelector.propTypes = {
     ).isRequired
 };
 
-export default SiteSelector;
+export default SiteDetails;
 

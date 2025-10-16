@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Typography, Button, Divider } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
@@ -83,7 +82,7 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
             <Box
                 sx={{
                     px: { xs: 2, md: 2.5 },
-                    py: { xs: 2, md: 3 },
+                    py: { xs: 1.5, md: 2.5 },
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 2.5,
@@ -215,12 +214,27 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                     ) : null}
                 </AnimatePresence>
 
-                {isSitePanelVisible && <Box sx={{ height: 32 }} />}
-
                 <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)', flexShrink: 0 }} />
 
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: 0 }}>
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0 }}>
+                <Box
+                    sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: 0,
+                        justifyContent: isSitePanelVisible ? 'flex-end' : 'flex-start',
+                        gap: isSitePanelVisible ? 0 : 2.5
+                    }}
+                >
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1.25,
+                            minHeight: isSitePanelVisible ? 'auto' : 0,
+                            flexGrow: isSitePanelVisible ? 0 : 1
+                        }}
+                    >
                         <Typography
                             variant="subtitle2"
                             sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary', flexShrink: 0 }}
@@ -234,10 +248,10 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                     display: 'flex',
                                     flexDirection: 'column',
                                     gap: 1,
-                                    overflowY: 'auto',
-                                    pr: 1,
-                                    flex: 1,
-                                    minHeight: 0,
+                                    overflowY: isSitePanelVisible ? 'visible' : 'auto',
+                                    pr: isSitePanelVisible ? 0 : 1,
+                                    flex: isSitePanelVisible ? '0 0 auto' : 1,
+                                    minHeight: isSitePanelVisible ? 'auto' : 0,
                                     '&::-webkit-scrollbar': { width: '4px' },
                                     '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
                                     '&::-webkit-scrollbar-thumb': {
@@ -264,7 +278,7 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                 }}
                             >
                                 <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                    Brak szablonów dnia
+                                    Brak szablonów
                                 </Typography>
                             </Box>
                         )}
@@ -273,16 +287,35 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                             fullWidth
                             size="small"
                             variant="outlined"
-                            sx={{ fontSize: 12, borderColor: 'rgba(146, 0, 32, 0.24)', flexShrink: 0 }}
+                            sx={{
+                                fontSize: 12,
+                                borderColor: 'rgba(146, 0, 32, 0.24)',
+                                flexShrink: 0,
+                                mt: isSitePanelVisible ? 1 : 0
+                            }}
                             onClick={onCreateDayTemplate}
                         >
                             + Nowy
                         </Button>
                     </Box>
 
-                    <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)', flexShrink: 0 }} />
+                    <Divider
+                        sx={{
+                            borderColor: 'rgba(146, 0, 32, 0.16)',
+                            flexShrink: 0,
+                            my: isSitePanelVisible ? 1.5 : 0
+                        }}
+                    />
 
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0 }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1.25,
+                            minHeight: isSitePanelVisible ? 'auto' : 0,
+                            flexGrow: isSitePanelVisible ? 0 : 1
+                        }}
+                    >
                         <Typography
                             variant="subtitle2"
                             sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary', flexShrink: 0 }}
@@ -296,10 +329,10 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                     display: 'flex',
                                     flexDirection: 'column',
                                     gap: 1,
-                                    overflowY: 'auto',
-                                    pr: 1,
-                                    flex: 1,
-                                    minHeight: 0,
+                                    overflowY: isSitePanelVisible ? 'visible' : 'auto',
+                                    pr: isSitePanelVisible ? 0 : 1,
+                                    flex: isSitePanelVisible ? '0 0 auto' : 1,
+                                    minHeight: isSitePanelVisible ? 'auto' : 0,
                                     '&::-webkit-scrollbar': { width: '4px' },
                                     '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
                                     '&::-webkit-scrollbar-thumb': {
@@ -326,7 +359,7 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                 }}
                             >
                                 <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                    Brak szablonów tygodnia
+                                    Brak szablonów
                                 </Typography>
                             </Box>
                         )}
@@ -335,7 +368,12 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                             fullWidth
                             size="small"
                             variant="outlined"
-                            sx={{ fontSize: 12, borderColor: 'rgba(146, 0, 32, 0.24)', flexShrink: 0 }}
+                            sx={{
+                                fontSize: 12,
+                                borderColor: 'rgba(146, 0, 32, 0.24)',
+                                flexShrink: 0,
+                                mt: isSitePanelVisible ? 1 : 0
+                            }}
                             onClick={onCreateWeekTemplate}
                         >
                             + Nowy
