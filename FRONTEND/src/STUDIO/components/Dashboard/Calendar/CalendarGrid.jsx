@@ -222,7 +222,7 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: 0.75,
-                    p: isPowerMode ? 1.25 : 0,
+                    p: isPowerMode ? 0.5 : 0.5,
                     flex: 1,
                     minHeight: 0
                 }}
@@ -235,7 +235,7 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                             textAlign: 'center',
                             fontWeight: 600,
                             pb: isPowerMode ? 0.6 : 0,
-                            fontSize: isPowerMode ? '13.5px' : '12.5px',
+                            fontSize: isPowerMode ? '16px' : '15px',
                             color: 'text.secondary'
                         }}
                     >

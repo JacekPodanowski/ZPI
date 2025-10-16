@@ -208,13 +208,13 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                             + Nowa strona
                                         </Typography>
                                     </Box>
+
+                                    <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)', flexShrink: 0, mt: 0.5 }} />
                                 </Box>
                             </Box>
                         </motion.div>
                     ) : null}
                 </AnimatePresence>
-
-                <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)', flexShrink: 0 }} />
 
                 <Box
                     sx={{
@@ -237,7 +237,13 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                     >
                         <Typography
                             variant="subtitle2"
-                            sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary', flexShrink: 0 }}
+                            sx={{ 
+                                fontSize: 14, 
+                                fontWeight: 600, 
+                                color: 'text.secondary', 
+                                flexShrink: 0,
+                                textAlign: 'left'
+                            }}
                         >
                             Szablony dnia
                         </Typography>
@@ -318,7 +324,13 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                     >
                         <Typography
                             variant="subtitle2"
-                            sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary', flexShrink: 0 }}
+                            sx={{ 
+                                fontSize: 14, 
+                                fontWeight: 600, 
+                                color: 'text.secondary', 
+                                flexShrink: 0,
+                                textAlign: 'left'
+                            }}
                         >
                             Szablony tygodnia
                         </Typography>
