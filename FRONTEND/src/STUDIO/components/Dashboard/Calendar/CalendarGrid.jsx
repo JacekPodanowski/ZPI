@@ -8,9 +8,9 @@ import useDashboardStore from '../../../store/dashboardStore';
 import { EventDot, EventBlock } from './EventDisplay';
 import { alpha } from '@mui/material/styles';
 
-const CalendarGrid = ({ events, sites, onDayClick }) => {
+const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) => {
     const {
-        mode,
+        mode: storeMode,
         selectedSiteId,
         currentMonth,
         setCurrentMonth,
@@ -26,6 +26,9 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
         updateLastInteraction: state.updateLastInteraction,
         selectSite: state.selectSite
     }));
+
+    // Use forced extended mode if specified, otherwise use store mode
+    const mode = forceExtendedMode ? 'calendar-focus' : storeMode;
 
     const handleDayClick = (date) => {
         // Auto-switch to Calendar Power mode when clicking a day
@@ -372,12 +375,14 @@ CalendarGrid.propTypes = {
             color_tag: PropTypes.string
         })
     ),
-    onDayClick: PropTypes.func
+    onDayClick: PropTypes.func,
+    forceExtendedMode: PropTypes.bool
 };
 
 CalendarGrid.defaultProps = {
     sites: [],
-    onDayClick: () => {}
+    onDayClick: () => {},
+    forceExtendedMode: false
 };
 
 export default CalendarGrid;

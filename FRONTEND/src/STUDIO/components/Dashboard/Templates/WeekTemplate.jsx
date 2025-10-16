@@ -4,31 +4,34 @@ import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 
 const WeekTemplate = ({ template, compact }) => {
-    const cardWidth = compact ? 160 : 220;
-    const cardHeight = compact ? 100 : 140;
-
     // Generate mini calendar preview
     const days = ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nie'];
-    const activeDays = template.active_days || []; // Array of day indices that have events
+    const activeDays = template.active_days || [];
 
     return (
         <motion.div
-            whileHover={{ transform: 'translateX(4px)', boxShadow: '0 2px 6px rgba(0,0,0,0.12)' }}
-            style={{ cursor: 'grab', marginBottom: 8 }}
+            whileHover={{ 
+                scale: 1.02,
+                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)' 
+            }}
+            style={{ cursor: 'grab' }}
         >
             <Card
                 sx={{
-                    width: cardWidth,
-                    height: cardHeight,
-                    p: compact ? 0.75 : 1.5,
+                    width: '100%',
+                    p: 1.25,
                     borderRadius: 2,
                     backgroundColor: 'background.paper',
                     border: '1px solid',
-                    borderColor: 'divider',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                    transition: 'all 200ms',
+                    borderColor: 'rgba(146, 0, 32, 0.12)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    '&:hover': {
+                        borderColor: 'rgba(146, 0, 32, 0.3)',
+                        backgroundColor: 'rgba(228, 229, 218, 0.3)'
+                    }
                 }}
             >
                 {/* Template Name */}
@@ -37,31 +40,47 @@ const WeekTemplate = ({ template, compact }) => {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        mb: 0.5
+                        mb: 1
                     }}
                 >
                     <Typography
-                        variant="caption"
+                        variant="body2"
                         sx={{
-                            fontWeight: 600,
-                            fontSize: compact ? 11 : 13,
-                            maxWidth: '70%',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            color: 'text.primary',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            flex: 1
                         }}
                     >
                         {template.name}
                     </Typography>
-                    <Typography
-                        variant="caption"
+                    <Box
                         sx={{
-                            fontSize: compact ? 10 : 11,
-                            color: 'text.secondary'
+                            minWidth: 32,
+                            height: 22,
+                            borderRadius: 1,
+                            backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            ml: 1,
+                            px: 0.75
                         }}
                     >
-                        {template.day_count || activeDays.length} dni
-                    </Typography>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                color: 'primary.main'
+                            }}
+                        >
+                            {template.day_count || activeDays.length} dni
+                        </Typography>
+                    </Box>
                 </Box>
 
                 {/* Mini Calendar Grid */}
@@ -69,87 +88,87 @@ const WeekTemplate = ({ template, compact }) => {
                     sx={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(7, 1fr)',
-                        gap: compact ? 0.25 : 0.5,
-                        mt: 1,
-                        mb: 0.5
+                        gap: 0.5,
+                        mb: 0.75
                     }}
                 >
                     {days.map((day, index) => {
                         const hasEvents = activeDays.includes(index);
-                        const squareSize = compact ? 14 : 18;
 
                         return (
                             <Box
                                 key={day}
                                 sx={{
-                                    width: squareSize,
-                                    height: squareSize,
-                                    borderRadius: 0.5,
+                                    aspectRatio: '1',
+                                    borderRadius: 1,
                                     backgroundColor: hasEvents
-                                        ? 'primary.main'
-                                        : 'action.hover',
-                                    border: '1px solid',
+                                        ? 'rgba(146, 0, 32, 0.15)'
+                                        : 'rgba(188, 186, 179, 0.15)',
+                                    border: '1.5px solid',
                                     borderColor: hasEvents
-                                        ? 'primary.dark'
-                                        : 'divider',
-                                    transition: 'all 150ms'
+                                        ? 'rgba(146, 0, 32, 0.4)'
+                                        : 'rgba(188, 186, 179, 0.3)',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
                                 }}
-                            />
+                            >
+                                <Typography
+                                    sx={{
+                                        fontSize: '0.6rem',
+                                        fontWeight: hasEvents ? 700 : 500,
+                                        color: hasEvents ? 'primary.main' : 'text.disabled'
+                                    }}
+                                >
+                                    {day[0]}
+                                </Typography>
+                            </Box>
                         );
                     })}
                 </Box>
 
-                {/* Day Labels (only if not compact) */}
-                {!compact && (
-                    <Box
-                        sx={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(7, 1fr)',
-                            gap: 0.5,
-                            mt: 0.5
-                        }}
-                    >
-                        {days.map((day) => (
-                            <Typography
-                                key={day}
-                                variant="caption"
-                                sx={{
-                                    fontSize: 8,
-                                    color: 'text.secondary',
-                                    textAlign: 'center'
-                                }}
-                            >
-                                {day[0]}
-                            </Typography>
-                        ))}
-                    </Box>
-                )}
-
                 {/* Event Count */}
-                <Typography
-                    variant="caption"
+                <Box
                     sx={{
-                        fontSize: compact ? 9 : 10,
-                        color: 'text.secondary',
-                        mt: 0.5,
-                        display: 'block'
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        py: 0.5,
+                        px: 1,
+                        borderRadius: 1,
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        border: '1px solid rgba(59, 130, 246, 0.2)'
                     }}
                 >
-                    {template.total_events || 0} wydarzeń
-                </Typography>
+                    <Typography
+                        variant="caption"
+                        sx={{
+                            fontSize: '0.7rem',
+                            color: 'text.primary',
+                            fontWeight: 600
+                        }}
+                    >
+                        {template.total_events || 0} wydarzeń
+                    </Typography>
+                </Box>
 
-                {/* Drag Handle Icon */}
+                {/* Subtle Drag Indicator */}
                 <Box
                     sx={{
                         position: 'absolute',
-                        right: 4,
-                        bottom: 4,
-                        opacity: 0.3,
-                        fontSize: 16,
-                        color: 'text.secondary'
+                        right: 6,
+                        bottom: 6,
+                        width: 16,
+                        height: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.25,
+                        transition: 'opacity 0.2s'
                     }}
                 >
-                    ⋮⋮
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>⋮⋮</Typography>
                 </Box>
             </Card>
         </motion.div>

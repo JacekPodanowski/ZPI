@@ -85,7 +85,10 @@ const Navigation = () => {
         ];
 
         if (isAuthenticated) {
-            primary.push({ label: 'Studio', to: '/studio/dashboard', requiresAuth: true });
+            primary.push(
+                { label: 'Dashboard', to: '/studio/dashboard', requiresAuth: true },
+                { label: 'Sites', to: '/studio/sites', requiresAuth: true }
+            );
         }
 
         const dev = [

@@ -3,8 +3,6 @@ import PropTypes from 'prop-types';
 import { Box, Typography } from '@mui/material';
 import useTheme from '../../theme/useTheme';
 
-const ACCENT_LETTERS = new Set(['Y', 'E', 'S']);
-
 const sizeMap = (typography = {}) => {
     const sizes = typography.sizes || {};
     return {
@@ -134,7 +132,7 @@ const Logo = ({
         }
 
         const upper = letter.toUpperCase();
-        const isAccent = letter === upper && ACCENT_LETTERS.has(upper);
+        const isAccent = letter === upper; // Accent ALL capital letters
         const letterStyle = { ...baseLetterStyle };
 
         if (isAccent) {

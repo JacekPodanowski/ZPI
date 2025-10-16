@@ -1,96 +1,152 @@
-import React from 'react';
-import { Box, Button, Chip, CircularProgress, Container, CssBaseline, Stack, Typography } from '@mui/material';
-import CreatorCalendar from '../../components/CreatorCalendar/CreatorCalendar';
-import useSiteCalendarData from '../../hooks/useSiteCalendarData';
-import { CALENDAR_DATA_SOURCES } from '../../services/siteCalendarService';
-import { MOCK_SITE_IDENTIFIER } from '../../data/mockSiteCalendar';
+import React, { useEffect, useState } from 'react';
+import { Box, Alert, CircularProgress } from '@mui/material';
+import { motion } from 'framer-motion';
+import { fetchSites } from '../../../services/siteService';
+import CalendarGrid from '../../components/Dashboard/Calendar/CalendarGrid';
+import RealTemplateBrowser from '../../components/Dashboard/Templates/RealTemplateBrowser';
 
 const CreatorCalendarApp = () => {
-    const { status, error, creator, refresh, siteIdentifier, dataSource } = useSiteCalendarData();
+    const [sites, setSites] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const dataSourceLabel = dataSource === CALENDAR_DATA_SOURCES.API
-        ? 'Źródło danych: backend API'
-        : dataSource === CALENDAR_DATA_SOURCES.MOCK
-            ? 'Źródło danych: dane makietowe (mock)'
-            : 'Źródło danych: trwa przygotowanie danych';
+    // Fetch sites from API
+    useEffect(() => {
+        let active = true;
 
-    const handleCreateEvent = (payload) => {
-        // eslint-disable-next-line no-console
-        console.info('New event draft', payload);
+        const load = async () => {
+            try {
+                setLoading(true);
+                const response = await fetchSites();
+                if (active) {
+                    setSites(response);
+                    
+                    // Mock events for demonstration
+                    // TODO: Replace with actual API call
+                    const mockEvents = [];
+                    response.forEach((site, siteIndex) => {
+                        for (let i = 0; i < 5; i++) {
+                            const date = new Date();
+                            date.setDate(date.getDate() + Math.floor(Math.random() * 30));
+                            mockEvents.push({
+                                id: `${site.id}-event-${i}`,
+                                site_id: site.id,
+                                site_color: site.color_tag || `hsl(${siteIndex * 60}, 70%, 50%)`,
+                                date: date.toISOString().split('T')[0],
+                                title: `Event ${i + 1}`,
+                                start_time: `${9 + i}:00`,
+                                event_type: i % 2 === 0 ? 'individual' : 'group',
+                                max_capacity: 12,
+                                current_capacity: Math.floor(Math.random() * 12)
+                            });
+                        }
+                    });
+                    setEvents(mockEvents);
+                }
+            } catch (err) {
+                if (active) {
+                    console.error('Error loading sites:', err);
+                    setError('Nie udało się pobrać listy stron. Spróbuj ponownie później.');
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        load();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const handleDayClick = (date) => {
+        console.log('Day clicked:', date);
+        // TODO: Open day detail modal
     };
 
-    const handleCreateAvailability = (payload) => {
-        // eslint-disable-next-line no-console
-        console.info('New availability draft', payload);
+    const handleCreateDayTemplate = () => {
+        console.log('Create day template');
+        // TODO: Implement day template creation
     };
 
-    const isLoading = status === 'loading' && creator.events.length === 0 && creator.availabilityBlocks.length === 0;
+    const handleCreateWeekTemplate = () => {
+        console.log('Create week template');
+        // TODO: Implement week template creation
+    };
+
+    if (loading) {
+        return (
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     return (
-        <>
-            <CssBaseline />
-            <Container maxWidth="lg" sx={{ py: 6 }}>
-                <Stack spacing={2} sx={{ mb: 4 }}>
-                    <Box>
-                        <Typography variant="overline" sx={{ color: 'secondary.main', letterSpacing: 3 }}>
-                            Podgląd środowiska deweloperskiego
-                        </Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                            Kalendarz twórcy
-                        </Typography>
-                        <Typography variant="body1" sx={{ color: 'text.secondary', mt: 1 }}>
-                            Ten ekran pobiera dane kalendarza dla witryny <strong>{siteIdentifier ?? MOCK_SITE_IDENTIFIER}</strong>.
-                            Informujemy na bieżąco, czy pracujesz na danych z backendu, czy na bezpiecznych danych makietowych przeznaczonych do prototypowania.
-                        </Typography>
-                    </Box>
-                    <Chip
-                        label={dataSourceLabel}
-                        color={dataSource === CALENDAR_DATA_SOURCES.API ? 'success' : dataSource === CALENDAR_DATA_SOURCES.MOCK ? 'warning' : 'default'}
-                        sx={{ alignSelf: 'flex-start' }}
-                    />
-                    {status === 'error' && (
-                        <Typography variant="body2" sx={{ color: 'error.main' }}>
-                            Wystąpił problem z pobraniem danych z API. Wyświetlamy dane przykładowe. {error?.message}
-                        </Typography>
-                    )}
-                    {dataSource === CALENDAR_DATA_SOURCES.API && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                            Dane pochodzą z endpointu <code>/sites/{siteIdentifier ?? MOCK_SITE_IDENTIFIER}/calendar/</code>.
-                        </Typography>
-                    )}
-                    {dataSource === CALENDAR_DATA_SOURCES.MOCK && (
-                        <Typography variant="body2" sx={{ color: 'warning.main' }}>
-                            Backend API nie zwrócił odpowiedzi – korzystasz z danych makietowych, które ułatwiają testowanie interfejsu.
-                        </Typography>
-                    )}
-                    {status !== 'loading' && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                Aktualizuj dane ręcznie, aby zsynchronizować się z backendem:
-                            </Typography>
-                            <Button size="small" variant="outlined" onClick={refresh} disabled={status === 'loading'}>
-                                Odśwież dane
-                            </Button>
-                        </Box>
-                    )}
-                </Stack>
+        <Box
+            sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+                backgroundColor: 'background.default'
+            }}
+        >
+            <Box
+                sx={{
+                    flex: 1,
+                    display: 'flex',
+                    minHeight: 0,
+                    overflow: 'hidden'
+                }}
+            >
+                <RealTemplateBrowser
+                    onCreateDayTemplate={handleCreateDayTemplate}
+                    onCreateWeekTemplate={handleCreateWeekTemplate}
+                />
 
-                {isLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : (
-                    <CreatorCalendar
-                        events={creator.events}
-                        availabilityBlocks={creator.availabilityBlocks}
-                        externalEvents={creator.externalEvents}
-                        templates={creator.templates}
-                        onCreateEvent={handleCreateEvent}
-                        onCreateAvailability={handleCreateAvailability}
-                    />
-                )}
-            </Container>
-        </>
+                <Box
+                    sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        px: { xs: 2, md: 3, lg: 4 },
+                        py: { xs: 0.5, md: 1.25 },
+                        gap: 2,
+                        minHeight: 0,
+                        overflow: 'hidden'
+                    }}
+                >
+                    {error ? (
+                        <Alert severity="error" sx={{ flexShrink: 0 }}>
+                            {error}
+                        </Alert>
+                    ) : null}
+
+                    <motion.div
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            minHeight: 0,
+                            display: 'flex'
+                        }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    >
+                        <CalendarGrid
+                            events={events}
+                            sites={sites}
+                            onDayClick={handleDayClick}
+                            forceExtendedMode={true}
+                        />
+                    </motion.div>
+                </Box>
+            </Box>
+        </Box>
     );
 };
 

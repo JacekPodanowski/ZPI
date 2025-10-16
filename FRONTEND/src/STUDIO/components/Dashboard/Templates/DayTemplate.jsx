@@ -4,27 +4,30 @@ import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 
 const DayTemplate = ({ template, compact }) => {
-    const cardWidth = compact ? 160 : 220;
-    const cardHeight = compact ? 80 : 100;
-
     return (
         <motion.div
-            whileHover={{ transform: 'translateX(4px)', boxShadow: '0 2px 6px rgba(0,0,0,0.12)' }}
-            style={{ cursor: 'grab', marginBottom: 8 }}
+            whileHover={{ 
+                scale: 1.02,
+                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)' 
+            }}
+            style={{ cursor: 'grab' }}
         >
             <Card
                 sx={{
-                    width: cardWidth,
-                    height: cardHeight,
-                    p: compact ? 0.75 : 1.5,
+                    width: '100%',
+                    p: 1.25,
                     borderRadius: 2,
                     backgroundColor: 'background.paper',
                     border: '1px solid',
-                    borderColor: 'divider',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                    transition: 'all 200ms',
+                    borderColor: 'rgba(146, 0, 32, 0.12)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    '&:hover': {
+                        borderColor: 'rgba(146, 0, 32, 0.3)',
+                        backgroundColor: 'rgba(228, 229, 218, 0.3)'
+                    }
                 }}
             >
                 {/* Template Name */}
@@ -33,74 +36,126 @@ const DayTemplate = ({ template, compact }) => {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        mb: 0.5
+                        mb: 0.75
                     }}
                 >
                     <Typography
-                        variant="caption"
+                        variant="body2"
                         sx={{
-                            fontWeight: 600,
-                            fontSize: compact ? 11 : 13,
-                            maxWidth: '70%',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            color: 'text.primary',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            flex: 1
                         }}
                     >
                         {template.name}
                     </Typography>
-                    <Typography
-                        variant="caption"
+                    <Box
                         sx={{
-                            fontSize: compact ? 10 : 11,
-                            color: 'text.secondary'
+                            minWidth: 28,
+                            height: 28,
+                            borderRadius: 1,
+                            backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            ml: 1
                         }}
                     >
-                        {template.day_abbreviation}
-                    </Typography>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                color: 'primary.main'
+                            }}
+                        >
+                            {template.day_abbreviation}
+                        </Typography>
+                    </Box>
                 </Box>
 
                 {/* Event List */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                    {template.events?.slice(0, compact ? 2 : 3).map((event, idx) => (
-                        <Typography
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
+                    {template.events?.slice(0, 2).map((event, idx) => (
+                        <Box
                             key={idx}
-                            variant="caption"
                             sx={{
-                                fontSize: compact ? 9 : 11,
-                                color: 'text.secondary',
-                                fontFamily: 'monospace'
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.75,
+                                py: 0.4,
+                                px: 0.75,
+                                borderRadius: 1,
+                                backgroundColor: event.type === 'individual' 
+                                    ? 'rgba(74, 222, 128, 0.08)' 
+                                    : 'rgba(59, 130, 246, 0.08)',
+                                border: '1px solid',
+                                borderColor: event.type === 'individual'
+                                    ? 'rgba(74, 222, 128, 0.2)'
+                                    : 'rgba(59, 130, 246, 0.2)'
                             }}
                         >
-                            {event.type === 'individual' ? 'I' : 'G'} {event.start_time}-{event.end_time}
-                        </Typography>
+                            <Box
+                                sx={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: '50%',
+                                    backgroundColor: event.type === 'individual' 
+                                        ? '#4ade80' 
+                                        : '#3b82f6',
+                                    flexShrink: 0
+                                }}
+                            />
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    fontSize: '0.7rem',
+                                    color: 'text.primary',
+                                    fontWeight: 500,
+                                    fontFamily: 'monospace',
+                                    letterSpacing: '0.02em'
+                                }}
+                            >
+                                {event.start_time}-{event.end_time}
+                            </Typography>
+                        </Box>
                     ))}
-                    {template.events?.length > (compact ? 2 : 3) && (
+                    {template.events?.length > 2 && (
                         <Typography
                             variant="caption"
                             sx={{
-                                fontSize: 9,
+                                fontSize: '0.65rem',
                                 color: 'text.secondary',
-                                fontStyle: 'italic'
+                                fontStyle: 'italic',
+                                textAlign: 'center',
+                                mt: 0.25
                             }}
                         >
-                            +{template.events.length - (compact ? 2 : 3)} więcej
+                            +{template.events.length - 2} więcej
                         </Typography>
                     )}
                 </Box>
 
-                {/* Drag Handle Icon */}
+                {/* Subtle Drag Indicator */}
                 <Box
                     sx={{
                         position: 'absolute',
-                        right: 4,
-                        bottom: 4,
-                        opacity: 0.3,
-                        fontSize: 16,
-                        color: 'text.secondary'
+                        right: 6,
+                        bottom: 6,
+                        width: 16,
+                        height: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.25,
+                        transition: 'opacity 0.2s'
                     }}
                 >
-                    ⋮⋮
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>⋮⋮</Typography>
                 </Box>
             </Card>
         </motion.div>

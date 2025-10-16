@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import StudioDashboard from './pages/Dashboard/StudioDashboard';
+import SitesPage from './pages/Sites/SitesPage';
 import SiteCreationWizard from './pages/NewSite/SiteCreationWizard';
 import TemplatePicker from './pages/NewSite/TemplatePicker';
 import ModuleConfig from './pages/NewSite/ModuleConfig';
@@ -21,12 +22,12 @@ import SiteLabPage from './pages/Lab/SiteLabPage';
 const StudioApp = () => (
   <Routes>
     {/* Default redirect when visiting /studio */}
-    <Route index element={<Navigate to="dashboard" replace />} />
+    <Route index element={<Navigate to="" replace />} />
 
     <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}
       <Route path="dashboard" element={<ProtectedRoute><StudioDashboard /></ProtectedRoute>} />
-      <Route path="sites" element={<ProtectedRoute><StudioDashboard /></ProtectedRoute>} />
+      <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
 
       {/* Site creation flow */}
       <Route path="templates" element={<ProtectedRoute><TemplatePicker /></ProtectedRoute>} />
