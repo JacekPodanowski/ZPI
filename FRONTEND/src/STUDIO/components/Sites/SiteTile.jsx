@@ -174,7 +174,7 @@ const SiteTile = ({ site, index }) => {
                         bgcolor: 'grey.200',
                         overflow: 'hidden',
                         cursor: 'pointer',
-                        '&:hover': {
+                        '&:hover:not(:has(.menu-click-area:hover))': {
                             '& .site-preview-overlay': {
                                 opacity: 1
                             },
@@ -304,6 +304,7 @@ const SiteTile = ({ site, index }) => {
 
                     {/* Menu Button - Top-Right Corner Click Area */}
                     <Box
+                        className="menu-click-area"
                         onClick={handleMenuOpen}
                         onMouseEnter={() => setIsMenuHovered(true)}
                         onMouseLeave={() => setIsMenuHovered(false)}
@@ -318,9 +319,10 @@ const SiteTile = ({ site, index }) => {
                             clipPath: 'polygon(0 0, 100% 0, 100% 100%)',
                             backgroundColor: DEBUG_MENU_AREA ? 'rgba(255, 0, 0, 0.3)' : 'transparent',
                             display: 'flex',
-                            alignItems: 'flex-start',
-                            justifyContent: 'flex-end',
-                            padding: '12px 16px',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            paddingLeft: '26px',
+                            paddingBottom: '26px',
                             transition: 'background-color 0.3s ease',
                             '&:hover': {
                                 '& .menu-icon': {
