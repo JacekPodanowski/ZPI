@@ -68,10 +68,12 @@ const StudioLayout = ({
 
       <Box
         sx={{
-          minHeight: '100vh',
+          minHeight: isDashboardRoute ? '100vh' : '100vh',
+          height: isDashboardRoute ? '100vh' : 'auto',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'background.default'
+          backgroundColor: 'background.default',
+          overflow: isDashboardRoute ? 'hidden' : 'visible'
         }}
       >
         <Box
@@ -84,6 +86,7 @@ const StudioLayout = ({
             py: paddingY,
             px: paddingX,
             minHeight: 0,
+            height: isDashboardRoute ? 'calc(100vh - 70px)' : 'auto',
             overflow: isDashboardRoute ? 'hidden' : 'visible'
           }}
         >

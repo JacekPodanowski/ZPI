@@ -138,7 +138,7 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                     gap: 2,
                     px: { xs: 1.5, md: 2 },
                     py: { xs: 1, md: 1.5 },
-                    mb: 1.5,
+                    mb: isPowerMode ? 1.5 : 0.75,
                     borderBottom: '1px solid rgba(146, 0, 32, 0.08)'
                 }}
             >
@@ -222,7 +222,7 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: 1,
-                    p: isPowerMode ? 1.5 : 2,
+                    p: isPowerMode ? 1.5 : 0,
                     flex: 1,
                     minHeight: 0
                 }}
@@ -234,8 +234,8 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                         sx={{
                             textAlign: 'center',
                             fontWeight: 600,
-                            pb: 1,
-                            fontSize: '14px',
+                            pb: isPowerMode ? 1 : 0,
+                            fontSize: isPowerMode ? '14px' : '13px',
                             color: 'text.secondary'
                         }}
                     >
@@ -263,8 +263,8 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                                     border: '1px solid',
                                     borderColor: isToday ? 'primary.main' : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
-                                    p: 1,
-                                    minHeight: isPowerMode ? 120 : 80,
+                                    p: isPowerMode ? 1 : 0.75,
+                                    minHeight: isPowerMode ? 120 : 65,
                                     backgroundColor: isCurrentMonth ? 'background.paper' : 'rgba(228, 229, 218, 0.35)',
                                     cursor: 'pointer',
                                     transition: 'all 200ms',
@@ -280,8 +280,8 @@ const CalendarGrid = ({ events, sites, onDayClick }) => {
                                     variant="body2"
                                     sx={{
                                         fontWeight: isToday ? 700 : 600,
-                                        mb: 1,
-                                        fontSize: isPowerMode ? '16px' : '14px',
+                                        mb: isPowerMode ? 1 : 0.5,
+                                        fontSize: isPowerMode ? '16px' : '13px',
                                         color: isToday ? 'primary.main' : 'text.primary'
                                     }}
                                 >

@@ -25,7 +25,7 @@ const useDashboardStore = create(
             },
 
             // ========== UI Dimensions ==========
-            calendarHeight: 650, // Site Management: 650px, Calendar Power: 850px
+            calendarHeight: 520, // Site Management: 520px, Calendar Power: 850px
             templateLibraryWidth: 180, // Site Management: 180px, Calendar Power: 240px
 
             // ========== Session Management ==========
@@ -52,7 +52,7 @@ const useDashboardStore = create(
                     mode: newMode,
                     collapsedByUser: triggeredBy === 'manual',
                     isTransitioning: true,
-                    calendarHeight: newMode === 'calendar-focus' ? 850 : 650,
+                    calendarHeight: newMode === 'calendar-focus' ? 850 : 520,
                     templateLibraryWidth: newMode === 'calendar-focus' ? 240 : 180,
                     lastInteraction: Date.now()
                 });

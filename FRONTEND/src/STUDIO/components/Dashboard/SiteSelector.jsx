@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import useDashboardStore from '../../store/dashboardStore';
 
-const PANEL_HEIGHT = 260;
+const PANEL_HEIGHT = 250;
 
 const buildSparklinePoints = (data) => {
     if (!Array.isArray(data) || data.length < 2) {
@@ -252,18 +252,21 @@ const SiteSelector = ({ sites }) => {
                             sx={{
                                 display: 'grid',
                                 gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(2, minmax(0, 1fr))' },
-                                gap: 1
+                                gap: 1.5,
+                                flex: 1
                             }}
                         >
                             <Box
                                 sx={{
                                     position: 'relative',
                                     borderRadius: 3,
-                                    px: 1.5,
-                                    py: 1.25,
+                                    px: 1.75,
+                                    py: 1.5,
                                     background: 'rgba(255,255,255,0.82)',
                                     boxShadow: '0 8px 18px rgba(12,12,12,0.12)',
-                                    border: '1px solid rgba(146, 0, 32, 0.12)'
+                                    border: '1px solid rgba(146, 0, 32, 0.12)',
+                                    display: 'flex',
+                                    flexDirection: 'column'
                                 }}
                             >
                                 <Tooltip title="Otwórz laboratorium" disableInteractive>
@@ -303,7 +306,7 @@ const SiteSelector = ({ sites }) => {
                                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                     Średnio {avgVisits} / dzień
                                 </Typography>
-                                <Box sx={{ mt: 1, height: 28 }}>
+                                <Box sx={{ mt: 'auto', pt: 1, height: 36 }}>
                                     <svg
                                         viewBox="0 0 100 40"
                                         preserveAspectRatio="none"
@@ -324,12 +327,14 @@ const SiteSelector = ({ sites }) => {
                             <Box
                                 sx={{
                                     borderRadius: 3,
-                                    px: 1.5,
-                                    py: 1.25,
+                                    px: 1.75,
+                                    py: 1.5,
                                     background: 'rgba(12,12,12,0.78)',
                                     boxShadow: '0 12px 24px rgba(12,12,12,0.2)',
                                     border: '1px solid rgba(146, 0, 32, 0.22)',
-                                    color: 'rgb(228,229,218)'
+                                    color: 'rgb(228,229,218)',
+                                    display: 'flex',
+                                    flexDirection: 'column'
                                 }}
                             >
                                 <Typography variant="caption" sx={{ letterSpacing: 0.8, opacity: 0.75 }}>

@@ -33,7 +33,7 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
 const drawerWidth = 280;
-const NAV_HEIGHT = 70;
+const NAV_HEIGHT = 60;
 
 const Navigation = () => {
     const { isAuthenticated, user, logout } = useAuth();
@@ -246,10 +246,11 @@ const Navigation = () => {
                     backdropFilter: 'blur(12px)',
                     color: 'text.primary',
                     borderBottom: '1px solid',
-                    borderColor: 'divider'
+                    borderColor: 'divider',
+                    height: NAV_HEIGHT
                 }}
             >
-                <Toolbar sx={{ minHeight: NAV_HEIGHT, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
+                <Toolbar sx={{ minHeight: NAV_HEIGHT, height: NAV_HEIGHT, display: 'flex', justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <IconButton
                             color="inherit"

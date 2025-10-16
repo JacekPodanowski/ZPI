@@ -124,8 +124,8 @@ const StudioDashboard = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         px: { xs: 2, md: 3, lg: 4 },
-                        py: { xs: 2, md: 3 },
-                        gap: 2,
+                        py: { xs: 0.75, md: 1.75 },
+                        gap: mode === 'site-focus' ? 0 : 2,
                         minHeight: 0,
                         overflow: 'hidden'
                     }}

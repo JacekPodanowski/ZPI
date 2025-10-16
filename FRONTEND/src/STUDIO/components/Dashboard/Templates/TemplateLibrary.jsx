@@ -77,8 +77,7 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                 borderRight: '1px solid rgba(146, 0, 32, 0.1)',
                 backgroundColor: 'rgba(228, 229, 218, 0.5)',
                 display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden'
+                flexDirection: 'column'
             }}
         >
             <Box
@@ -88,8 +87,8 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 2.5,
-                    height: '100%',
-                    overflow: 'hidden'
+                    flex: 1,
+                    minHeight: 0
                 }}
             >
                 <Box
@@ -97,7 +96,8 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: 1.5
+                        gap: 1.5,
+                        flexShrink: 0
                     }}
                 >
                     <Logo text="Sites" size="small" align="left" variant="shadow-light" />
@@ -123,7 +123,7 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -12 }}
                             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                            style={{ marginBottom: '12px' }}
+                            style={{ marginBottom: '12px', flex: 0 }}
                         >
                             <Box
                                 sx={{
@@ -131,7 +131,7 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                     flexDirection: 'column',
                                     gap: 1.5,
                                     borderRadius: 3,
-                                    pb: 2.5
+                                    pb: 1
                                 }}
                             >
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
@@ -209,161 +209,139 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                             + Nowa strona
                                         </Typography>
                                     </Box>
-                                    <Box sx={{ height: 60 }} />
                                 </Box>
                             </Box>
                         </motion.div>
                     ) : null}
                 </AnimatePresence>
 
-                <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)' }} />
+                {isSitePanelVisible && <Box sx={{ height: 32 }} />}
 
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, overflow: 'hidden' }}>
-                    <Typography
-                        variant="subtitle2"
-                        sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary' }}
-                    >
-                        Szablony dnia
-                    </Typography>
+                <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)', flexShrink: 0 }} />
 
-                    {dayTemplates.length > 0 ? (
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 1,
-                                overflowY: 'auto',
-                                pr: 1,
-                                maxHeight: isSitePanelVisible ? 146 : '100%',
-                                '&::-webkit-scrollbar': { display: 'none' }
-                            }}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: 0 }}>
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0 }}>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary', flexShrink: 0 }}
                         >
-                            {dayTemplates.map((template) => (
-                                <DayTemplate key={template.id} template={template} compact={isSitePanelVisible} />
-                            ))}
-                        </Box>
-                    ) : (
-                        <Box
-                            sx={{
-                                p: 2,
-                                textAlign: 'center',
-                                border: '1px dashed',
-                                borderColor: 'divider',
-                                borderRadius: 2,
-                                backgroundColor: 'action.hover'
-                            }}
-                        >
-                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                Brak szablonów dnia
-                            </Typography>
-                        </Box>
-                    )}
-
-                    <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: 12, borderColor: 'rgba(146, 0, 32, 0.24)' }}
-                        onClick={onCreateDayTemplate}
-                    >
-                        + Nowy
-                    </Button>
-                </Box>
-
-                <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)' }} />
-
-                <Box sx={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    <Typography
-                        variant="subtitle2"
-                        sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary' }}
-                    >
-                        Szablony tygodnia
-                    </Typography>
-
-                    {weekTemplates.length > 0 ? (
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 1,
-                                maxHeight: isSitePanelVisible ? 140 : 180,
-                                overflowY: 'auto',
-                                pr: 1,
-                                '&::-webkit-scrollbar': { display: 'none' }
-                            }}
-                        >
-                            {weekTemplates.map((template) => (
-                                <WeekTemplate key={template.id} template={template} compact={isSitePanelVisible} />
-                            ))}
-                        </Box>
-                    ) : (
-                        <Box
-                            sx={{
-                                p: 2,
-                                textAlign: 'center',
-                                border: '1px dashed',
-                                borderColor: 'divider',
-                                borderRadius: 2,
-                                backgroundColor: 'action.hover'
-                            }}
-                        >
-                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                Brak szablonów tygodnia
-                            </Typography>
-                        </Box>
-                    )}
-
-                    <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: 12, borderColor: 'rgba(146, 0, 32, 0.24)' }}
-                        onClick={onCreateWeekTemplate}
-                    >
-                        + Nowy
-                    </Button>
-                </Box>
-
-                {mode === 'calendar-focus' && (sites?.length || 0) > 0 && (
-                    <Box
-                        sx={{
-                            mt: 2.5,
-                            borderRadius: 3,
-                            px: 1.75,
-                            py: 1.5,
-                            backgroundColor: 'rgba(255,255,255,0.75)',
-                            boxShadow: '0 16px 30px rgba(12,12,12,0.12)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 0.75
-                        }}
-                    >
-                        <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}>
-                            Legenda kalendarza
+                            Szablony dnia
                         </Typography>
-                        {(sites || []).slice(0, 5).map((site) => (
-                            <Box key={site.id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                                <Box
-                                    sx={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: '50%',
-                                        backgroundColor: site.color_tag || 'rgb(146, 0, 32)',
-                                        boxShadow: `0 0 8px ${alpha(site.color_tag || 'rgb(146, 0, 32)', 0.4)}`
-                                    }}
-                                />
-                                <Typography variant="caption" sx={{ color: 'text.primary' }}>
-                                    {site.name}
+
+                        {dayTemplates.length > 0 ? (
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1,
+                                    overflowY: 'auto',
+                                    pr: 1,
+                                    flex: 1,
+                                    minHeight: 0,
+                                    '&::-webkit-scrollbar': { width: '4px' },
+                                    '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+                                    '&::-webkit-scrollbar-thumb': {
+                                        backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                        borderRadius: '2px',
+                                        '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
+                                    }
+                                }}
+                            >
+                                {dayTemplates.map((template) => (
+                                    <DayTemplate key={template.id} template={template} compact={isSitePanelVisible} />
+                                ))}
+                            </Box>
+                        ) : (
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    textAlign: 'center',
+                                    border: '1px dashed',
+                                    borderColor: 'divider',
+                                    borderRadius: 2,
+                                    backgroundColor: 'action.hover',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                                    Brak szablonów dnia
                                 </Typography>
                             </Box>
-                        ))}
-                        {sites.length > 5 && (
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                +{sites.length - 5} więcej
-                            </Typography>
                         )}
+
+                        <Button
+                            fullWidth
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: 12, borderColor: 'rgba(146, 0, 32, 0.24)', flexShrink: 0 }}
+                            onClick={onCreateDayTemplate}
+                        >
+                            + Nowy
+                        </Button>
                     </Box>
-                )}
+
+                    <Divider sx={{ borderColor: 'rgba(146, 0, 32, 0.16)', flexShrink: 0 }} />
+
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0 }}>
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ fontSize: 14, fontWeight: 600, color: 'text.secondary', flexShrink: 0 }}
+                        >
+                            Szablony tygodnia
+                        </Typography>
+
+                        {weekTemplates.length > 0 ? (
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1,
+                                    overflowY: 'auto',
+                                    pr: 1,
+                                    flex: 1,
+                                    minHeight: 0,
+                                    '&::-webkit-scrollbar': { width: '4px' },
+                                    '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+                                    '&::-webkit-scrollbar-thumb': {
+                                        backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                        borderRadius: '2px',
+                                        '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
+                                    }
+                                }}
+                            >
+                                {weekTemplates.map((template) => (
+                                    <WeekTemplate key={template.id} template={template} compact={isSitePanelVisible} />
+                                ))}
+                            </Box>
+                        ) : (
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    textAlign: 'center',
+                                    border: '1px dashed',
+                                    borderColor: 'divider',
+                                    borderRadius: 2,
+                                    backgroundColor: 'action.hover',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                                    Brak szablonów tygodnia
+                                </Typography>
+                            </Box>
+                        )}
+
+                        <Button
+                            fullWidth
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: 12, borderColor: 'rgba(146, 0, 32, 0.24)', flexShrink: 0 }}
+                            onClick={onCreateWeekTemplate}
+                        >
+                            + Nowy
+                        </Button>
+                    </Box>
+                </Box>
             </Box>
         </motion.div>
     );
