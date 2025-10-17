@@ -32,3 +32,8 @@ export const createSite = async (payload) => {
     const response = await apiClient.post('/sites/', payload);
     return response.data;
 };
+
+export const deleteSite = async (siteId) => {
+    const response = await apiClient.delete(`/sites/${siteId}/`);
+    return response.data;
+};

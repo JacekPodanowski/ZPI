@@ -4,8 +4,6 @@ import ProtectedRoute from './ProtectedRoute';
 import StudioDashboard from './pages/Dashboard/StudioDashboard';
 import SitesPage from './pages/Sites/SitesPage';
 import SiteCreationWizard from './pages/NewSite/SiteCreationWizard';
-import TemplatePicker from './pages/NewSite/TemplatePicker';
-import ModuleConfig from './pages/NewSite/ModuleConfig';
 import EditorPage from './pages/Editor/EditorPage';
 import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
@@ -30,8 +28,6 @@ const StudioApp = () => (
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
 
       {/* Site creation flow */}
-      <Route path="templates" element={<ProtectedRoute><TemplatePicker /></ProtectedRoute>} />
-      <Route path="configure/:templateId" element={<ProtectedRoute><ModuleConfig /></ProtectedRoute>} />
       <Route path="new" element={<ProtectedRoute><SiteCreationWizard /></ProtectedRoute>} />
 
       {/* Calendar previews for development */}
@@ -54,7 +50,6 @@ const StudioApp = () => (
     </Route>
 
     {/* Editor routes remain outside the main layout to use editor-specific navigation */}
-    <Route path="editor" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
     <Route path="editor/new" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
     <Route path="editor/:siteId" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
 

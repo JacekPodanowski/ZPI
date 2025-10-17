@@ -41,7 +41,11 @@ const SitesPage = () => {
     }, []);
 
     const handleCreateSite = () => {
-        navigate('/studio/templates');
+        navigate('/studio/new');
+    };
+
+    const handleSiteDeleted = (siteId) => {
+        setSites(prevSites => prevSites.filter(site => site.id !== siteId));
     };
 
     if (loading) {
@@ -240,6 +244,7 @@ const SitesPage = () => {
                                     key={site.id}
                                     site={site}
                                     index={index}
+                                    onSiteDeleted={handleSiteDeleted}
                                 />
                             ))}
                         </AnimatePresence>

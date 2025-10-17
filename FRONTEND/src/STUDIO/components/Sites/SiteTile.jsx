@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, IconButton, Menu, MenuItem } from '@mui/material';
+import { Box, Typography, IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -13,16 +13,19 @@ import {
     Delete as DeleteIcon,
     Settings as SettingsIcon
 } from '@mui/icons-material';
+import { deleteSite } from '../../../services/siteService';
 
-const SiteTile = ({ site, index }) => {
+const SiteTile = ({ site, index, onSiteDeleted }) => {
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [isMenuHovered, setIsMenuHovered] = useState(false);
     const [menuIconColor, setMenuIconColor] = useState('rgba(255, 255, 255, 0.9)');
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     
     // Debug flag - set to true to see the menu click area
-    const DEBUG_MENU_AREA = true;
+    const DEBUG_MENU_AREA = false;
     
     // Determine if site is active (default to true if not specified)
     const isActive = site.is_active ?? false;
@@ -115,8 +118,27 @@ const SiteTile = ({ site, index }) => {
 
     const handleDelete = () => {
         handleMenuClose();
-        // TODO: Implement delete confirmation and API call
-        console.log('Delete site:', site.id);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        try {
+            setIsDeleting(true);
+            await deleteSite(site.id);
+            setDeleteDialogOpen(false);
+            if (onSiteDeleted) {
+                onSiteDeleted(site.id);
+            }
+        } catch (error) {
+            console.error('Failed to delete site:', error);
+            alert('Failed to delete site. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteDialogOpen(false);
     };
 
     const handleTileClick = () => {
@@ -624,6 +646,43 @@ const SiteTile = ({ site, index }) => {
                     Delete Site
                 </MenuItem>
             </Menu>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={handleDeleteCancel}
+                onClick={(e) => e.stopPropagation()}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 2,
+                        minWidth: 400
+                    }
+                }}
+            >
+                <DialogTitle>Delete Site</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Are you sure you want to delete <strong>{site.name}</strong>? This action cannot be undone.
+                        All events, bookings, and data associated with this site will be permanently deleted.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={handleDeleteCancel} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleDeleteConfirm}
+                        color="error"
+                        variant="contained"
+                        disabled={isDeleting}
+                        sx={{
+                            minWidth: 100
+                        }}
+                    >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </motion.div>
     );
 };
