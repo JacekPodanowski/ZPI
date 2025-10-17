@@ -366,7 +366,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 '& svg': {
-                                    fontSize: '1.8rem',
+                                    fontSize: '2rem',
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6))'
                                 }
@@ -621,11 +621,23 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
                 onClick={(e) => e.stopPropagation()}
-                PaperProps={{
-                    sx: {
-                        borderRadius: 2,
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                        minWidth: 200
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 2,
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                            minWidth: 200,
+                            marginTop: '-35px',
+                            marginLeft: '1px'
+                        }
                     }
                 }}
             >
