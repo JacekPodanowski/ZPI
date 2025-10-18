@@ -1,8 +1,10 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const HeroSection = ({ config }) => {
   const { title, subtitle, bgColor, textColor, backgroundImage } = config
+  const resolvedBackground = resolveMediaUrl(backgroundImage)
 
   return (
     <section
@@ -13,7 +15,7 @@ const HeroSection = ({ config }) => {
       {backgroundImage && (
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-30"
-          style={{ backgroundImage: `url(${backgroundImage})` }}
+          style={{ backgroundImage: `url(${resolvedBackground})` }}
         />
       )}
       

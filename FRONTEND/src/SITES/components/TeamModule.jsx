@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const TeamModule = ({ config }) => {
   const {
@@ -39,7 +40,7 @@ const TeamModule = ({ config }) => {
               <div className="relative aspect-[3/4] overflow-hidden">
                 {member.image ? (
                   <img
-                    src={member.image}
+                    src={resolveMediaUrl(member.image)}
                     alt={member.name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />

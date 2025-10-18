@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const BlogModule = ({ config }) => {
   const {
@@ -38,7 +39,7 @@ const BlogModule = ({ config }) => {
               <div className="relative aspect-[4/5] overflow-hidden">
                 {post.image ? (
                   <img
-                    src={post.image}
+                    src={resolveMediaUrl(post.image)}
                     alt={post.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />

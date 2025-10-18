@@ -12,6 +12,7 @@ from .views import (
     PublicSiteView,
     PublicSiteByIdView,
     publish_site,
+    FileUploadView,
 )
 
 router = DefaultRouter()
@@ -29,4 +30,5 @@ urlpatterns = [
     path('public-sites/by-id/<int:site_id>/', PublicSiteByIdView.as_view(), name='public_site_detail_by_id'),
     path('public-sites/<slug:identifier>/', PublicSiteView.as_view(), name='public_site_detail'),
     path('sites/<int:site_id>/publish/', publish_site, name='publish-site'),
+    path('upload/', FileUploadView.as_view(), name='file-upload'),
 ]

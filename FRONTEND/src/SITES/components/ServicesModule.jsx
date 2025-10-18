@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const ServicesModule = ({ config }) => {
   const {
@@ -38,7 +39,7 @@ const ServicesModule = ({ config }) => {
             >
               {item.image && (
                 <div className="aspect-video overflow-hidden">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  <img src={resolveMediaUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="p-6 space-y-3" style={{ color: textColor }}>

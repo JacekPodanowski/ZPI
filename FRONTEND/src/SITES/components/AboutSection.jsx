@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const AboutSection = ({ config }) => {
   const { title, description, imageUrl, avatar, bgColor } = config
@@ -26,7 +27,7 @@ const AboutSection = ({ config }) => {
           <div className="rounded-xl h-96 overflow-hidden shadow-lg">
             {imageUrl || avatar ? (
               <img 
-                src={imageUrl || avatar} 
+                src={resolveMediaUrl(imageUrl || avatar)} 
                 alt={title} 
                 className="w-full h-full object-cover"
               />

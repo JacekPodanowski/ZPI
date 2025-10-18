@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const GalleryModule = ({ config }) => {
   const { images = [], columns = 3, gap = '1rem', style = 'grid' } = config
@@ -61,7 +62,8 @@ const GalleryModule = ({ config }) => {
           }}
         >
           {images.map((item, idx) => {
-            const imgUrl = typeof item === 'string' ? item : item.url
+            const imgUrlRaw = typeof item === 'string' ? item : item.url
+            const imgUrl = resolveMediaUrl(imgUrlRaw)
             const caption = typeof item === 'object' ? item.caption : ''
             
             return (
@@ -102,7 +104,8 @@ const GalleryModule = ({ config }) => {
           }}
         >
           {images.map((item, idx) => {
-            const imgUrl = typeof item === 'string' ? item : item.url
+            const imgUrlRaw = typeof item === 'string' ? item : item.url
+            const imgUrl = resolveMediaUrl(imgUrlRaw)
             const caption = typeof item === 'object' ? item.caption : ''
             
             return (
@@ -134,7 +137,8 @@ const GalleryModule = ({ config }) => {
   // Slideshow (poziome przesuwanie)
   if (style === 'slideshow') {
     const currentItem = images[currentIndex]
-    const imgUrl = typeof currentItem === 'string' ? currentItem : currentItem?.url
+    const imgUrlRaw = typeof currentItem === 'string' ? currentItem : currentItem?.url
+    const imgUrl = resolveMediaUrl(imgUrlRaw)
     const caption = typeof currentItem === 'object' ? currentItem?.caption : ''
 
     return (
@@ -203,7 +207,8 @@ const GalleryModule = ({ config }) => {
   // Fade (zanikanie)
   if (style === 'fade') {
     const currentItem = images[currentIndex]
-    const imgUrl = typeof currentItem === 'string' ? currentItem : currentItem?.url
+    const imgUrlRaw = typeof currentItem === 'string' ? currentItem : currentItem?.url
+    const imgUrl = resolveMediaUrl(imgUrlRaw)
     const caption = typeof currentItem === 'object' ? currentItem?.caption : ''
 
     return (
@@ -263,7 +268,8 @@ const GalleryModule = ({ config }) => {
             style={{ scrollBehavior: 'smooth' }}
           >
             {images.map((item, idx) => {
-              const imgUrl = typeof item === 'string' ? item : item.url
+              const imgUrlRaw = typeof item === 'string' ? item : item.url
+              const imgUrl = resolveMediaUrl(imgUrlRaw)
               const caption = typeof item === 'object' ? item.caption : ''
               
               return (

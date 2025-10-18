@@ -1,72 +1,67 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Button from './Button'
+import apiClient from '../services/apiClient'
+import { resolveMediaUrl } from '../config/api'
 
 const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false }) => {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState(value || '')
   const fileInputRef = useRef(null)
 
-  const handleFileSelect = (files) => {
+  const handleFileSelect = async (files) => {
     if (!files || files.length === 0) return
 
-    // Jeśli multiple, przetwarzamy wszystkie pliki
-    if (multiple) {
-      const fileArray = Array.from(files)
-      const validFiles = fileArray.filter(file => {
-        if (!file.type.startsWith('image/')) {
-          alert(`${file.name} nie jest plikiem obrazu`)
-          return false
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          alert(`${file.name} jest za duży. Maksymalny rozmiar to 5MB`)
-          return false
-        }
-        return true
-      })
+    const uploadFile = async (file) => {
+      const isImage = file.type.startsWith('image/')
+      const isVideo = file.type.startsWith('video/')
 
-      if (validFiles.length === 0) return
+      if (!isImage && !isVideo) {
+        alert(`${file.name} is not a supported file type.`)
+        return null
+      }
 
-      const readers = validFiles.map(file => {
-        return new Promise((resolve) => {
-          const reader = new FileReader()
-          reader.onload = (e) => resolve(e.target.result)
-          reader.readAsDataURL(file)
+      if (file.size > 50 * 1024 * 1024) {
+        alert(`${file.name} is too large. Max size is 50MB.`)
+        return null
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      try {
+        const response = await apiClient.post('/upload/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
         })
-      })
+        return response.data.url
+      } catch (error) {
+        console.error('Upload failed:', error)
+        alert(`Failed to upload ${file.name}.`)
+        return null
+      }
+    }
 
-      Promise.all(readers).then(results => {
-        // Zwracamy tablicę URL-i
-        onChange(results)
-      })
+    if (multiple) {
+      const uploadPromises = Array.from(files).map(uploadFile)
+      const urls = (await Promise.all(uploadPromises)).filter(Boolean)
+      if (urls.length > 0) {
+        onChange(urls)
+      }
     } else {
-      // Single file mode
-      const file = files[0]
-      
-      if (!file.type.startsWith('image/')) {
-        alert('Proszę wybrać plik obrazu')
-        return
+      const url = await uploadFile(files[0])
+      if (url) {
+        setPreview(url)
+        onChange(url)
       }
-
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Plik jest za duży. Maksymalny rozmiar to 5MB')
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const imageUrl = e.target.result
-        setPreview(imageUrl)
-        onChange(imageUrl)
-      }
-      reader.readAsDataURL(file)
     }
   }
 
   const handleDrop = (e) => {
     e.preventDefault()
     setIsDragging(false)
-    handleFileSelect(e.dataTransfer.files)
+    void handleFileSelect(e.dataTransfer.files)
   }
 
   const handleDragOver = (e) => {
@@ -83,11 +78,11 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
   }
 
   const handleFileInput = (e) => {
-    handleFileSelect(e.target.files)
+    void handleFileSelect(e.target.files)
   }
 
   const handleUrlInput = () => {
-    const url = prompt('Wklej URL obrazu:')
+    const url = prompt('Wklej URL obrazu lub wideo:')
     if (url) {
       if (multiple) {
         onChange([url])
@@ -105,6 +100,10 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
       fileInputRef.current.value = ''
     }
   }
+
+  const normalizedPreview = (preview || '').split('?')[0]
+  const previewIsVideo = /\.(mp4|webm|ogg|mov)$/i.test(normalizedPreview) || normalizedPreview.includes('/videos/')
+  const resolvedPreview = resolveMediaUrl(preview)
 
   // Dla multiple nie pokazujemy podglądu - tylko upload area
   if (multiple) {
@@ -144,16 +143,16 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
               />
             </svg>
             <p className="text-sm font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
-              {isDragging ? 'Upuść pliki tutaj' : 'Kliknij lub przeciągnij obrazy'}
+              {isDragging ? 'Upuść pliki tutaj' : 'Kliknij lub przeciągnij obrazy lub wideo'}
             </p>
-            <p className="text-xs opacity-50">PNG, JPG, GIF do 5MB (wiele plików)</p>
+            <p className="text-xs opacity-50">PNG, JPG, GIF, MP4 do 50MB (wiele plików)</p>
           </div>
         </motion.div>
 
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           multiple
           onChange={handleFileInput}
           className="hidden"
@@ -193,11 +192,22 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
             className="relative rounded-xl overflow-hidden shadow-md"
             style={{ aspectRatio }}
           >
-            <img
-              src={preview}
-              alt="Podgląd"
-              className="w-full h-full object-cover"
-            />
+            {previewIsVideo ? (
+              <video
+                src={resolvedPreview}
+                controls
+                playsInline
+                className="w-full h-full object-cover"
+              >
+                Twoja przeglądarka nie obsługuje odtwarzania wideo.
+              </video>
+            ) : (
+              <img
+                src={resolvedPreview}
+                alt="Podgląd"
+                className="w-full h-full object-cover"
+              />
+            )}
             <div className="absolute top-2 right-2 flex gap-2">
               <Button
                 variant="secondary"
@@ -248,9 +258,9 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
                 />
               </svg>
               <p className="text-sm font-medium mb-1" style={{ color: 'rgb(30, 30, 30)' }}>
-                {isDragging ? 'Upuść plik tutaj' : 'Kliknij lub przeciągnij obraz'}
+                {isDragging ? 'Upuść plik tutaj' : 'Kliknij lub przeciągnij obraz lub wideo'}
               </p>
-              <p className="text-xs opacity-50">PNG, JPG, GIF do 5MB</p>
+              <p className="text-xs opacity-50">PNG, JPG, GIF, MP4 do 50MB</p>
             </div>
           </motion.div>
         )}
@@ -259,7 +269,7 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         onChange={handleFileInput}
         className="hidden"
       />

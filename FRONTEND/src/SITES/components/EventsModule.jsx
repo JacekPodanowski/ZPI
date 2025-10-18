@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -125,7 +126,7 @@ const EventsModule = ({ config }) => {
                   <div className="grid gap-4 md:grid-cols-2">
                     {activeEvent.images.map((image, index) => (
                       <div key={index} className="rounded-2xl overflow-hidden">
-                        <img src={image} alt={`${activeEvent.title} ${index + 1}`} className="w-full h-full object-cover" />
+                        <img src={resolveMediaUrl(image)} alt={`${activeEvent.title} ${index + 1}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>

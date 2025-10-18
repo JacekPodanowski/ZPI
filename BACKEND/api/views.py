@@ -1,13 +1,18 @@
 """REST API views for the multi-tenant Personal Site Generator backend."""
 
 import logging
+from datetime import datetime
+
 import requests
 from django.conf import settings
+from django.core.files.storage import default_storage
 from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
@@ -229,6 +234,36 @@ class PublicSiteByIdView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
     lookup_field = 'pk'
     lookup_url_kwarg = 'site_id'
+
+
+class FileUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        file_obj = request.data.get('file')
+
+        if not file_obj:
+            return Response({'error': 'No file was submitted'}, status=status.HTTP_400_BAD_REQUEST)
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+
+        if file_obj.content_type.startswith('image'):
+            subdirectory = 'images'
+        elif file_obj.content_type.startswith('video'):
+            subdirectory = 'videos'
+        else:
+            subdirectory = 'uploads'
+
+        safe_name = file_obj.name.replace(' ', '_')
+        file_name = f"{subdirectory}/{timestamp}_{safe_name}"
+
+        try:
+            saved_path = default_storage.save(file_name, file_obj)
+            file_url = default_storage.url(saved_path)
+            return Response({'url': file_url}, status=status.HTTP_201_CREATED)
+        except Exception as exc:
+            logger.exception("Failed to upload file")
+            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
