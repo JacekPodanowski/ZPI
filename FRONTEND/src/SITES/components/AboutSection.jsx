@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const AboutSection = ({ config }) => {
   const { title, description, imageUrl, avatar, bgColor } = config
@@ -23,14 +24,25 @@ const AboutSection = ({ config }) => {
             </p>
           </div>
           
-          {/* Obrazek lub placeholder */}
-          <div className="rounded-xl h-96 overflow-hidden shadow-lg">
-            {imageUrl || avatar ? (
-              <img 
-                src={resolveMediaUrl(imageUrl || avatar)} 
-                alt={title} 
-                className="w-full h-full object-cover"
-              />
+          {/* Obrazek lub wideo albo placeholder */}
+          <div className="rounded-xl h-96 overflow-hidden shadow-lg bg-black">
+            {(imageUrl || avatar) ? (
+              isVideoUrl(imageUrl || avatar) ? (
+                <video
+                  src={resolveMediaUrl(imageUrl || avatar)}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img 
+                  src={resolveMediaUrl(imageUrl || avatar)} 
+                  alt={title} 
+                  className="w-full h-full object-cover"
+                />
+              )
             ) : (
               <div 
                 className="w-full h-full flex items-center justify-center"

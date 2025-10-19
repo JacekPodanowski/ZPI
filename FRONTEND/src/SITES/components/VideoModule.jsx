@@ -86,7 +86,7 @@ const VideoModule = ({ config }) => {
               src={fullSelfHostedUrl}
               controls
               muted={muted}
-              autoPlay={Boolean(muted)}
+              autoPlay={muted}
               loop
               playsInline
               className="w-full h-full object-cover"

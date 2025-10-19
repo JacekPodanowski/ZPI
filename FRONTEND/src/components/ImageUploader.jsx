@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Button from './Button'
 import apiClient from '../services/apiClient'
 import { resolveMediaUrl } from '../config/api'
+import { isVideoUrl } from '../utils/mediaUtils'
 
 const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false }) => {
   const [isDragging, setIsDragging] = useState(false)
@@ -101,9 +102,8 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
     }
   }
 
-  const normalizedPreview = (preview || '').split('?')[0]
-  const previewIsVideo = /\.(mp4|webm|ogg|mov)$/i.test(normalizedPreview) || normalizedPreview.includes('/videos/')
   const resolvedPreview = resolveMediaUrl(preview)
+  const previewIsVideo = isVideoUrl(preview)
 
   // Dla multiple nie pokazujemy podglądu - tylko upload area
   if (multiple) {
@@ -195,7 +195,9 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
             {previewIsVideo ? (
               <video
                 src={resolvedPreview}
-                controls
+                autoPlay
+                muted
+                loop
                 playsInline
                 className="w-full h-full object-cover"
               >

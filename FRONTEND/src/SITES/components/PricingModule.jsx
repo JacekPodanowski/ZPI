@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const PricingModule = ({ config }) => {
   const {
@@ -39,8 +40,21 @@ const PricingModule = ({ config }) => {
               className="rounded-3xl overflow-hidden bg-white shadow-lg border border-black/5"
             >
               {item.image && (
-                <div className="aspect-video overflow-hidden">
-                  <img src={resolveMediaUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                <div className="aspect-video overflow-hidden bg-black">
+                  {isVideoUrl(item.image) ? (
+                    <video
+                      src={resolveMediaUrl(item.image)}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    >
+                      Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                    </video>
+                  ) : (
+                    <img src={resolveMediaUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                  )}
                 </div>
               )}
               <div className="p-6 space-y-4" style={{ color: textColor }}>

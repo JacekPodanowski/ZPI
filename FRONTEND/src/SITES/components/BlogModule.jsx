@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const BlogModule = ({ config }) => {
   const {
@@ -36,13 +37,26 @@ const BlogModule = ({ config }) => {
               whileHover={{ y: -6 }}
               className="rounded-3xl overflow-hidden shadow-lg group bg-white"
             >
-              <div className="relative aspect-[4/5] overflow-hidden">
+              <div className="relative aspect-[4/5] overflow-hidden bg-black">
                 {post.image ? (
-                  <img
-                    src={resolveMediaUrl(post.image)}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+                  isVideoUrl(post.image) ? (
+                    <video
+                      src={resolveMediaUrl(post.image)}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    >
+                      Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                    </video>
+                  ) : (
+                    <img
+                      src={resolveMediaUrl(post.image)}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  )
                 ) : (
                   <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
                     Dodaj zdjęcie
