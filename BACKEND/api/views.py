@@ -2,6 +2,8 @@
 
 import logging
 from datetime import datetime
+from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
@@ -9,7 +11,7 @@ from django.core.files.storage import default_storage
 from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -237,7 +239,8 @@ class PublicSiteByIdView(generics.RetrieveAPIView):
 
 
 class FileUploadView(APIView):
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         file_obj = request.data.get('file')
@@ -264,6 +267,58 @@ class FileUploadView(APIView):
         except Exception as exc:
             logger.exception("Failed to upload file")
             return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, *args, **kwargs):
+        raw_url = request.data.get('url') or request.query_params.get('url')
+        if not raw_url:
+            return Response({'error': 'No file URL provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        relative_path = self._extract_relative_path(raw_url)
+        if not relative_path:
+            return Response({'error': 'Invalid media path'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_storage.exists(relative_path):
+            logger.info("Media file %s already removed", relative_path)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        try:
+            default_storage.delete(relative_path)
+            logger.info("Deleted media file %s", relative_path)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as exc:
+            logger.exception("Failed to delete media file %s", relative_path)
+            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _extract_relative_path(self, file_url: str) -> Optional[str]:
+        """Normalize user-provided media URL to a safe storage-relative path."""
+
+        trimmed = (file_url or '').strip()
+        if not trimmed:
+            return None
+
+        parsed = urlparse(trimmed)
+        path = parsed.path or ''
+
+        if not path and not parsed.netloc:
+            path = trimmed
+
+        if not path.startswith('/'):
+            path = f'/{path}'
+
+        media_url = getattr(settings, 'MEDIA_URL', '/media/') or '/media/'
+        if path.startswith(media_url):
+            relative_path = path[len(media_url):]
+        else:
+            relative_path = path.lstrip('/')
+
+        if '..' in relative_path or relative_path.startswith('/'):
+            return None
+
+        allowed_prefixes = ('images/', 'videos/', 'uploads/')
+        if not relative_path.startswith(allowed_prefixes):
+            return None
+
+        return relative_path
 
 
 @api_view(['POST'])

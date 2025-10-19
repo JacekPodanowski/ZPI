@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Button from './Button'
 import apiClient from '../services/apiClient'
 import { resolveMediaUrl } from '../config/api'
+import { deleteMediaAsset } from '../services/mediaService'
 import { isVideoUrl } from '../utils/mediaUtils'
 
 const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false }) => {
@@ -51,10 +52,14 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
         onChange(urls)
       }
     } else {
+      const previousUrl = preview
       const url = await uploadFile(files[0])
       if (url) {
         setPreview(url)
         onChange(url)
+        if (previousUrl && previousUrl !== url) {
+          void deleteMediaAsset(previousUrl)
+        }
       }
     }
   }
@@ -85,20 +90,28 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
   const handleUrlInput = () => {
     const url = prompt('Wklej URL obrazu lub wideo:')
     if (url) {
+      const previousUrl = preview
       if (multiple) {
         onChange([url])
       } else {
         setPreview(url)
         onChange(url)
+        if (previousUrl && previousUrl !== url) {
+          void deleteMediaAsset(previousUrl)
+        }
       }
     }
   }
 
   const handleRemove = () => {
+    const previousUrl = preview
     setPreview('')
     onChange('')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
+    }
+    if (previousUrl) {
+      void deleteMediaAsset(previousUrl)
     }
   }
 
