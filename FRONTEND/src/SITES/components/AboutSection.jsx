@@ -5,6 +5,9 @@ import { isVideoUrl } from '../../utils/mediaUtils'
 
 const AboutSection = ({ config }) => {
   const { title, description, imageUrl, avatar, bgColor } = config
+  const primaryMedia = imageUrl || avatar
+  const fallbackImage = imageUrl && avatar && imageUrl !== avatar ? avatar : ''
+  const primaryIsVideo = isVideoUrl(primaryMedia)
 
   return (
     <section className="py-20 px-4" style={{ backgroundColor: bgColor || 'rgb(228, 229, 218)' }}>
@@ -26,19 +29,20 @@ const AboutSection = ({ config }) => {
           
           {/* Obrazek lub wideo albo placeholder */}
           <div className="rounded-xl h-96 overflow-hidden shadow-lg bg-black">
-            {(imageUrl || avatar) ? (
-              isVideoUrl(imageUrl || avatar) ? (
+            {primaryMedia ? (
+              primaryIsVideo ? (
                 <video
-                  src={resolveMediaUrl(imageUrl || avatar)}
+                  src={resolveMediaUrl(primaryMedia)}
                   autoPlay
                   loop
                   muted
                   playsInline
+                  poster={fallbackImage ? resolveMediaUrl(fallbackImage) : undefined}
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <img 
-                  src={resolveMediaUrl(imageUrl || avatar)} 
+                  src={resolveMediaUrl(primaryMedia)} 
                   alt={title} 
                   className="w-full h-full object-cover"
                 />
