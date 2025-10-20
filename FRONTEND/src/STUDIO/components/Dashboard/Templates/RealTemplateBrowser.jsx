@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import DayTemplate from './DayTemplate';
 import WeekTemplate from './WeekTemplate';
 import Logo from '../../../../components/Logo/Logo';
+import { getSiteColorHex } from '../../../../theme/siteColors';
 
 const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
     const templateLibraryWidth = 240; // Fixed width for templates-only mode
@@ -16,8 +17,20 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
             name: 'Poranny',
             day_abbreviation: 'Pon',
             events: [
-                { type: 'individual', start_time: '09:00', end_time: '11:00' },
-                { type: 'group', start_time: '14:00', end_time: '16:00' }
+                { 
+                    type: 'individual', 
+                    start_time: '09:00', 
+                    end_time: '11:00',
+                    title: 'Morning Session',
+                    site_color: getSiteColorHex(0) // Red
+                },
+                { 
+                    type: 'group', 
+                    start_time: '14:00', 
+                    end_time: '16:00',
+                    title: 'Group Class',
+                    site_color: getSiteColorHex(0) // Red
+                }
             ]
         },
         {
@@ -25,7 +38,13 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
             name: 'Wieczorny',
             day_abbreviation: 'Wt',
             events: [
-                { type: 'group', start_time: '17:00', end_time: '19:00' }
+                { 
+                    type: 'group', 
+                    start_time: '17:00', 
+                    end_time: '19:00',
+                    title: 'Evening Session',
+                    site_color: getSiteColorHex(1) // Blue
+                }
             ]
         }
     ];

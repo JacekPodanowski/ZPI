@@ -7,23 +7,23 @@
 ## Color System
 3. Sites use **color_index** (0-11) mapped to colors via `getSiteColorHex()` from `theme/siteColors.js`.
 4. Backend auto-assigns colors sequentially: 1st site = Red (0), 2nd = Blue (1), 3rd = Green (2), etc.
-5. Events inherit site colors via `site_color` prop for consistency across the calendar.
+5. Events inherit site colors via `site_color` prop and **always** display in their site color. Site filtering affects opacity (0.6) and grayscale (40%) but preserves color identity.
 
 ## Layout & Display
 6. Day names header is separate from grid to prevent gaps; calendar uses `gridAutoRows: 'minmax(110px, 1fr)'` with `overflow: 'hidden'`.
 7. Site filter buttons always display with `borderRadius: 3` and site-specific colors.
-8. Events use smart scaling: Normal (≤4 events), Compact (5-7), Minimal (8-10), Collapsed (>10).
+8. Events use smart scaling: Normal (≤3 events), Compact (4-5), Minimal (6-7), Collapsed (≥8). Events are sized to fit within available space (~90px after day number): Normal=26px, Compact=18px, Minimal=14px. Hover expansion can overflow tile boundaries.
 
 ## Event Display & Interactions
 9. EventBlock components show full event details with 400ms smooth animations using cubic-bezier easing.
 10. Hovering an event blocks day tile hover to prevent double-highlighting.
-11. Hovered events lift up and siblings shrink (scale 0.88) for ethereal minimalism effect.
+11. Hovered events expand with scale + translateY (can overflow tile), siblings shrink to 0.92 scale and 0.7 opacity to maintain visibility within tile.
 
 ## Day Tile Behavior
 12. Day hover effect is unified - both tile background and day number change together when hovering empty areas.
 13. Past days with no events are non-clickable (`cursor: 'default'`) to prevent confusion.
 14. Today has red glow (`boxShadow`), 2px border, and text-shadow for prominence.
-15. Day number grows from center on hover (15px → 16px) using `transformOrigin: 'center center'`.
+15. Day number grows from center on hover (15px → 16px) using `transformOrigin: 'center center'`. Day number has `mb: 0.25` (reduced padding) to maximize event space.
 
 ## Data Requirements
 16. Events need: id, date (YYYY-MM-DD), title, optional site_id/site_color.
@@ -42,5 +42,9 @@
 
 ## State Management
 25. Component uses local state for hover tracking (hoveredEventId, hoveredDayKey) - no global store dependencies.
+
+## Template Components
+26. **DayTemplate**: Events styled like calendar EventBlocks with borderLeft accent. Uses site colors from `event.site_color` (priority), `event.site.color_index`, or defaults to red. Shows up to 3 events before "+X więcej" message.
+27. **WeekTemplate**: Event count displayed as "X Events" in red badge at top-right corner. Mini calendar grid shows active days with site-themed styling.
 
 DESCRIBE YOUR CHANGES IN THIS GUIDE

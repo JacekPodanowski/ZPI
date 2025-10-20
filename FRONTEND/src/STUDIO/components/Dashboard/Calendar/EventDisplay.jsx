@@ -6,7 +6,7 @@ import { UnfoldMore as ExpandIcon } from '@mui/icons-material';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
 // Threshold for collapsing events into a single "show more" rectangle
-export const COLLAPSE_THRESHOLD = 10;
+export const COLLAPSE_THRESHOLD = 8;
 
 // Dot view for Site Management mode
 export const EventDot = ({ event, siteColor }) => (
@@ -39,9 +39,9 @@ EventDot.propTypes = {
 
 // Calculate event display mode based on event count and available space
 const getEventDisplayMode = (eventCount) => {
-    if (eventCount <= 4) return 'normal'; // Show all with normal size
-    if (eventCount <= 7) return 'compact'; // Strip extra data, smaller
-    if (eventCount <= 10) return 'minimal'; // Just time + title, very small
+    if (eventCount <= 3) return 'normal'; // Show all with normal size
+    if (eventCount <= 5) return 'compact'; // Strip extra data, smaller
+    if (eventCount <= 7) return 'minimal'; // Just time + title, very small
     return 'collapsed'; // Single rectangle with count
 };
 
@@ -54,40 +54,40 @@ export const EventBlock = ({
     isHovered = false, 
     isDayCrowded = false 
 }) => {
-    // Get site color from color_index
+    // Get site color from color_index - always use site color
     const baseColor = event.site_color || getSiteColorHex(event.site?.color_index ?? 0);
     const displayMode = getEventDisplayMode(eventCount);
     
-    const bgColor = isSelectedSite
-        ? alpha(baseColor, 0.15)
-        : alpha('rgb(188, 186, 179)', 0.5);
-
-    const borderColor = isSelectedSite ? baseColor : 'rgb(188, 186, 179)';
-    const textColor = isSelectedSite ? baseColor : 'rgb(110, 110, 110)';
+    // Always use site colors, filtering affects opacity not color
+    const bgColor = alpha(baseColor, 0.15);
+    const borderColor = baseColor;
+    const textColor = baseColor;
 
     // Calculate height based on density and hover state
+    // Normal height ensures events fit within ~90px available space (110px tile - 20px day number/padding)
     const getHeight = () => {
-        if (displayMode === 'normal') return isHovered ? 36 : 32;
-        if (displayMode === 'compact') return isHovered ? 27 : 24;
-        if (displayMode === 'minimal') return isHovered ? 21 : 18;
+        if (displayMode === 'normal') return isHovered ? 30 : 26; // 3 events: 3*26 + 2*4(gap) = 86px
+        if (displayMode === 'compact') return isHovered ? 22 : 18; // 5 events: 5*18 + 4*3(gap) = 102px
+        if (displayMode === 'minimal') return isHovered ? 18 : 14; // 7 events: 7*14 + 6*2.5(gap) = 113px
         return 28;
     };
 
     // Calculate font size based on density
     const getFontSize = () => {
-        if (displayMode === 'normal') return isHovered ? '12.5px' : '12px';
-        if (displayMode === 'compact') return isHovered ? '11.5px' : '11px';
-        return isHovered ? '10.5px' : '10px';
+        if (displayMode === 'normal') return isHovered ? '11.5px' : '11px';
+        if (displayMode === 'compact') return isHovered ? '10.5px' : '10px';
+        return isHovered ? '9.5px' : '9px';
     };
 
-    // Calculate hover transform based on crowd level
+    // Calculate hover transform - can go out of bounds
     const getHoverTransform = () => {
-        if (isDayCrowded) {
-            // Crowded: subtle scale with gentle lift
-            return 'scale(1.04) translateY(-2px)';
+        if (displayMode === 'normal') {
+            return 'translateY(-3px) scale(1.05)';
         }
-        // Not crowded: elegant lift
-        return eventCount <= 2 ? 'translateY(-4px)' : 'translateY(-3px)';
+        if (displayMode === 'compact') {
+            return 'translateY(-2px) scale(1.08)';
+        }
+        return 'translateY(-2px) scale(1.1)';
     };
 
     return (
@@ -101,22 +101,23 @@ export const EventBlock = ({
                 borderLeft: `2px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 cursor: 'pointer',
-                transition: 'height 400ms cubic-bezier(0.34, 1.15, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.15, 0.64, 1), background-color 400ms ease, box-shadow 400ms ease, font-size 400ms ease',
-                overflow: 'visible',
+                transition: 'height 400ms cubic-bezier(0.34, 1.15, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.15, 0.64, 1), background-color 400ms ease, box-shadow 400ms ease, font-size 400ms ease, opacity 400ms ease, filter 400ms ease',
+                overflow: 'hidden', // Keep content inside
                 pointerEvents: isSelectedSite ? 'auto' : 'none',
-                filter: isSelectedSite ? 'none' : 'grayscale(60%)',
-                opacity: isSelectedSite ? 1 : 0.5,
+                filter: isSelectedSite ? 'none' : 'grayscale(40%)', // Lighter grayscale to preserve color
+                opacity: isSelectedSite ? 1 : 0.6, // Slightly higher opacity for filtered events
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
                 '&:hover': {
-                    backgroundColor: isSelectedSite ? alpha(baseColor, 0.18) : alpha('rgb(188, 186, 179)', 0.6),
+                    backgroundColor: alpha(baseColor, 0.18),
                     transform: getHoverTransform(),
                     boxShadow: isDayCrowded 
                         ? `0 3px 12px ${alpha(baseColor, 0.25)}` 
                         : `0 4px 16px ${alpha(baseColor, 0.28)}`,
                     zIndex: 50,
+                    overflow: 'visible', // Allow hover effect to go outside
                 }
             }}
         >

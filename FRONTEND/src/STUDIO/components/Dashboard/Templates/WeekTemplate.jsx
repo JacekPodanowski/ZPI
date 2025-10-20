@@ -75,10 +75,11 @@ const WeekTemplate = ({ template, compact }) => {
                             sx={{
                                 fontSize: '0.65rem',
                                 fontWeight: 700,
-                                color: 'primary.main'
+                                color: 'primary.main',
+                                whiteSpace: 'nowrap'
                             }}
                         >
-                            {template.day_count || activeDays.length} dni
+                            {template.total_events || 0} Events
                         </Typography>
                     </Box>
                 </Box>
@@ -126,31 +127,6 @@ const WeekTemplate = ({ template, compact }) => {
                             </Box>
                         );
                     })}
-                </Box>
-
-                {/* Event Count */}
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        py: 0.5,
-                        px: 1,
-                        borderRadius: 1,
-                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                        border: '1px solid rgba(59, 130, 246, 0.2)'
-                    }}
-                >
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            fontSize: '0.7rem',
-                            color: 'text.primary',
-                            fontWeight: 600
-                        }}
-                    >
-                        {template.total_events || 0} wydarzeń
-                    </Typography>
                 </Box>
 
                 {/* Subtle Drag Indicator */}

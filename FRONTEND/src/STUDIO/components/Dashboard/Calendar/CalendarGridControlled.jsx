@@ -240,8 +240,8 @@ const CalendarGridControlled = ({
                     
                     // Determine if this day is crowded (events won't fit at normal size)
                     const eventCount = dayEvents.length;
-                    const isDayCrowded = eventCount >= 5;
-                    const shouldCollapse = eventCount > COLLAPSE_THRESHOLD;
+                    const isDayCrowded = eventCount >= 4;
+                    const shouldCollapse = eventCount >= COLLAPSE_THRESHOLD;
 
                     // Past days with no events should not be clickable
                     const isClickable = !isPast || eventCount > 0;
@@ -273,7 +273,7 @@ const CalendarGridControlled = ({
                                     cursor: isClickable ? 'pointer' : 'default',
                                     transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                                     opacity: isDimmed ? 0.45 : 1,
-                                    overflow: 'visible',
+                                    overflow: 'hidden', // Prevent events from overflowing the tile
                                     position: 'relative',
                                     ...(isToday && {
                                         boxShadow: '0 0 12px rgba(146, 0, 32, 0.25), 0 0 24px rgba(146, 0, 32, 0.1)',
@@ -290,7 +290,7 @@ const CalendarGridControlled = ({
                                     variant="body2"
                                     sx={{
                                         fontWeight: isToday ? 700 : 600,
-                                        mb: 0.5,
+                                        mb: 0.25, // Reduced from 0.5 to save space
                                         fontSize: '15px',
                                         color: isToday ? 'primary.main' : 'text.primary',
                                         flexShrink: 0,
@@ -331,13 +331,13 @@ const CalendarGridControlled = ({
                                         />
                                     </Box>
                                 ) : (
-                                    // Smart scaling view for 1-10 events
+                                    // Smart scaling view for 1-7 events
                                     <Box sx={{ 
                                         display: 'flex', 
                                         flexDirection: 'column', 
-                                        gap: eventCount <= 4 ? 0.5 : eventCount <= 7 ? 0.35 : 0.25,
+                                        gap: eventCount <= 3 ? 0.5 : eventCount <= 5 ? 0.375 : 0.3,
                                         flex: 1, 
-                                        overflow: 'visible',
+                                        overflow: 'hidden', // Prevent events from going below the day tile
                                         position: 'relative',
                                         zIndex: 1,
                                         // For 0-1 events, allow parent hover to work in empty areas
@@ -345,15 +345,15 @@ const CalendarGridControlled = ({
                                     }}>
                                         {dayEvents.map((event, index) => {
                                             const isHovered = hoveredEventId === event.id;
-                                            const shouldShrink = isDayCrowded && hoveredEventId && !isHovered;
+                                            const shouldShrink = hoveredEventId && !isHovered;
                                             const isFiltered = !selectedSiteId || event.site_id === selectedSiteId;
 
                                             return (
                                                 <motion.div
                                                     key={event.id}
                                                     animate={{
-                                                        scale: shouldShrink ? 0.88 : 1,
-                                                        opacity: shouldShrink ? 0.6 : 1
+                                                        scale: shouldShrink ? 0.92 : 1,
+                                                        opacity: shouldShrink ? 0.7 : 1
                                                     }}
                                                     transition={{ 
                                                         duration: 0.25, 
@@ -362,7 +362,8 @@ const CalendarGridControlled = ({
                                                     style={{ 
                                                         zIndex: isHovered ? 50 : 10 + index,
                                                         position: 'relative',
-                                                        pointerEvents: 'auto' // Re-enable pointer events for the actual event block
+                                                        pointerEvents: 'auto', // Re-enable pointer events for the actual event block
+                                                        overflow: 'visible' // Allow hover expansion to go outside
                                                     }}
                                                     onMouseEnter={() => setHoveredEventId(event.id)}
                                                     onMouseLeave={() => setHoveredEventId(null)}

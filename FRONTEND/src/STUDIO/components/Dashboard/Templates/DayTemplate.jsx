@@ -2,6 +2,8 @@ import React from 'react';
 import { Box, Card, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
+import { alpha } from '@mui/material/styles';
+import { getSiteColorHex } from '../../../../theme/siteColors';
 
 const DayTemplate = ({ template, compact }) => {
     return (
@@ -78,53 +80,54 @@ const DayTemplate = ({ template, compact }) => {
                     </Box>
                 </Box>
 
-                {/* Event List */}
+                {/* Event List - styled like calendar EventBlocks */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
-                    {template.events?.slice(0, 2).map((event, idx) => (
-                        <Box
-                            key={idx}
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.75,
-                                py: 0.4,
-                                px: 0.75,
-                                borderRadius: 1,
-                                backgroundColor: event.type === 'individual' 
-                                    ? 'rgba(74, 222, 128, 0.08)' 
-                                    : 'rgba(59, 130, 246, 0.08)',
-                                border: '1px solid',
-                                borderColor: event.type === 'individual'
-                                    ? 'rgba(74, 222, 128, 0.2)'
-                                    : 'rgba(59, 130, 246, 0.2)'
-                            }}
-                        >
+                    {template.events?.slice(0, 3).map((event, idx) => {
+                        // Get site color - prioritize site_color, fallback to color_index, then use red as default
+                        const siteColor = event.site_color || 
+                                         (event.site?.color_index !== undefined ? getSiteColorHex(event.site.color_index) : null) ||
+                                         getSiteColorHex(0); // Default to red
+                        const bgColor = alpha(siteColor, 0.15);
+                        const borderColor = siteColor;
+
+                        return (
                             <Box
+                                key={idx}
                                 sx={{
-                                    width: 6,
-                                    height: 6,
-                                    borderRadius: '50%',
-                                    backgroundColor: event.type === 'individual' 
-                                        ? '#4ade80' 
-                                        : '#3b82f6',
-                                    flexShrink: 0
-                                }}
-                            />
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    fontSize: '0.7rem',
-                                    color: 'text.primary',
-                                    fontWeight: 500,
-                                    fontFamily: 'monospace',
-                                    letterSpacing: '0.02em'
+                                    height: 24,
+                                    px: 0.75,
+                                    py: 0.5,
+                                    borderRadius: 1.5,
+                                    borderLeft: `2px solid ${borderColor}`,
+                                    backgroundColor: bgColor,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    transition: 'all 200ms ease'
                                 }}
                             >
-                                {event.start_time}-{event.end_time}
-                            </Typography>
-                        </Box>
-                    ))}
-                    {template.events?.length > 2 && (
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        fontWeight: 500,
+                                        fontSize: '11px',
+                                        color: borderColor,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        flex: 1,
+                                        lineHeight: 1.2
+                                    }}
+                                >
+                                    <Box component="span" sx={{ fontWeight: 600, mr: 0.5 }}>
+                                        {event.start_time}
+                                    </Box>
+                                    {event.title || 'Event'}
+                                </Typography>
+                            </Box>
+                        );
+                    })}
+                    {template.events?.length > 3 && (
                         <Typography
                             variant="caption"
                             sx={{
@@ -135,7 +138,7 @@ const DayTemplate = ({ template, compact }) => {
                                 mt: 0.25
                             }}
                         >
-                            +{template.events.length - 2} więcej
+                            +{template.events.length - 3} więcej
                         </Typography>
                     )}
                 </Box>
