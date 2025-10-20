@@ -212,3 +212,19 @@ class Booking(models.Model):
     def __str__(self):
         subject = self.client.email if self.client else self.guest_email or 'Guest'
         return f"Booking for {subject} on event {self.event_id}"
+
+
+def custom_component_path(instance, filename):
+    return f'komponenty/{filename}'
+
+
+class CustomReactComponent(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    source_code = models.TextField(blank=True, help_text='Oryginalny kod JSX dla celów edycji')
+    compiled_js = models.FileField(upload_to=custom_component_path, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

@@ -86,6 +86,7 @@ const ModuleSelector = () => {
     { type: 'pricing', icon: '💳', name: 'Cennik' },
     { type: 'services', icon: '🧰', name: 'Usługi' },
     { type: 'container', icon: '📦', name: 'Kontener' },
+    { type: 'reactComponent', icon: '⚛️', name: 'Komponent React' },
   ];
 
   const renderModule = (module, index) => {
