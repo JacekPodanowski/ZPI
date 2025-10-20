@@ -1,20 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Card, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 
-const WeekTemplate = ({ template, compact }) => {
+const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
     // Generate mini calendar preview
     const days = ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nie'];
     const activeDays = template.active_days || [];
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragStart = (e) => {
+        setIsDragging(true);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('templateType', 'week');
+        e.dataTransfer.setData('templateId', template.id);
+        e.dataTransfer.setData('templateData', JSON.stringify(template));
+        onDragStart?.(template);
+    };
+
+    const handleDragEnd = (e) => {
+        setIsDragging(false);
+        onDragEnd?.(template);
+    };
 
     return (
         <motion.div
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            animate={{
+                scale: isDragging ? 0.9 : 1,
+                opacity: isDragging ? 0.5 : 1
+            }}
             whileHover={{ 
-                scale: 1.02,
+                scale: isDragging ? 0.9 : 1.02,
                 boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)' 
             }}
-            style={{ cursor: 'grab' }}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
             <Card
                 sx={{
@@ -159,11 +181,15 @@ WeekTemplate.propTypes = {
         active_days: PropTypes.arrayOf(PropTypes.number),
         total_events: PropTypes.number
     }).isRequired,
-    compact: PropTypes.bool
+    compact: PropTypes.bool,
+    onDragStart: PropTypes.func,
+    onDragEnd: PropTypes.func
 };
 
 WeekTemplate.defaultProps = {
-    compact: false
+    compact: false,
+    onDragStart: null,
+    onDragEnd: null
 };
 
 export default WeekTemplate;

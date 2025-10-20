@@ -40,8 +40,28 @@ const DAY_END_MINUTES = 22 * 60;
 const HOUR_HEIGHT = 60;
 
 const computeBlockMetrics = (start, end) => {
-    const [startHour, startMinute] = start.split(':').map(Number);
-    const [endHour, endMinute] = end.split(':').map(Number);
+    // Handle undefined or invalid time strings
+    if (!start || !end || typeof start !== 'string' || typeof end !== 'string') {
+        console.warn('Invalid time values:', { start, end });
+        return { top: 0, height: HOUR_HEIGHT }; // Default to 1 hour at start
+    }
+    
+    const startParts = start.split(':');
+    const endParts = end.split(':');
+    
+    if (startParts.length !== 2 || endParts.length !== 2) {
+        console.warn('Invalid time format:', { start, end });
+        return { top: 0, height: HOUR_HEIGHT };
+    }
+    
+    const [startHour, startMinute] = startParts.map(Number);
+    const [endHour, endMinute] = endParts.map(Number);
+    
+    if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
+        console.warn('Non-numeric time values:', { start, end });
+        return { top: 0, height: HOUR_HEIGHT };
+    }
+    
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
     const clampedStart = Math.max(startMinutes, DAY_START_MINUTES);

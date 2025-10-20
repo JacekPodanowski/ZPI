@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
 import { EventBlock, CollapsedEventsBlock, COLLAPSE_THRESHOLD } from './EventDisplay';
 import { getSiteColorHex } from '../../../../theme/siteColors';
+import TemplateConfirmationModal from '../Templates/TemplateConfirmationModal';
 
 // Controlled-only view of the calendar grid; all state comes from props.
 const CalendarGridControlled = ({
@@ -20,6 +21,14 @@ const CalendarGridControlled = ({
 }) => {
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredDayKey, setHoveredDayKey] = useState(null); // Track which day is being hovered
+    const [draggedOverDay, setDraggedOverDay] = useState(null); // Track day being dragged over
+    const [isDragging, setIsDragging] = useState(false); // Track if dragging is active
+    const [isOverMonthName, setIsOverMonthName] = useState(false); // Track if dragging over month name
+    
+    // Template confirmation modal state
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [pendingTemplate, setPendingTemplate] = useState(null);
+    const [pendingTargetDate, setPendingTargetDate] = useState(null);
 
     const currentMonthMoment = useMemo(() => moment(currentMonth), [currentMonth]);
 
@@ -115,7 +124,15 @@ const CalendarGridControlled = ({
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 0,
-                position: 'relative'
+                position: 'relative',
+                '@keyframes pulse': {
+                    '0%, 100%': {
+                        boxShadow: '0 0 0 0 rgba(146, 0, 32, 0.4)'
+                    },
+                    '50%': {
+                        boxShadow: '0 0 0 8px rgba(146, 0, 32, 0)'
+                    }
+                }
             }}
         >
             <Box
@@ -157,9 +174,55 @@ const CalendarGridControlled = ({
                 </Box>
 
                 <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600, letterSpacing: 0.4 }}>
-                        {currentMonthMoment.format('MMMM YYYY')}
-                    </Typography>
+                    <Box
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            setIsOverMonthName(true);
+                        }}
+                        onDragLeave={() => {
+                            setIsOverMonthName(false);
+                        }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            setIsOverMonthName(false);
+                            const templateType = e.dataTransfer.getData('templateType');
+                            const templateId = e.dataTransfer.getData('templateId');
+                            const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
+                            
+                            console.log('Apply template to entire month:', {
+                                month: currentMonthMoment.format('MMMM YYYY'),
+                                templateType,
+                                templateId,
+                                templateData
+                            });
+                            
+                            // TODO: Show confirmation modal for month-wide application
+                        }}
+                        sx={{
+                            px: 2.5,
+                            py: 1,
+                            borderRadius: 2,
+                            transition: 'all 250ms ease',
+                            backgroundColor: isOverMonthName ? 'rgba(146, 0, 32, 0.12)' : 'transparent',
+                            border: isOverMonthName ? '2px dashed' : '2px solid transparent',
+                            borderColor: isOverMonthName ? 'primary.main' : 'transparent',
+                            transform: isOverMonthName ? 'scale(1.05)' : 'scale(1)',
+                            boxShadow: isOverMonthName ? '0 0 20px rgba(146, 0, 32, 0.3)' : 'none'
+                        }}
+                    >
+                        <Typography 
+                            variant="h5" 
+                            sx={{ 
+                                fontWeight: 600, 
+                                letterSpacing: 0.4,
+                                color: isOverMonthName ? 'primary.main' : 'text.primary',
+                                transition: 'color 250ms ease'
+                            }}
+                        >
+                            {currentMonthMoment.format('MMMM YYYY')}
+                        </Typography>
+                    </Box>
                 </Box>
 
                 <Box
@@ -195,8 +258,8 @@ const CalendarGridControlled = ({
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
-                    gap: 0.75,
-                    px: 1,
+                    gap: { xs: 0.5, sm: 0.75 }, // Match calendar grid gap
+                    px: { xs: 0.5, sm: 1 }, // Match calendar grid padding
                     pt: 0.75,
                     pb: 1
                 }}
@@ -207,7 +270,7 @@ const CalendarGridControlled = ({
                         sx={{
                             textAlign: 'center',
                             fontWeight: 600,
-                            fontSize: '16px',
+                            fontSize: { xs: '14px', sm: '16px' }, // Responsive font size
                             color: 'text.secondary'
                         }}
                     >
@@ -222,8 +285,8 @@ const CalendarGridControlled = ({
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gridAutoRows: 'minmax(110px, 1fr)',
-                    gap: 0.75,
-                    px: 1,
+                    gap: { xs: 0.5, sm: 0.75 }, // Responsive gap
+                    px: { xs: 0.5, sm: 1 }, // Responsive padding
                     pb: 1,
                     flex: 1,
                     minHeight: 0,
@@ -248,6 +311,37 @@ const CalendarGridControlled = ({
                     
                     // Day hover should be blocked when hovering an event
                     const isDayHovered = hoveredDayKey === dateKey && !hoveredEventId;
+                    const isBeingDraggedOver = draggedOverDay === dateKey;
+
+                    const handleDragOver = (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        setDraggedOverDay(dateKey);
+                    };
+
+                    const handleDragLeave = (e) => {
+                        setDraggedOverDay(null);
+                    };
+
+                    const handleDrop = (e) => {
+                        e.preventDefault();
+                        const templateType = e.dataTransfer.getData('templateType');
+                        const templateId = e.dataTransfer.getData('templateId');
+                        const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
+                        
+                        console.log('Template dropped on day:', {
+                            date: dateKey,
+                            templateType,
+                            templateId,
+                            templateData
+                        });
+                        
+                        // Open confirmation modal
+                        setPendingTemplate(templateData);
+                        setPendingTargetDate(dateKey);
+                        setConfirmModalOpen(true);
+                        setDraggedOverDay(null);
+                    };
 
                     return (
                         <motion.div key={dateKey} layout transition={{ duration: 0.2 }} style={{ minHeight: 0 }}>
@@ -255,9 +349,16 @@ const CalendarGridControlled = ({
                                 onClick={isClickable ? () => onDayClick?.(dayMoment.toDate()) : undefined}
                                 onMouseEnter={() => setHoveredDayKey(dateKey)}
                                 onMouseLeave={() => setHoveredDayKey(null)}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
                                 sx={{
                                     border: isToday ? '2px solid' : '1px solid',
-                                    borderColor: isToday ? 'primary.main' : 'rgba(146, 0, 32, 0.12)',
+                                    borderColor: isBeingDraggedOver 
+                                        ? 'primary.main' 
+                                        : isToday 
+                                            ? 'primary.main' 
+                                            : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
                                     p: isToday ? 0.75 : 0.85,
                                     height: '100%',
@@ -275,6 +376,12 @@ const CalendarGridControlled = ({
                                     opacity: isDimmed ? 0.45 : 1,
                                     overflow: 'hidden', // Prevent events from overflowing the tile
                                     position: 'relative',
+                                    ...(isBeingDraggedOver && {
+                                        borderStyle: 'dashed',
+                                        borderWidth: '2px',
+                                        backgroundColor: 'rgba(146, 0, 32, 0.05)',
+                                        animation: 'pulse 1.5s ease-in-out infinite'
+                                    }),
                                     ...(isToday && {
                                         boxShadow: '0 0 12px rgba(146, 0, 32, 0.25), 0 0 24px rgba(146, 0, 32, 0.1)',
                                     }),
@@ -388,6 +495,30 @@ const CalendarGridControlled = ({
                     );
                 })}
             </Box>
+            
+            {/* Template Confirmation Modal */}
+            <TemplateConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => {
+                    setConfirmModalOpen(false);
+                    setPendingTemplate(null);
+                    setPendingTargetDate(null);
+                }}
+                onConfirm={() => {
+                    // TODO: Apply template logic
+                    console.log('Applying template:', {
+                        template: pendingTemplate,
+                        targetDate: pendingTargetDate,
+                        affectedEvents: eventsByDate.get(pendingTargetDate) || []
+                    });
+                    setConfirmModalOpen(false);
+                    setPendingTemplate(null);
+                    setPendingTargetDate(null);
+                }}
+                template={pendingTemplate}
+                targetDate={pendingTargetDate}
+                affectedEvents={pendingTargetDate ? (eventsByDate.get(pendingTargetDate) || []) : []}
+            />
         </Box>
     );
 };

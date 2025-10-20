@@ -1,18 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Card, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
-const DayTemplate = ({ template, compact }) => {
+const DayTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragStart = (e) => {
+        setIsDragging(true);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('templateType', 'day');
+        e.dataTransfer.setData('templateId', template.id);
+        e.dataTransfer.setData('templateData', JSON.stringify(template));
+        onDragStart?.(template);
+    };
+
+    const handleDragEnd = (e) => {
+        setIsDragging(false);
+        onDragEnd?.(template);
+    };
+
     return (
         <motion.div
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            animate={{
+                scale: isDragging ? 0.9 : 1,
+                opacity: isDragging ? 0.5 : 1
+            }}
             whileHover={{ 
-                scale: 1.02,
+                scale: isDragging ? 0.9 : 1.02,
                 boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)' 
             }}
-            style={{ cursor: 'grab' }}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
             <Card
                 sx={{
@@ -174,15 +197,21 @@ DayTemplate.propTypes = {
             PropTypes.shape({
                 type: PropTypes.oneOf(['individual', 'group']),
                 start_time: PropTypes.string,
-                end_time: PropTypes.string
+                end_time: PropTypes.string,
+                title: PropTypes.string,
+                site_color: PropTypes.string
             })
         )
     }).isRequired,
-    compact: PropTypes.bool
+    compact: PropTypes.bool,
+    onDragStart: PropTypes.func,
+    onDragEnd: PropTypes.func
 };
 
 DayTemplate.defaultProps = {
-    compact: false
+    compact: false,
+    onDragStart: null,
+    onDragEnd: null
 };
 
 export default DayTemplate;

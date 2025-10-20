@@ -1,0 +1,234 @@
+import React from 'react';
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Box,
+    Typography,
+    Button,
+    Chip,
+    Alert
+} from '@mui/material';
+import {
+    CalendarMonth as CalendarIcon,
+    Warning as WarningIcon,
+    EventNote as EventIcon
+} from '@mui/icons-material';
+import PropTypes from 'prop-types';
+import moment from 'moment';
+
+const TemplateConfirmationModal = ({
+    open,
+    onClose,
+    onConfirm,
+    template,
+    targetDate,
+    affectedEvents = []
+}) => {
+    // Don't render anything if modal is not open or data is missing
+    if (!open || !template || !targetDate) return null;
+
+    const formattedDate = moment(targetDate).format('DD MMMM YYYY');
+    const templateType = template.day_abbreviation ? 'day' : 'week';
+    const willOverwrite = affectedEvents.length > 0;
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: 3,
+                    border: '2px solid rgba(146, 0, 32, 0.15)'
+                }
+            }}
+        >
+            <DialogTitle
+                sx={{
+                    pb: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider'
+                }}
+            >
+                <EventIcon sx={{ color: 'primary.main', fontSize: 28 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+                    Zastosować szablon "{template.name}"?
+                </Typography>
+            </DialogTitle>
+
+            <DialogContent sx={{ pt: 3, pb: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                    {/* Date Information */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5,
+                            p: 2,
+                            borderRadius: 2,
+                            backgroundColor: 'rgba(228, 229, 218, 0.3)'
+                        }}
+                    >
+                        <CalendarIcon sx={{ color: 'primary.main' }} />
+                        <Box>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
+                                Data docelowa
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {formattedDate}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    {/* Template Info */}
+                    <Box>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
+                            Szablon zawiera:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                            {templateType === 'day' && template.events && (
+                                <Chip
+                                    size="small"
+                                    label={`${template.events.length} wydarzeń`}
+                                    sx={{
+                                        backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                                        color: 'rgb(59, 130, 246)',
+                                        fontWeight: 600
+                                    }}
+                                />
+                            )}
+                            {templateType === 'week' && (
+                                <>
+                                    <Chip
+                                        size="small"
+                                        label={`${template.day_count || template.active_days?.length || 0} dni`}
+                                        sx={{
+                                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                                            color: 'rgb(59, 130, 246)',
+                                            fontWeight: 600
+                                        }}
+                                    />
+                                    <Chip
+                                        size="small"
+                                        label={`${template.total_events || 0} wydarzeń`}
+                                        sx={{
+                                            backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                                            color: 'rgb(59, 130, 246)',
+                                            fontWeight: 600
+                                        }}
+                                    />
+                                </>
+                            )}
+                        </Box>
+                    </Box>
+
+                    {/* Warning if overwriting */}
+                    {willOverwrite && (
+                        <Alert
+                            severity="warning"
+                            icon={<WarningIcon />}
+                            sx={{
+                                borderRadius: 2,
+                                '& .MuiAlert-icon': {
+                                    color: 'warning.main'
+                                }
+                            }}
+                        >
+                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                Nadpisane zostaną {affectedEvents.length} wydarzeń
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                Istniejące wydarzenia w tym dniu zostaną zastąpione szablonem
+                            </Typography>
+                        </Alert>
+                    )}
+
+                    {/* Success message if no conflicts */}
+                    {!willOverwrite && (
+                        <Alert
+                            severity="success"
+                            sx={{
+                                borderRadius: 2,
+                                backgroundColor: 'rgba(76, 175, 80, 0.08)'
+                            }}
+                        >
+                            <Typography variant="body2">
+                                Szablon zostanie zastosowany bez konfliktów
+                            </Typography>
+                        </Alert>
+                    )}
+                </Box>
+            </DialogContent>
+
+            <DialogActions
+                sx={{
+                    px: 3,
+                    pb: 2.5,
+                    pt: 1,
+                    gap: 1.5,
+                    borderTop: '1px solid',
+                    borderColor: 'divider'
+                }}
+            >
+                <Button
+                    onClick={onClose}
+                    variant="outlined"
+                    sx={{
+                        borderColor: 'rgba(146, 0, 32, 0.24)',
+                        color: 'text.primary',
+                        fontWeight: 600,
+                        px: 3,
+                        '&:hover': {
+                            borderColor: 'rgba(146, 0, 32, 0.4)',
+                            backgroundColor: 'rgba(146, 0, 32, 0.05)'
+                        }
+                    }}
+                >
+                    Anuluj
+                </Button>
+                <Button
+                    onClick={onConfirm}
+                    variant="contained"
+                    sx={{
+                        backgroundColor: 'primary.main',
+                        color: '#fff',
+                        fontWeight: 600,
+                        px: 3,
+                        boxShadow: '0 4px 12px rgba(146, 0, 32, 0.25)',
+                        '&:hover': {
+                            backgroundColor: 'rgb(114, 0, 21)',
+                            boxShadow: '0 6px 16px rgba(146, 0, 32, 0.35)'
+                        }
+                    }}
+                >
+                    Zastosuj szablon
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
+TemplateConfirmationModal.propTypes = {
+    open: PropTypes.bool.isRequired,
+    onClose: PropTypes.func.isRequired,
+    onConfirm: PropTypes.func.isRequired,
+    template: PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        name: PropTypes.string,
+        day_abbreviation: PropTypes.string,
+        events: PropTypes.array,
+        day_count: PropTypes.number,
+        active_days: PropTypes.array,
+        total_events: PropTypes.number
+    }),
+    targetDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    affectedEvents: PropTypes.array
+};
+
+export default TemplateConfirmationModal;

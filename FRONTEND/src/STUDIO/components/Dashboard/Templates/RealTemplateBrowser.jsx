@@ -1,14 +1,32 @@
-import React from 'react';
-import { Box, Typography, Button } from '@mui/material';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { Box, Typography, IconButton } from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
+import { Add as AddIcon, Delete as DeleteIcon, ChevronRight, ExpandMore } from '@mui/icons-material';
 import DayTemplate from './DayTemplate';
 import WeekTemplate from './WeekTemplate';
 import Logo from '../../../../components/Logo/Logo';
 import { getSiteColorHex } from '../../../../theme/siteColors';
+import TemplateDeletionModal from './TemplateDeletionModal';
 
 const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
-    const templateLibraryWidth = 240; // Fixed width for templates-only mode
+    const templateLibraryWidth = 230; // Fixed width for templates-only mode
+    const [draggingTemplate, setDraggingTemplate] = useState(null);
+    const [dayTemplatesExpanded, setDayTemplatesExpanded] = useState(true);
+    const [weekTemplatesExpanded, setWeekTemplatesExpanded] = useState(true);
+    const [isOverTrash, setIsOverTrash] = useState(false); // Track if dragging over trash
+    
+    // Deletion modal state
+    const [deletionModalOpen, setDeletionModalOpen] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState(null);
+
+    const handleTemplateDragStart = (template) => {
+        setDraggingTemplate(template);
+    };
+
+    const handleTemplateDragEnd = () => {
+        setDraggingTemplate(null);
+    };
 
     // Mock templates - replace with actual data from store/API
     const dayTemplates = [
@@ -117,92 +135,160 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                         gap: 2.5
                     }}
                 >
-                    {/* Day Templates */}
+                    {/* Day Templates Section */}
                     <Box
                         sx={{
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1.25,
-                            flex: 1,
-                            minHeight: 0
+                            flex: dayTemplatesExpanded ? (draggingTemplate ? 0.8 : 1) : 0,
+                            minHeight: 0,
+                            transition: 'flex 300ms ease'
                         }}
                     >
-                        <Typography
-                            variant="subtitle2"
-                            sx={{ 
-                                fontSize: '0.8rem', 
-                                fontWeight: 600, 
-                                color: 'text.secondary', 
-                                flexShrink: 0,
-                                textAlign: 'left',
-                                letterSpacing: '0.02em'
-                            }}
-                        >
-                            Szablony dnia
-                        </Typography>
-
-                        {dayTemplates.length > 0 ? (
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 0.75,
-                                    overflowY: 'auto',
-                                    overflowX: 'hidden',
-                                    pr: 0.5,
-                                    flex: 1,
-                                    minHeight: 0,
-                                    '&::-webkit-scrollbar': { width: '4px' },
-                                    '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
-                                    '&::-webkit-scrollbar-thumb': {
-                                        backgroundColor: 'rgba(146, 0, 32, 0.2)',
-                                        borderRadius: '2px',
-                                        '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
-                                    }
-                                }}
-                            >
-                                {dayTemplates.map((template) => (
-                                    <DayTemplate key={template.id} template={template} compact={false} />
-                                ))}
-                            </Box>
-                        ) : (
-                            <Box
-                                sx={{
-                                    p: 2,
-                                    textAlign: 'center',
-                                    border: '1px dashed',
-                                    borderColor: 'divider',
-                                    borderRadius: 2,
-                                    backgroundColor: 'action.hover',
-                                    flexShrink: 0
-                                }}
-                            >
-                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                    Brak szablonów
-                                </Typography>
-                            </Box>
-                        )}
-
-                        <Button
-                            fullWidth
-                            size="small"
-                            variant="outlined"
+                        {/* Header with collapse button and + icon */}
+                        <Box
                             sx={{
-                                fontSize: '0.75rem',
-                                borderColor: 'rgba(146, 0, 32, 0.24)',
-                                color: 'primary.main',
-                                flexShrink: 0,
-                                py: 0.75,
-                                fontWeight: 600,
-                                '&:hover': {
-                                    borderColor: 'rgba(146, 0, 32, 0.5)',
-                                    backgroundColor: 'rgba(146, 0, 32, 0.05)'
-                                }
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                flexShrink: 0
                             }}
-                            onClick={onCreateDayTemplate}
                         >
-                            + Nowy
-                        </Button>
+                            <IconButton
+                                size="small"
+                                onClick={() => setDayTemplatesExpanded(!dayTemplatesExpanded)}
+                                sx={{
+                                    p: 0,
+                                    width: 20,
+                                    height: 20,
+                                    color: 'text.secondary',
+                                    transition: 'transform 200ms ease'
+                                }}
+                            >
+                                {dayTemplatesExpanded ? (
+                                    <ExpandMore sx={{ fontSize: 18 }} />
+                                ) : (
+                                    <ChevronRight sx={{ fontSize: 18 }} />
+                                )}
+                            </IconButton>
+                            <Typography
+                                variant="subtitle2"
+                                onClick={() => setDayTemplatesExpanded(!dayTemplatesExpanded)}
+                                sx={{ 
+                                    fontSize: '0.8rem', 
+                                    fontWeight: 600, 
+                                    color: 'text.secondary', 
+                                    flex: 1,
+                                    textAlign: 'left',
+                                    letterSpacing: '0.02em',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                            >
+                                Szablony dnia
+                            </Typography>
+                            {dayTemplates.length > 0 && (
+                                <IconButton
+                                    size="small"
+                                    onClick={onCreateDayTemplate}
+                                    sx={{
+                                        p: 0.5,
+                                        width: 24,
+                                        height: 24,
+                                        color: 'primary.main',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(146, 0, 32, 0.08)'
+                                        }
+                                    }}
+                                >
+                                    <AddIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                            )}
+                        </Box>
+
+                        <AnimatePresence>
+                            {dayTemplatesExpanded && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                                >
+                                    {dayTemplates.length > 0 ? (
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 0.75,
+                                                overflowY: 'auto',
+                                                overflowX: 'hidden',
+                                                pr: 0.5,
+                                                flex: 1,
+                                                minHeight: 0,
+                                                '&::-webkit-scrollbar': { width: '4px' },
+                                                '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+                                                '&::-webkit-scrollbar-thumb': {
+                                                    backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                                    borderRadius: '2px',
+                                                    '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
+                                                }
+                                            }}
+                                        >
+                                            {dayTemplates.map((template) => (
+                                                <DayTemplate 
+                                                    key={template.id} 
+                                                    template={template} 
+                                                    compact={false}
+                                                    onDragStart={handleTemplateDragStart}
+                                                    onDragEnd={handleTemplateDragEnd}
+                                                />
+                                            ))}
+                                        </Box>
+                                    ) : (
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 1.5,
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    p: 2,
+                                                    textAlign: 'center',
+                                                    border: '1px dashed',
+                                                    borderColor: 'divider',
+                                                    borderRadius: 2,
+                                                    backgroundColor: 'action.hover'
+                                                }}
+                                            >
+                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                                                    Brak szablonów
+                                                </Typography>
+                                            </Box>
+                                            <IconButton
+                                                onClick={onCreateDayTemplate}
+                                                sx={{
+                                                    alignSelf: 'center',
+                                                    width: 36,
+                                                    height: 36,
+                                                    backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                                    color: 'primary.main',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(146, 0, 32, 0.15)'
+                                                    }
+                                                }}
+                                            >
+                                                <AddIcon sx={{ fontSize: 20 }} />
+                                            </IconButton>
+                                        </Box>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </Box>
 
                     {/* Divider */}
@@ -214,95 +300,244 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                         }}
                     />
 
-                    {/* Week Templates */}
+                    {/* Week Templates Section */}
                     <Box
                         sx={{
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1.25,
-                            flex: 1,
-                            minHeight: 0
+                            flex: weekTemplatesExpanded ? (draggingTemplate ? 0.8 : 1) : 0,
+                            minHeight: 0,
+                            transition: 'flex 300ms ease'
                         }}
                     >
-                        <Typography
-                            variant="subtitle2"
-                            sx={{ 
-                                fontSize: '0.8rem', 
-                                fontWeight: 600, 
-                                color: 'text.secondary', 
-                                flexShrink: 0,
-                                textAlign: 'left',
-                                letterSpacing: '0.02em'
-                            }}
-                        >
-                            Szablony tygodnia
-                        </Typography>
-
-                        {weekTemplates.length > 0 ? (
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 0.75,
-                                    overflowY: 'auto',
-                                    overflowX: 'hidden',
-                                    pr: 0.5,
-                                    flex: 1,
-                                    minHeight: 0,
-                                    '&::-webkit-scrollbar': { width: '4px' },
-                                    '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
-                                    '&::-webkit-scrollbar-thumb': {
-                                        backgroundColor: 'rgba(146, 0, 32, 0.2)',
-                                        borderRadius: '2px',
-                                        '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
-                                    }
-                                }}
-                            >
-                                {weekTemplates.map((template) => (
-                                    <WeekTemplate key={template.id} template={template} compact={false} />
-                                ))}
-                            </Box>
-                        ) : (
-                            <Box
-                                sx={{
-                                    p: 2,
-                                    textAlign: 'center',
-                                    border: '1px dashed',
-                                    borderColor: 'divider',
-                                    borderRadius: 2,
-                                    backgroundColor: 'action.hover',
-                                    flexShrink: 0
-                                }}
-                            >
-                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                    Brak szablonów
-                                </Typography>
-                            </Box>
-                        )}
-
-                        <Button
-                            fullWidth
-                            size="small"
-                            variant="outlined"
+                        {/* Header with collapse button and + icon */}
+                        <Box
                             sx={{
-                                fontSize: '0.75rem',
-                                borderColor: 'rgba(146, 0, 32, 0.24)',
-                                color: 'primary.main',
-                                flexShrink: 0,
-                                py: 0.75,
-                                fontWeight: 600,
-                                '&:hover': {
-                                    borderColor: 'rgba(146, 0, 32, 0.5)',
-                                    backgroundColor: 'rgba(146, 0, 32, 0.05)'
-                                }
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                flexShrink: 0
                             }}
-                            onClick={onCreateWeekTemplate}
                         >
-                            + Nowy
-                        </Button>
+                            <IconButton
+                                size="small"
+                                onClick={() => setWeekTemplatesExpanded(!weekTemplatesExpanded)}
+                                sx={{
+                                    p: 0,
+                                    width: 20,
+                                    height: 20,
+                                    color: 'text.secondary',
+                                    transition: 'transform 200ms ease'
+                                }}
+                            >
+                                {weekTemplatesExpanded ? (
+                                    <ExpandMore sx={{ fontSize: 18 }} />
+                                ) : (
+                                    <ChevronRight sx={{ fontSize: 18 }} />
+                                )}
+                            </IconButton>
+                            <Typography
+                                variant="subtitle2"
+                                onClick={() => setWeekTemplatesExpanded(!weekTemplatesExpanded)}
+                                sx={{ 
+                                    fontSize: '0.8rem', 
+                                    fontWeight: 600, 
+                                    color: 'text.secondary', 
+                                    flex: 1,
+                                    textAlign: 'left',
+                                    letterSpacing: '0.02em',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                            >
+                                Szablony tygodnia
+                            </Typography>
+                            {weekTemplates.length > 0 && (
+                                <IconButton
+                                    size="small"
+                                    onClick={onCreateWeekTemplate}
+                                    sx={{
+                                        p: 0.5,
+                                        width: 24,
+                                        height: 24,
+                                        color: 'primary.main',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(146, 0, 32, 0.08)'
+                                        }
+                                    }}
+                                >
+                                    <AddIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                            )}
+                        </Box>
+
+                        <AnimatePresence>
+                            {weekTemplatesExpanded && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                                >
+                                    {weekTemplates.length > 0 ? (
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 0.75,
+                                                overflowY: 'auto',
+                                                overflowX: 'hidden',
+                                                pr: 0.5,
+                                                flex: 1,
+                                                minHeight: 0,
+                                                '&::-webkit-scrollbar': { width: '4px' },
+                                                '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+                                                '&::-webkit-scrollbar-thumb': {
+                                                    backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                                    borderRadius: '2px',
+                                                    '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
+                                                }
+                                            }}
+                                        >
+                                            {weekTemplates.map((template) => (
+                                                <WeekTemplate 
+                                                    key={template.id} 
+                                                    template={template} 
+                                                    compact={false}
+                                                    onDragStart={handleTemplateDragStart}
+                                                    onDragEnd={handleTemplateDragEnd}
+                                                />
+                                            ))}
+                                        </Box>
+                                    ) : (
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 1.5,
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    p: 2,
+                                                    textAlign: 'center',
+                                                    border: '1px dashed',
+                                                    borderColor: 'divider',
+                                                    borderRadius: 2,
+                                                    backgroundColor: 'action.hover'
+                                                }}
+                                            >
+                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
+                                                    Brak szablonów
+                                                </Typography>
+                                            </Box>
+                                            <IconButton
+                                                onClick={onCreateWeekTemplate}
+                                                sx={{
+                                                    alignSelf: 'center',
+                                                    width: 36,
+                                                    height: 36,
+                                                    backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                                    color: 'primary.main',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(146, 0, 32, 0.15)'
+                                                    }
+                                                }}
+                                            >
+                                                <AddIcon sx={{ fontSize: 20 }} />
+                                            </IconButton>
+                                        </Box>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </Box>
+
+                    {/* Trash Zone - appears when dragging */}
+                    <AnimatePresence>
+                        {draggingTemplate && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 80, opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                style={{ overflow: 'hidden' }}
+                            >
+                                <Box
+                                    sx={{
+                                        mt: 2,
+                                        p: 2,
+                                        borderRadius: 2,
+                                        border: '2px dashed',
+                                        borderColor: isOverTrash ? 'error.dark' : 'error.main',
+                                        backgroundColor: isOverTrash ? 'rgba(211, 47, 47, 0.20)' : 'rgba(211, 47, 47, 0.08)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.5,
+                                        transition: 'all 200ms ease',
+                                        transform: isOverTrash ? 'scale(1.02)' : 'scale(1)'
+                                    }}
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.dataTransfer.dropEffect = 'move';
+                                        setIsOverTrash(true);
+                                    }}
+                                    onDragLeave={() => {
+                                        setIsOverTrash(false);
+                                    }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        setIsOverTrash(false);
+                                        const templateType = e.dataTransfer.getData('templateType');
+                                        const templateId = e.dataTransfer.getData('templateId');
+                                        const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
+                                        
+                                        console.log('Delete template:', { templateType, templateId, templateData });
+                                        
+                                        // Open deletion confirmation modal
+                                        setTemplateToDelete(templateData);
+                                        setDeletionModalOpen(true);
+                                        setDraggingTemplate(null);
+                                    }}
+                                >
+                                    <DeleteIcon sx={{ fontSize: 28, color: 'error.main' }} />
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            fontWeight: 600,
+                                            color: 'error.main',
+                                            fontSize: '0.7rem'
+                                        }}
+                                    >
+                                        Usuń szablon
+                                    </Typography>
+                                </Box>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </Box>
             </Box>
+            
+            {/* Template Deletion Modal */}
+            <TemplateDeletionModal
+                open={deletionModalOpen}
+                onClose={() => {
+                    setDeletionModalOpen(false);
+                    setTemplateToDelete(null);
+                }}
+                onConfirm={() => {
+                    // TODO: Actually delete the template from store/API
+                    console.log('Confirmed deletion of template:', templateToDelete);
+                    setDeletionModalOpen(false);
+                    setTemplateToDelete(null);
+                }}
+                template={templateToDelete}
+            />
         </motion.div>
     );
 };
