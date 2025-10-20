@@ -297,7 +297,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
         if (disabled || saving || nameSaving) {
             return;
         }
-        navigate('/studio/dashboard');
+        navigate('/studio/sites');
     };
 
     const handleExitWithoutSaving = () => {
@@ -307,7 +307,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
             return;
         }
         setExitDialogOpen(false);
-        navigate('/studio/dashboard');
+        navigate('/studio/sites');
     };
 
     const handleCancelExit = () => {
@@ -328,7 +328,7 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
             return;
         }
         setExitDialogOpen(false);
-        navigate('/studio/dashboard');
+        navigate('/studio/sites');
     };
 
     const animationLabel = useMemo(() => {

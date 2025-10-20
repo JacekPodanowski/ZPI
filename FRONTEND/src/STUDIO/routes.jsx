@@ -56,7 +56,7 @@ const StudioApp = () => (
     <Route path="editor/:siteId" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
 
     {/* Catch-all */}
-    <Route path="*" element={<Navigate to="/studio/dashboard" replace />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 );
 

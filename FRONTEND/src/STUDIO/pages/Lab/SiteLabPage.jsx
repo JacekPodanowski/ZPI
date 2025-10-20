@@ -150,7 +150,7 @@ const SiteLabPage = () => {
                     {error}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
-                    <Button variant="contained" onClick={() => navigate('/studio/dashboard')}>
+                    <Button variant="contained" onClick={() => navigate('/studio/sites')}>
                         Wróć do panelu
                     </Button>
                     <Button variant="text" onClick={() => navigate(`/studio/editor/${siteId}`)}>
@@ -213,7 +213,7 @@ const SiteLabPage = () => {
                             </Button>
                             <Button
                                 variant="outlined"
-                                onClick={() => navigate('/studio/dashboard')}
+                                onClick={() => navigate('/studio/sites')}
                                 sx={{ fontWeight: 600, borderColor: 'rgba(228,229,218,0.4)', color: 'rgb(228,229,218)' }}
                             >
                                 Wróć do panelu

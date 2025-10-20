@@ -259,7 +259,7 @@ const SiteCreationWizard = () => {
 
     const handleBack = () => {
         if (activeStep === 0) {
-            navigate('/studio/dashboard');
+            navigate('/studio/sites');
             return;
         }
         setActiveStep((prev) => prev - 1);

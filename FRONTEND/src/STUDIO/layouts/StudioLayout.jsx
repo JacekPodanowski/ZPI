@@ -26,7 +26,6 @@ const StudioLayout = ({
   );
 
   const isDashboardRoute = useMemo(() => (
-    location.pathname.startsWith('/studio/dashboard') ||
     location.pathname.startsWith('/studio/sites') ||
     location.pathname === '/studio/sites' ||
     location.pathname.startsWith('/studio/calendar/creator')
