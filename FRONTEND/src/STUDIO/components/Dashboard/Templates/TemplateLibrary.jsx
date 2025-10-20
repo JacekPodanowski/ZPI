@@ -7,6 +7,7 @@ import useDashboardStore from '../../../store/dashboardStore';
 import DayTemplate from './DayTemplate';
 import WeekTemplate from './WeekTemplate';
 import Logo from '../../../../components/Logo/Logo';
+import { shallow } from 'zustand/shallow';
 
 const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
     const navigate = useNavigate();
@@ -18,15 +19,18 @@ const TemplateLibrary = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
         sites,
         selectedSiteId,
         selectSite
-    } = useDashboardStore((state) => ({
-        mode: state.mode,
-        templates: state.templates,
-        templateLibraryWidth: state.templateLibraryWidth,
-        switchMode: state.switchMode,
-        sites: state.sites,
-        selectedSiteId: state.selectedSiteId,
-        selectSite: state.selectSite
-    }));
+    } = useDashboardStore(
+        (state) => ({
+            mode: state.mode,
+            templates: state.templates,
+            templateLibraryWidth: state.templateLibraryWidth,
+            switchMode: state.switchMode,
+            sites: state.sites,
+            selectedSiteId: state.selectedSiteId,
+            selectSite: state.selectSite
+        }),
+        shallow
+    );
 
     const isSitePanelVisible = mode === 'site-focus';
 

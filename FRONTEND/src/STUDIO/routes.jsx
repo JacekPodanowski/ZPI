@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import StudioDashboard from './pages/Dashboard/StudioDashboard';
 import SitesPage from './pages/Sites/SitesPage';
 import SiteCreationWizard from './pages/NewSite/SiteCreationWizard';
 import EditorPage from './pages/Editor/EditorPage';
@@ -16,6 +15,7 @@ import BillingPage from './pages/Settings/BillingPage';
 import AppearancePage from './pages/Settings/AppearancePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
+import ToastTestPage from './pages/Lab/ToastTestPage';
 
 const StudioApp = () => (
   <Routes>
@@ -24,7 +24,6 @@ const StudioApp = () => (
 
     <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}
-      <Route path="dashboard" element={<ProtectedRoute><StudioDashboard /></ProtectedRoute>} />
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
 
       {/* Site creation flow */}
@@ -33,6 +32,9 @@ const StudioApp = () => (
       {/* Calendar previews for development */}
       <Route path="calendar/public" element={<PublicCalendarPage />} />
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
+
+      {/* Dev Lab */}
+      <Route path="lab/toast" element={<ToastTestPage />} />
 
       {/* Admin area */}
       <Route path="admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />

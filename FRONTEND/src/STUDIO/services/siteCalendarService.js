@@ -23,8 +23,13 @@ const buildInitialPublicState = () => ({
 
 export const fetchSiteCalendar = async (siteIdentifier = MOCK_SITE_IDENTIFIER) => {
     try {
+        console.log('(DEBUGLOG) fetchSiteCalendar.request', { endpoint: `/sites/${siteIdentifier}/calendar/` });
         const response = await apiClient.get(`/sites/${siteIdentifier}/calendar/`);
         if (response?.data) {
+            console.log('(DEBUGLOG) fetchSiteCalendar.response', {
+                hasData: Boolean(response.data),
+                eventCount: response.data?.creator?.events?.length ?? 'unknown'
+            });
             return {
                 ...response.data,
                 siteIdentifier: response.data.siteIdentifier ?? siteIdentifier,
@@ -32,12 +37,13 @@ export const fetchSiteCalendar = async (siteIdentifier = MOCK_SITE_IDENTIFIER) =
             };
         }
     } catch (error) {
+        console.error('(DEBUGLOG) fetchSiteCalendar.error', error);
         if (process.env.NODE_ENV !== 'production') {
             // eslint-disable-next-line no-console
             console.warn('[calendar] Falling back to mock data for site', siteIdentifier, error);
         }
     }
-
+    console.log('(DEBUGLOG) fetchSiteCalendar.fallbackToMock', { siteIdentifier });
     return {
         ...MOCK_CALENDAR_PAYLOAD,
         siteIdentifier: siteIdentifier ?? MOCK_SITE_IDENTIFIER,

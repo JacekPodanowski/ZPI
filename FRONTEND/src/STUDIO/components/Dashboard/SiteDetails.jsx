@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import useDashboardStore from '../../store/dashboardStore';
+import { shallow } from 'zustand/shallow';
 
 const PANEL_HEIGHT = 250;
 
@@ -25,10 +26,13 @@ const buildSparklinePoints = (data) => {
 
 const SiteDetails = ({ sites }) => {
     const navigate = useNavigate();
-    const { selectedSiteId, switchMode } = useDashboardStore((state) => ({
-        selectedSiteId: state.selectedSiteId,
-        switchMode: state.switchMode
-    }));
+    const { selectedSiteId, switchMode } = useDashboardStore(
+        (state) => ({
+            selectedSiteId: state.selectedSiteId,
+            switchMode: state.switchMode
+        }),
+        shallow
+    );
 
     const selectedSite = useMemo(() => {
         if (selectedSiteId === null || selectedSiteId === undefined) {

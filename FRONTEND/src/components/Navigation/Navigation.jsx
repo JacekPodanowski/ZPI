@@ -79,21 +79,18 @@ const Navigation = () => {
     );
 
     const navGroups = useMemo(() => {
-        const primary = [
-            { label: 'Strona główna', to: '/' },
-            { label: 'Style', to: '/styles' }
-        ];
+        const primary = [];
 
         if (isAuthenticated) {
             primary.push(
-                { label: 'Dashboard', to: '/studio/dashboard', requiresAuth: true },
-                { label: 'Sites', to: '/studio/sites', requiresAuth: true }
+                { label: 'Sites', to: '/studio/sites', requiresAuth: true },
+                { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true }
             );
         }
 
         const dev = [
             { label: 'Publiczny kalendarz', to: '/studio/calendar/public' },
-            { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true },
+            { label: 'Toasty', to: '/studio/lab/toast' },
             { label: 'Admin', to: '/studio/admin', requiresAuth: true }
         ];
 

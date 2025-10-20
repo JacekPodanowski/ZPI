@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 import SiteApp from './SITES/SiteApp';
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './theme/ThemeProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
@@ -38,7 +39,9 @@ if (buildTarget === 'SITE') {
           <ThemeProvider initialTheme="studio">
             <BrowserRouter>
               <AuthProvider>
-                <App />
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
               </AuthProvider>
             </BrowserRouter>
           </ThemeProvider>

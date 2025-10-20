@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,28 +7,55 @@ import PropTypes from 'prop-types';
 import useDashboardStore from '../../../store/dashboardStore';
 import { EventDot, EventBlock } from './EventDisplay';
 import { alpha } from '@mui/material/styles';
+import { shallow } from 'zustand/shallow';
+
+const noop = () => {};
+
+const FALLBACK_DASHBOARD_STATE = {
+    storeMode: 'calendar-focus',
+    selectedSiteId: null,
+    currentMonth: null,
+    setCurrentMonth: noop,
+    switchMode: noop,
+    updateLastInteraction: noop,
+    selectSite: noop
+};
 
 const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) => {
-    const {
-        mode: storeMode,
-        selectedSiteId,
-        currentMonth,
-        setCurrentMonth,
-        switchMode,
-        updateLastInteraction,
-        selectSite
-    } = useDashboardStore((state) => ({
-        mode: state.mode,
-        selectedSiteId: state.selectedSiteId,
-        currentMonth: state.currentMonth,
-        setCurrentMonth: state.setCurrentMonth,
-        switchMode: state.switchMode,
-        updateLastInteraction: state.updateLastInteraction,
-        selectSite: state.selectSite
-    }));
+    const dashboardSliceSelector = forceExtendedMode
+        ? () => FALLBACK_DASHBOARD_STATE
+        : (state) => ({
+              storeMode: state.mode,
+              selectedSiteId: state.selectedSiteId,
+              currentMonth: state.currentMonth,
+              setCurrentMonth: state.setCurrentMonth,
+              switchMode: state.switchMode,
+              updateLastInteraction: state.updateLastInteraction,
+              selectSite: state.selectSite
+          });
 
-    // Use forced extended mode if specified, otherwise use store mode
-    const mode = forceExtendedMode ? 'calendar-focus' : storeMode;
+    const dashboardState = useDashboardStore(dashboardSliceSelector, shallow);
+
+    const [localMonth, setLocalMonth] = useState(() => new Date());
+
+    const mode = forceExtendedMode ? 'calendar-focus' : dashboardState.storeMode;
+    const selectedSiteId = forceExtendedMode ? null : dashboardState.selectedSiteId;
+    const currentMonth = forceExtendedMode && !dashboardState.currentMonth
+        ? localMonth
+        : dashboardState.currentMonth ?? localMonth;
+    const setCurrentMonth = forceExtendedMode ? setLocalMonth : dashboardState.setCurrentMonth;
+    const switchMode = forceExtendedMode ? noop : dashboardState.switchMode;
+    const updateLastInteraction = forceExtendedMode ? noop : dashboardState.updateLastInteraction;
+    const selectSite = forceExtendedMode ? noop : dashboardState.selectSite;
+
+    console.log('(DEBUGLOG) CalendarGrid.render', {
+        mode,
+        storeMode: dashboardState.storeMode,
+        selectedSiteId,
+        eventsCount: events?.length ?? 0,
+        sitesCount: sites?.length ?? 0,
+        forceExtendedMode
+    });
 
     const handleDayClick = (date) => {
         // Auto-switch to Calendar Power mode when clicking a day
