@@ -112,6 +112,34 @@ class SiteViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You cannot delete a site you do not own.')
         instance.delete()
 
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated, IsOwnerOrStaff])
+    def update_color(self, request, pk=None):
+        """Update the color index of a specific site."""
+        site = self.get_object()
+        color_index = request.data.get('color_index')
+        
+        if color_index is None:
+            return Response(
+                {'error': 'color_index is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate color index is in valid range (0-11)
+        try:
+            color_index = int(color_index)
+            if color_index < 0 or color_index > 11:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'color_index must be an integer between 0 and 11'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        site.color_index = color_index
+        site.save(update_fields=['color_index'])
+        serializer = self.get_serializer(site)
+        return Response(serializer.data)
+
 
 class SiteScopedMixin:
     def _ensure_site_access(self, site: Site):

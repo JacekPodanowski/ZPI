@@ -4,73 +4,37 @@ import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 import PropTypes from 'prop-types';
-import useDashboardStore from '../../../store/dashboardStore';
 import { EventDot, EventBlock } from './EventDisplay';
 import { alpha } from '@mui/material/styles';
-import { shallow } from 'zustand/shallow';
 
-const noop = () => {};
-
-const FALLBACK_DASHBOARD_STATE = {
-    storeMode: 'calendar-focus',
-    selectedSiteId: null,
-    currentMonth: null,
-    setCurrentMonth: noop,
-    switchMode: noop,
-    updateLastInteraction: noop,
-    selectSite: noop
-};
-
-const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) => {
-    const dashboardSliceSelector = forceExtendedMode
-        ? () => FALLBACK_DASHBOARD_STATE
-        : (state) => ({
-              storeMode: state.mode,
-              selectedSiteId: state.selectedSiteId,
-              currentMonth: state.currentMonth,
-              setCurrentMonth: state.setCurrentMonth,
-              switchMode: state.switchMode,
-              updateLastInteraction: state.updateLastInteraction,
-              selectSite: state.selectSite
-          });
-
-    const dashboardState = useDashboardStore(dashboardSliceSelector, shallow);
-
-    const [localMonth, setLocalMonth] = useState(() => new Date());
-
-    const mode = forceExtendedMode ? 'calendar-focus' : dashboardState.storeMode;
-    const selectedSiteId = forceExtendedMode ? null : dashboardState.selectedSiteId;
-    const currentMonth = forceExtendedMode && !dashboardState.currentMonth
-        ? localMonth
-        : dashboardState.currentMonth ?? localMonth;
-    const setCurrentMonth = forceExtendedMode ? setLocalMonth : dashboardState.setCurrentMonth;
-    const switchMode = forceExtendedMode ? noop : dashboardState.switchMode;
-    const updateLastInteraction = forceExtendedMode ? noop : dashboardState.updateLastInteraction;
-    const selectSite = forceExtendedMode ? noop : dashboardState.selectSite;
-
-    console.log('(DEBUGLOG) CalendarGrid.render', {
-        mode,
-        storeMode: dashboardState.storeMode,
-        selectedSiteId,
-        eventsCount: events?.length ?? 0,
-        sitesCount: sites?.length ?? 0,
-        forceExtendedMode
-    });
+/**
+ * Pure, controlled CalendarGrid component.
+ * All state management and business logic should be handled by the parent.
+ */
+const CalendarGrid = ({
+    events,
+    sites,
+    mode,
+    selectedSiteId,
+    currentMonth,
+    onDayClick,
+    onMonthChange,
+    onSiteSelect
+}) => {
+    const [hoveredDayEvents, setHoveredDayEvents] = useState([]);
 
     const handleDayClick = (date) => {
-        // Auto-switch to Calendar Power mode when clicking a day
-        if (mode === 'site-focus') {
-            switchMode('calendar-focus', 'day-click');
-        }
-        updateLastInteraction();
-        onDayClick(date);
+        onDayClick?.(date);
     };
 
     const handleMonthChange = (direction) => {
         const newMonth = moment(currentMonth).add(direction, 'month').toDate();
-        setCurrentMonth(newMonth);
-        updateLastInteraction();
-        // Navigation does NOT trigger mode switch
+        onMonthChange?.(newMonth);
+    };
+
+    const handleSiteSelect = (siteId) => {
+        const nextSelection = selectedSiteId === siteId ? null : siteId;
+        onSiteSelect?.(nextSelection);
     };
 
     const calendarDays = useMemo(() => {
@@ -123,24 +87,26 @@ const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) 
                 transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
             >
                 <Box
-                    onClick={() => selectSite(site.id)}
+                    onClick={() => handleSiteSelect(site.id)}
                     sx={{
-                        px: 1.5,
-                        py: 0.75,
-                        borderRadius: 999,
+                        px: 1.75,
+                        py: 0.85,
+                        borderRadius: 2,
                         cursor: 'pointer',
                         minWidth: 90,
                         textAlign: 'center',
                         fontSize: '13px',
                         fontWeight: 500,
                         letterSpacing: 0.2,
-                        backgroundColor: isSelected ? alpha(siteColor, 0.18) : alpha(siteColor, 0.05),
-                        color: isSelected ? siteColor : 'text.secondary',
-                        border: `1px solid ${alpha(siteColor, isSelected ? 0.45 : 0.16)}`,
+                        backgroundColor: isSelected ? siteColor : alpha(siteColor, 0.12),
+                        color: isSelected ? '#fff' : 'text.secondary',
+                        border: `2px solid ${alpha(siteColor, isSelected ? 1 : 0.3)}`,
                         transition: 'all 200ms ease',
                         '&:hover': {
-                            backgroundColor: alpha(siteColor, 0.16),
-                            color: siteColor
+                            backgroundColor: isSelected ? siteColor : alpha(siteColor, 0.25),
+                            color: isSelected ? '#fff' : 'text.primary',
+                            borderColor: alpha(siteColor, 0.7),
+                            transform: 'translateY(-1px)'
                         }
                     }}
                 >
@@ -176,7 +142,7 @@ const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) 
                     onClick={() => handleMonthChange(-1)}
                     size="small"
                     sx={{
-                        borderRadius: 12,
+                        borderRadius: 2,
                         backgroundColor: 'rgba(146, 0, 32, 0.08)',
                         '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.16)' }
                     }}
@@ -238,7 +204,7 @@ const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) 
                     onClick={() => handleMonthChange(1)}
                     size="small"
                     sx={{
-                        borderRadius: 12,
+                        borderRadius: 2,
                         backgroundColor: 'rgba(146, 0, 32, 0.08)',
                         '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.16)' }
                     }}
@@ -251,10 +217,12 @@ const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) 
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
+                    gridAutoRows: isPowerMode ? 'minmax(120px, 1fr)' : 'minmax(58px, 1fr)',
                     gap: 0.75,
                     p: isPowerMode ? 0.5 : 0.5,
                     flex: 1,
-                    minHeight: 0
+                    minHeight: 0,
+                    overflow: 'auto'
                 }}
             >
                 {/* Day headers */}
@@ -280,21 +248,30 @@ const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) 
                     const isCurrentMonth = day.month() === currentMonthMoment.month();
                     const isToday = day.isSame(moment(), 'day');
                     const isDimmed = selectedSiteId && !dayEvents.some(event => event.site_id === selectedSiteId);
+                    
+                    const MAX_VISIBLE_EVENTS = 3;
+                    const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS);
+                    const hasMore = dayEvents.length > MAX_VISIBLE_EVENTS;
 
                     return (
                         <motion.div
                             key={dateKey}
                             layout
                             transition={{ duration: 0.2 }}
+                            style={{ minHeight: 0 }}
                         >
                             <Box
                                 onClick={() => handleDayClick(day.toDate())}
+                                onMouseEnter={() => setHoveredDayEvents(dayEvents.map(e => e.id))}
+                                onMouseLeave={() => setHoveredDayEvents([])}
                                 sx={{
                                     border: '1px solid',
                                     borderColor: isToday ? 'primary.main' : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
                                     p: isPowerMode ? 0.85 : 0.65,
-                                    minHeight: isPowerMode ? 112 : 58,
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
                                     backgroundColor: isCurrentMonth ? 'background.paper' : 'rgba(228, 229, 218, 0.35)',
                                     cursor: 'pointer',
                                     transition: 'all 200ms',
@@ -312,68 +289,72 @@ const CalendarGrid = ({ events, sites, onDayClick, forceExtendedMode = false }) 
                                         fontWeight: isToday ? 700 : 600,
                                         mb: isPowerMode ? 0.75 : 0.35,
                                         fontSize: isPowerMode ? '15px' : '12.5px',
-                                        color: isToday ? 'primary.main' : 'text.primary'
+                                        color: isToday ? 'primary.main' : 'text.primary',
+                                        flexShrink: 0
                                     }}
                                 >
                                     {day.date()}
                                 </Typography>
 
                                 {isPowerMode ? (
-                                    // Block view
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                        {dayEvents.slice(0, 3).map(event => (
-                                            <EventBlock
-                                                key={event.id}
-                                                event={event}
-                                                isSelectedSite={!selectedSiteId || event.site_id === selectedSiteId}
-                                                siteColor={event.site_color || 'rgb(146, 0, 32)'}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    console.log('Event clicked:', event);
-                                                }}
-                                            />
-                                        ))}
-                                        {dayEvents.length > 3 && (
+                                    // Block view with hover effects
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: 0.5,
+                                        flex: 1,
+                                        overflow: 'hidden'
+                                    }}>
+                                        {visibleEvents.map((event, idx) => {
+                                            const isHovered = hoveredDayEvents.includes(event.id);
+                                            const shouldShrink = hoveredDayEvents.length > 0 && !isHovered;
+                                            
+                                            return (
+                                                <motion.div
+                                                    key={event.id}
+                                                    animate={{
+                                                        scale: shouldShrink ? 0.92 : 1,
+                                                        opacity: shouldShrink ? 0.6 : 1
+                                                    }}
+                                                    transition={{ duration: 0.15 }}
+                                                    style={{ zIndex: isHovered ? 10 : idx }}
+                                                >
+                                                    <EventBlock
+                                                        event={event}
+                                                        isSelectedSite={!selectedSiteId || event.site_id === selectedSiteId}
+                                                        siteColor={event.site_color || 'rgb(146, 0, 32)'}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}
+                                                    />
+                                                </motion.div>
+                                            );
+                                        })}
+                                        {hasMore && (
                                             <Typography
                                                 variant="caption"
                                                 sx={{
                                                     fontSize: '10px',
                                                     color: 'text.secondary',
-                                                    textAlign: 'center'
+                                                    textAlign: 'center',
+                                                    mt: 0.5,
+                                                    flexShrink: 0
                                                 }}
                                             >
-                                                +{dayEvents.length - 3} więcej
+                                                +{dayEvents.length - MAX_VISIBLE_EVENTS} więcej
                                             </Typography>
                                         )}
                                     </Box>
                                 ) : (
-                                    // Dot view
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            flexWrap: 'wrap',
-                                            gap: 0.5,
-                                            alignItems: 'center'
-                                        }}
-                                    >
-                                        {dayEvents.slice(0, 4).map(event => (
+                                    // Dot view for compact mode
+                                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                                        {dayEvents.slice(0, 6).map(event => (
                                             <EventDot
                                                 key={event.id}
                                                 event={event}
                                                 siteColor={event.site_color || 'rgb(146, 0, 32)'}
                                             />
                                         ))}
-                                        {dayEvents.length > 4 && (
-                                            <Typography
-                                                variant="caption"
-                                                sx={{
-                                                    fontSize: '10px',
-                                                    color: 'text.secondary'
-                                                }}
-                                            >
-                                                +{dayEvents.length - 4}
-                                            </Typography>
-                                        )}
                                     </Box>
                                 )}
                             </Box>
@@ -401,15 +382,20 @@ CalendarGrid.propTypes = {
             name: PropTypes.string.isRequired,
             color_tag: PropTypes.string
         })
-    ),
+    ).isRequired,
+    mode: PropTypes.oneOf(['site-focus', 'calendar-focus']).isRequired,
+    selectedSiteId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    currentMonth: PropTypes.instanceOf(Date).isRequired,
     onDayClick: PropTypes.func,
-    forceExtendedMode: PropTypes.bool
+    onMonthChange: PropTypes.func,
+    onSiteSelect: PropTypes.func
 };
 
 CalendarGrid.defaultProps = {
-    sites: [],
+    selectedSiteId: null,
     onDayClick: () => {},
-    forceExtendedMode: false
+    onMonthChange: () => {},
+    onSiteSelect: () => {}
 };
 
 export default CalendarGrid;

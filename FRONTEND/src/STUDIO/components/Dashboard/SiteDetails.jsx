@@ -26,10 +26,9 @@ const buildSparklinePoints = (data) => {
 
 const SiteDetails = ({ sites }) => {
     const navigate = useNavigate();
-    const { selectedSiteId, switchMode } = useDashboardStore(
+    const { selectedSiteId } = useDashboardStore(
         (state) => ({
-            selectedSiteId: state.selectedSiteId,
-            switchMode: state.switchMode
+            selectedSiteId: state.selectedSiteId
         }),
         shallow
     );
@@ -116,7 +115,7 @@ const SiteDetails = ({ sites }) => {
 
                     <IconButton
                         size="small"
-                        onClick={() => switchMode('calendar-focus', 'manual')}
+                        onClick={() => console.log('(DEBUGLOG) SiteDetails.toggleRequested')}
                         sx={{
                             backgroundColor: 'rgba(146, 0, 32, 0.08)',
                             '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.16)' }

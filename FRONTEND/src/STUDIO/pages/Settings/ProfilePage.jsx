@@ -50,7 +50,7 @@ const ProfilePage = () => {
       }}
     >
       <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
-        Profile Settings
+        Your Account
       </Typography>
       <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary }}>
         Manage your personal information

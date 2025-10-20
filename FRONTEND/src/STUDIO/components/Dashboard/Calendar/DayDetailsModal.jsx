@@ -1,0 +1,659 @@
+import React, { useState, useMemo } from 'react';
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Box,
+    Typography,
+    Button,
+    Fab,
+    Stack,
+    Chip,
+    IconButton,
+    Tooltip,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    TextField,
+    ToggleButtonGroup,
+    ToggleButton,
+    Alert
+} from '@mui/material';
+import {
+    Add as AddIcon,
+    Close as CloseIcon,
+    CalendarMonth as CalendarIcon,
+    AccessTime as TimeIcon,
+    EventNote as EventNoteIcon,
+    Schedule as ScheduleIcon
+} from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
+import moment from 'moment';
+import PropTypes from 'prop-types';
+import useTheme from '../../../../theme/useTheme';
+
+const HOURS = Array.from({ length: 16 }, (_, idx) => 6 + idx);
+const DAY_START_MINUTES = 6 * 60;
+const DAY_END_MINUTES = 22 * 60;
+const HOUR_HEIGHT = 60;
+
+const computeBlockMetrics = (start, end) => {
+    const [startHour, startMinute] = start.split(':').map(Number);
+    const [endHour, endMinute] = end.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    const clampedStart = Math.max(startMinutes, DAY_START_MINUTES);
+    const clampedEnd = Math.min(endMinutes, DAY_END_MINUTES);
+    const duration = Math.max(clampedEnd - clampedStart, 15);
+    const top = ((clampedStart - DAY_START_MINUTES) / 60) * HOUR_HEIGHT;
+    const height = (duration / 60) * HOUR_HEIGHT;
+    return { top, height };
+};
+
+const AvailabilityBlockDisplay = ({ block, siteColor }) => {
+    const metrics = computeBlockMetrics(block.start_time, block.end_time);
+
+    return (
+        <Box
+            sx={{
+                position: 'absolute',
+                left: 60,
+                right: 8,
+                top: metrics.top,
+                height: metrics.height,
+                backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                border: '2px dashed rgba(76, 175, 80, 0.4)',
+                borderRadius: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1,
+                pointerEvents: 'none'
+            }}
+        >
+            <Typography
+                variant="caption"
+                sx={{
+                    color: 'rgba(56, 142, 60, 0.9)',
+                    fontWeight: 600,
+                    fontSize: '11px'
+                }}
+            >
+                Dostępny
+            </Typography>
+        </Box>
+    );
+};
+
+AvailabilityBlockDisplay.propTypes = {
+    block: PropTypes.shape({
+        start_time: PropTypes.string.isRequired,
+        end_time: PropTypes.string.isRequired,
+        title: PropTypes.string
+    }).isRequired,
+    siteColor: PropTypes.string.isRequired
+};
+
+const EventDisplay = ({ event, siteColor, onHover }) => {
+    const metrics = computeBlockMetrics(event.start_time, event.end_time);
+    const [isHovered, setIsHovered] = useState(false);
+
+    return (
+        <motion.div
+            style={{
+                position: 'absolute',
+                left: 60,
+                right: 8,
+                top: metrics.top,
+                height: metrics.height,
+                zIndex: 2
+            }}
+            whileHover={{ scale: 1.02, zIndex: 10 }}
+            onHoverStart={() => {
+                setIsHovered(true);
+                onHover?.(event.id);
+            }}
+            onHoverEnd={() => {
+                setIsHovered(false);
+                onHover?.(null);
+            }}
+        >
+            <Box
+                sx={{
+                    height: '100%',
+                    backgroundColor: siteColor,
+                    borderRadius: 1.5,
+                    p: 1,
+                    cursor: 'pointer',
+                    border: `2px solid ${siteColor}`,
+                    opacity: isHovered ? 1 : 0.9,
+                    transition: 'all 200ms ease',
+                    boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 6px rgba(0,0,0,0.1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}
+            >
+                <Typography
+                    variant="subtitle2"
+                    sx={{
+                        fontWeight: 600,
+                        color: '#fff',
+                        fontSize: '13px',
+                        mb: 0.5
+                    }}
+                >
+                    {event.title}
+                </Typography>
+                <Typography
+                    variant="caption"
+                    sx={{
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        fontSize: '11px'
+                    }}
+                >
+                    {event.start_time} - {event.end_time}
+                </Typography>
+                {event.event_type === 'individual' && (
+                    <Chip
+                        size="small"
+                        label={event.client_name || 'Wolne'}
+                        sx={{
+                            mt: 0.5,
+                            height: 18,
+                            fontSize: '10px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                            color: '#fff'
+                        }}
+                    />
+                )}
+                {event.event_type === 'group' && (
+                    <Chip
+                        size="small"
+                        label={`${event.current_capacity || 0}/${event.max_capacity}`}
+                        sx={{
+                            mt: 0.5,
+                            height: 18,
+                            fontSize: '10px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                            color: '#fff'
+                        }}
+                    />
+                )}
+            </Box>
+        </motion.div>
+    );
+};
+
+EventDisplay.propTypes = {
+    event: PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+        title: PropTypes.string.isRequired,
+        start_time: PropTypes.string.isRequired,
+        end_time: PropTypes.string.isRequired,
+        event_type: PropTypes.string,
+        client_name: PropTypes.string,
+        current_capacity: PropTypes.number,
+        max_capacity: PropTypes.number
+    }).isRequired,
+    siteColor: PropTypes.string.isRequired,
+    onHover: PropTypes.func
+};
+
+const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClose, onCreateEvent, onCreateAvailability }) => {
+    const theme = useTheme();
+    const [view, setView] = useState('timeline'); // 'timeline' | 'createEvent' | 'createAvailability'
+    const [hoveredEventId, setHoveredEventId] = useState(null);
+    const [formData, setFormData] = useState({
+        title: '',
+        startTime: '10:00',
+        endTime: '11:00',
+        type: 'online',
+        location: '',
+        meetingType: 'individual',
+        capacity: 1,
+        meetingLengths: ['30', '60'],
+        timeSnapping: '30',
+        bufferTime: '0'
+    });
+
+    const dateFormatted = useMemo(() => moment(date).format('dddd, D MMMM YYYY'), [date]);
+    const dateKey = useMemo(() => moment(date).format('YYYY-MM-DD'), [date]);
+
+    const dayEvents = useMemo(() => {
+        return events.filter(e => moment(e.date).format('YYYY-MM-DD') === dateKey);
+    }, [events, dateKey]);
+
+    const dayAvailability = useMemo(() => {
+        return availabilityBlocks.filter(b => moment(b.date).format('YYYY-MM-DD') === dateKey);
+    }, [availabilityBlocks, dateKey]);
+
+    const timelineHeight = ((DAY_END_MINUTES - DAY_START_MINUTES) / 60) * HOUR_HEIGHT;
+
+    const handleClose = () => {
+        setView('timeline');
+        setFormData({
+            title: '',
+            startTime: '10:00',
+            endTime: '11:00',
+            type: 'online',
+            location: '',
+            meetingType: 'individual',
+            capacity: 1,
+            meetingLengths: ['30', '60'],
+            timeSnapping: '30',
+            bufferTime: '0'
+        });
+        onClose();
+    };
+
+    const handleCreateChoice = (type) => {
+        setView(type === 'event' ? 'createEvent' : 'createAvailability');
+    };
+
+    const handleSubmit = () => {
+        if (view === 'createEvent') {
+            onCreateEvent?.({
+                ...formData,
+                date: dateKey
+            });
+        } else if (view === 'createAvailability') {
+            onCreateAvailability?.({
+                ...formData,
+                date: dateKey
+            });
+        }
+        handleClose();
+    };
+
+    const renderTimeline = () => (
+        <Box
+            sx={{
+                position: 'relative',
+                width: '100%',
+                height: timelineHeight,
+                backgroundColor: theme.palette.background.default,
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                mt: 2
+            }}
+        >
+            {/* Hour lines */}
+            {HOURS.map((hour) => {
+                const top = ((hour - 6) * 60 * HOUR_HEIGHT) / 60;
+                return (
+                    <Box
+                        key={hour}
+                        sx={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top,
+                            height: HOUR_HEIGHT,
+                            borderBottom: `1px solid ${theme.palette.divider}`,
+                            display: 'flex',
+                            alignItems: 'flex-start'
+                        }}
+                    >
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                width: 50,
+                                pl: 1,
+                                pt: 0.5,
+                                fontWeight: 500,
+                                color: theme.palette.text.secondary,
+                                fontSize: '12px'
+                            }}
+                        >
+                            {`${hour.toString().padStart(2, '0')}:00`}
+                        </Typography>
+                    </Box>
+                );
+            })}
+
+            {/* Availability blocks (rendered first, under events) */}
+            {dayAvailability.map((block) => (
+                <AvailabilityBlockDisplay
+                    key={block.id}
+                    block={block}
+                    siteColor={sites.find(s => s.id === block.site_id)?.color_tag || 'rgb(146, 0, 32)'}
+                />
+            ))}
+
+            {/* Events */}
+            {dayEvents.map((event) => (
+                <EventDisplay
+                    key={event.id}
+                    event={event}
+                    siteColor={sites.find(s => s.id === event.site_id)?.color_tag || 'rgb(146, 0, 32)'}
+                    onHover={setHoveredEventId}
+                />
+            ))}
+        </Box>
+    );
+
+    const renderCreationForm = () => {
+        const isEvent = view === 'createEvent';
+
+        return (
+            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <Alert severity="info" sx={{ mb: 1 }}>
+                    {isEvent ? (
+                        <>
+                            <EventNoteIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
+                            Tworzysz <strong>konkretne spotkanie</strong> - zapisz datę i czas w kalendarzu
+                        </>
+                    ) : (
+                        <>
+                            <ScheduleIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
+                            Tworzysz <strong>okno dostępności</strong> - klienci będą mogli zarezerwować w tym czasie
+                        </>
+                    )}
+                </Alert>
+
+                <TextField
+                    fullWidth
+                    label="Tytuł"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder={isEvent ? 'np. Spotkanie z klientem' : 'Dostępny'}
+                />
+
+                <Stack direction="row" spacing={2}>
+                    <TextField
+                        fullWidth
+                        label="Od"
+                        type="time"
+                        value={formData.startTime}
+                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                        fullWidth
+                        label="Do"
+                        type="time"
+                        value={formData.endTime}
+                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                </Stack>
+
+                {isEvent && (
+                    <>
+                        <ToggleButtonGroup
+                            fullWidth
+                            exclusive
+                            value={formData.type}
+                            onChange={(e, val) => val && setFormData({ ...formData, type: val })}
+                        >
+                            <ToggleButton value="online">Online</ToggleButton>
+                            <ToggleButton value="local">Stacjonarnie</ToggleButton>
+                        </ToggleButtonGroup>
+
+                        {formData.type === 'local' && (
+                            <TextField
+                                fullWidth
+                                label="Lokalizacja"
+                                value={formData.location}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                placeholder="np. ul. Kwiatowa 5, Warszawa"
+                            />
+                        )}
+
+                        <ToggleButtonGroup
+                            fullWidth
+                            exclusive
+                            value={formData.meetingType}
+                            onChange={(e, val) => val && setFormData({ ...formData, meetingType: val })}
+                        >
+                            <ToggleButton value="individual">Indywidualne</ToggleButton>
+                            <ToggleButton value="group">Grupowe</ToggleButton>
+                        </ToggleButtonGroup>
+
+                        {formData.meetingType === 'group' && (
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Maksymalna liczba osób"
+                                value={formData.capacity}
+                                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                                inputProps={{ min: 1 }}
+                            />
+                        )}
+                    </>
+                )}
+
+                {!isEvent && (
+                    <>
+                        <TextField
+                            fullWidth
+                            label="Długości spotkań (min, oddzielone przecinkiem)"
+                            value={formData.meetingLengths.join(', ')}
+                            onChange={(e) => setFormData({ 
+                                ...formData, 
+                                meetingLengths: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                            })}
+                            placeholder="30, 45, 60"
+                            helperText="Możliwe długości spotkań, które klient może wybrać"
+                        />
+
+                        <FormControl fullWidth>
+                            <InputLabel>Spotkania mogą zaczynać się co</InputLabel>
+                            <Select
+                                value={formData.timeSnapping}
+                                label="Spotkania mogą zaczynać się co"
+                                onChange={(e) => setFormData({ ...formData, timeSnapping: e.target.value })}
+                            >
+                                <MenuItem value="15">15 minut</MenuItem>
+                                <MenuItem value="30">30 minut</MenuItem>
+                                <MenuItem value="60">60 minut</MenuItem>
+                                <MenuItem value="0">Dowolnie</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <TextField
+                            fullWidth
+                            type="number"
+                            label="Przerwa między spotkaniami (min)"
+                            value={formData.bufferTime}
+                            onChange={(e) => setFormData({ ...formData, bufferTime: e.target.value })}
+                            inputProps={{ min: 0 }}
+                            helperText="Minimalny czas między spotkaniami"
+                        />
+                    </>
+                )}
+            </Box>
+        );
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onClose={handleClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: 3,
+                    minHeight: '70vh',
+                    maxHeight: '90vh'
+                }
+            }}
+        >
+            <DialogTitle>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {dateFormatted}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {dayEvents.length} wydarzeń • {dayAvailability.length} okien dostępności
+                        </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1}>
+                        {view === 'timeline' && (
+                            <Tooltip title="Jak chcesz to zaplanować?">
+                                <Fab
+                                    color="primary"
+                                    size="small"
+                                    onClick={() => setView('chooser')}
+                                    sx={{
+                                        boxShadow: '0 4px 12px rgba(146, 0, 32, 0.3)'
+                                    }}
+                                >
+                                    <AddIcon />
+                                </Fab>
+                            </Tooltip>
+                        )}
+                        <IconButton onClick={handleClose}>
+                            <CloseIcon />
+                        </IconButton>
+                    </Stack>
+                </Stack>
+            </DialogTitle>
+
+            <DialogContent sx={{ pb: 3 }}>
+                <AnimatePresence mode="wait">
+                    {view === 'timeline' && (
+                        <motion.div
+                            key="timeline"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {renderTimeline()}
+                        </motion.div>
+                    )}
+
+                    {view === 'chooser' && (
+                        <motion.div
+                            key="chooser"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 2,
+                                    mt: 4,
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
+                                    Jak chcesz to zaplanować?
+                                </Typography>
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ width: '100%', maxWidth: 600 }}>
+                                    <Box
+                                        onClick={() => handleCreateChoice('event')}
+                                        sx={{
+                                            flex: 1,
+                                            p: 4,
+                                            border: '2px solid',
+                                            borderColor: 'primary.main',
+                                            borderRadius: 3,
+                                            cursor: 'pointer',
+                                            textAlign: 'center',
+                                            transition: 'all 200ms',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(146, 0, 32, 0.05)',
+                                                transform: 'translateY(-4px)',
+                                                boxShadow: '0 8px 20px rgba(146, 0, 32, 0.2)'
+                                            }
+                                        }}
+                                    >
+                                        <CalendarIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                                            📅 Konkretne spotkanie
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                            Ustaw konkretną datę i czas spotkania
+                                        </Typography>
+                                    </Box>
+
+                                    <Box
+                                        onClick={() => handleCreateChoice('availability')}
+                                        sx={{
+                                            flex: 1,
+                                            p: 4,
+                                            border: '2px solid',
+                                            borderColor: 'success.main',
+                                            borderRadius: 3,
+                                            cursor: 'pointer',
+                                            textAlign: 'center',
+                                            transition: 'all 200ms',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(76, 175, 80, 0.05)',
+                                                transform: 'translateY(-4px)',
+                                                boxShadow: '0 8px 20px rgba(76, 175, 80, 0.2)'
+                                            }
+                                        }}
+                                    >
+                                        <TimeIcon sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
+                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                                            🕐 Godziny dostępności
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                            Pozwól klientom rezerwować w tym czasie
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                            </Box>
+                        </motion.div>
+                    )}
+
+                    {(view === 'createEvent' || view === 'createAvailability') && (
+                        <motion.div
+                            key="form"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {renderCreationForm()}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </DialogContent>
+
+            {(view === 'createEvent' || view === 'createAvailability') && (
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setView('timeline')} variant="outlined">
+                        Anuluj
+                    </Button>
+                    <Button onClick={handleSubmit} variant="contained">
+                        Zapisz
+                    </Button>
+                </DialogActions>
+            )}
+        </Dialog>
+    );
+};
+
+DayDetailsModal.propTypes = {
+    open: PropTypes.bool.isRequired,
+    date: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    events: PropTypes.arrayOf(PropTypes.object),
+    availabilityBlocks: PropTypes.arrayOf(PropTypes.object),
+    sites: PropTypes.arrayOf(PropTypes.object),
+    onClose: PropTypes.func.isRequired,
+    onCreateEvent: PropTypes.func,
+    onCreateAvailability: PropTypes.func
+};
+
+DayDetailsModal.defaultProps = {
+    date: new Date(),
+    events: [],
+    availabilityBlocks: [],
+    sites: [],
+    onCreateEvent: undefined,
+    onCreateAvailability: undefined
+};
+
+export default DayDetailsModal;

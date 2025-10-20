@@ -2,14 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import { fetchSites } from '../../../services/siteService';
-import CalendarGrid from '../../components/Dashboard/Calendar/CalendarGrid';
+import CalendarGridControlled from '../../components/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components/Dashboard/Templates/RealTemplateBrowser';
+import DayDetailsModal from '../../components/Dashboard/Calendar/DayDetailsModal';
 
 const CreatorCalendarApp = () => {
     const [sites, setSites] = useState([]);
     const [events, setEvents] = useState([]);
+    const [availabilityBlocks, setAvailabilityBlocks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedSiteId, setSelectedSiteId] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [currentMonth, setCurrentMonth] = useState(new Date());
 
     // Fetch sites from API
     useEffect(() => {
@@ -63,8 +69,39 @@ const CreatorCalendarApp = () => {
     }, []);
 
     const handleDayClick = (date) => {
-        console.log('Day clicked:', date);
-        // TODO: Open day detail modal
+        console.log('(DEBUGLOG) CreatorCalendarApp.dayClick', { date, selectedSiteId });
+        setSelectedDate(date);
+        setModalOpen(true);
+    };
+
+    const handleSiteSelect = (siteId) => {
+        console.log('(DEBUGLOG) CreatorCalendarApp.siteSelect', { siteId });
+        setSelectedSiteId(siteId);
+    };
+
+    const handleCreateEvent = (eventData) => {
+        console.log('Create event:', eventData);
+        // TODO: Call API to create event
+        // For now, just add to local state
+        const newEvent = {
+            id: `event-${Date.now()}`,
+            ...eventData,
+            site_id: selectedSiteId || sites[0]?.id,
+            site_color: sites.find(s => s.id === (selectedSiteId || sites[0]?.id))?.color_tag
+        };
+        setEvents([...events, newEvent]);
+    };
+
+    const handleCreateAvailability = (availabilityData) => {
+        console.log('Create availability:', availabilityData);
+        // TODO: Call API to create availability block
+        // For now, just add to local state
+        const newBlock = {
+            id: `availability-${Date.now()}`,
+            ...availabilityData,
+            site_id: selectedSiteId || sites[0]?.id
+        };
+        setAvailabilityBlocks([...availabilityBlocks, newBlock]);
     };
 
     const handleCreateDayTemplate = () => {
@@ -137,15 +174,30 @@ const CreatorCalendarApp = () => {
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
-                        <CalendarGrid
+                        <CalendarGridControlled
                             events={events}
                             sites={sites}
+                            mode="calendar-focus"
+                            selectedSiteId={selectedSiteId}
+                            currentMonth={currentMonth}
                             onDayClick={handleDayClick}
-                            forceExtendedMode={true}
+                            onMonthChange={setCurrentMonth}
+                            onSiteSelect={handleSiteSelect}
                         />
                     </motion.div>
                 </Box>
             </Box>
+
+            <DayDetailsModal
+                open={modalOpen}
+                date={selectedDate}
+                events={events}
+                availabilityBlocks={availabilityBlocks}
+                sites={sites}
+                onClose={() => setModalOpen(false)}
+                onCreateEvent={handleCreateEvent}
+                onCreateAvailability={handleCreateAvailability}
+            />
         </Box>
     );
 };

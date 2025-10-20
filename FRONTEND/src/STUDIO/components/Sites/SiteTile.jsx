@@ -11,9 +11,12 @@ import {
     Link as LinkIcon,
     Edit as EditIcon,
     Delete as DeleteIcon,
-    Settings as SettingsIcon
+    Settings as SettingsIcon,
+    Palette as PaletteIcon
 } from '@mui/icons-material';
-import { deleteSite } from '../../../services/siteService';
+import { deleteSite, updateSiteColor } from '../../../services/siteService';
+import SiteColorPicker from './SiteColorPicker';
+import { getSiteColorHex } from '../../../theme/siteColors';
 
 const SiteTile = ({ site, index, onSiteDeleted }) => {
     const navigate = useNavigate();
@@ -23,12 +26,17 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
     const [menuIconColor, setMenuIconColor] = useState('rgba(255, 255, 255, 0.9)');
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [colorPickerOpen, setColorPickerOpen] = useState(false);
+    const [localColorIndex, setLocalColorIndex] = useState(site.color_index ?? 0);
     
     // Debug flag - set to true to see the menu click area
     const DEBUG_MENU_AREA = false;
     
     // Determine if site is active (default to true if not specified)
     const isActive = site.is_active ?? false;
+    
+    // Get the site color
+    const siteColor = getSiteColorHex(localColorIndex);
     
     // Mock analytics data - replace with actual API calls
     const [analytics] = useState({
@@ -139,6 +147,21 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
 
     const handleDeleteCancel = () => {
         setDeleteDialogOpen(false);
+    };
+
+    const handleChangeColor = () => {
+        handleMenuClose();
+        setColorPickerOpen(true);
+    };
+
+    const handleColorSelect = async (colorIndex) => {
+        try {
+            await updateSiteColor(site.id, colorIndex);
+            setLocalColorIndex(colorIndex);
+        } catch (error) {
+            console.error('Failed to update site color:', error);
+            alert('Failed to update site color. Please try again.');
+        }
     };
 
     const handleTileClick = () => {
@@ -410,14 +433,14 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                 // TODO: Filter calendar by this site
                             }}
                             sx={{
-                                color: 'primary.main',
+                                color: siteColor,
                                 padding: '6px',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '& svg': {
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                                 },
                                 '&:hover': {
-                                    backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                    backgroundColor: `${siteColor}14`,
                                     transform: 'scale(1.1)',
                                     '& svg': {
                                         transform: 'scale(1.15)'
@@ -441,11 +464,11 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             alignItems: 'center',
                             gap: 0.5,
                             mb: 2,
-                            color: 'primary.main',
+                            color: siteColor,
                             textDecoration: 'none',
                             transition: 'all 0.2s ease',
                             '&:hover': {
-                                color: 'primary.dark',
+                                opacity: 0.8,
                                 textDecoration: 'underline'
                             }
                         }}
@@ -641,6 +664,10 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     }
                 }}
             >
+                <MenuItem onClick={handleChangeColor}>
+                    <PaletteIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
+                    Change Color
+                </MenuItem>
                 <MenuItem onClick={handleEdit}>
                     <EditIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Edit Site
@@ -658,6 +685,15 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     Delete Site
                 </MenuItem>
             </Menu>
+
+            {/* Color Picker Dialog */}
+            <SiteColorPicker
+                open={colorPickerOpen}
+                onClose={() => setColorPickerOpen(false)}
+                currentColorIndex={localColorIndex}
+                onColorSelect={handleColorSelect}
+                siteName={site.name}
+            />
 
             {/* Delete Confirmation Dialog */}
             <Dialog

@@ -3,13 +3,13 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'framer-motion';
 import Toast from './Toast';
 
-const ToastContainer = ({ toasts, removeToast, position = 'bottom-right' }) => {
+const ToastContainer = ({ toasts, removeToast, position = 'bottom-left' }) => {
   const pos = {
     'top-right':    'top-4 right-4 items-end',
     'top-left':     'top-4 left-4 items-start',
     'bottom-right': 'bottom-4 right-4 items-end',
     'bottom-left':  'bottom-4 left-4 items-start',
-  }[position] || 'bottom-4 right-4 items-end';
+  }[position] || 'bottom-4 left-4 items-start';
 
   const body = typeof document !== 'undefined' ? document.body : null;
   const content = (

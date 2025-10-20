@@ -75,6 +75,7 @@ class Site(models.Model):
     owner = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='sites')
     name = models.CharField(max_length=255)
     identifier = models.SlugField(max_length=255, unique=True, editable=False, blank=True, null=True)
+    color_index = models.IntegerField(default=0, help_text='Index of the site color in the palette (0-11)')
     template_config = models.JSONField(default=dict, blank=True)
     version_history = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -150,6 +151,45 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.start_time.isoformat()} - {self.end_time.isoformat()})"
+
+
+class AvailabilityBlock(models.Model):
+    """
+    Represents a time window where clients can book appointments.
+    The creator defines meeting lengths, time snapping, and buffer time.
+    """
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='availability_blocks')
+    admin = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='availability_blocks')
+    title = models.CharField(max_length=255, default='Dostępny')
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    meeting_lengths = models.JSONField(
+        default=list,
+        help_text='List of allowed meeting durations in minutes, e.g., [30, 45, 60]'
+    )
+    time_snapping = models.IntegerField(
+        default=30,
+        help_text='Interval in minutes for when meetings can start (e.g., 15, 30, 60)'
+    )
+    buffer_time = models.IntegerField(
+        default=0,
+        help_text='Minimum time between meetings in minutes'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['date', 'start_time']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(end_time__gt=models.F('start_time')),
+                name='availability_end_after_start'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.title} on {self.date} ({self.start_time} - {self.end_time})"
 
 
 class Booking(models.Model):

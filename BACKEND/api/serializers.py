@@ -68,7 +68,7 @@ class SiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Site
         fields = [
-            'id', 'owner', 'name', 'identifier',
+            'id', 'owner', 'name', 'identifier', 'color_index',
             'template_config', 'version_history',
             'created_at', 'updated_at'
         ]

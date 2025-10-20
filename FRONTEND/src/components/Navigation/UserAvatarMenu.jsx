@@ -22,6 +22,7 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PhotoCameraBackOutlinedIcon from '@mui/icons-material/PhotoCameraBackOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import { useNavigate } from 'react-router-dom';
 import useTheme from '../../theme/useTheme';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
@@ -50,32 +51,40 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
   }, [user]);
 
   const defaultMenuItems = useMemo(
-    () => ([
-      {
-        label: 'Profile Settings',
-        icon: <PersonOutlineIcon fontSize="small" />,
-        path: '/studio/account/profile'
-      },
-      {
-        label: 'Billing & Plans',
-        icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
-        path: '/studio/account/billing'
-      },
-      {
-        label: 'Appearance',
-        icon: <PaletteOutlinedIcon fontSize="small" />,
-        path: '/studio/account/appearance'
-      },
-      {
-        label: 'Settings',
-        icon: <SettingsOutlinedIcon fontSize="small" />,
-        path: '/studio/account/settings'
-      }
-    ]),
+    () => ({
+      settings: [
+        {
+          label: 'Notifications',
+          icon: <NotificationsOutlinedIcon fontSize="small" />,
+          path: '/studio/notifications',
+          badge: 0 // Can be updated with actual notification count
+        },
+        {
+          label: 'Profile Settings',
+          icon: <PersonOutlineIcon fontSize="small" />,
+          path: '/studio/account/profile'
+        },
+        {
+          label: 'Billing & Plans',
+          icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
+          path: '/studio/account/billing'
+        },
+        {
+          label: 'Appearance',
+          icon: <PaletteOutlinedIcon fontSize="small" />,
+          path: '/studio/account/appearance'
+        },
+        {
+          label: 'Settings',
+          icon: <SettingsOutlinedIcon fontSize="small" />,
+          path: '/studio/account/settings'
+        }
+      ]
+    }),
     []
   );
 
-  const menuItems = menuConfig && menuConfig.length > 0 ? menuConfig : defaultMenuItems;
+  const menuItems = menuConfig && (menuConfig.notifications || menuConfig.settings) ? menuConfig : defaultMenuItems;
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -232,36 +241,162 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
 
           <Divider sx={{ borderColor: alpha(subduedText || '#000', 0.2) }} />
 
-          <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {menuItems.map((item) => (
-              <ListItemButton
-                key={item.label}
-                onClick={() => {
-                  if (item.onClick) {
-                    item.onClick({ closeMenu: handleClose });
-                  } else {
-                    handleNavigate(item.path);
-                  }
-                }}
-                disabled={item.disabled ?? !item.path}
-                sx={{
-                  borderRadius: '12px',
-                  color: 'text.primary',
-                  '&:hover': {
-                    backgroundColor: alpha(accentColor, 0.12)
-                  }
+          {/* Notifications Section */}
+          {menuItems.notifications && menuItems.notifications.length > 0 && (
+            <>
+              <Box>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    px: 2, 
+                    py: 0.5, 
+                    color: subduedText, 
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    fontSize: '0.7rem'
+                  }}
+                >
+                  Notifications
+                </Typography>
+                <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  {menuItems.notifications.map((item) => (
+                    <ListItemButton
+                      key={item.label}
+                      onClick={() => {
+                        if (item.onClick) {
+                          item.onClick({ closeMenu: handleClose });
+                        } else {
+                          handleNavigate(item.path);
+                        }
+                      }}
+                      disabled={item.disabled ?? !item.path}
+                      sx={{
+                        borderRadius: '12px',
+                        color: 'text.primary',
+                        '&:hover': {
+                          backgroundColor: alpha(accentColor, 0.12)
+                        }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36, color: subduedText }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.label}
+                        primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                      />
+                      {item.badge > 0 && (
+                        <Box
+                          sx={{
+                            minWidth: 20,
+                            height: 20,
+                            borderRadius: '10px',
+                            backgroundColor: accentColor,
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            px: 0.75
+                          }}
+                        >
+                          {item.badge}
+                        </Box>
+                      )}
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Box>
+
+              <Divider sx={{ borderColor: alpha(subduedText || '#000', 0.2) }} />
+            </>
+          )}
+
+          {/* Settings Section */}
+          {menuItems.settings && menuItems.settings.length > 0 && (
+            <Box>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  px: 2, 
+                  py: 0.5, 
+                  color: subduedText, 
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  fontSize: '0.7rem'
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 36, color: subduedText }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
-                />
-              </ListItemButton>
-            ))}
-          </List>
+                Settings
+              </Typography>
+              <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                {menuItems.settings.map((item) => (
+                  <ListItemButton
+                    key={item.label}
+                    onClick={() => {
+                      if (item.onClick) {
+                        item.onClick({ closeMenu: handleClose });
+                      } else {
+                        handleNavigate(item.path);
+                      }
+                    }}
+                    disabled={item.disabled ?? !item.path}
+                    sx={{
+                      borderRadius: '12px',
+                      color: 'text.primary',
+                      '&:hover': {
+                        backgroundColor: alpha(accentColor, 0.12)
+                      }
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36, color: subduedText }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.label}
+                      primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Box>
+          )}
+
+          {/* Legacy support for old menu items format (array) */}
+          {Array.isArray(menuItems) && (
+            <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              {menuItems.map((item) => (
+                <ListItemButton
+                  key={item.label}
+                  onClick={() => {
+                    if (item.onClick) {
+                      item.onClick({ closeMenu: handleClose });
+                    } else {
+                      handleNavigate(item.path);
+                    }
+                  }}
+                  disabled={item.disabled ?? !item.path}
+                  sx={{
+                    borderRadius: '12px',
+                    color: 'text.primary',
+                    '&:hover': {
+                      backgroundColor: alpha(accentColor, 0.12)
+                    }
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36, color: subduedText }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.label}
+                    primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          )}
 
           <Button
             variant="contained"
@@ -284,15 +419,39 @@ UserAvatarMenu.propTypes = {
     email: PropTypes.string
   }),
   onLogout: PropTypes.func.isRequired,
-  menuItems: PropTypes.arrayOf(
+  menuItems: PropTypes.oneOfType([
+    PropTypes.arrayOf(
+      PropTypes.shape({
+        label: PropTypes.string.isRequired,
+        icon: PropTypes.node.isRequired,
+        path: PropTypes.string,
+        disabled: PropTypes.bool,
+        onClick: PropTypes.func,
+        badge: PropTypes.number
+      })
+    ),
     PropTypes.shape({
-      label: PropTypes.string.isRequired,
-      icon: PropTypes.node.isRequired,
-      path: PropTypes.string,
-      disabled: PropTypes.bool,
-      onClick: PropTypes.func
+      notifications: PropTypes.arrayOf(
+        PropTypes.shape({
+          label: PropTypes.string.isRequired,
+          icon: PropTypes.node.isRequired,
+          path: PropTypes.string,
+          disabled: PropTypes.bool,
+          onClick: PropTypes.func,
+          badge: PropTypes.number
+        })
+      ),
+      settings: PropTypes.arrayOf(
+        PropTypes.shape({
+          label: PropTypes.string.isRequired,
+          icon: PropTypes.node.isRequired,
+          path: PropTypes.string,
+          disabled: PropTypes.bool,
+          onClick: PropTypes.func
+        })
+      )
     })
-  )
+  ])
 };
 
 UserAvatarMenu.defaultProps = {

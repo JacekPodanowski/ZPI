@@ -37,3 +37,10 @@ export const deleteSite = async (siteId) => {
     const response = await apiClient.delete(`/sites/${siteId}/`);
     return response.data;
 };
+
+export const updateSiteColor = async (siteId, colorIndex) => {
+    const response = await apiClient.patch(`/sites/${siteId}/update_color/`, {
+        color_index: colorIndex
+    });
+    return response.data;
+};
