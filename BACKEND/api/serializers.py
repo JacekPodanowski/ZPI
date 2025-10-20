@@ -47,7 +47,7 @@ class PlatformUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlatformUser
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name',
+            'id', 'username', 'email', 'first_name', 'last_name', 'avatar',
             'account_type', 'source_tag', 'is_staff', 'is_active',
             'created_at', 'updated_at'
         ]

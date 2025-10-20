@@ -51,6 +51,7 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=254, unique=True)
     first_name = models.CharField(max_length=150, blank=False)
     last_name = models.CharField(max_length=150, blank=True, null=True)
+    avatar = models.CharField(max_length=500, blank=True, null=True, help_text='URL to user avatar image')
     account_type = models.CharField(max_length=10, choices=AccountType.choices, default=AccountType.FREE)
     source_tag = models.CharField(max_length=10, choices=SourceTag.choices, default=SourceTag.WEB)
     created_at = models.DateTimeField(default=timezone.now)

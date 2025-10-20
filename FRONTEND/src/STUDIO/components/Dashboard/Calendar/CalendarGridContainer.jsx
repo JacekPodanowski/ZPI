@@ -1,53 +1,52 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import PropTypes from 'prop-types';
 import useDashboardStore from '../../../store/dashboardStore';
 import CalendarGridControlled from './CalendarGridControlled';
-import { shallow } from 'zustand/shallow';
 
-/**
- * Container component that connects CalendarGridControlled to the dashboard store.
- * This handles all the Zustand state management and business logic.
- */
+// Connects the controlled calendar grid with the Zustand dashboard store.
 const CalendarGridContainer = ({ events, sites, onDayClick }) => {
-    const dashboardState = useDashboardStore(
-        (state) => ({
-            mode: state.mode,
-            selectedSiteId: state.selectedSiteId,
-            currentMonth: state.currentMonth,
-            setCurrentMonth: state.setCurrentMonth,
-            switchMode: state.switchMode,
-            updateLastInteraction: state.updateLastInteraction,
-            selectSite: state.selectSite
-        }),
-        shallow
+    const mode = useDashboardStore((state) => state.mode);
+    const selectedSiteId = useDashboardStore((state) => state.selectedSiteId);
+    const currentMonth = useDashboardStore((state) => state.currentMonth);
+    const setCurrentMonth = useDashboardStore((state) => state.setCurrentMonth);
+    const switchMode = useDashboardStore((state) => state.switchMode);
+    const updateLastInteraction = useDashboardStore((state) => state.updateLastInteraction);
+    const selectSite = useDashboardStore((state) => state.selectSite);
+
+    const handleDayClick = useCallback(
+        (date) => {
+            if (mode === 'site-focus') {
+                switchMode('calendar-focus', 'day-click');
+            }
+            updateLastInteraction();
+            onDayClick?.(date);
+        },
+        [mode, onDayClick, switchMode, updateLastInteraction]
     );
 
-    const handleDayClick = useCallback((date) => {
-        // Auto-switch to Calendar Power mode when clicking a day
-        if (dashboardState.mode === 'site-focus') {
-            dashboardState.switchMode('calendar-focus', 'day-click');
-        }
-        dashboardState.updateLastInteraction();
-        onDayClick?.(date);
-    }, [dashboardState, onDayClick]);
+    const handleMonthChange = useCallback(
+        (newMonth) => {
+            setCurrentMonth(newMonth);
+            updateLastInteraction();
+        },
+        [setCurrentMonth, updateLastInteraction]
+    );
 
-    const handleMonthChange = useCallback((newMonth) => {
-        dashboardState.setCurrentMonth(newMonth);
-        dashboardState.updateLastInteraction();
-    }, [dashboardState]);
-
-    const handleSiteSelect = useCallback((siteId) => {
-        dashboardState.selectSite(siteId);
-        dashboardState.updateLastInteraction();
-    }, [dashboardState]);
+    const handleSiteSelect = useCallback(
+        (siteId) => {
+            selectSite(siteId);
+            updateLastInteraction();
+        },
+        [selectSite, updateLastInteraction]
+    );
 
     return (
         <CalendarGridControlled
             events={events}
             sites={sites}
-            mode={dashboardState.mode}
-            selectedSiteId={dashboardState.selectedSiteId}
-            currentMonth={dashboardState.currentMonth || new Date()}
+            mode={mode}
+            selectedSiteId={selectedSiteId}
+            currentMonth={currentMonth || new Date()}
             onDayClick={handleDayClick}
             onMonthChange={handleMonthChange}
             onSiteSelect={handleSiteSelect}

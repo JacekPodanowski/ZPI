@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Avatar,
@@ -12,7 +12,6 @@ import {
   ListItemText,
   Menu,
   Stack,
-  Tooltip,
   Typography
 } from '@mui/material';
 import Grow from '@mui/material/Grow';
@@ -20,12 +19,14 @@ import { alpha } from '@mui/material/styles';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import PhotoCameraBackOutlinedIcon from '@mui/icons-material/PhotoCameraBackOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import { useNavigate } from 'react-router-dom';
 import useTheme from '../../theme/useTheme';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
+import AvatarUploader from './AvatarUploader';
+import { resolveMediaUrl } from '../../config/api';
+import apiClient from '../../services/apiClient';
 
 const AVATAR_BUTTON_SIZE = 44;
 const GLOW_MAX_RANGE = 7;
@@ -40,15 +41,21 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [localUser, setLocalUser] = useState(user);
   const open = Boolean(anchorEl);
 
+  // Sync localUser with user prop
+  useEffect(() => {
+    setLocalUser(user);
+  }, [user]);
+
   const displayName = useMemo(() => {
-    if (!user) {
+    if (!localUser) {
       return 'Nieznany użytkownik';
     }
-    const composed = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
-    return composed.length > 0 ? composed : user.email;
-  }, [user]);
+    const composed = [localUser.first_name, localUser.last_name].filter(Boolean).join(' ').trim();
+    return composed.length > 0 ? composed : localUser.email;
+  }, [localUser]);
 
   const defaultMenuItems = useMemo(
     () => ({
@@ -106,7 +113,12 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
     onLogout();
   };
 
-  const avatarSrc = ShadowAvatarSrc;
+  const handleAvatarChange = async (newAvatarUrl) => {
+    // Update local state immediately
+    setLocalUser((prev) => ({ ...prev, avatar: newAvatarUrl }));
+  };
+
+  const avatarSrc = localUser?.avatar ? resolveMediaUrl(localUser.avatar) : ShadowAvatarSrc;
 
   // Calculate the percentage where avatar edge is in the gradient
   const avatarEdgePercent = (AVATAR_BUTTON_SIZE / (AVATAR_BUTTON_SIZE + GLOW_MAX_RANGE * 2)) * 100;
@@ -211,33 +223,29 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
       >
         <Stack spacing={2}>
           <Stack direction="row" spacing={2} alignItems="center">
-            <Avatar src={avatarSrc} alt={displayName} sx={{ width: 48, height: 48 }} />
+            <Box sx={{ position: 'relative' }}>
+              <Avatar src={avatarSrc} alt={displayName} sx={{ width: 48, height: 48 }} />
+              {open && (
+                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+                  <AvatarUploader
+                    currentAvatar={localUser?.avatar}
+                    onAvatarChange={handleAvatarChange}
+                    size={48}
+                  />
+                </Box>
+              )}
+            </Box>
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 {displayName}
               </Typography>
-              {user?.email && (
+              {localUser?.email && (
                 <Typography variant="body2" sx={{ color: subduedText }}>
-                  {user.email}
+                  {localUser.email}
                 </Typography>
               )}
             </Box>
           </Stack>
-
-          <Tooltip title="Prześlij avatar — funkcja w przygotowaniu">
-            <span>
-              <Button
-                fullWidth
-                variant="outlined"
-                size="small"
-                startIcon={<PhotoCameraBackOutlinedIcon fontSize="small" />}
-                disabled
-                sx={{ borderRadius: '14px', justifyContent: 'flex-start', gap: 1 }}
-              >
-                Dodaj avatar (wkrótce)
-              </Button>
-            </span>
-          </Tooltip>
 
           <Divider sx={{ borderColor: alpha(subduedText || '#000', 0.2) }} />
 
@@ -317,21 +325,7 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
           {/* Settings Section */}
           {menuItems.settings && menuItems.settings.length > 0 && (
             <Box>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  px: 2, 
-                  py: 0.5, 
-                  color: subduedText, 
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  fontSize: '0.7rem'
-                }}
-              >
-                Settings
-              </Typography>
-              <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+              <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {menuItems.settings.map((item) => (
                   <ListItemButton
                     key={item.label}
