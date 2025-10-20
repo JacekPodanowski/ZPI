@@ -63,7 +63,7 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
         {
           label: 'Notifications',
           icon: <NotificationsOutlinedIcon fontSize="small" />,
-          path: '/studio/notifications',
+          path: '/studio/account/notifications',
           badge: 0 // Can be updated with actual notification count
         },
         {

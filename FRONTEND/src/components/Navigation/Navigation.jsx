@@ -30,6 +30,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 
 const drawerWidth = 280;
@@ -54,6 +55,11 @@ const Navigation = () => {
 
     const userMenuItems = useMemo(
         () => ([
+            {
+                label: 'Notifications',
+                icon: <NotificationsNoneOutlinedIcon fontSize="small" />,
+                path: '/studio/account/notifications'
+            },
             {
                 label: 'Profile Settings',
                 icon: <PersonOutlineIcon fontSize="small" />,

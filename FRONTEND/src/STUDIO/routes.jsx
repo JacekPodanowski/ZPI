@@ -14,6 +14,7 @@ import ProfilePage from './pages/Settings/ProfilePage';
 import BillingPage from './pages/Settings/BillingPage';
 import AppearancePage from './pages/Settings/AppearancePage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import NotificationsPage from './pages/Settings/NotificationsPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
 import ToastTestPage from './pages/Lab/ToastTestPage';
 
@@ -44,7 +45,8 @@ const StudioApp = () => (
 
     {/* Account settings routes with shared layout */}
     <Route path="account" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
-      <Route index element={<Navigate to="profile" replace />} />
+      <Route index element={<Navigate to="notifications" replace />} />
+      <Route path="notifications" element={<NotificationsPage />} />
       <Route path="profile" element={<ProfilePage />} />
       <Route path="billing" element={<BillingPage />} />
       <Route path="appearance" element={<AppearancePage />} />

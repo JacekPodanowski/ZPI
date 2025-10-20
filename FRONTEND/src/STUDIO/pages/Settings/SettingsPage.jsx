@@ -170,33 +170,6 @@ const SettingsPage = () => {
           <Stack spacing={2}>
             <Box
               sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                p: 2,
-                borderRadius: '12px',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                backgroundColor: theme.colors?.bg?.default || theme.palette.background.default
-              }}
-            >
-              <Box>
-                <Typography variant="body1" fontWeight={600}>
-                  Two-Factor Authentication
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Add an extra layer of security (TODO)
-                </Typography>
-              </Box>
-              <Switch
-                checked={settings.twoFactorAuth}
-                onChange={handleSettingChange('twoFactorAuth')}
-                color="primary"
-                disabled
-              />
-            </Box>
-
-            <Box
-              sx={{
                 p: 2,
                 borderRadius: '12px',
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,

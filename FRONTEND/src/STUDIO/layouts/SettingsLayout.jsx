@@ -16,8 +16,17 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import useTheme from '../../theme/useTheme';
 import Navigation from '../../components/Navigation/Navigation';
+
+const notificationsNavigation = [
+  {
+    label: 'Notifications',
+    path: '/studio/account/notifications',
+    icon: <NotificationsNoneOutlinedIcon />
+  }
+];
 
 const settingsNavigation = [
   {
@@ -51,6 +60,44 @@ const SettingsLayout = () => {
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
   const subduedText = theme.colors?.text?.secondary || theme.palette.text.secondary;
 
+  const renderNavItems = (items) =>
+    items.map((item) => {
+      const isActive = location.pathname === item.path;
+      return (
+        <ListItemButton
+          key={item.path}
+          onClick={() => navigate(item.path)}
+          sx={{
+            borderRadius: '12px',
+            mb: 0.5,
+            backgroundColor: isActive ? alpha(accentColor, 0.12) : 'transparent',
+            color: isActive
+              ? accentColor
+              : theme.colors?.text?.primary || theme.palette.text.primary,
+            '&:hover': {
+              backgroundColor: alpha(accentColor, 0.08)
+            }
+          }}
+        >
+          <ListItemIcon
+            sx={{
+              minWidth: 40,
+              color: isActive ? accentColor : subduedText
+            }}
+          >
+            {item.icon}
+          </ListItemIcon>
+          <ListItemText
+            primary={item.label}
+            primaryTypographyProps={{
+              variant: 'body2',
+              fontWeight: isActive ? 600 : 500
+            }}
+          />
+        </ListItemButton>
+      );
+    });
+
   return (
     <Box
       sx={{
@@ -71,7 +118,7 @@ const SettingsLayout = () => {
             color: theme.colors?.text?.primary || theme.palette.text.primary
           }}
         >
-          Account Settings
+          Your Account
         </Typography>
         <Typography
           variant="body1"
@@ -110,47 +157,28 @@ const SettingsLayout = () => {
                 letterSpacing: '0.5px'
               }}
             >
-              Navigation
+              Notifications
             </Typography>
             <List disablePadding sx={{ mt: 1 }}>
-              {settingsNavigation.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <ListItemButton
-                    key={item.path}
-                    onClick={() => navigate(item.path)}
-                    sx={{
-                      borderRadius: '12px',
-                      mb: 0.5,
-                      backgroundColor: isActive
-                        ? alpha(accentColor, 0.12)
-                        : 'transparent',
-                      color: isActive
-                        ? accentColor
-                        : theme.colors?.text?.primary || theme.palette.text.primary,
-                      '&:hover': {
-                        backgroundColor: alpha(accentColor, 0.08)
-                      }
-                    }}
-                  >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 40,
-                        color: isActive ? accentColor : subduedText
-                      }}
-                    >
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{
-                        variant: 'body2',
-                        fontWeight: isActive ? 600 : 500
-                      }}
-                    />
-                  </ListItemButton>
-                );
-              })}
+              {renderNavItems(notificationsNavigation)}
+            </List>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography
+              variant="overline"
+              sx={{
+                px: 2,
+                py: 1,
+                color: subduedText,
+                fontWeight: 600,
+                letterSpacing: '0.5px'
+              }}
+            >
+              Account Settings
+            </Typography>
+            <List disablePadding sx={{ mt: 1 }}>
+              {renderNavItems(settingsNavigation)}
             </List>
           </Paper>
 
