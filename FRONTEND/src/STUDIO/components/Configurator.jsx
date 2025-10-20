@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import useEditorStore from '../store/editorStore'
 import ColorPicker from '../../components/ColorPicker'
 import ImageUploader from '../../components/ImageUploader'
+import { resolveMediaUrl } from '../../config/api'
 
 const isHeroModule = (module) => {
   if (!module) return false
@@ -363,7 +364,8 @@ const Configurator = () => {
                   </div>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {childData.config.images.map((item, idx) => {
-                      const imgUrl = typeof item === 'string' ? item : item.url
+                      const rawImageUrl = typeof item === 'string' ? item : item.url
+                      const imgUrl = resolveMediaUrl(rawImageUrl)
                       const caption = typeof item === 'object' ? item.caption : ''
                       const isEditing = editingCaption === idx
 
@@ -376,7 +378,7 @@ const Configurator = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium opacity-60">Zdjęcie {idx + 1}</p>
-                              <p className="text-xs truncate opacity-40">{imgUrl.substring(0, 40)}...</p>
+                              <p className="text-xs truncate opacity-40">{(rawImageUrl || '').substring(0, 40)}...</p>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               {/* Move up */}
@@ -797,8 +799,8 @@ const Configurator = () => {
                 </div>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {module.config.images.map((item, idx) => {
-                    // Obsługa starych formatów (string) i nowych (object)
-                    const imgUrl = typeof item === 'string' ? item : item.url
+                    const rawImageUrl = typeof item === 'string' ? item : item.url
+                    const imgUrl = resolveMediaUrl(rawImageUrl)
                     const caption = typeof item === 'object' ? item.caption : ''
                     const isEditing = editingCaption === idx
 
@@ -811,7 +813,7 @@ const Configurator = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium opacity-60">Zdjęcie {idx + 1}</p>
-                            <p className="text-xs truncate opacity-40">{imgUrl.substring(0, 40)}...</p>
+                            <p className="text-xs truncate opacity-40">{(rawImageUrl || '').substring(0, 40)}...</p>
                           </div>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             {/* Move up */}
@@ -917,22 +919,17 @@ const Configurator = () => {
         {module.type === 'video' && (
           <>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
-                Link do wideo
+              <label className="block text-sm font-medium mb-3" style={{ color: 'rgb(30, 30, 30)' }}>
+                Wideo
               </label>
-              <input
-                type="text"
+              <ImageUploader
+                label=""
                 value={module.config?.videoUrl || ''}
-                onChange={(e) => handleConfigChange('videoUrl', e.target.value)}
-                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
-                style={{
-                  borderColor: 'rgba(30, 30, 30, 0.2)',
-                  '--tw-ring-color': 'rgb(146, 0, 32)'
-                }}
-                placeholder="https://www.youtube.com/watch?v=..."
+                onChange={(url) => handleConfigChange('videoUrl', url)}
+                aspectRatio="16/9"
               />
               <p className="text-xs mt-2 opacity-60">
-                Wklej adres z YouTube lub Vimeo. Automatycznie zamienimy go na wersję osadzoną.
+                Przeciągnij plik wideo, wklej URL z YouTube/Vimeo lub wybierz z dysku.
               </p>
             </div>
 

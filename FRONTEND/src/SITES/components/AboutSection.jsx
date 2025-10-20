@@ -1,8 +1,13 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const AboutSection = ({ config }) => {
   const { title, description, imageUrl, avatar, bgColor } = config
+  const primaryMedia = imageUrl || avatar
+  const fallbackImage = imageUrl && avatar && imageUrl !== avatar ? avatar : ''
+  const primaryIsVideo = isVideoUrl(primaryMedia)
 
   return (
     <section className="py-20 px-4" style={{ backgroundColor: bgColor || 'rgb(228, 229, 218)' }}>
@@ -22,14 +27,26 @@ const AboutSection = ({ config }) => {
             </p>
           </div>
           
-          {/* Obrazek lub placeholder */}
-          <div className="rounded-xl h-96 overflow-hidden shadow-lg">
-            {imageUrl || avatar ? (
-              <img 
-                src={imageUrl || avatar} 
-                alt={title} 
-                className="w-full h-full object-cover"
-              />
+          {/* Obrazek lub wideo albo placeholder */}
+          <div className="rounded-xl h-96 overflow-hidden shadow-lg bg-black">
+            {primaryMedia ? (
+              primaryIsVideo ? (
+                <video
+                  src={resolveMediaUrl(primaryMedia)}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  poster={fallbackImage ? resolveMediaUrl(fallbackImage) : undefined}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img 
+                  src={resolveMediaUrl(primaryMedia)} 
+                  alt={title} 
+                  className="w-full h-full object-cover"
+                />
+              )
             ) : (
               <div 
                 className="w-full h-full flex items-center justify-center"

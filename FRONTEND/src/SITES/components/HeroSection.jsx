@@ -1,20 +1,37 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const HeroSection = ({ config }) => {
   const { title, subtitle, bgColor, textColor, backgroundImage } = config
+  const resolvedBackground = resolveMediaUrl(backgroundImage)
+  const isVideo = isVideoUrl(backgroundImage)
 
   return (
     <section
       className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
       style={{ backgroundColor: bgColor, color: textColor }}
     >
-      {/* Obrazek tła */}
+      {/* Obrazek lub wideo tła */}
       {backgroundImage && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30"
-          style={{ backgroundImage: `url(${backgroundImage})` }}
-        />
+        isVideo ? (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute z-0 w-auto min-w-full min-h-full max-w-none"
+            style={{ objectFit: 'cover', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+          >
+            <source src={resolvedBackground} />
+          </video>
+        ) : (
+          <div 
+            className="absolute inset-0 bg-cover bg-center opacity-30"
+            style={{ backgroundImage: `url(${resolvedBackground})` }}
+          />
+        )
       )}
       
       {/* Zawartość */}

@@ -1,5 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
 
 const normaliseVideoUrl = (rawUrl = '') => {
   if (!rawUrl) return ''
@@ -66,6 +67,9 @@ const applyPlaybackPreferences = (rawUrl, options = {}) => {
 const VideoModule = ({ config }) => {
   const { videoUrl, caption, captionColor, bgColor, muted } = config || {}
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted })
+  const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'))
+  const fullSelfHostedUrl = isSelfHosted ? resolveMediaUrl(embedUrl) : ''
+
 
   return (
     <section className="py-12 px-6" style={{ backgroundColor: bgColor || 'transparent' }}>
@@ -77,7 +81,19 @@ const VideoModule = ({ config }) => {
           transition={{ duration: 0.5 }}
           className="w-full aspect-video rounded-2xl overflow-hidden shadow-xl bg-black/20"
         >
-          {embedUrl ? (
+          {isSelfHosted ? (
+            <video
+              src={fullSelfHostedUrl}
+              controls
+              muted={muted}
+              autoPlay={muted}
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            >
+              Your browser does not support the video tag.
+            </video>
+          ) : embedUrl ? (
             <iframe
               src={embedUrl}
               title={caption || 'Embedded Video'}

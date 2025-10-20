@@ -1,5 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const TeamModule = ({ config }) => {
   const {
@@ -36,13 +38,26 @@ const TeamModule = ({ config }) => {
               className="relative rounded-3xl overflow-hidden shadow-lg group h-full bg-white"
               whileHover={{ y: -8 }}
             >
-              <div className="relative aspect-[3/4] overflow-hidden">
+              <div className="relative aspect-[3/4] overflow-hidden bg-black">
                 {member.image ? (
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+                  isVideoUrl(member.image) ? (
+                    <video
+                      src={resolveMediaUrl(member.image)}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    >
+                      Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                    </video>
+                  ) : (
+                    <img
+                      src={resolveMediaUrl(member.image)}
+                      alt={member.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  )
                 ) : (
                   <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
                     Dodaj zdjęcie

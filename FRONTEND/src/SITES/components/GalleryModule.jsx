@@ -1,10 +1,38 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { resolveMediaUrl } from '../../config/api'
+import { isVideoUrl } from '../../utils/mediaUtils'
 
 const GalleryModule = ({ config }) => {
   const { images = [], columns = 3, gap = '1rem', style = 'grid' } = config
   const [currentIndex, setCurrentIndex] = useState(0)
   const scrollContainerRef = useRef(null)
+
+  const renderMedia = (rawUrl, altText, className = 'w-full h-full object-cover') => {
+    const resolvedUrl = resolveMediaUrl(rawUrl)
+    if (isVideoUrl(rawUrl)) {
+      return (
+        <video
+          src={resolvedUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className={className}
+        >
+          Your browser does not support the video tag.
+        </video>
+      )
+    }
+
+    return (
+      <img
+        src={resolvedUrl}
+        alt={altText}
+        className={className}
+      />
+    )
+  }
 
   // Auto-play dla slideshow i fade
   useEffect(() => {
@@ -61,7 +89,7 @@ const GalleryModule = ({ config }) => {
           }}
         >
           {images.map((item, idx) => {
-            const imgUrl = typeof item === 'string' ? item : item.url
+            const imgUrlRaw = typeof item === 'string' ? item : item.url
             const caption = typeof item === 'object' ? item.caption : ''
             
             return (
@@ -74,7 +102,7 @@ const GalleryModule = ({ config }) => {
                 whileHover={{ scale: 1.05 }}
                 className="rounded-xl overflow-hidden shadow-md cursor-pointer"
               >
-                <img src={imgUrl} alt={caption || `Gallery ${idx + 1}`} className="w-full h-64 object-cover" />
+                {renderMedia(imgUrlRaw, caption || `Gallery ${idx + 1}`, 'w-full h-64 object-cover')}
                 {caption && (
                   <div className="p-3 bg-white">
                     <p className="text-sm text-center" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -102,7 +130,7 @@ const GalleryModule = ({ config }) => {
           }}
         >
           {images.map((item, idx) => {
-            const imgUrl = typeof item === 'string' ? item : item.url
+            const imgUrlRaw = typeof item === 'string' ? item : item.url
             const caption = typeof item === 'object' ? item.caption : ''
             
             return (
@@ -115,7 +143,7 @@ const GalleryModule = ({ config }) => {
                 whileHover={{ scale: 1.02 }}
                 className="mb-4 rounded-xl overflow-hidden shadow-md cursor-pointer break-inside-avoid"
               >
-                <img src={imgUrl} alt={caption || `Gallery ${idx + 1}`} className="w-full object-cover" />
+                {renderMedia(imgUrlRaw, caption || `Gallery ${idx + 1}`, 'w-full object-cover')}
                 {caption && (
                   <div className="p-3 bg-white">
                     <p className="text-sm text-center" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -134,7 +162,7 @@ const GalleryModule = ({ config }) => {
   // Slideshow (poziome przesuwanie)
   if (style === 'slideshow') {
     const currentItem = images[currentIndex]
-    const imgUrl = typeof currentItem === 'string' ? currentItem : currentItem?.url
+    const imgUrlRaw = typeof currentItem === 'string' ? currentItem : currentItem?.url
     const caption = typeof currentItem === 'object' ? currentItem?.caption : ''
 
     return (
@@ -150,11 +178,7 @@ const GalleryModule = ({ config }) => {
                 transition={{ duration: 0.5 }}
                 className="absolute inset-0"
               >
-                <img
-                  src={imgUrl}
-                  alt={caption || `Slide ${currentIndex + 1}`}
-                  className="w-full h-full object-cover"
-                />
+                {renderMedia(imgUrlRaw, caption || `Slide ${currentIndex + 1}`, 'w-full h-full object-cover')}
                 {caption && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-4">
                     <p className="text-center">{caption}</p>
@@ -203,7 +227,7 @@ const GalleryModule = ({ config }) => {
   // Fade (zanikanie)
   if (style === 'fade') {
     const currentItem = images[currentIndex]
-    const imgUrl = typeof currentItem === 'string' ? currentItem : currentItem?.url
+    const imgUrlRaw = typeof currentItem === 'string' ? currentItem : currentItem?.url
     const caption = typeof currentItem === 'object' ? currentItem?.caption : ''
 
     return (
@@ -219,11 +243,7 @@ const GalleryModule = ({ config }) => {
                 transition={{ duration: 1 }}
                 className="absolute inset-0"
               >
-                <img
-                  src={imgUrl}
-                  alt={caption || `Slide ${currentIndex + 1}`}
-                  className="w-full h-full object-cover"
-                />
+                {renderMedia(imgUrlRaw, caption || `Slide ${currentIndex + 1}`, 'w-full h-full object-cover')}
                 {caption && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-4">
                     <p className="text-center">{caption}</p>
@@ -263,7 +283,7 @@ const GalleryModule = ({ config }) => {
             style={{ scrollBehavior: 'smooth' }}
           >
             {images.map((item, idx) => {
-              const imgUrl = typeof item === 'string' ? item : item.url
+              const imgUrlRaw = typeof item === 'string' ? item : item.url
               const caption = typeof item === 'object' ? item.caption : ''
               
               return (
@@ -272,7 +292,7 @@ const GalleryModule = ({ config }) => {
                   whileHover={{ scale: 1.05 }}
                   className="flex-shrink-0 w-80 rounded-xl overflow-hidden shadow-md cursor-pointer snap-center bg-white"
                 >
-                  <img src={imgUrl} alt={caption || `Carousel ${idx + 1}`} className="w-full h-64 object-cover" />
+                  {renderMedia(imgUrlRaw, caption || `Carousel ${idx + 1}`, 'w-full h-64 object-cover')}
                   {caption && (
                     <div className="p-3">
                       <p className="text-sm text-center" style={{ color: 'rgb(30, 30, 30)' }}>
