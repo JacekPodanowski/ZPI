@@ -13,6 +13,7 @@ from .views import (
     PublicSiteByIdView,
     publish_site,
     FileUploadView,
+    CustomReactComponentViewSet,
 )
 
 router = DefaultRouter()
@@ -22,6 +23,7 @@ router.register(r'clients', ClientViewSet, basename='client')
 router.register(r'events', EventViewSet, basename='event')
 router.register(r'bookings', BookingViewSet, basename='booking')
 router.register(r'templates', TemplateViewSet, basename='template')
+router.register(r'custom-components', CustomReactComponentViewSet, basename='customcomponent')
 
 urlpatterns = [
     path('', include(router.urls)),

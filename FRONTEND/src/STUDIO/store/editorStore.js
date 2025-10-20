@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { DEFAULT_REACT_COMPONENT_PROPS, DEFAULT_REACT_COMPONENT_SOURCE } from '../../constants/reactComponentDefaults'
 
 const DEFAULT_ANIMATIONS = { enabled: true, style: 'smooth' }
 
@@ -790,6 +791,14 @@ const useEditorStore = create((set, get) => ({
         textColor: 'rgb(30, 30, 30)',
         accentColor: 'rgb(146, 0, 32)',
         items: []
+      },
+      reactComponent: {
+        componentId: null,
+        componentName: '',
+        componentDescription: '',
+        componentUrl: null,
+        sourceCode: DEFAULT_REACT_COMPONENT_SOURCE,
+        props: { ...DEFAULT_REACT_COMPONENT_PROPS }
       }
     }
 
@@ -805,7 +814,8 @@ const useEditorStore = create((set, get) => ({
       blog: 'Blog',
       events: 'Wydarzenia',
       pricing: 'Cennik',
-      services: 'Usługi'
+      services: 'Usługi',
+      reactComponent: 'Komponent React'
     }
 
     const newModule = {

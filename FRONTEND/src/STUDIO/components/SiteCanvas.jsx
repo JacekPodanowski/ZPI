@@ -20,6 +20,7 @@ import EventsModule from '../../SITES/components/EventsModule'
 import PricingModule from '../../SITES/components/PricingModule'
 import ServicesModule from '../../SITES/components/ServicesModule'
 import TeamModule from '../../SITES/components/TeamModule'
+import ReactComponentModule from '../../SITES/components/ReactComponentModule'
 
 const SiteCanvas = () => {
   const {
@@ -38,6 +39,50 @@ const SiteCanvas = () => {
       .filter((key) => templateConfig.pages?.[key]),
     [templateConfig.pageOrder, templateConfig.pages]
   )
+
+  useEffect(() => {
+    const handleNavigationRequest = (event) => {
+      const detail = event?.detail
+      const target = typeof detail === 'string' ? { path: detail } : (detail || {})
+      if (!target) return
+
+      if (target.path && typeof target.path === 'string' && target.path.startsWith('#')) {
+        const element = document.getElementById(target.path.substring(1))
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }
+
+      let matchedPageKey = target.pageId
+
+      if (!matchedPageKey && target.path) {
+        matchedPageKey = orderedPageKeys.find((key) => {
+          const page = templateConfig.pages?.[key]
+          return page?.path === target.path
+        })
+      }
+
+      if (!matchedPageKey || !templateConfig.pages?.[matchedPageKey]) {
+        return
+      }
+
+      if (siteStructure === 'single-page') {
+        const page = templateConfig.pages[matchedPageKey]
+        const firstModule = page?.modules?.find((module) => module.enabled)
+        if (firstModule) {
+          const element = document.getElementById(`section-${firstModule.id}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }
+      }
+
+      setCurrentPage(matchedPageKey)
+    }
+
+    window.addEventListener('site:navigate', handleNavigationRequest)
+    return () => window.removeEventListener('site:navigate', handleNavigationRequest)
+  }, [orderedPageKeys, setCurrentPage, siteStructure, templateConfig.pages])
 
   const handleBackgroundClick = () => {
     if (!expertMode) {
@@ -119,6 +164,7 @@ const SiteCanvas = () => {
     pricing: PricingModule,
     services: ServicesModule,
     team: TeamModule,
+    reactcomponent: ReactComponentModule,
   }
 
   const renderModule = (module, inSinglePage = false) => {
@@ -140,6 +186,8 @@ const SiteCanvas = () => {
         Component = CalendarSection
       } else if (moduleTypeKey.includes('contact') || moduleIdKey.includes('contact')) {
         Component = ContactSection
+      } else if (moduleTypeKey === 'reactcomponent') {
+        Component = ReactComponentModule
       }
     }
     if (!Component) return null

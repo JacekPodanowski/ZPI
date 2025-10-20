@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import apiClient from '../services/apiClient';
 
 import HeroSection from './components/HeroSection';
@@ -17,6 +17,7 @@ import EventsModule from './components/EventsModule';
 import PricingModule from './components/PricingModule';
 import ServicesModule from './components/ServicesModule';
 import TeamModule from './components/TeamModule';
+import ReactComponentModule from './components/ReactComponentModule';
 
 const fetchPublicSiteConfig = async (siteId) => {
   const response = await apiClient.get(`/public-sites/by-id/${siteId}/`);
@@ -41,6 +42,7 @@ const componentMap = {
   pricing: PricingModule,
   services: ServicesModule,
   team: TeamModule,
+  reactComponent: ReactComponentModule,
 };
 
 const renderModule = (module) => {
@@ -55,6 +57,7 @@ const SiteApp = () => {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activePageKey, setActivePageKey] = useState(null);
 
   useEffect(() => {
     if (!siteId) {
@@ -78,11 +81,96 @@ const SiteApp = () => {
     loadSite();
   }, [siteId]);
 
-  const activePage = useMemo(() => {
-    if (!config) return null;
-    const pageKey = config.currentPage || 'home';
-    return config.pages?.[pageKey];
+  useEffect(() => {
+    if (!config) return;
+
+    const pages = config.pages || {};
+
+    const getPageKeyFromPath = (path) => {
+      if (!path) return null;
+      const entry = Object.entries(pages).find(([, page]) => page?.path === path);
+      return entry ? entry[0] : null;
+    };
+
+    const determineInitialPage = () => {
+      const defaultKey = config.currentPage && pages[config.currentPage] ? config.currentPage : Object.keys(pages)[0];
+      if (typeof window === 'undefined') {
+        return defaultKey;
+      }
+
+      const matchedFromLocation = getPageKeyFromPath(window.location.pathname);
+      return matchedFromLocation || defaultKey;
+    };
+
+    setActivePageKey(determineInitialPage());
+
+    const handlePopState = () => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+      const nextKey = getPageKeyFromPath(window.location.pathname);
+      if (nextKey && pages[nextKey]) {
+        setActivePageKey(nextKey);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [config]);
+
+  useEffect(() => {
+    if (!config) return;
+
+    const pages = config.pages || {};
+
+    const getPageKeyFromPath = (path) => {
+      if (!path) return null;
+      const entry = Object.entries(pages).find(([, page]) => page?.path === path);
+      return entry ? entry[0] : null;
+    };
+
+    const handleNavigation = (event) => {
+      const detail = event?.detail;
+      const target = typeof detail === 'string' ? { path: detail } : (detail || {});
+      if (!target) return;
+
+      if (target.path && typeof target.path === 'string' && target.path.startsWith('#')) {
+        const element = document.getElementById(target.path.substring(1));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      let pageKey = target.pageId;
+
+      if (!pageKey && target.path) {
+        pageKey = getPageKeyFromPath(target.path);
+      }
+
+      if (pageKey && pages[pageKey]) {
+        setActivePageKey(pageKey);
+        if (typeof window !== 'undefined') {
+          const nextPath = pages[pageKey].path || `/${pageKey}`;
+          if (window.location.pathname !== nextPath) {
+            window.history.pushState({}, '', nextPath);
+          }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        return;
+      }
+
+      if (target.path && typeof window !== 'undefined' && !target.path.startsWith('#')) {
+        window.location.assign(target.path);
+      }
+    };
+
+    window.addEventListener('site:navigate', handleNavigation);
+    return () => window.removeEventListener('site:navigate', handleNavigation);
+  }, [config]);
+
+  const activePage = config?.pages
+    ? config.pages[activePageKey || config.currentPage || 'home']
+    : null;
 
   if (loading) return <div>Loading Site...</div>;
   if (error) return <div>Error: {error}</div>;

@@ -1,8 +1,15 @@
-import React, { useState, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import useEditorStore from '../store/editorStore'
 import ColorPicker from '../../components/ColorPicker'
 import ImageUploader from '../../components/ImageUploader'
 import { resolveMediaUrl } from '../../config/api'
+import apiClient from '../../services/apiClient'
+import compileReactSnippet from '../../utils/compileReactSnippet'
+import {
+  DEFAULT_REACT_COMPONENT_PROPS,
+  DEFAULT_REACT_COMPONENT_SOURCE,
+  REACT_COMPONENT_MEDIA_PROP_KEYS
+} from '../../constants/reactComponentDefaults'
 
 const isHeroModule = (module) => {
   if (!module) return false
@@ -10,6 +17,94 @@ const isHeroModule = (module) => {
   if (type === 'hero') return true
   const id = (module.id || '').toLowerCase()
   return id === 'hero' || id.startsWith('hero') || id.endsWith('hero')
+}
+
+const PROP_LABELS = {
+  eyebrow: 'Etykieta nad tytułem',
+  title: 'Tytuł sekcji',
+  titleColor: 'Kolor tytułu',
+  description: 'Opis sekcji',
+  textColor: 'Kolor tekstu',
+  accentColor: 'Kolor akcentu',
+  ctaLabel: 'Tekst przycisku',
+  ctaBg: 'Kolor tła przycisku',
+  ctaTextColor: 'Kolor tekstu przycisku',
+  ctaHref: 'Link przycisku',
+  ctaTarget: 'Sposób otwarcia linku',
+  ctaLinkType: 'Działanie przycisku',
+  ctaInternalPageId: 'Docelowa strona',
+  ctaInternalPath: 'Docelowy adres',
+  imageIsVideo: 'Renderuj grafikę jako wideo',
+  videoControls: 'Pokaż kontrolki odtwarzacza',
+  imageUrl: 'Grafika / zdjęcie',
+  imageAlt: 'Tekst alternatywny obrazu'
+}
+
+const PROP_HELPERS = {
+  eyebrow: 'Krótka etykieta wyróżniająca sekcję.',
+  description: 'Opisz ofertę lub moduł jednym akapitem.',
+  ctaLabel: 'Tekst wyświetlany na przycisku CTA.',
+  ctaBg: 'Kolor tła przycisku CTA.',
+  ctaTextColor: 'Kolor tekstu na przycisku CTA.',
+  ctaHref: 'Wklej pełny adres URL. Pozostaw puste, aby przycisk nie był linkiem.',
+  ctaTarget: 'np. _self (w tej samej karcie) albo _blank (w nowej karcie).',
+  ctaLinkType: 'Wybierz, czy przycisk prowadzi na stronę wewnętrzną, zewnętrzną czy pozostaje bez akcji.',
+  ctaInternalPageId: 'Strona w obrębie serwisu, do której przekierujemy użytkownika.',
+  ctaInternalPath: 'Adres wynikający z wybranej strony. Możesz go dostosować (np. dodać kotwicę #sekcja).',
+  imageIsVideo: 'Wymuś renderowanie jako wideo, nawet jeśli rozszerzenie pliku jest niestandardowe.',
+  videoControls: 'Zaznacz, aby pokazać belkę sterującą (pauza, głośność).',
+  imageUrl: 'Wgraj grafikę widoczną w komponencie.',
+  imageAlt: 'Tekst pomocny dla dostępności i SEO.'
+}
+
+const formatReactPropLabel = (propKey) => {
+  if (PROP_LABELS[propKey]) {
+    return PROP_LABELS[propKey]
+  }
+
+  const spaced = propKey
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .trim()
+
+  if (!spaced.length) {
+    return propKey
+  }
+
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
+const getReactPropFieldType = (key, value) => {
+  const lowerKey = key.toLowerCase()
+
+  if (typeof value === 'boolean') {
+    return 'boolean'
+  }
+
+  if (REACT_COMPONENT_MEDIA_PROP_KEYS.some((keyword) => lowerKey.includes(keyword))) {
+    return 'image'
+  }
+
+  if (lowerKey.includes('color') || lowerKey.includes('background') || lowerKey.includes('bg')) {
+    return 'color'
+  }
+
+  if (lowerKey.includes('description') || lowerKey.includes('content') || lowerKey.includes('body')) {
+    return 'textarea'
+  }
+
+  if (typeof value === 'string' && value.length > 120) {
+    return 'textarea'
+  }
+
+  return 'text'
+}
+
+const resolveBabel = () => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  return window.Babel || null
 }
 
 const Configurator = () => {
@@ -26,17 +121,176 @@ const Configurator = () => {
   const currentPageData = templateConfig.pages[currentPage] || templateConfig.pages.home
   const module = currentPageData?.modules?.find((m) => m.id === selectedModule)
 
+  const pageOptions = useMemo(() => {
+    const pagesObject = templateConfig.pages || {}
+    const orderedKeys = (templateConfig.pageOrder || Object.keys(pagesObject))
+      .filter((key) => pagesObject[key])
+
+    return orderedKeys.map((key) => {
+      const page = pagesObject[key] || {}
+      const id = page.id || key
+      const path = page.path || `/${key}`
+      return {
+        id,
+        name: page.name || id,
+        path
+      }
+    })
+  }, [templateConfig.pageOrder, templateConfig.pages])
+
   const [editingCaption, setEditingCaption] = useState(null)
   const [expandedChild, setExpandedChild] = useState(null)
   const dragCounter = useRef(0)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [codeEditorValue, setCodeEditorValue] = useState('')
+  const [codeError, setCodeError] = useState(null)
+  const [isComponentSaving, setIsComponentSaving] = useState(false)
+  const [componentStatus, setComponentStatus] = useState(null)
+
+  useEffect(() => {
+    if (module?.type !== 'reactComponent' || !selectedModule) {
+      return
+    }
+
+    if (!module.config?.componentName) {
+      const generatedName = `ReactModule-${module.id}`
+      updateModuleConfig(selectedModule, { componentName: generatedName })
+    }
+
+    if (!module.config?.componentDescription) {
+      updateModuleConfig(selectedModule, {
+        componentDescription: 'Komponent utworzony i hostowany przez moduł ReactComponentModule'
+      })
+    }
+
+    if (!module.config?.sourceCode) {
+      updateModuleConfig(selectedModule, { sourceCode: DEFAULT_REACT_COMPONENT_SOURCE })
+    }
+
+    const currentProps = module.config?.props
+    if (!currentProps) {
+      updateModuleConfig(selectedModule, { props: { ...DEFAULT_REACT_COMPONENT_PROPS } })
+      return
+    }
+
+    if (currentProps.ctaText && currentProps.ctaTextColor === undefined) {
+      const { ctaText, ...restProps } = currentProps
+      updateModuleConfig(selectedModule, {
+        props: {
+          ...DEFAULT_REACT_COMPONENT_PROPS,
+          ...restProps,
+          ctaTextColor: ctaText
+        }
+      })
+      return
+    }
+
+    const missingDefaults = Object.keys(DEFAULT_REACT_COMPONENT_PROPS).filter((key) => currentProps[key] === undefined)
+    if (missingDefaults.length > 0) {
+      updateModuleConfig(selectedModule, {
+        props: {
+          ...DEFAULT_REACT_COMPONENT_PROPS,
+          ...currentProps
+        }
+      })
+    }
+    const wantsInternalLink = (module?.config?.props?.ctaLinkType || DEFAULT_REACT_COMPONENT_PROPS.ctaLinkType) === 'internal'
+    if (wantsInternalLink && pageOptions.length > 0) {
+      const currentInternalId = module?.config?.props?.ctaInternalPageId
+      const matchedInternalPage = pageOptions.find((option) => option.id === currentInternalId)
+
+      if (!matchedInternalPage) {
+        const fallbackPage = pageOptions[0]
+        const nextProps = {
+          ...DEFAULT_REACT_COMPONENT_PROPS,
+          ...(module?.config?.props || {}),
+          ctaInternalPageId: fallbackPage.id,
+          ctaInternalPath: fallbackPage.path
+        }
+
+        updateModuleConfig(selectedModule, {
+          props: nextProps
+        })
+      }
+    }
+  }, [module?.type, module?.config?.componentName, module?.config?.componentDescription, module?.config?.sourceCode, module?.config?.props, module?.id, selectedModule, updateModuleConfig, pageOptions])
+
+  useEffect(() => {
+    if (module?.type !== 'reactComponent') {
+      setCodeEditorValue('')
+      setCodeError(null)
+      setComponentStatus(null)
+      return
+    }
+
+    const sourceCodeValue = typeof module.config?.sourceCode === 'string' && module.config.sourceCode.trim().length
+      ? module.config.sourceCode
+      : DEFAULT_REACT_COMPONENT_SOURCE
+
+    setCodeEditorValue(sourceCodeValue)
+    setCodeError(null)
+    setComponentStatus(null)
+  }, [module?.type, module?.config?.sourceCode])
 
   // Jeśli zaznaczono dziecko, użyj jego danych
   const isEditingChild = selectedChild !== null
   const childData = isEditingChild && module?.config?.children?.[selectedChild.childIndex]
+  const rawComponentPropsEntries = Object.entries(module?.config?.props || {})
+  const componentPropsEntries = rawComponentPropsEntries.filter(([key, value]) => key !== 'resolveMediaUrl' && typeof value !== 'function')
+  const linkTypeValue = (module?.config?.props || {}).ctaLinkType || 'none'
+  const hasComponentProps = componentPropsEntries.length > 0
+  const hasGeneratedReactComponent = Boolean(module?.config?.componentId || module?.config?.componentUrl)
+  const showComponentProps = module?.type === 'reactComponent' ? (hasGeneratedReactComponent && hasComponentProps) : false
+  const headerSubtitle = module?.type === 'reactComponent'
+    ? (showComponentProps
+        ? 'Dostosuj właściwości wygenerowanego komponentu'
+        : 'Skompiluj komponent, aby odkryć dostępne ustawienia sekcji')
+    : 'Edytuj ustawienia sekcji'
 
   const handleConfigChange = (key, value) => {
     updateModuleConfig(selectedModule, { [key]: value })
+  }
+
+  const handleReactPropChange = (propKey, value) => {
+    const currentProps = module?.config?.props || {}
+
+    if (propKey === 'ctaLinkType') {
+      const nextProps = {
+        ...currentProps,
+        ctaLinkType: value,
+        ctaHref: value === 'external' ? (currentProps.ctaHref || '') : ''
+      }
+
+      if (value === 'internal') {
+        const fallbackPage = pageOptions.find((option) => option.id === (currentProps.ctaInternalPageId || '')) || pageOptions[0]
+        if (fallbackPage) {
+          nextProps.ctaInternalPageId = fallbackPage.id
+          nextProps.ctaInternalPath = fallbackPage.path
+        }
+      }
+
+      handleConfigChange('props', nextProps)
+      return
+    }
+
+    if (propKey === 'ctaInternalPageId') {
+      const matchedPage = pageOptions.find((option) => option.id === value)
+      handleConfigChange('props', {
+        ...currentProps,
+        ctaInternalPageId: value,
+        ctaInternalPath: matchedPage?.path || currentProps.ctaInternalPath || ''
+      })
+      return
+    }
+
+    handleConfigChange('props', {
+      ...currentProps,
+      [propKey]: value
+    })
+  }
+
+  const handleResetReactProps = () => {
+    handleConfigChange('props', { ...DEFAULT_REACT_COMPONENT_PROPS })
   }
 
   const handleChildConfigChange = (childIndex, key, value) => {
@@ -70,6 +324,138 @@ const Configurator = () => {
     const collection = [...(module.config?.[collectionKey] || [])]
     collection.push(item)
     handleConfigChange(collectionKey, collection)
+  }
+
+  const handleReactComponentCodeChange = (value) => {
+    setCodeEditorValue(value)
+    setComponentStatus(null)
+    setCodeError(null)
+
+    if (module?.type === 'reactComponent' && selectedModule) {
+      updateModuleConfig(selectedModule, { sourceCode: value })
+    }
+  }
+
+  const handleCompileReactComponent = async () => {
+    if (module?.type !== 'reactComponent' || !selectedModule) {
+      return
+    }
+
+    const rawSource = codeEditorValue.trim()
+
+    if (!rawSource.length) {
+      setCodeError('Wprowadź kod JSX przed kompilacją.')
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      setCodeError('Środowisko przeglądarkowe jest wymagane do kompilacji komponentu.')
+      return
+    }
+
+    const componentName = (module.config?.componentName || `ReactModule-${module.id}`).trim()
+
+    if (!componentName.length) {
+      setComponentStatus({ type: 'error', message: 'Podaj unikalną nazwę komponentu.' })
+      return
+    }
+
+    const componentDescription = module.config?.componentDescription
+      || 'Komponent utworzony w konfiguratorze ReactComponentModule'
+
+    setIsComponentSaving(true)
+    setComponentStatus(null)
+    setCodeError(null)
+
+    try {
+      const babel = resolveBabel()
+      if (!babel) {
+        setCodeError('Biblioteka Babel nie jest dostępna. Odśwież stronę i spróbuj ponownie.')
+        return
+      }
+
+  const compiled = compileReactSnippet(babel, rawSource)
+      const blob = new Blob([compiled], { type: 'application/javascript' })
+
+      const sanitizeFileName = (name) => {
+        const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+        return normalized || `component_${Date.now()}`
+      }
+
+      const fileName = `${sanitizeFileName(componentName)}.js`
+
+      let componentId = module.config?.componentId
+
+      if (!componentId) {
+        const createResponse = await apiClient.post('/custom-components/', {
+          name: componentName,
+          description: componentDescription,
+          source_code: rawSource
+        })
+        componentId = createResponse.data.id
+      } else {
+        await apiClient.patch(`/custom-components/${componentId}/`, {
+          name: componentName,
+          description: componentDescription,
+          source_code: rawSource
+        })
+      }
+
+      const formData = new FormData()
+      formData.append('file', blob, fileName)
+      formData.append('source_code', rawSource)
+
+      const uploadResponse = await apiClient.post(
+        `/custom-components/${componentId}/upload_compiled/`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+
+      const { compiled_js } = uploadResponse.data || {}
+      const resolvedComponentUrl = compiled_js || module.config?.componentUrl || null
+
+      updateModuleConfig(selectedModule, {
+        componentId,
+        componentName,
+        componentDescription,
+        componentUrl: resolvedComponentUrl,
+        sourceCode: rawSource
+      })
+
+      setComponentStatus({
+        type: 'success',
+        message: 'Komponent skompilowany i zapisany. Podgląd zostanie odświeżony po stronie Canvas.'
+      })
+    } catch (error) {
+      const responsePayload = error?.response?.data
+      let message = 'Nie udało się skompilować komponentu.'
+
+      if (typeof responsePayload === 'string') {
+        message = responsePayload
+      } else if (Array.isArray(responsePayload)) {
+        message = responsePayload.join(' ')
+      } else if (responsePayload && typeof responsePayload === 'object') {
+        const firstEntry = Object.entries(responsePayload)[0]
+        if (firstEntry) {
+          const [, value] = firstEntry
+          if (Array.isArray(value)) {
+            message = value.join(' ')
+          } else if (value) {
+            message = String(value)
+          }
+        }
+      } else if (error?.message) {
+        message = error.message
+      }
+
+      setComponentStatus({ type: 'error', message })
+
+      if (error?.message?.includes('JSX')) {
+        setCodeError(error.message)
+      }
+    } finally {
+      setIsComponentSaving(false)
+    }
   }
 
   if (!selectedModule || !module) {
@@ -529,7 +915,7 @@ const Configurator = () => {
             )}
           </div>
         </div>
-        <p className="text-sm opacity-60">Edytuj ustawienia sekcji</p>
+    <p className="text-sm opacity-60">{headerSubtitle}</p>
       </div>
 
       {/* Content - scrollable */}
@@ -1827,6 +2213,402 @@ const Configurator = () => {
                 </p>
               )}
             </div>
+          </>
+        )}
+
+        {module.type === 'reactComponent' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Nazwa komponentu
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.componentName || ''}
+                  onChange={(event) => {
+                    setComponentStatus(null)
+                    handleConfigChange('componentName', event.target.value)
+                  }}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                  placeholder="ReactModule-my-component"
+                />
+                <p className="text-xs mt-2 opacity-60">
+                  Nazwa jest wymagana i musi być unikalna — zostanie użyta jako identyfikator pliku na backendzie.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Opis
+                </label>
+                <input
+                  type="text"
+                  value={module.config?.componentDescription || ''}
+                  onChange={(event) => {
+                    setComponentStatus(null)
+                    handleConfigChange('componentDescription', event.target.value)
+                  }}
+                  className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                  style={{
+                    borderColor: 'rgba(30, 30, 30, 0.2)',
+                    '--tw-ring-color': 'rgb(146, 0, 32)'
+                  }}
+                  placeholder="Opis widoczny w panelu komponentów"
+                />
+              </div>
+            </div>
+
+            {showComponentProps ? (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                      Właściwości komponentu
+                    </h3>
+                    <p className="text-xs opacity-60 mt-1">
+                      Aktualizuj treść i styl komponentu bez dotykania kodu.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetReactProps}
+                    className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+                    style={{
+                      borderColor: 'rgb(146, 0, 32)',
+                      color: 'rgb(146, 0, 32)'
+                    }}
+                  >
+                    Przywróć domyślne
+                  </button>
+                </div>
+
+                {componentPropsEntries.map(([propKey, propValue]) => {
+                  const label = formatReactPropLabel(propKey)
+                  const helper = PROP_HELPERS[propKey]
+
+                  if (propKey === 'ctaLinkType') {
+                    const linkOptions = [
+                      { value: 'none', label: 'Brak akcji' },
+                      { value: 'internal', label: 'Strona wewnętrzna' },
+                      { value: 'external', label: 'Link zewnętrzny' }
+                    ]
+
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <p className="block text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                          {label}
+                        </p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {linkOptions.map((option) => {
+                            const isActive = linkTypeValue === option.value
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => handleReactPropChange(propKey, option.value)}
+                                className="w-full px-4 py-2 rounded-xl border transition-all"
+                                style={{
+                                  borderColor: isActive ? 'rgb(146, 0, 32)' : 'rgba(30, 30, 30, 0.2)',
+                                  backgroundColor: isActive ? 'rgba(146, 0, 32, 0.08)' : 'transparent',
+                                  color: isActive ? 'rgb(146, 0, 32)' : 'rgb(30, 30, 30)'
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  if (propKey === 'ctaHref' && linkTypeValue !== 'external') {
+                    return null
+                  }
+
+                  if (propKey === 'ctaTarget' && linkTypeValue !== 'external') {
+                    return null
+                  }
+
+                  if (propKey === 'ctaInternalPageId') {
+                    if (linkTypeValue !== 'internal') {
+                      return null
+                    }
+
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <label className="block text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                          {label}
+                        </label>
+                        <select
+                          value={propValue || ''}
+                          onChange={(event) => handleReactPropChange(propKey, event.target.value)}
+                          className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.2)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                        >
+                          {pageOptions.length === 0 && <option value="">Brak dostępnych stron</option>}
+                          {pageOptions.map((page) => (
+                            <option key={page.id} value={page.id}>
+                              {page.name}
+                            </option>
+                          ))}
+                        </select>
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  if (propKey === 'ctaInternalPath') {
+                    if (linkTypeValue !== 'internal') {
+                      return null
+                    }
+
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <label className="block text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                          {label}
+                        </label>
+                        <input
+                          type="text"
+                          value={propValue || ''}
+                          onChange={(event) => handleReactPropChange(propKey, event.target.value)}
+                          className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.2)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                          placeholder="/kontakt"
+                        />
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  if (propKey === 'ctaTarget') {
+                    const targetOptions = [
+                      { value: '_self', label: 'Otwórz w tej samej karcie' },
+                      { value: '_blank', label: 'Otwórz w nowej karcie' }
+                    ]
+
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <label className="block text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                          {label}
+                        </label>
+                        <select
+                          value={propValue || '_self'}
+                          onChange={(event) => handleReactPropChange(propKey, event.target.value)}
+                          className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.2)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                        >
+                          {targetOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  const fieldType = getReactPropFieldType(propKey, propValue)
+
+                  if (fieldType === 'image') {
+                    const lowerKey = propKey.toLowerCase()
+                    const aspectRatio = lowerKey.includes('avatar') ? '1/1' : '4/5'
+
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <ImageUploader
+                          label={label}
+                          value={propValue || ''}
+                          onChange={(url) => handleReactPropChange(propKey, url)}
+                          aspectRatio={aspectRatio}
+                        />
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  if (fieldType === 'color') {
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <ColorPicker
+                          label={label}
+                          value={propValue || ''}
+                          onChange={(color) => handleReactPropChange(propKey, color)}
+                        />
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  if (fieldType === 'boolean') {
+                    return (
+                      <label
+                        key={propKey}
+                        className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+                        style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(propValue)}
+                          onChange={(event) => handleReactPropChange(propKey, event.target.checked)}
+                          className="w-6 h-6 rounded"
+                          style={{ accentColor: 'rgb(146, 0, 32)' }}
+                        />
+                        <div className="flex-1">
+                          <span className="font-medium block">{label}</span>
+                          {helper && (
+                            <p className="text-xs opacity-60 mt-1">{helper}</p>
+                          )}
+                        </div>
+                      </label>
+                    )
+                  }
+
+                  if (fieldType === 'textarea') {
+                    return (
+                      <div key={propKey} className="space-y-2">
+                        <label className="block text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                          {label}
+                        </label>
+                        <textarea
+                          value={propValue || ''}
+                          onChange={(event) => handleReactPropChange(propKey, event.target.value)}
+                          rows={4}
+                          className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                          style={{
+                            borderColor: 'rgba(30, 30, 30, 0.2)',
+                            '--tw-ring-color': 'rgb(146, 0, 32)'
+                          }}
+                          placeholder={helper || ''}
+                        />
+                        {helper && (
+                          <p className="text-xs opacity-60">{helper}</p>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={propKey} className="space-y-2">
+                      <label className="block text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                        {label}
+                      </label>
+                      <input
+                        type="text"
+                        value={propValue || ''}
+                        onChange={(event) => handleReactPropChange(propKey, event.target.value)}
+                        className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+                        style={{
+                          borderColor: 'rgba(30, 30, 30, 0.2)',
+                          '--tw-ring-color': 'rgb(146, 0, 32)'
+                        }}
+                        placeholder={helper || ''}
+                      />
+                      {helper && (
+                        <p className="text-xs opacity-60">{helper}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div
+                className="p-4 rounded-xl border"
+                style={{ borderColor: 'rgba(30, 30, 30, 0.1)', backgroundColor: 'rgba(146, 0, 32, 0.04)' }}
+              >
+                <p className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Brak wygenerowanych ustawień komponentu
+                </p>
+                <p className="text-xs opacity-60 mt-1">
+                  Skompiluj komponent, aby automatycznie wykryć konfigurowalne właściwości przekazywane w obiekcie <code>props</code>.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+                Kod JSX komponentu
+              </label>
+              <textarea
+                value={codeEditorValue}
+                onChange={(event) => {
+                  handleReactComponentCodeChange(event.target.value)
+                }}
+                rows={18}
+                className="w-full px-4 py-3 border rounded-xl font-mono text-xs focus:outline-none focus:ring-2"
+                style={{
+                  borderColor: codeError ? 'rgb(146, 0, 32)' : 'rgba(30, 30, 30, 0.2)',
+                  '--tw-ring-color': 'rgb(146, 0, 32)'
+                }}
+                spellCheck={false}
+                placeholder="(props) => <section>Twój komponent</section>"
+              />
+              {codeError ? (
+                <p className="text-xs mt-2" style={{ color: 'rgb(146, 0, 32)' }}>
+                  {codeError}
+                </p>
+              ) : (
+                <p className="text-xs mt-2 opacity-60">
+                  Kod powinien zwracać funkcję lub komponent React. Możesz korzystać z JSX oraz właściwości przekazywanych w obiekcie <code>props</code>.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleCompileReactComponent}
+                disabled={isComponentSaving}
+                className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: isComponentSaving ? 'rgba(146, 0, 32, 0.6)' : 'rgb(146, 0, 32)',
+                  color: 'rgb(228, 229, 218)'
+                }}
+              >
+                {isComponentSaving ? 'Kompiluję…' : 'Skompiluj i opublikuj komponent'}
+              </button>
+              {module.config?.componentUrl && (
+                <span className="text-xs opacity-60">
+                  Ostatnio zapisany plik: {module.config.componentUrl}
+                </span>
+              )}
+            </div>
+
+            {componentStatus && (
+              <p
+                className="text-xs mt-2"
+                style={{ color: componentStatus.type === 'success' ? 'rgb(30, 120, 70)' : 'rgb(146, 0, 32)' }}
+              >
+                {componentStatus.message}
+              </p>
+            )}
           </>
         )}
 

@@ -4,7 +4,7 @@ import logging
 from django.utils.text import slugify
 from rest_framework import serializers
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template
+from .models import PlatformUser, Site, Client, Event, Booking, Template, CustomReactComponent
 
 logger = logging.getLogger(__name__)
 
@@ -153,3 +153,12 @@ class TemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Template
         fields = ['id', 'name', 'description', 'template_config', 'thumbnail_url']
+
+
+class CustomReactComponentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomReactComponent
+        fields = [
+            'id', 'name', 'description', 'source_code', 'compiled_js',
+            'created_at', 'updated_at'
+        ]

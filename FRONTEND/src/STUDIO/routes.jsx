@@ -17,6 +17,7 @@ import SettingsPage from './pages/Settings/SettingsPage';
 import NotificationsPage from './pages/Settings/NotificationsPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
 import ToastTestPage from './pages/Lab/ToastTestPage';
+import ComponentLabPage from './pages/Lab/ComponentLabPage';
 
 const StudioApp = () => (
   <Routes>
@@ -36,6 +37,7 @@ const StudioApp = () => (
 
       {/* Dev Lab */}
       <Route path="lab/toast" element={<ToastTestPage />} />
+  <Route path="lab/components" element={<ProtectedRoute><ComponentLabPage /></ProtectedRoute>} />
 
       {/* Admin area */}
       <Route path="admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />

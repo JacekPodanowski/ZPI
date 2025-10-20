@@ -20,7 +20,7 @@ from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template
+from .models import PlatformUser, Site, Client, Event, Booking, Template, CustomReactComponent
 from .serializers import (
     PlatformUserSerializer,
     SiteSerializer,
@@ -30,6 +30,7 @@ from .serializers import (
     CustomRegisterSerializer,
     TemplateSerializer,
     PublicSiteSerializer,
+    CustomReactComponentSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -408,3 +409,27 @@ def publish_site(request, site_id):
     except requests.RequestException as exc:
         logger.error("Failed to trigger Vercel build for site ID %s: %s", site.id, exc)
         return Response({'error': 'Failed to trigger Vercel build', 'details': str(exc)}, status=500)
+
+
+class CustomReactComponentViewSet(viewsets.ModelViewSet):
+    queryset = CustomReactComponent.objects.all()
+    serializer_class = CustomReactComponentSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def upload_compiled(self, request, pk=None):
+        component = self.get_object()
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        source_code = request.data.get('source_code')
+        if source_code is not None:
+            component.source_code = source_code
+
+        safe_name = component.name.lower().replace(' ', '_')
+        filename = f"{safe_name}_{component.id}.js"
+        component.compiled_js.save(filename, file_obj, save=False)
+        component.save()
+        serializer = self.get_serializer(component)
+        return Response(serializer.data)
