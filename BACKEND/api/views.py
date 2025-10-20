@@ -106,7 +106,37 @@ class SiteViewSet(viewsets.ModelViewSet):
         return qs.filter(owner=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        """
+        Auto-assign the next available color index when creating a new site.
+        
+        The system supports up to 12 different colors (0-11). This method finds
+        the first unused color index for the current user's sites and assigns it
+        to the new site. If all colors are in use or color_index is explicitly
+        provided in the request, it uses that value instead.
+        
+        Color assignment order:
+        - Site 1 gets color 0 (Crimson Red)
+        - Site 2 gets color 1 (Sky Blue)
+        - Site 3 gets color 2 (Emerald Green)
+        - And so on up to 12 sites
+        """
+        user_sites = Site.objects.filter(owner=self.request.user).order_by('color_index')
+        
+        # Find the next available color index
+        used_colors = set(site.color_index for site in user_sites if site.color_index is not None)
+        next_color_index = 0
+        
+        # Find the first available color slot (0-11)
+        for i in range(12):
+            if i not in used_colors:
+                next_color_index = i
+                break
+        
+        # If color_index is not provided in request, use the auto-assigned one
+        if 'color_index' not in serializer.validated_data or serializer.validated_data['color_index'] is None:
+            serializer.save(owner=self.request.user, color_index=next_color_index)
+        else:
+            serializer.save(owner=self.request.user)
 
     def perform_update(self, serializer):
         if serializer.instance.owner != self.request.user and not self.request.user.is_staff:

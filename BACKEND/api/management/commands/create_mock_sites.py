@@ -272,17 +272,26 @@ class Command(BaseCommand):
         ]
 
         with transaction.atomic():
-            for site_data in demo_sites:
+            for idx, site_data in enumerate(demo_sites):
+                # Set color_index: 0 for first site (red), 1 for second site (blue)
+                color_index = idx % 12  # Cycle through 12 available colors
+                
                 site, created = Site.objects.get_or_create(
                     owner=user,
                     name=site_data['name'],
-                    defaults={'template_config': site_data['template_config']}
+                    defaults={
+                        'template_config': site_data['template_config'],
+                        'color_index': color_index
+                    }
                 )
                 if not created:
-                    Site.objects.filter(pk=site.pk).update(template_config=site_data['template_config'])
-                    self.stdout.write(self.style.WARNING(f'Updated demo site "{site.name}" for {user.email}.'))
+                    Site.objects.filter(pk=site.pk).update(
+                        template_config=site_data['template_config'],
+                        color_index=color_index
+                    )
+                    self.stdout.write(self.style.WARNING(f'Updated demo site "{site.name}" for {user.email} with color_index={color_index}.'))
                 else:
-                    self.stdout.write(self.style.SUCCESS(f'Created demo site "{site.name}" for {user.email}.'))
+                    self.stdout.write(self.style.SUCCESS(f'Created demo site "{site.name}" for {user.email} with color_index={color_index}.'))
 
         template_catalog = [
             {

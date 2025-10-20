@@ -5,6 +5,7 @@ import { fetchSites } from '../../../services/siteService';
 import CalendarGridControlled from '../../components/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components/Dashboard/Templates/RealTemplateBrowser';
 import DayDetailsModal from '../../components/Dashboard/Calendar/DayDetailsModal';
+import { getSiteColorHex } from '../../../theme/siteColors';
 
 const CreatorCalendarApp = () => {
     const [sites, setSites] = useState([]);
@@ -31,14 +32,17 @@ const CreatorCalendarApp = () => {
                     // Mock events for demonstration
                     // TODO: Replace with actual API call
                     const mockEvents = [];
-                    response.forEach((site, siteIndex) => {
+                    response.forEach((site) => {
+                        // Use the same color system as calendar buttons
+                        const siteColor = getSiteColorHex(site.color_index ?? 0);
+                        
                         for (let i = 0; i < 5; i++) {
                             const date = new Date();
                             date.setDate(date.getDate() + Math.floor(Math.random() * 30));
                             mockEvents.push({
                                 id: `${site.id}-event-${i}`,
                                 site_id: site.id,
-                                site_color: site.color_tag || `hsl(${siteIndex * 60}, 70%, 50%)`,
+                                site_color: siteColor,
                                 date: date.toISOString().split('T')[0],
                                 title: `Event ${i + 1}`,
                                 start_time: `${9 + i}:00`,
@@ -151,8 +155,8 @@ const CreatorCalendarApp = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         px: { xs: 2, md: 3, lg: 4 },
-                        py: { xs: 0.5, md: 1.25 },
-                        gap: 2,
+                        py: 0,
+                        gap: 0,
                         minHeight: 0,
                         overflow: 'hidden'
                     }}

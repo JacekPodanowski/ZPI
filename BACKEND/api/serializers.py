@@ -73,6 +73,9 @@ class SiteSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner']
+        extra_kwargs = {
+            'color_index': {'required': False}
+        }
 
 
 class PublicSiteSerializer(serializers.ModelSerializer):
