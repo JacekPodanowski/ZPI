@@ -5,27 +5,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
-import { EventDot, EventBlock, CollapsedEventsBlock, COLLAPSE_THRESHOLD } from './EventDisplay';
+import { EventBlock, CollapsedEventsBlock, COLLAPSE_THRESHOLD } from './EventDisplay';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
 // Controlled-only view of the calendar grid; all state comes from props.
 const CalendarGridControlled = ({
     events,
     sites,
-    mode,
     selectedSiteId,
     currentMonth,
     onDayClick,
     onMonthChange,
     onSiteSelect
 }) => {
-    const [hoveredDayEvents, setHoveredDayEvents] = useState([]);
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredDayKey, setHoveredDayKey] = useState(null); // Track which day is being hovered
 
     const currentMonthMoment = useMemo(() => moment(currentMonth), [currentMonth]);
-    const isPowerMode = mode === 'calendar-focus';
-    const showSiteButtons = mode !== 'site-focus';
 
     const calendarDays = useMemo(() => {
         const startOfMonth = currentMonthMoment.clone().startOf('month');
@@ -156,7 +152,7 @@ const CalendarGridControlled = ({
                     }}
                 >
                     <AnimatePresence mode="popLayout">
-                        {showSiteButtons ? primarySites.map(renderSiteChip) : null}
+                        {primarySites.map(renderSiteChip)}
                     </AnimatePresence>
                 </Box>
 
@@ -177,7 +173,7 @@ const CalendarGridControlled = ({
                     }}
                 >
                     <AnimatePresence mode="popLayout">
-                        {showSiteButtons ? secondarySites.map(renderSiteChip) : null}
+                        {secondarySites.map(renderSiteChip)}
                     </AnimatePresence>
                 </Box>
 
@@ -211,7 +207,7 @@ const CalendarGridControlled = ({
                         sx={{
                             textAlign: 'center',
                             fontWeight: 600,
-                            fontSize: isPowerMode ? '16px' : '15px',
+                            fontSize: '16px',
                             color: 'text.secondary'
                         }}
                     >
@@ -225,7 +221,7 @@ const CalendarGridControlled = ({
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
-                    gridAutoRows: isPowerMode ? 'minmax(110px, 1fr)' : 'minmax(58px, 1fr)',
+                    gridAutoRows: 'minmax(110px, 1fr)',
                     gap: 0.75,
                     px: 1,
                     pb: 1,
@@ -263,7 +259,7 @@ const CalendarGridControlled = ({
                                     border: isToday ? '2px solid' : '1px solid',
                                     borderColor: isToday ? 'primary.main' : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
-                                    p: isPowerMode ? (isToday ? 0.75 : 0.85) : 0.65,
+                                    p: isToday ? 0.75 : 0.85,
                                     height: '100%',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -294,8 +290,8 @@ const CalendarGridControlled = ({
                                     variant="body2"
                                     sx={{
                                         fontWeight: isToday ? 700 : 600,
-                                        mb: isPowerMode ? 0.5 : 0.35,
-                                        fontSize: isPowerMode ? '15px' : '12.5px',
+                                        mb: 0.5,
+                                        fontSize: '15px',
                                         color: isToday ? 'primary.main' : 'text.primary',
                                         flexShrink: 0,
                                         transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -308,96 +304,82 @@ const CalendarGridControlled = ({
                                         }),
                                         ...(isDayHovered && isClickable && {
                                             color: 'primary.main',
-                                            fontSize: isPowerMode ? '16px' : '13.5px', // Slightly bigger on hover
+                                            fontSize: '16px', // Slightly bigger on hover
                                         })
                                     }}
                                 >
                                     {dayMoment.date()}
                                 </Typography>
 
-                                {isPowerMode ? (
-                                    shouldCollapse ? (
-                                        // Collapsed view for 10+ events
-                                        <Box sx={{ 
-                                            flex: 1, 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            position: 'relative', 
-                                            zIndex: 1,
-                                            pointerEvents: 'auto'
-                                        }}>
-                                            <CollapsedEventsBlock
-                                                eventCount={eventCount}
-                                                siteColors={dayEvents.map(e => e.site_color).filter(Boolean)}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDayClick?.(dayMoment.toDate());
-                                                }}
-                                            />
-                                        </Box>
-                                    ) : (
-                                        // Smart scaling view for 1-10 events
-                                        <Box sx={{ 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            gap: eventCount <= 4 ? 0.5 : eventCount <= 7 ? 0.35 : 0.25,
-                                            flex: 1, 
-                                            overflow: 'visible',
-                                            position: 'relative',
-                                            zIndex: 1,
-                                            // For 0-1 events, allow parent hover to work in empty areas
-                                            pointerEvents: eventCount <= 1 ? 'none' : 'auto'
-                                        }}>
-                                            {dayEvents.map((event, index) => {
-                                                const isHovered = hoveredEventId === event.id;
-                                                const shouldShrink = isDayCrowded && hoveredEventId && !isHovered;
-                                                const isFiltered = !selectedSiteId || event.site_id === selectedSiteId;
-
-                                                return (
-                                                    <motion.div
-                                                        key={event.id}
-                                                        animate={{
-                                                            scale: shouldShrink ? 0.88 : 1,
-                                                            opacity: shouldShrink ? 0.6 : 1
-                                                        }}
-                                                        transition={{ 
-                                                            duration: 0.25, 
-                                                            ease: [0.25, 0.1, 0.25, 1]
-                                                        }}
-                                                        style={{ 
-                                                            zIndex: isHovered ? 50 : 10 + index,
-                                                            position: 'relative',
-                                                            pointerEvents: 'auto' // Re-enable pointer events for the actual event block
-                                                        }}
-                                                        onMouseEnter={() => setHoveredEventId(event.id)}
-                                                        onMouseLeave={() => setHoveredEventId(null)}
-                                                    >
-                                                        <EventBlock
-                                                            event={event}
-                                                            isSelectedSite={isFiltered}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                            }}
-                                                            eventCount={eventCount}
-                                                            isHovered={isHovered}
-                                                            isDayCrowded={isDayCrowded}
-                                                        />
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </Box>
-                                    )
-                                ) : (
+                                {shouldCollapse ? (
+                                    // Collapsed view for 10+ events
                                     <Box sx={{ 
+                                        flex: 1, 
                                         display: 'flex', 
-                                        gap: 0.5, 
-                                        flexWrap: 'wrap', 
-                                        justifyContent: 'center',
+                                        alignItems: 'center', 
+                                        position: 'relative', 
+                                        zIndex: 1,
                                         pointerEvents: 'auto'
                                     }}>
-                                        {dayEvents.slice(0, 6).map((event) => (
-                                            <EventDot key={event.id} event={event} siteColor={event.site_color || 'rgb(146, 0, 32)'} />
-                                        ))}
+                                        <CollapsedEventsBlock
+                                            eventCount={eventCount}
+                                            siteColors={dayEvents.map(e => e.site_color).filter(Boolean)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDayClick?.(dayMoment.toDate());
+                                            }}
+                                        />
+                                    </Box>
+                                ) : (
+                                    // Smart scaling view for 1-10 events
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: eventCount <= 4 ? 0.5 : eventCount <= 7 ? 0.35 : 0.25,
+                                        flex: 1, 
+                                        overflow: 'visible',
+                                        position: 'relative',
+                                        zIndex: 1,
+                                        // For 0-1 events, allow parent hover to work in empty areas
+                                        pointerEvents: eventCount <= 1 ? 'none' : 'auto'
+                                    }}>
+                                        {dayEvents.map((event, index) => {
+                                            const isHovered = hoveredEventId === event.id;
+                                            const shouldShrink = isDayCrowded && hoveredEventId && !isHovered;
+                                            const isFiltered = !selectedSiteId || event.site_id === selectedSiteId;
+
+                                            return (
+                                                <motion.div
+                                                    key={event.id}
+                                                    animate={{
+                                                        scale: shouldShrink ? 0.88 : 1,
+                                                        opacity: shouldShrink ? 0.6 : 1
+                                                    }}
+                                                    transition={{ 
+                                                        duration: 0.25, 
+                                                        ease: [0.25, 0.1, 0.25, 1]
+                                                    }}
+                                                    style={{ 
+                                                        zIndex: isHovered ? 50 : 10 + index,
+                                                        position: 'relative',
+                                                        pointerEvents: 'auto' // Re-enable pointer events for the actual event block
+                                                    }}
+                                                    onMouseEnter={() => setHoveredEventId(event.id)}
+                                                    onMouseLeave={() => setHoveredEventId(null)}
+                                                >
+                                                    <EventBlock
+                                                        event={event}
+                                                        isSelectedSite={isFiltered}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                        }}
+                                                        eventCount={eventCount}
+                                                        isHovered={isHovered}
+                                                        isDayCrowded={isDayCrowded}
+                                                    />
+                                                </motion.div>
+                                            );
+                                        })}
                                     </Box>
                                 )}
                             </Box>
@@ -426,7 +408,6 @@ CalendarGridControlled.propTypes = {
             color_tag: PropTypes.string
         })
     ).isRequired,
-    mode: PropTypes.oneOf(['site-focus', 'calendar-focus']).isRequired,
     selectedSiteId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     currentMonth: PropTypes.instanceOf(Date).isRequired,
     onDayClick: PropTypes.func,

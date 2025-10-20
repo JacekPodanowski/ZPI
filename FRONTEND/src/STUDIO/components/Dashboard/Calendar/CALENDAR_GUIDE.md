@@ -1,40 +1,46 @@
-# Calendar Quick Notes
+# Calendar Quick Guide for AI Agents
 
-## Core Architecture
-1. **CalendarGridControlled** renders the visual calendar and expects all state via props (events, sites, mode, selectedSiteId, currentMonth).
-2. **CalendarGridContainer** wires CalendarGridControlled to the dashboard Zustand store and auto-switches to calendar-focus when a day is clicked.
-3. Default import from CalendarGrid.jsx returns the container variant so legacy imports keep working.
+## Architecture
+1. **CalendarGridControlled** is the main calendar component - renders the grid and expects all state via props (events, sites, selectedSiteId, currentMonth).
+2. The calendar operates in a single full-featured mode (110px tiles, full event blocks) - legacy dual-mode system has been removed.
 
-## Color System (Updated)
-4. Sites use **color_index** (0-11) stored in the backend, mapped to colors via `getSiteColorHex()` from `theme/siteColors.js`.
-5. Auto-assignment: 1st site = color 0 (Red), 2nd site = color 1 (Blue), 3rd = color 2 (Green), etc.
-6. **Site buttons** display in their assigned color using `getSiteColorHex(site.color_index ?? 0)`.
-7. **Events** inherit their site's color via `site_color` prop, calculated the same way.
-8. Color consistency across calendar buttons, events, and SitesPage tiles is guaranteed by the centralized SITE_COLOR_PALETTE.
+## Color System
+3. Sites use **color_index** (0-11) mapped to colors via `getSiteColorHex()` from `theme/siteColors.js`.
+4. Backend auto-assigns colors sequentially: 1st site = Red (0), 2nd = Blue (1), 3rd = Green (2), etc.
+5. Events inherit site colors via `site_color` prop for consistency across the calendar.
 
-## Layout & Spacing (Updated)
-9. Day names header is **separate from grid** to prevent large row gaps.
-10. Calendar grid uses `gridAutoRows: 'minmax(110px, 1fr)'` and `overflow: 'hidden'` to prevent scrolling.
-11. Padding optimized for scroll-free viewing: header `pt: 0.75, pb: 1`, grid `px: 1, pb: 1`.
-12. Site buttons have `borderRadius: 3` for modern rounded appearance.
+## Layout & Display
+6. Day names header is separate from grid to prevent gaps; calendar uses `gridAutoRows: 'minmax(110px, 1fr)'` with `overflow: 'hidden'`.
+7. Site filter buttons always display with `borderRadius: 3` and site-specific colors.
+8. Events use smart scaling: Normal (≤4 events), Compact (5-7), Minimal (8-10), Collapsed (>10).
 
-## Data Flow
-13. Events must include id, date (YYYY-MM-DD), title, and optional site_id/site_color for styling.
-14. Sites must supply id, name, and color_index so the chip renderer can apply correct colors.
-15. Pass mode="calendar-focus" for block layout or mode="site-focus" for compact dots.
-16. currentMonth is a native Date object; CalendarGridControlled converts it to moment internally.
+## Event Display & Interactions
+9. EventBlock components show full event details with 400ms smooth animations using cubic-bezier easing.
+10. Hovering an event blocks day tile hover to prevent double-highlighting.
+11. Hovered events lift up and siblings shrink (scale 0.88) for ethereal minimalism effect.
 
-## Interactions
-17. onMonthChange receives a Date for the first day of the new month; persist it upstream.
-18. onDayClick receives the clicked day as a Date; open DayDetailsModal from there.
-19. When toggling site buttons, return null to clear selection and show all events.
-20. CalendarGridControlled dims days without the selected site unless selectedSiteId is null.
-21. EventBlock shrinks siblings when hovered to preserve Ethereal Minimalism (200ms animations).
+## Day Tile Behavior
+12. Day hover effect is unified - both tile background and day number change together when hovering empty areas.
+13. Past days with no events are non-clickable (`cursor: 'default'`) to prevent confusion.
+14. Today has red glow (`boxShadow`), 2px border, and text-shadow for prominence.
+15. Day number grows from center on hover (15px → 16px) using `transformOrigin: 'center center'`.
 
-## Integration Points
-22. Availability blocks live outside the grid and are injected into DayDetailsModal for timeline rendering.
-23. RealTemplateBrowser handles template UI; wire template actions into the same state domain.
-24. For drag/drop templates, use container state to stage UI overlays; avoid embedding DnD logic inside CalendarGridControlled.
-25. Keep new props additive; CalendarGridControlled should remain unaware of global stores.
-26. Update dashboardStore when integrating new features so CalendarGridContainer can propagate mode/site changes correctly.
+## Data Requirements
+16. Events need: id, date (YYYY-MM-DD), title, optional site_id/site_color.
+17. Sites need: id, name, color_index (0-11).
+18. currentMonth is a native Date object; converted to moment internally.
 
+## Event Handlers
+19. onMonthChange receives Date for first day of new month.
+20. onDayClick receives clicked day as Date; use for opening DayDetailsModal.
+21. onSiteSelect toggles filtering - return null to clear and show all events.
+
+## Hover & Pointer Events
+22. For 0-1 events, container has `pointerEvents: 'none'` allowing day tile hover in empty areas.
+23. Individual events always have `pointerEvents: 'auto'` for their own hover/click.
+24. Event hover sets `hoveredEventId` which blocks day hover (`isDayHovered` checks this).
+
+## State Management
+25. Component uses local state for hover tracking (hoveredEventId, hoveredDayKey) - no global store dependencies.
+
+DESCRIBE YOUR CHANGES IN THIS GUIDE

@@ -181,7 +181,6 @@ const CreatorCalendarApp = () => {
                         <CalendarGridControlled
                             events={events}
                             sites={sites}
-                            mode="calendar-focus"
                             selectedSiteId={selectedSiteId}
                             currentMonth={currentMonth}
                             onDayClick={handleDayClick}
