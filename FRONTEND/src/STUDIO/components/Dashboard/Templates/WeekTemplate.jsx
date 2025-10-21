@@ -35,11 +35,16 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
             whileHover={{ 
                 scale: isDragging ? 0.9 : 1.02
             }}
-            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            style={{ 
+                cursor: isDragging ? 'grabbing' : 'grab',
+                transformOrigin: 'center',
+                overflow: 'visible'
+            }}
         >
             <Card
                 sx={{
                     width: '100%',
+                    mx: 0.25,
                     p: 1.25,
                     borderRadius: 2,
                     backgroundColor: 'background.paper',
@@ -48,7 +53,7 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                     boxShadow: 'none',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
-                    overflow: 'hidden',
+                    overflow: 'visible',
                     '&:hover': {
                         borderColor: 'rgba(146, 0, 32, 0.3)',
                         backgroundColor: 'rgba(228, 229, 218, 0.3)',

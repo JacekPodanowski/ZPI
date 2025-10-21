@@ -74,7 +74,7 @@ const StudioLayout = ({
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'background.default',
-          overflow: isDashboardRoute ? 'hidden' : 'visible'
+          overflow: 'visible'
         }}
       >
         <Box
@@ -87,7 +87,7 @@ const StudioLayout = ({
             py: paddingY,
             px: paddingX,
             minHeight: 0,
-            overflow: isDashboardRoute ? 'hidden' : 'visible'
+            overflow: 'visible'
           }}
         >
           <Box

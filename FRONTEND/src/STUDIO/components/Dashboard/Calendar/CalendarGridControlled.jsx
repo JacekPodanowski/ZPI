@@ -26,6 +26,7 @@ const CalendarGridControlled = ({
     const [isDragging, setIsDragging] = useState(false); // Track if dragging is active
     const [isOverMonthName, setIsOverMonthName] = useState(false); // Track if dragging over month name
     const [draggedTemplate, setDraggedTemplate] = useState(null); // Track the template being dragged
+    const [draggedTemplateType, setDraggedTemplateType] = useState(null); // Track template type explicitly
     
     // Template confirmation modal state
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -310,12 +311,14 @@ const CalendarGridControlled = ({
                     const relatedTarget = e.relatedTarget;
                     if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
                         setDraggedTemplate(null);
+                        setDraggedTemplateType(null);
                         setDraggedOverDay(null);
                     }
                 }}
                 onDrop={() => {
                     // Clear template on drop
                     setDraggedTemplate(null);
+                    setDraggedTemplateType(null);
                 }}
                 sx={{
                     display: 'grid',
@@ -350,13 +353,17 @@ const CalendarGridControlled = ({
                     const isBeingDraggedOver = draggedOverDay === dateKey;
                     
                     // Week template logic
-                    const isWeekTemplate = draggedTemplate?.type === 'week';
-                    const weekStartMonday = dayMoment.clone().startOf('week'); // Monday of this week
-                    const currentWeekStart = moment().startOf('week'); // Monday of current week
+                    const isWeekTemplate = draggedTemplateType === 'week';
+                    const currentWeekStart = moment().startOf('isoWeek'); // Monday of current week
                     
                     // Check if this day is part of the hovered week (for week templates)
                     const isInHoveredWeek = isWeekTemplate && draggedOverDay && 
-                        dayMoment.isBetween(moment(draggedOverDay).startOf('week'), moment(draggedOverDay).endOf('week'), 'day', '[]');
+                        dayMoment.isBetween(
+                            moment(draggedOverDay).startOf('isoWeek'),
+                            moment(draggedOverDay).endOf('isoWeek'),
+                            'day',
+                            '[]'
+                        );
                     
                     // Determine if this day should be grayed out for week templates
                     let isGrayedOut = false;
@@ -364,8 +371,8 @@ const CalendarGridControlled = ({
                     
                     if (isWeekTemplate && draggedOverDay) {
                         const hoveredDayMoment = moment(draggedOverDay);
-                        const hoveredWeekStart = hoveredDayMoment.clone().startOf('week'); // Monday
-                        const hoveredWeekEnd = hoveredDayMoment.clone().endOf('week'); // Sunday
+                        const hoveredWeekStart = hoveredDayMoment.clone().startOf('isoWeek'); // Monday
+                        const hoveredWeekEnd = hoveredDayMoment.clone().endOf('isoWeek'); // Sunday
                         
                         isInTemplateWeek = dayMoment.isBetween(hoveredWeekStart, hoveredWeekEnd, 'day', '[]');
                         
@@ -400,18 +407,20 @@ const CalendarGridControlled = ({
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
                         
+                        const templateType = e.dataTransfer.getData('templateType');
+                        const templateDataStr = e.dataTransfer.getData('templateData');
+
+                        if (templateType) {
+                            setDraggedTemplateType(templateType);
+                        }
+
                         // Parse template data to determine type (only set once)
-                        if (!draggedTemplate) {
-                            const templateType = e.dataTransfer.getData('templateType');
-                            const templateDataStr = e.dataTransfer.getData('templateData');
-                            
-                            if (templateDataStr) {
-                                try {
-                                    const templateData = JSON.parse(templateDataStr);
-                                    setDraggedTemplate({ ...templateData, type: templateType });
-                                } catch (err) {
-                                    console.error('Failed to parse template data:', err);
-                                }
+                        if (!draggedTemplate && templateDataStr) {
+                            try {
+                                const templateData = JSON.parse(templateDataStr);
+                                setDraggedTemplate({ ...templateData, type: templateType });
+                            } catch (err) {
+                                console.error('Failed to parse template data:', err);
                             }
                         }
                         
@@ -419,11 +428,8 @@ const CalendarGridControlled = ({
                     };
 
                     const handleDragLeave = (e) => {
-                        // Only clear if leaving the calendar grid entirely
-                        const relatedTarget = e.relatedTarget;
-                        if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
-                            setDraggedOverDay(null);
-                        }
+                        // Don't clear draggedOverDay here - let the grid-level handler do it
+                        // This prevents flickering when dragging across days
                     };
 
                     const handleDrop = (e) => {
@@ -445,6 +451,7 @@ const CalendarGridControlled = ({
                         setConfirmModalOpen(true);
                         setDraggedOverDay(null);
                         setDraggedTemplate(null);
+                        setDraggedTemplateType(null);
                     };
 
                     return (

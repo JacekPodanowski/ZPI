@@ -141,7 +141,7 @@ const CreatorCalendarApp = () => {
                     flex: 1,
                     display: 'flex',
                     minHeight: 0,
-                    overflow: 'hidden'
+                    overflow: 'visible' // Allow templates to expand beyond boundaries
                 }}
             >
                 <RealTemplateBrowser
@@ -158,7 +158,7 @@ const CreatorCalendarApp = () => {
                         py: 0,
                         gap: 0,
                         minHeight: 0,
-                        overflow: 'hidden'
+                        overflow: 'visible' // Allow events to expand on hover
                     }}
                 >
                     {error ? (

@@ -228,6 +228,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                                 overflowY: 'auto',
                                                 overflowX: 'visible',
                                                 pr: 0.5,
+                                                pl: 0.25,
+                                                pt: 0.25,
                                                 flex: 1,
                                                 minHeight: 0,
                                                 '&::-webkit-scrollbar': { width: '4px' },
@@ -393,6 +395,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                                 overflowY: 'auto',
                                                 overflowX: 'visible',
                                                 pr: 0.5,
+                                                pl: 0.25,
+                                                pt: 0.25,
                                                 flex: 1,
                                                 minHeight: 0,
                                                 '&::-webkit-scrollbar': { width: '4px' },
@@ -467,7 +471,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                 animate={{ height: 80, opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 0.3 }}
-                                style={{ overflow: 'hidden' }}
+                                style={{ overflow: 'visible' }}
                             >
                                 <Box
                                     sx={{
@@ -483,7 +487,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                         justifyContent: 'center',
                                         gap: 0.5,
                                         transition: 'all 200ms ease',
-                                        transform: isOverTrash ? 'scale(1.02)' : 'scale(1)'
+                                        transform: isOverTrash ? 'translateY(-2px)' : 'none'
                                     }}
                                     onDragOver={(e) => {
                                         e.preventDefault();
