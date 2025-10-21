@@ -94,7 +94,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                 borderRight: '1px solid rgba(146, 0, 32, 0.1)',
                 backgroundColor: 'rgba(228, 229, 218, 0.5)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                overflow: 'visible'
             }}
         >
             <Box
@@ -105,7 +106,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                     flexDirection: 'column',
                     gap: 2.5,
                     flex: 1,
-                    minHeight: 0
+                    minHeight: 0,
+                    overflow: 'visible'
                 }}
             >
                 {/* Header with Sessions Logo */}
@@ -132,7 +134,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                         display: 'flex',
                         flexDirection: 'column',
                         minHeight: 0,
-                        gap: 2.5
+                        gap: 2.5,
+                        overflow: 'visible'
                     }}
                 >
                     {/* Day Templates Section */}
@@ -214,7 +217,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                                    style={{ overflow: 'visible', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
                                 >
                                     {dayTemplates.length > 0 ? (
                                         <Box
@@ -223,7 +226,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                                 flexDirection: 'column',
                                                 gap: 0.75,
                                                 overflowY: 'auto',
-                                                overflowX: 'hidden',
+                                                overflowX: 'visible',
                                                 pr: 0.5,
                                                 flex: 1,
                                                 minHeight: 0,
@@ -379,7 +382,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                                    style={{ overflow: 'visible', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
                                 >
                                     {weekTemplates.length > 0 ? (
                                         <Box
@@ -388,7 +391,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                                                 flexDirection: 'column',
                                                 gap: 0.75,
                                                 overflowY: 'auto',
-                                                overflowX: 'hidden',
+                                                overflowX: 'visible',
                                                 pr: 0.5,
                                                 flex: 1,
                                                 minHeight: 0,

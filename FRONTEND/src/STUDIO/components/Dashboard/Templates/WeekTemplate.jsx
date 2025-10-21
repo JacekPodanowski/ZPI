@@ -33,8 +33,7 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                 opacity: isDragging ? 0.5 : 1
             }}
             whileHover={{ 
-                scale: isDragging ? 0.9 : 1.02,
-                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)' 
+                scale: isDragging ? 0.9 : 1.02
             }}
             style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
@@ -46,13 +45,15 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                     backgroundColor: 'background.paper',
                     border: '1px solid',
                     borderColor: 'rgba(146, 0, 32, 0.12)',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                    boxShadow: 'none',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     position: 'relative',
                     overflow: 'hidden',
                     '&:hover': {
                         borderColor: 'rgba(146, 0, 32, 0.3)',
-                        backgroundColor: 'rgba(228, 229, 218, 0.3)'
+                        backgroundColor: 'rgba(228, 229, 218, 0.3)',
+                        boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)',
+                        borderRadius: 2
                     }
                 }}
             >
