@@ -1,18 +1,40 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Button from './Button'
 import apiClient from '../services/apiClient'
 import { resolveMediaUrl } from '../config/api'
 import { deleteMediaAsset } from '../services/mediaService'
 import { isVideoUrl } from '../utils/mediaUtils'
+import useEditorStore from '../STUDIO/store/editorStore'
 
-const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false }) => {
+const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false, usage = 'site_content', siteId: explicitSiteId }) => {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState(value || '')
   const fileInputRef = useRef(null)
+  const editorSiteId = useEditorStore((state) => state.siteMeta?.id)
+  const resolvedSiteId = explicitSiteId ?? editorSiteId ?? null
+
+  const ensureUploadContext = useCallback(() => {
+    if (usage === 'site_content' && !resolvedSiteId) {
+      alert('Zapisz stronę, aby otrzymać identyfikator przed dodaniem multimediów.')
+      return false
+    }
+    return true
+  }, [resolvedSiteId, usage])
+
+  const getDeletionContext = useCallback(() => {
+    if (usage === 'site_content' && resolvedSiteId) {
+      return { usage, siteId: resolvedSiteId }
+    }
+    return { usage }
+  }, [resolvedSiteId, usage])
 
   const handleFileSelect = async (files) => {
     if (!files || files.length === 0) return
+
+    if (!ensureUploadContext()) {
+      return
+    }
 
     const uploadFile = async (file) => {
       const isImage = file.type.startsWith('image/')
@@ -30,6 +52,10 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
 
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('usage', usage)
+      if (resolvedSiteId) {
+        formData.append('site_id', resolvedSiteId)
+      }
 
       try {
         const response = await apiClient.post('/upload/', formData, {
@@ -58,7 +84,7 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
         setPreview(url)
         onChange(url)
         if (previousUrl && previousUrl !== url) {
-          void deleteMediaAsset(previousUrl)
+          void deleteMediaAsset(previousUrl, getDeletionContext())
         }
       }
     }
@@ -88,6 +114,10 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
   }
 
   const handleUrlInput = () => {
+    if (!ensureUploadContext()) {
+      return
+    }
+
     const url = prompt('Wklej URL obrazu lub wideo:')
     if (url) {
       const previousUrl = preview
@@ -97,7 +127,7 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
         setPreview(url)
         onChange(url)
         if (previousUrl && previousUrl !== url) {
-          void deleteMediaAsset(previousUrl)
+          void deleteMediaAsset(previousUrl, getDeletionContext())
         }
       }
     }
@@ -111,7 +141,7 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
       fileInputRef.current.value = ''
     }
     if (previousUrl) {
-      void deleteMediaAsset(previousUrl)
+      void deleteMediaAsset(previousUrl, getDeletionContext())
     }
   }
 

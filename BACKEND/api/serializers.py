@@ -4,7 +4,17 @@ import logging
 from django.utils.text import slugify
 from rest_framework import serializers
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template, CustomReactComponent
+from .models import (
+    PlatformUser,
+    Site,
+    Client,
+    Event,
+    Booking,
+    Template,
+    CustomReactComponent,
+    MediaUsage,
+)
+from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
 logger = logging.getLogger(__name__)
 
@@ -55,11 +65,53 @@ class PlatformUserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
+        old_avatar_url = instance.avatar
+        new_avatar_url = validated_data.get('avatar', old_avatar_url)
         user = super().update(instance, validated_data)
         if password:
             user.set_password(password)
             user.save(update_fields=['password'])
+        if 'avatar' in validated_data:
+            self._sync_avatar_usage(user, old_avatar_url, new_avatar_url)
         return user
+
+    def _sync_avatar_usage(self, user: PlatformUser, old_url: str | None, new_url: str | None) -> None:
+        if old_url == new_url:
+            return
+
+        if new_url:
+            asset = get_asset_by_path_or_url(new_url)
+            if asset:
+                MediaUsage.objects.get_or_create(
+                    asset=asset,
+                    user=user,
+                    usage_type=MediaUsage.UsageType.AVATAR,
+                )
+                MediaUsage.objects.filter(
+                    user=user,
+                    usage_type=MediaUsage.UsageType.AVATAR,
+                ).exclude(asset=asset).delete()
+            else:
+                logger.warning("Avatar URL %s is not managed media", new_url)
+                MediaUsage.objects.filter(
+                    user=user,
+                    usage_type=MediaUsage.UsageType.AVATAR,
+                ).delete()
+        else:
+            MediaUsage.objects.filter(
+                user=user,
+                usage_type=MediaUsage.UsageType.AVATAR,
+            ).delete()
+
+        if old_url and old_url != new_url:
+            old_asset = get_asset_by_path_or_url(old_url)
+            if old_asset:
+                MediaUsage.objects.filter(
+                    asset=old_asset,
+                    user=user,
+                    usage_type=MediaUsage.UsageType.AVATAR,
+                ).delete()
+                cleanup_asset_if_unused(old_asset)
 
 
 class SiteSerializer(serializers.ModelSerializer):

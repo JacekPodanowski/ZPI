@@ -1,7 +1,8 @@
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from .models import Booking
+from .media_helpers import cleanup_asset_if_unused
+from .models import Booking, MediaUsage
 
 
 @receiver(post_save, sender=Booking)
@@ -18,3 +19,9 @@ def cleanup_attendee_on_booking_delete(sender, instance: Booking, **kwargs):
         remaining = instance.event.bookings.filter(client=instance.client).exists()
         if not remaining:
             instance.event.attendees.remove(instance.client)
+
+
+@receiver(post_delete, sender=MediaUsage)
+def cleanup_media_on_usage_delete(sender, instance: MediaUsage, **kwargs):
+    """Remove media files that are no longer referenced anywhere."""
+    cleanup_asset_if_unused(instance.asset)

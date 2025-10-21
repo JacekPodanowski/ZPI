@@ -24,16 +24,22 @@ export const isManagedMediaUrl = (url = '') => {
   return trimmed.startsWith(MEDIA_BASE_URL)
 }
 
-export const deleteMediaAsset = async (url = '') => {
+export const deleteMediaAsset = async (url = '', options = {}) => {
   if (!isManagedMediaUrl(url)) {
     return
   }
 
   try {
+    const payload = { url }
+    if (options.usage) {
+      payload.usage = options.usage
+    }
+    if (options.siteId) {
+      payload.site_id = options.siteId
+    }
+
     await apiClient.delete('/upload/', {
-      data: {
-        url,
-      },
+      data: payload,
       headers: {
         'Content-Type': 'application/json',
       },

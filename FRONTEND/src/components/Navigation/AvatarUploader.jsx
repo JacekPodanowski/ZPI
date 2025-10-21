@@ -25,6 +25,7 @@ const AvatarUploader = ({ currentAvatar, onAvatarChange, size = 48 }) => {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('usage', 'avatar');
 
     setIsUploading(true);
 
@@ -42,7 +43,7 @@ const AvatarUploader = ({ currentAvatar, onAvatarChange, size = 48 }) => {
       
       // Delete old avatar if it exists
       if (currentAvatar) {
-        void deleteMediaAsset(currentAvatar);
+        void deleteMediaAsset(currentAvatar, { usage: 'avatar' });
       }
 
       onAvatarChange(newAvatarUrl);

@@ -18,6 +18,9 @@ docker-compose logs -f frontend
 # wyczyść całą pamięć docera (czasem nawet 30 GB)
 docker system prune -a --volumes
 
+# migracje
+docker-compose exec backend python manage.py migrate
+
 # backup bazy do json
 docker compose exec backend python manage.py dumpdata > backup_bazy.json
 

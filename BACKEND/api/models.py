@@ -214,6 +214,67 @@ class Booking(models.Model):
         return f"Booking for {subject} on event {self.event_id}"
 
 
+class MediaAsset(models.Model):
+    class MediaType(models.TextChoices):
+        IMAGE = 'image', 'Image'
+        VIDEO = 'video', 'Video'
+        OTHER = 'other', 'Other'
+
+    file_name = models.CharField(max_length=255)
+    storage_path = models.CharField(max_length=500, unique=True)
+    file_url = models.CharField(max_length=500, unique=True)
+    file_hash = models.CharField(max_length=64, unique=True)
+    media_type = models.CharField(max_length=16, choices=MediaType.choices, default=MediaType.OTHER)
+    uploaded_by = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='uploaded_media')
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['media_type']),
+            models.Index(fields=['uploaded_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.file_name} ({self.media_type})"
+
+
+class MediaUsage(models.Model):
+    class UsageType(models.TextChoices):
+        AVATAR = 'avatar', 'Avatar'
+        SITE_CONTENT = 'site_content', 'Site content'
+
+    asset = models.ForeignKey(MediaAsset, on_delete=models.CASCADE, related_name='usages')
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='media_usages', blank=True, null=True)
+    user = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='media_usages', blank=True, null=True)
+    usage_type = models.CharField(max_length=32, choices=UsageType.choices)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    (models.Q(site__isnull=False) & models.Q(user__isnull=True)) |
+                    (models.Q(site__isnull=True) & models.Q(user__isnull=False))
+                ),
+                name='mediausage_single_context'
+            ),
+            models.UniqueConstraint(
+                fields=['asset', 'site', 'usage_type'],
+                condition=models.Q(site__isnull=False),
+                name='mediausage_unique_site_usage'
+            ),
+            models.UniqueConstraint(
+                fields=['asset', 'user', 'usage_type'],
+                condition=models.Q(user__isnull=False),
+                name='mediausage_unique_user_usage'
+            ),
+        ]
+
+    def __str__(self):
+        target = self.site.identifier if self.site else (self.user.email if self.user else 'unknown')
+        return f"{self.usage_type} -> {target}"
+
+
 def custom_component_path(instance, filename):
     return f'komponenty/{filename}'
 

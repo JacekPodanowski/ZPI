@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template
+from .models import PlatformUser, Site, Client, Event, Booking, Template, MediaAsset, MediaUsage, CustomReactComponent
 
 
 @admin.register(PlatformUser)
@@ -44,3 +44,25 @@ class TemplateAdmin(admin.ModelAdmin):
 	list_display = ('name', 'is_public')
 	search_fields = ('name',)
 	list_filter = ('is_public',)
+
+
+@admin.register(MediaAsset)
+class MediaAssetAdmin(admin.ModelAdmin):
+	list_display = ('file_name', 'media_type', 'uploaded_by', 'uploaded_at')
+	search_fields = ('file_name', 'file_hash')
+	list_filter = ('media_type',)
+	autocomplete_fields = ('uploaded_by',)
+
+
+@admin.register(MediaUsage)
+class MediaUsageAdmin(admin.ModelAdmin):
+	list_display = ('asset', 'usage_type', 'site', 'user', 'created_at')
+	search_fields = ('asset__file_name', 'site__name', 'user__email')
+	list_filter = ('usage_type',)
+	autocomplete_fields = ('asset', 'site', 'user')
+
+
+@admin.register(CustomReactComponent)
+class CustomReactComponentAdmin(admin.ModelAdmin):
+	list_display = ('name', 'created_at', 'updated_at')
+	search_fields = ('name',)

@@ -1,12 +1,12 @@
 """REST API views for the multi-tenant Personal Site Generator backend."""
 
+import hashlib
 import logging
 from datetime import datetime
-from typing import Optional
-from urllib.parse import urlparse
 
 import requests
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
@@ -20,7 +20,22 @@ from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template, CustomReactComponent
+from .models import (
+    PlatformUser,
+    Site,
+    Client,
+    Event,
+    Booking,
+    Template,
+    CustomReactComponent,
+    MediaAsset,
+    MediaUsage,
+)
+from .media_helpers import (
+    cleanup_asset_if_unused,
+    get_asset_by_path_or_url,
+    normalize_media_path,
+)
 from .serializers import (
     PlatformUserSerializer,
     SiteSerializer,
@@ -309,81 +324,141 @@ class FileUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         file_obj = request.data.get('file')
+        usage = request.data.get('usage') or MediaUsage.UsageType.SITE_CONTENT
+        site_id = request.data.get('site_id')
 
         if not file_obj:
             return Response({'error': 'No file was submitted'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if usage not in MediaUsage.UsageType.values:
+            return Response({'error': 'Invalid usage value provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        site = None
+        if usage == MediaUsage.UsageType.SITE_CONTENT:
+            if not site_id:
+                return Response({'error': 'site_id is required for site uploads'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                site = Site.objects.get(pk=site_id, owner=request.user)
+            except Site.DoesNotExist as exc:
+                raise PermissionDenied('Site not found or access denied') from exc
+
+        try:
+            file_bytes = file_obj.read()
+        except Exception as exc:  # pragma: no cover - depends on storage backend
+            logger.exception("Failed to read uploaded file")
+            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if not file_bytes:
+            return Response({'error': 'Uploaded file is empty'}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_hash = hashlib.sha256(file_bytes).hexdigest()
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
 
-        if file_obj.content_type.startswith('image'):
+        content_type = file_obj.content_type or ''
+        if content_type.startswith('image'):
             subdirectory = 'images'
-        elif file_obj.content_type.startswith('video'):
+            media_type = MediaAsset.MediaType.IMAGE
+        elif content_type.startswith('video'):
             subdirectory = 'videos'
+            media_type = MediaAsset.MediaType.VIDEO
         else:
             subdirectory = 'uploads'
+            media_type = MediaAsset.MediaType.OTHER
 
         safe_name = file_obj.name.replace(' ', '_')
         file_name = f"{subdirectory}/{timestamp}_{safe_name}"
 
+        asset = MediaAsset.objects.filter(file_hash=file_hash).first()
+        created = False
         try:
-            saved_path = default_storage.save(file_name, file_obj)
-            file_url = default_storage.url(saved_path)
-            return Response({'url': file_url}, status=status.HTTP_201_CREATED)
-        except Exception as exc:
+            if asset:
+                if not default_storage.exists(asset.storage_path):
+                    default_storage.save(asset.storage_path, ContentFile(file_bytes))
+            else:
+                saved_path = default_storage.save(file_name, ContentFile(file_bytes))
+                file_url = default_storage.url(saved_path)
+                asset = MediaAsset.objects.create(
+                    file_name=safe_name,
+                    storage_path=saved_path,
+                    file_url=file_url,
+                    file_hash=file_hash,
+                    media_type=media_type,
+                    uploaded_by=request.user,
+                )
+                created = True
+        except Exception as exc:  # pragma: no cover - storage backend dependent
             logger.exception("Failed to upload file")
             return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        usage_filters = {'asset': asset, 'usage_type': usage}
+        if usage == MediaUsage.UsageType.AVATAR:
+            usage_filters['user'] = request.user
+        else:
+            usage_filters['site'] = site
+
+        MediaUsage.objects.get_or_create(**usage_filters)
+
+        if usage == MediaUsage.UsageType.AVATAR:
+            MediaUsage.objects.filter(user=request.user, usage_type=MediaUsage.UsageType.AVATAR).exclude(asset=asset).delete()
+
+        response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        return Response(
+            {
+                'url': asset.file_url,
+                'hash': asset.file_hash,
+                'asset_id': asset.id,
+                'deduplicated': not created,
+            },
+            status=response_status,
+        )
 
     def delete(self, request, *args, **kwargs):
         raw_url = request.data.get('url') or request.query_params.get('url')
         if not raw_url:
             return Response({'error': 'No file URL provided'}, status=status.HTTP_400_BAD_REQUEST)
+        usage = request.data.get('usage') or request.query_params.get('usage') or MediaUsage.UsageType.SITE_CONTENT
+        site_id = request.data.get('site_id') or request.query_params.get('site_id')
 
-        relative_path = self._extract_relative_path(raw_url)
-        if not relative_path:
+        if usage not in MediaUsage.UsageType.values:
+            return Response({'error': 'Invalid usage value provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        relative_path = normalize_media_path(raw_url)
+        allowed_prefixes = ('images/', 'videos/', 'uploads/')
+        if not relative_path or not relative_path.startswith(allowed_prefixes):
             return Response({'error': 'Invalid media path'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not default_storage.exists(relative_path):
-            logger.info("Media file %s already removed", relative_path)
+        asset = get_asset_by_path_or_url(raw_url)
+        if not asset:
+            logger.info("No media asset registered for %s", raw_url)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        try:
-            default_storage.delete(relative_path)
-            logger.info("Deleted media file %s", relative_path)
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Exception as exc:
-            logger.exception("Failed to delete media file %s", relative_path)
-            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def _extract_relative_path(self, file_url: str) -> Optional[str]:
-        """Normalize user-provided media URL to a safe storage-relative path."""
-
-        trimmed = (file_url or '').strip()
-        if not trimmed:
-            return None
-
-        parsed = urlparse(trimmed)
-        path = parsed.path or ''
-
-        if not path and not parsed.netloc:
-            path = trimmed
-
-        if not path.startswith('/'):
-            path = f'/{path}'
-
-        media_url = getattr(settings, 'MEDIA_URL', '/media/') or '/media/'
-        if path.startswith(media_url):
-            relative_path = path[len(media_url):]
+        if usage == MediaUsage.UsageType.AVATAR:
+            deleted_count, _ = MediaUsage.objects.filter(
+                asset=asset,
+                user=request.user,
+                usage_type=MediaUsage.UsageType.AVATAR,
+            ).delete()
+            if request.user.avatar == asset.file_url:
+                request.user.avatar = None
+                request.user.save(update_fields=['avatar'])
         else:
-            relative_path = path.lstrip('/')
+            if not site_id:
+                return Response({'error': 'site_id is required to detach site media'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                site = Site.objects.get(pk=site_id, owner=request.user)
+            except Site.DoesNotExist as exc:
+                raise PermissionDenied('Site not found or access denied') from exc
 
-        if '..' in relative_path or relative_path.startswith('/'):
-            return None
+            deleted_count, _ = MediaUsage.objects.filter(
+                asset=asset,
+                site=site,
+                usage_type=MediaUsage.UsageType.SITE_CONTENT,
+            ).delete()
 
-        allowed_prefixes = ('images/', 'videos/', 'uploads/')
-        if not relative_path.startswith(allowed_prefixes):
-            return None
+        if deleted_count == 0:
+            cleanup_asset_if_unused(asset)
 
-        return relative_path
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['POST'])
