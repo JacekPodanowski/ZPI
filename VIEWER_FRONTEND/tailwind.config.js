@@ -1,18 +1,21 @@
-/** @type {import('tailwindcss').Config} */
-
-const spacingKeys = Array.from({ length: 17 }, (_, index) => index);
+const spacingKeys = Array.from({ length: 17 }, (_, index) => index)
 
 const spacingScale = spacingKeys.reduce((acc, key) => {
   if (key === 0) {
-    acc[key] = '0rem';
+    acc[key] = '0rem'
   } else {
-    acc[key] = `calc(var(--spacing-${key}) * var(--density-multiplier, 1))`;
+    acc[key] = `calc(var(--spacing-${key}) * var(--density-multiplier, 1))`
   }
-  return acc;
-}, {});
+  return acc
+}, {})
 
-module.exports = {
-  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx,css}'],
+const config = {
+  content: [
+    './index.html', 
+    './src/**/*.{js,jsx,ts,tsx}',
+    '../FRONTEND/src/SITES/**/*.{js,jsx,ts,tsx}',
+    '../FRONTEND/src/components/**/*.{js,jsx,ts,tsx}'
+  ],
   theme: {
     extend: {
       borderRadius: {
@@ -41,5 +44,7 @@ module.exports = {
     }
   },
   plugins: []
-};
+}
+
+export default config
 
