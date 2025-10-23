@@ -10,7 +10,6 @@ const resolveSharedSrcPath = () => {
   const candidates = [
     process.env.SHARED_FRONTEND_PATH,
     path.resolve(__dirname, '../FRONTEND/src'),
-    path.resolve(__dirname, './frontend/src'),
   ].filter(Boolean)
 
   for (const candidate of candidates) {
