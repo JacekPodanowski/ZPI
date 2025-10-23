@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global styles */
+/* src/index.css */
+
 * {
   box-sizing: border-box;
   transition:
@@ -11,6 +12,16 @@
     border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     fill 0.35s cubic-bezier(0.4, 0, 0.2, 1),
     stroke 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Disable transitions during theme switch for better sync */
+html.theme-transitioning * {
+  transition:
+    background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    fill 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 html,
@@ -23,9 +34,31 @@ body {
   background-color: var(--color-bg-page, #ffffff);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading, 'Poppins', sans-serif);
   font-weight: var(--font-weight-bold, 700);
   margin: 0;
+}
+
+code,
+pre {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.text-heading {
+  font-family: var(--font-heading, 'Poppins', sans-serif);
+}
+
+.text-body {
+  font-family: var(--font-body, 'Inter', sans-serif);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold, 700);
 }
 

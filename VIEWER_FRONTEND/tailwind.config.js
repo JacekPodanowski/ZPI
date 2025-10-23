@@ -1,3 +1,9 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
+import { existsSync } from 'fs'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 const spacingKeys = Array.from({ length: 17 }, (_, index) => index)
 
 const spacingScale = spacingKeys.reduce((acc, key) => {
@@ -9,12 +15,37 @@ const spacingScale = spacingKeys.reduce((acc, key) => {
   return acc
 }, {})
 
+const resolveSharedSrcPath = () => {
+  const candidates = [
+    process.env.SHARED_FRONTEND_PATH,
+    path.resolve(__dirname, '../FRONTEND/src'),
+    path.resolve(__dirname, './frontend/src'),
+  ].filter(Boolean)
+
+  for (const candidate of candidates) {
+    const resolved = path.resolve(candidate)
+    if (existsSync(resolved)) {
+      return resolved
+    }
+  }
+
+  return null
+}
+
+const sharedSrcPath = resolveSharedSrcPath()
+
+const sharedContentGlobs = sharedSrcPath
+  ? [
+      path.join(sharedSrcPath, 'SITES/**/*.{js,jsx,ts,tsx,css}'),
+      path.join(sharedSrcPath, 'components/**/*.{js,jsx,ts,tsx,css}'),
+    ]
+  : []
+
 const config = {
   content: [
-    './index.html', 
-    './src/**/*.{js,jsx,ts,tsx}',
-    '../FRONTEND/src/SITES/**/*.{js,jsx,ts,tsx}',
-    '../FRONTEND/src/components/**/*.{js,jsx,ts,tsx}'
+    './index.html',
+    './src/**/*.{js,jsx,ts,tsx,css}',
+    ...sharedContentGlobs,
   ],
   theme: {
     extend: {
