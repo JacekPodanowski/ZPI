@@ -17,7 +17,7 @@
             "order": 0,
             "config": {
               "title": "Najczęściej zadawane pytania",
-              "intro": "Szybkie odpowiedzi na podstawowe zagadnienia organizacyjne.",
+              "intro": "Masz pytania? Sprawdź odpowiedzi na najczęściej zadawane pytania dotyczące naszych usług i praktyk wellness.",
               "bgColor": "#FFFFFF",
               "textColor": "rgb(30, 30, 30)",
               "items": []
