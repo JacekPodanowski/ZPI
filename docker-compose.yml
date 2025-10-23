@@ -69,7 +69,8 @@ services:
     depends_on:
       - backend
 
-  # --- Serwis Viewer Frontend (Public Sites) ---
+  # --- Serwis Viewer Frontend (Public Sites Tests) ---
+  # Launch with: docker-compose --profile viewer up
   viewer-frontend:
     profiles: ["viewer"]
     build:
