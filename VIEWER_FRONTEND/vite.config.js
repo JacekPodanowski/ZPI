@@ -6,7 +6,23 @@ import { existsSync } from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const frontendPath = path.resolve(__dirname, '../frontend/src');
+const resolveSharedSrcPath = () => {
+  const candidates = [
+    process.env.SHARED_FRONTEND_PATH,
+    path.resolve(__dirname, '../FRONTEND/src'),
+  ].filter(Boolean)
+
+  for (const candidate of candidates) {
+    const resolved = path.resolve(candidate)
+    if (existsSync(resolved)) {
+      return resolved
+    }
+  }
+
+  return null
+}
+
+const sharedSrcPath = resolveSharedSrcPath()
 
 export default defineConfig({
   plugins: [react()],
@@ -22,13 +38,18 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@shared/components': path.join(frontendPath, 'components'),
-      '@shared/services': path.join(frontendPath, 'services'),
-      '@shared/theme': path.join(frontendPath, 'theme'),
-      '@shared/SITES': path.join(frontendPath, 'SITES'),
-      '@shared/utils': path.join(frontendPath, 'utils'),
-      '@shared/config': path.join(frontendPath, 'config'),
-      '@shared/constants': path.join(frontendPath, 'constants'),
+      ...(sharedSrcPath
+        ? {
+            '@shared/components': path.join(sharedSrcPath, 'components'),
+            '@shared/services': path.join(sharedSrcPath, 'services'),
+            '@shared/theme': path.join(sharedSrcPath, 'theme'),
+            '@shared/SITES': path.join(sharedSrcPath, 'SITES'),
+            '@shared/utils': path.join(sharedSrcPath, 'utils'),
+            '@shared/config': path.join(sharedSrcPath, 'config'),
+            '@shared/constants': path.join(sharedSrcPath, 'constants'),
+            '@shared/styles': sharedSrcPath,
+          }
+        : {}),
       // Force React to use VIEWER_FRONTEND's version to avoid duplication
       'react': path.resolve(__dirname, './node_modules/react'),
       'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
