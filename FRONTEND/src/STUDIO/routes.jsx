@@ -2,7 +2,8 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import SitesPage from './pages/Sites/SitesPage';
-import SiteCreationWizard from './pages/NewSite/SiteCreationWizard';
+import CategorySelectionPage from './pages/NewSite/CategorySelectionPage';
+import NewProjectPage from './pages/NewSite/NewProjectPage';
 import EditorPage from './pages/Editor/EditorPage';
 import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
@@ -24,12 +25,13 @@ const StudioApp = () => (
     {/* Default redirect when visiting /studio */}
     <Route index element={<Navigate to="" replace />} />
 
+    {/* Site creation flow - OUTSIDE StudioLayout to avoid layout padding/footer */}
+    <Route path="new" element={<ProtectedRoute><CategorySelectionPage /></ProtectedRoute>} />
+    <Route path="new_project" element={<ProtectedRoute><NewProjectPage /></ProtectedRoute>} />
+
     <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
-
-      {/* Site creation flow */}
-      <Route path="new" element={<ProtectedRoute><SiteCreationWizard /></ProtectedRoute>} />
 
       {/* Calendar previews for development */}
       <Route path="calendar/public" element={<PublicCalendarPage />} />

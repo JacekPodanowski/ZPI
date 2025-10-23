@@ -2,12 +2,10 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PersonIcon from '@mui/icons-material/Person';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import CelebrationIcon from '@mui/icons-material/Celebration';
-import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ArticleIcon from '@mui/icons-material/Article';
-import ContactMailIcon from '@mui/icons-material/ContactMail';
-import GroupIcon from '@mui/icons-material/Group';
+// import GroupIcon from '@mui/icons-material/Group'; // [DEV: Unused - team module marked for deletion]
 
 // Module definitions with icons, descriptions, and warnings
 export const MODULE_DEFINITIONS = {
@@ -15,7 +13,7 @@ export const MODULE_DEFINITIONS = {
         id: 'publicCalendar',
         name: 'Spotkania',
         icon: CalendarMonthIcon,
-        description: 'Kalendarz rezerwacji i dostępnych terminów',
+        description: 'Kalendarz rezerwacji terminów',
         enabled: true,
         disableWarning: {
             enabled: true,
@@ -27,76 +25,72 @@ export const MODULE_DEFINITIONS = {
     },
     about: {
         id: 'about',
-        name: 'O mnie',
+        name: 'O mnie & Kontakt',
         icon: PersonIcon,
-        description: 'Opowiedz o swoim doświadczeniu i podejściu',
+        description: '[DEV: Merged "About" + "Contact"] O Tobie i kontakt',
         enabled: true
     },
     services: {
         id: 'services',
-        name: 'Usługi',
+        name: 'Usługi & Cennik',
         icon: ListAltIcon,
-        description: 'Karty usług z opisami i cenami',
+        description: '[DEV: Merged "Services" + "Pricing"] Oferta i ceny',
         enabled: true
     },
     events: {
         id: 'events',
         name: 'Wydarzenia',
         icon: CelebrationIcon,
-        description: 'Wydarzenia grupowe, warsztaty i wyjazdy',
+        description: 'Warsztaty i wyjazdy grupowe',
         enabled: false
-    },
-    pricing: {
-        id: 'pricing',
-        name: 'Cennik',
-        icon: LocalOfferIcon,
-        description: 'Pakiety cenowe i warianty współpracy',
-        enabled: true
     },
     gallery: {
         id: 'gallery',
         name: 'Galeria',
         icon: PhotoLibraryIcon,
-        description: 'Galeria zdjęć z elastycznym układem',
-        enabled: true
+        description: 'Zdjęcia z Twoich zajęć',
+        enabled: false
     },
     faq: {
         id: 'faq',
         name: 'FAQ',
         icon: HelpOutlineIcon,
-        description: 'Lista najczęściej zadawanych pytań',
+        description: 'Odpowiedzi na pytania',
         enabled: false
     },
     blog: {
         id: 'blog',
         name: 'Blog',
         icon: ArticleIcon,
-        description: 'Aktualności i artykuły tworzące Twoją historię',
+        description: 'Artykuły i aktualności',
         enabled: false
     },
-    contact: {
-        id: 'contact',
-        name: 'Kontakt',
-        icon: ContactMailIcon,
-        description: 'Dane kontaktowe i formularz zapisu',
-        enabled: true
-    },
-    team: {
-        id: 'team',
-        name: 'Zespół',
-        icon: GroupIcon,
-        description: 'Prezentacja zespołu i ról',
-        enabled: false
-    }
+    // [DEV: TO DELETE] Team module - doesn't make sense for solo entrepreneurs
+    // team: {
+    //     id: 'team',
+    //     name: 'Zespół',
+    //     icon: GroupIcon,
+    //     description: 'Twój zespół i role',
+    //     enabled: false
+    // }
 };
 
 // Category to module mapping
 export const CATEGORY_MODULE_CONFIGS = {
-    wellness: ['publicCalendar', 'about', 'services', 'events', 'pricing', 'gallery', 'contact'],
-    education: ['publicCalendar', 'about', 'services', 'pricing', 'faq', 'contact'],
-    creative: ['publicCalendar', 'about', 'services', 'gallery', 'pricing', 'blog', 'contact'],
-    health: ['publicCalendar', 'about', 'services', 'pricing', 'faq', 'contact'],
-    default: ['publicCalendar', 'about', 'services', 'pricing', 'faq', 'contact']
+    wellness: ['publicCalendar', 'about', 'services', 'events', 'gallery', 'blog', 'faq'],
+    education: ['publicCalendar', 'about', 'services', 'events', 'gallery', 'blog', 'faq'],
+    creative: ['publicCalendar', 'about', 'services', 'events', 'gallery', 'blog', 'faq'],
+    health: ['publicCalendar', 'about', 'services', 'events', 'gallery', 'blog', 'faq'],
+    default: ['publicCalendar', 'about', 'services', 'events', 'gallery', 'blog', 'faq']
+};
+
+// Which modules should be ENABLED by default per category
+export const CATEGORY_DEFAULT_ENABLED = {
+    wellness: ['publicCalendar', 'about', 'services', 'events', 'gallery'],
+    education: ['publicCalendar', 'about', 'services'],
+    creative: ['publicCalendar', 'about', 'services', 'gallery', 'blog'],
+    health: ['publicCalendar', 'about', 'services'],
+    default: ['publicCalendar', 'about', 'services']
 };
 
 // Site name validation
@@ -116,9 +110,11 @@ export const validateSiteName = (name) => {
 // Get modules for a category
 export const getModulesForCategory = (categoryId) => {
     const moduleIds = CATEGORY_MODULE_CONFIGS[categoryId] || CATEGORY_MODULE_CONFIGS.default;
+    const enabledIds = CATEGORY_DEFAULT_ENABLED[categoryId] || CATEGORY_DEFAULT_ENABLED.default;
+    
     return moduleIds.map((id) => ({
         ...MODULE_DEFINITIONS[id],
-        enabled: CATEGORY_MODULE_CONFIGS[categoryId || 'default'].includes(id)
+        enabled: enabledIds.includes(id)
     }));
 };
 

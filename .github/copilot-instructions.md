@@ -85,7 +85,7 @@ Every response involving code changes MUST include a short max 5 sentence summar
   **Urgency:** [Low/Medium/High/Critical]
 
 **8. Development Environment**
-All services run in Docker containers with hot-reload enabled, ensuring that code changes are applied instantly without requiring manual restarts or rebuilds.
+All services run in Docker containers with hot-reload enabled, DO NOT propose to run services natively on host machine, assume every change is instantly reflected in running containers.
 
 **9. Readme files**
 DO NOT CREATE README FILES ABOUT CHANGES MADE. just write it in summary.
