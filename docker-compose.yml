@@ -65,11 +65,13 @@ services:
       - CHOKIDAR_USEPOLLING=true
       # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
       - WATCHPACK_POLLING=true
+      - FAST_REFRESH=true
     depends_on:
       - backend
 
   # --- Serwis Viewer Frontend (Public Sites) ---
   viewer-frontend:
+    profiles: ["viewer"]
     build:
       context: ./VIEWER_FRONTEND
       dockerfile: Dockerfile
