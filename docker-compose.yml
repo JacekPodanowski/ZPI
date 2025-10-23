@@ -77,7 +77,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./VIEWER_FRONTEND:/app
-      - ./FRONTEND:/app/../FRONTEND
+      - ./FRONTEND:/app/frontend
       - /app/node_modules
     ports:
       - "3001:3001"

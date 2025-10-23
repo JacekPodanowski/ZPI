@@ -6,10 +6,7 @@ import { existsSync } from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Check if we're in Docker (absolute path) or local development (relative path)
-const frontendPath = existsSync('/FRONTEND') 
-  ? '/FRONTEND/src' 
-  : path.resolve(__dirname, '../FRONTEND/src')
+const frontendPath = path.resolve(__dirname, '../frontend/src');
 
 export default defineConfig({
   plugins: [react()],
