@@ -15,6 +15,7 @@ import {
     Divider
 } from '@mui/material';
 import { useToast } from '../../../contexts/ToastContext';
+import ToastVersions from '../../../components/Toast/ToastVersions';
 
 const ToastTestPage = () => {
     const addToast = useToast();
@@ -122,8 +123,11 @@ const ToastTestPage = () => {
                             label="Version"
                             onChange={(e) => setVersion(e.target.value)}
                         >
-                            <MenuItem value={1}>1</MenuItem>
-                            <MenuItem value={2}>2</MenuItem>
+                            {Object.keys(ToastVersions).map((v) => (
+                                <MenuItem key={v} value={Number(v)}>
+                                    {v}
+                                </MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
 
