@@ -21,13 +21,14 @@ const ToastTestPage = () => {
     const [message, setMessage] = useState('This is a test notification');
     const [variant, setVariant] = useState('info');
     const [duration, setDuration] = useState(5000);
+    const [version, setVersion] = useState(1);
 
     const handleLaunchToast = () => {
         if (!message.trim()) {
-            addToast('Please enter a message first', { variant: 'warning', duration: 3000 });
+            addToast('Please enter a message first', { variant: 'warning', duration: 3000, version: 1 });
             return;
         }
-        addToast(message, { variant, duration });
+        addToast(message, { variant, duration, version });
     };
 
     const presetMessages = [
@@ -40,7 +41,7 @@ const ToastTestPage = () => {
     const handlePresetClick = (preset) => {
         setMessage(preset.message);
         setVariant(preset.variant);
-        addToast(preset.message, { variant: preset.variant, duration });
+        addToast(preset.message, { variant: preset.variant, duration, version });
     };
 
     return (
@@ -110,6 +111,19 @@ const ToastTestPage = () => {
                             <MenuItem value={5000}>5 seconds (default)</MenuItem>
                             <MenuItem value={7000}>7 seconds</MenuItem>
                             <MenuItem value={10000}>10 seconds</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    {/* Version Input */}
+                    <FormControl fullWidth>
+                        <InputLabel>Version</InputLabel>
+                        <Select
+                            value={version}
+                            label="Version"
+                            onChange={(e) => setVersion(e.target.value)}
+                        >
+                            <MenuItem value={1}>1</MenuItem>
+                            <MenuItem value={2}>2</MenuItem>
                         </Select>
                     </FormControl>
 
@@ -184,7 +198,7 @@ const ToastTestPage = () => {
                                 for (let i = 0; i < 5; i++) {
                                     setTimeout(() => {
                                         const v = variants[i % variants.length];
-                                        addToast(`Toast #${i + 1}`, { variant: v, duration: 5000 });
+                                        addToast(`Toast #${i + 1}`, { variant: v, duration: 5000, version: 1 });
                                     }, i * 200);
                                 }
                             }}
