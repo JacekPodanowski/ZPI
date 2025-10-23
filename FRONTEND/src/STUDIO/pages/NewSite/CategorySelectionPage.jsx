@@ -278,7 +278,7 @@ const CategorySelectionPage = () => {
                                     fontWeight: 400
                                 }}
                             >
-                                Dostosujemy za Ciebie odpowiednie moduły
+                                Dostosujemy dla Ciebie odpowiednie moduły
                             </Typography>
                         </motion.div>
                     </Box>
