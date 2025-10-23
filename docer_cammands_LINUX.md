@@ -10,13 +10,21 @@ docker compose up --build
 # Włącz w tle:
 docker compose up --build -d
 
-# Wyświetl logi (z czego):
-docker compose logs -f                      
-docker compose logs -f backend
-docker compose logs -f frontend
+# Rebuild :
+docker compose build --no-cache
 
-# wyczyść całą pamięć docera (czasem nawet 30 GB)
+# ---> Viewer <---
+docker compose --profile viewer up --build
+
+# Wyświetl logi
+docker compose logs -f                      
+
+# wyczyść całą pamięć docera
 docker system prune -a --volumes
+
+
+# migracje
+docker compose exec backend python manage.py migrate
 
 # backup bazy do json
 docker compose exec backend python manage.py dumpdata > backup_bazy.json
