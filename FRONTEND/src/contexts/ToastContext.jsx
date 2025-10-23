@@ -3,7 +3,7 @@ import ToastContainer from '../components/Toast/ToastContainer';
 
 const ToastContext = createContext(null);
 
-export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000 }) => {
+export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000, defaultVersion = 1 }) => {
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef(new Map())
 
@@ -20,12 +20,12 @@ export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000 
     setToasts((curr) => curr.filter((t) => t.id !== id));
   }, []);
 
-  const addToast = useCallback((message, { variant = 'info', duration } = {}) => {
+  const addToast = useCallback((message, { variant = 'info', duration, version = defaultVersion } = {}) => {
     const id = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
     const dur = Number.isFinite(duration) ? duration : defaultDuration;
 
     setToasts((curr) => {
-      const next = [...curr, { id, message, variant, duration: dur, createdAt: Date.now() }];
+      const next = [...curr, { id, message, variant, duration: dur, version, createdAt: Date.now() }];
       return next.length > maxToasts ? next.slice(next.length - maxToasts) : next;
     });
 
@@ -33,7 +33,7 @@ export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000 
     timersRef.current.set(id, timeoutId);
 
     return id;
-  }, [defaultDuration, maxToasts, removeToast]);
+  }, [defaultDuration, maxToasts, removeToast, defaultVersion]);
 
   useEffect(() => () => {
     timersRef.current.forEach((tid) => clearTimeout(tid));
