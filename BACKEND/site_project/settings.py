@@ -49,7 +49,7 @@ if SUPABASE_URL:
         SUPABASE_STORAGE_PUBLIC_URL = SUPABASE_STORAGE_PUBLIC_URLS.get(default_bucket)
 
 # --- Konfiguracja sieci i bezpieczeństwa ---
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104', '136.115.41.232']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -144,12 +144,16 @@ if DEBUG:
         "http://127.0.0.1:5173",
         "http://192.168.0.104:3001",
         "http://localhost:3001",
+        "http://136.115.41.232:3001",
+        "http://136.115.41.232:3000",
     })
 
 CORS_ALLOWED_ORIGINS = sorted(cors_origins)
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",
     r"^http://127\.0\.0\.1:\d+$",
+    r"^http://192\.168\.0\.104:\d+$",
+    r"^http://136\.115\.41\.232:\d+$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
