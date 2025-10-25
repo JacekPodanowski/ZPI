@@ -113,14 +113,6 @@ class SupabaseStorageProvider(BaseStorageProvider):
             return response.get('data')
         return None
 
-    @staticmethod
-    def _response_data(response: Any) -> Any:
-        if hasattr(response, 'data'):
-            return getattr(response, 'data')
-        if isinstance(response, dict):
-            return response.get('data')
-        return None
-
     def _ensure_bucket(self, bucket: str) -> None:
         bucket = (bucket or '').strip()
         if not bucket or bucket in self._known_buckets:
@@ -144,7 +136,6 @@ class SupabaseStorageProvider(BaseStorageProvider):
                     return
 
             payload = {
-                'name': bucket,
                 'public': True,
             }
 
