@@ -6,12 +6,18 @@ import logging
 from dataclasses import dataclass
 import os
 from functools import lru_cache
-from typing import Optional
+from threading import Lock
+from typing import Any, Optional
 
-import requests
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import Storage, default_storage
+
+try:  # pragma: no cover - optional dependency imported at runtime
+    from supabase import Client as SupabaseClient, create_client
+except Exception:  # pragma: no cover - supabase is optional
+    SupabaseClient = None  # type: ignore[assignment]
+    create_client = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -78,71 +84,134 @@ class SupabaseStorageProvider(BaseStorageProvider):
         timeout: int,
         public_urls: dict[str, str],
     ) -> None:
-        self._base_url = base_url.rstrip('/')
-        self._service_key = service_key
-        self._timeout = timeout
-        self._public_urls = {bucket: url.rstrip('/') + '/' for bucket, url in public_urls.items()}
+        if SupabaseClient is None or create_client is None:
+            raise StorageError('Supabase client library is not installed')
 
-    def _auth_headers(self, content_type: Optional[str] = None) -> dict[str, str]:
-        headers: dict[str, str] = {
-            'Authorization': f'Bearer {self._service_key}',
-            'apikey': self._service_key,
-            'Accept': 'application/json',
-        }
-        if content_type:
-            headers['Content-Type'] = content_type
-        return headers
+        self._client = create_client(base_url, service_key)
+        self._timeout = timeout  # Reserved for future per-request overrides
+        self._public_urls = {bucket: url.rstrip('/') + '/' for bucket, url in public_urls.items()}
+        self._known_buckets: set[str] = set()
+        self._bucket_lock = Lock()
+
+    @staticmethod
+    def _response_error(response: Any) -> Optional[str]:
+        error = getattr(response, 'error', None)
+        if error:
+            message = getattr(error, 'message', None)
+            return str(message or error)
+        if isinstance(response, dict):
+            raw_error = response.get('error')
+            if raw_error:
+                return str(raw_error)
+        return None
+
+    @staticmethod
+    def _response_data(response: Any) -> Any:
+        if hasattr(response, 'data'):
+            return getattr(response, 'data')
+        if isinstance(response, dict):
+            return response.get('data')
+        return None
+
+    def _ensure_bucket(self, bucket: str) -> None:
+        if not bucket or bucket in self._known_buckets:
+            return
+
+        with self._bucket_lock:
+            if bucket in self._known_buckets:
+                return
+
+            try:
+                existing_resp = self._client.storage.list_buckets()
+            except Exception as exc:  # pragma: no cover - external dependency
+                logger.warning("Unable to list Supabase buckets: %s", exc)
+                existing_resp = None
+
+            if existing_resp is not None:
+                data = self._response_data(existing_resp) or []
+                names = {item.get('name') for item in data if isinstance(item, dict)}
+                if bucket in names:
+                    self._known_buckets.update(names)
+                    return
+
+            try:
+                create_resp = self._client.storage.create_bucket(bucket, {'public': True})
+            except Exception as exc:  # pragma: no cover - external dependency
+                raise StorageError(f'Failed to ensure Supabase bucket `{bucket}`: {exc}') from exc
+
+            error = self._response_error(create_resp)
+            if error and 'already exists' not in error.lower():
+                raise StorageError(f'Failed to create Supabase bucket `{bucket}`: {error}')
+
+            self._known_buckets.add(bucket)
 
     def save(self, bucket: str, path: str, data: bytes, content_type: str) -> StorageSaveResult:
         if not bucket:
             raise StorageError('Supabase bucket must be provided')
-        content_type = content_type or 'application/octet-stream'
+        self._ensure_bucket(bucket)
+
         normalized_path = path.lstrip('/')
-        endpoint = f"{self._base_url}/storage/v1/object/{bucket}/{normalized_path}"
-        headers = self._auth_headers(content_type)
-        headers['x-upsert'] = 'false'
-        headers['x-cache-control'] = 'public, max-age=31536000'
-        headers['Content-Length'] = str(len(data))
+        file_bytes = data if isinstance(data, (bytes, bytearray)) else bytes(data)
+        options = {
+            'content-type': content_type or 'application/octet-stream',
+            'cacheControl': '31536000',
+        }
 
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            data=data,
-            timeout=self._timeout,
-        )
-        if response.status_code not in (200, 201):
-            logger.error(
-                "Supabase upload failed for path %s with status %s: %s",
+        try:
+            upload_resp = self._client.storage.from_(bucket).upload(
                 normalized_path,
-                response.status_code,
-                response.text,
+                file_bytes,
+                file_options=options,
             )
-            raise StorageError(f"Supabase upload failed with status {response.status_code}")
+        except Exception as exc:  # pragma: no cover - external dependency
+            raise StorageError(f'Failed to upload file to Supabase: {exc}') from exc
 
-        return StorageSaveResult(bucket=bucket, path=normalized_path, url=self.build_url(bucket, normalized_path))
+        error = self._response_error(upload_resp)
+        if error:
+            raise StorageError(f'Supabase upload failed: {error}')
+
+        data_payload = self._response_data(upload_resp) or {}
+        stored_path = data_payload.get('path', normalized_path)
+
+        url = self.build_url(bucket, stored_path)
+        return StorageSaveResult(bucket=bucket, path=stored_path, url=url)
 
     def delete(self, bucket: str, path: str) -> None:
         if not bucket:
             return
-        endpoint = f"{self._base_url}/storage/v1/object/{bucket}"
-        headers = self._auth_headers('application/json')
+        self._ensure_bucket(bucket)
         normalized_path = path.lstrip('/')
-        payload = {'prefixes': [normalized_path]}
-        response = requests.delete(endpoint, headers=headers, json=payload, timeout=self._timeout)
-        if response.status_code not in (200, 204):
-            logger.warning(
-                "Supabase delete returned status %s for %s: %s",
-                response.status_code,
-                normalized_path,
-                response.text,
-            )
+
+        try:
+            delete_resp = self._client.storage.from_(bucket).remove([normalized_path])
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.warning("Failed to delete Supabase object %s/%s: %s", bucket, normalized_path, exc)
+            return
+
+        error = self._response_error(delete_resp)
+        if error:
+            logger.warning("Supabase delete reported error for %s/%s: %s", bucket, normalized_path, error)
 
     def build_url(self, bucket: str, path: str) -> str:
         normalized_path = path.lstrip('/')
-        public_base = self._public_urls.get(bucket)
-        if not public_base:
-            raise StorageError(f"No public URL configured for bucket '{bucket}'")
-        return f"{public_base}{normalized_path}".replace('//', '/')
+        self._ensure_bucket(bucket)
+
+        public_url: Optional[str] = None
+        try:
+            public_resp = self._client.storage.from_(bucket).get_public_url(normalized_path)
+            error = self._response_error(public_resp)
+            if not error:
+                data_payload = self._response_data(public_resp) or {}
+                public_url = data_payload.get('publicUrl') or data_payload.get('publicURL')
+        except Exception as exc:  # pragma: no cover - external dependency
+            logger.debug("Supabase get_public_url failed for %s/%s: %s", bucket, normalized_path, exc)
+
+        if not public_url:
+            public_base = self._public_urls.get(bucket)
+            if not public_base:
+                raise StorageError(f"No public URL configured for bucket '{bucket}'")
+            public_url = f"{public_base}{normalized_path}"
+        return public_url
 
 
 @lru_cache(maxsize=1)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -59,6 +60,28 @@ def get_asset_by_path_or_url(value: str) -> Optional[MediaAsset]:
         asset = MediaAsset.objects.filter(storage_path=relative_path).first()
         if asset:
             return asset
+
+        basename = os.path.basename(relative_path)
+        candidate_names = [basename]
+
+        if '_' in basename:
+            try:
+                _, remainder = basename.split('_', 1)
+                candidate_names.append(remainder)
+            except ValueError:
+                pass
+
+        for candidate in candidate_names:
+            normalized_name = candidate.strip()
+            if not normalized_name:
+                continue
+            asset = (
+                MediaAsset.objects.filter(file_name=normalized_name)
+                .order_by('-uploaded_at')
+                .first()
+            )
+            if asset:
+                return asset
 
     return MediaAsset.objects.filter(file_url=value).first()
 
