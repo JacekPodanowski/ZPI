@@ -12,7 +12,7 @@ const Button = ({ children, onClick, variant = 'primary', className = '', disabl
 
   const defaultStyles = {
     primary: {
-      backgroundColor: 'rgba(221, 10, 55, 1)',
+      backgroundColor: 'rgb(146, 0, 32)',
       color: 'rgb(228, 229, 218)',
     },
     secondary: {
