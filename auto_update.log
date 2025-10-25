@@ -2885,3 +2885,167 @@ Sat Oct 25 14:38:01 UTC 2025: No changes detected.
 From github.com:JacekPodanowski/ZPI
  * branch            main       -> FETCH_HEAD
 Sat Oct 25 14:39:02 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:40:01 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:41:02 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:42:02 UTC 2025: New changes detected. Pulling and rebuilding...
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+time="2025-10-25T14:42:02Z" level=warning msg="Docker Compose is configured to build using Bake, but buildx isn't installed"
+#0 building with "default" instance using docker driver
+
+#1 [backend internal] load build definition from Dockerfile
+#1 transferring dockerfile: 32B done
+#1 DONE 0.0s
+
+#2 [backend internal] load .dockerignore
+#2 transferring context: 35B done
+#2 DONE 0.0s
+
+#3 [backend internal] load metadata for docker.io/library/python:3.13-slim-bookworm
+#3 ...
+
+#4 [backend builder 1/5] FROM docker.io/library/python:3.13-slim-bookworm@sha256:4c9fe962f6ce46ecf3633a7e9d0a9fb7f5622121ee00d628eff206da024147c9
+#4 DONE 0.0s
+
+#5 [backend internal] load build context
+#5 transferring context: 2.55kB done
+#5 DONE 0.0s
+
+#6 [backend final 7/8] COPY --chown=appuser:appuser . .
+#6 CACHED
+
+#7 [backend final 3/8] RUN useradd --create-home --shell /bin/bash appuser
+#7 CACHED
+
+#8 [backend builder 3/5] WORKDIR /app
+#8 CACHED
+
+#9 [backend final 6/8] RUN pip install --no-cache-dir /wheels/*
+#9 CACHED
+
+#10 [backend builder 2/5] RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+#10 CACHED
+
+#11 [backend final 5/8] COPY --from=builder /wheels /wheels
+#11 CACHED
+
+#12 [backend builder 4/5] COPY requirements.txt .
+#12 CACHED
+
+#13 [backend builder 5/5] RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+#13 CACHED
+
+#14 [backend final 2/8] RUN apt-get update && apt-get install -y libpq5 dos2unix && rm -rf /var/lib/apt/lists/*
+#14 CACHED
+
+#15 [backend final 4/8] WORKDIR /home/appuser/app
+#15 CACHED
+
+#16 [backend final 8/8] RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
+#16 CACHED
+
+#17 [backend] exporting to image
+#17 exporting layers done
+#17 writing image sha256:c7eb5c65a7fd51770b4f0735b9fc58ea5a29a06d6e39201617c7740a685da3fe done
+#17 naming to docker.io/library/site777-backend done
+#17 DONE 0.0s
+
+#3 [backend internal] load metadata for docker.io/library/python:3.13-slim-bookworm
+#3 ...
+
+#18 [studio-frontend internal] load build definition from Dockerfile
+#18 transferring dockerfile: 32B done
+#18 DONE 0.0s
+
+#19 [studio-frontend internal] load .dockerignore
+#19 transferring context: 35B done
+#19 DONE 0.0s
+
+#20 [studio-frontend internal] load metadata for docker.io/library/node:22-alpine
+#20 DONE 0.2s
+
+#3 [backend internal] load metadata for docker.io/library/python:3.13-slim-bookworm
+#3 ...
+
+#21 [studio-frontend 1/5] FROM docker.io/library/node:22-alpine@sha256:bd26af08779f746650d95a2e4d653b0fd3c8030c44284b6b98d701c9b5eb66b9
+#21 DONE 0.0s
+
+#22 [studio-frontend internal] load build context
+#22 transferring context: 9.71kB done
+#22 DONE 0.0s
+
+#23 [studio-frontend 2/5] WORKDIR /app
+#23 CACHED
+
+#24 [studio-frontend 4/5] RUN npm install
+#24 CACHED
+
+#25 [studio-frontend 3/5] COPY package*.json ./
+#25 CACHED
+
+#26 [studio-frontend 5/5] COPY . .
+#26 CACHED
+
+#17 [studio-frontend] exporting to image
+#17 exporting layers done
+#17 writing image sha256:2c0b1cd15cc44f8b05ef20461048e1807a6544037f5ecec42c0eed80c77f7dd2 done
+#17 naming to docker.io/library/site777-studio-frontend done
+#17 DONE 0.0s
+ backend  Built
+ studio-frontend  Built
+ Container site777_postgres_db  Running
+ Container site777_django_app  Running
+ Container site777_studio_frontend_app  Running
+ Container site777_postgres_db  Waiting
+ Container site777_postgres_db  Healthy
+Sat Oct 25 14:42:04 UTC 2025: Update complete.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:43:02 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:44:01 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:45:02 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:46:01 UTC 2025: No changes detected.
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+   e9c0eb5..ef201ab  main       -> origin/main
+Sat Oct 25 14:47:02 UTC 2025: New changes detected. Pulling and rebuilding...
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint: 
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint: 
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+Sat Oct 25 14:47:03 UTC 2025: ERROR - Git pull failed!
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+Sat Oct 25 14:48:01 UTC 2025: New changes detected. Pulling and rebuilding...
+From github.com:JacekPodanowski/ZPI
+ * branch            main       -> FETCH_HEAD
+error: Your local changes to the following files would be overwritten by merge:
+	auto_update.log
+Please commit your changes or stash them before you merge.
+Aborting
+Updating e9c0eb5..ef201ab
+Sat Oct 25 14:48:02 UTC 2025: ERROR - Git pull failed!
