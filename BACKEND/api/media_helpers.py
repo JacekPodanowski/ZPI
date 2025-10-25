@@ -104,11 +104,44 @@ def cleanup_asset_if_unused(asset: Optional[MediaAsset]) -> bool:
     storage = get_media_storage()
     bucket = asset.storage_bucket or getattr(settings, 'SUPABASE_STORAGE_BUCKET_MAP', {}).get('other', '')
 
+    # Diagnostic logging: record which storage backend and bucket/path we will use.
+    try:
+        storage_class = storage.__class__.__name__
+    except Exception:
+        storage_class = str(type(storage))
+    logger.info(
+        "Attempting cleanup of asset id=%s path=%s bucket=%s storage=%s",
+        getattr(asset, 'id', None),
+        getattr(asset, 'storage_path', None),
+        bucket,
+        storage_class,
+    )
+
     try:
         storage.delete(bucket, asset.storage_path)
     except Exception:  # pragma: no cover - storage backend dependent
-        logger.exception("Failed to delete media file %s", asset.storage_path)
+        logger.exception("Failed to delete media file %s (bucket=%s) using storage %s", asset.storage_path, bucket, storage_class)
         return False
+
+    # If bucket was empty or deletion likely did nothing, attempt a best-effort
+    # fallback for Supabase: derive bucket from the storage_path's first path
+    # segment (e.g., 'images/abc.webp') and try again if that bucket looks valid.
+    try:
+        if (not bucket) and storage_class and 'Supabase' in storage_class:
+            path = (asset.storage_path or '').lstrip('/')
+            if '/' in path:
+                candidate_bucket, _ = path.split('/', 1)
+                public_map = getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URLS', {}) or {}
+                bucket_values = set(public_map.keys()) | set(getattr(settings, 'SUPABASE_STORAGE_BUCKET_MAP', {}).values())
+                if candidate_bucket in bucket_values:
+                    logger.info('Attempting fallback delete using bucket derived from path: %s', candidate_bucket)
+                    try:
+                        storage.delete(candidate_bucket, path)
+                    except Exception:
+                        logger.exception('Fallback delete failed for %s/%s', candidate_bucket, path)
+    except Exception:
+        # Be defensive: failures here are non-fatal for cleanup flow
+        logger.debug('Fallback bucket-derivation check failed for asset %s', getattr(asset, 'id', None))
 
     asset.delete()
     logger.info("Removed orphaned media asset %s", asset.id)

@@ -189,12 +189,14 @@ class SupabaseStorageProvider(BaseStorageProvider):
             return
 #        self._ensure_bucket(bucket)
         normalized_path = path.lstrip('/')
-
+        logger.info("Supabase delete requested for %s/%s", bucket, normalized_path)
         try:
             delete_resp = self._client.storage.from_(bucket).remove([normalized_path])
         except Exception as exc:  # pragma: no cover - external dependency
             logger.warning("Failed to delete Supabase object %s/%s: %s", bucket, normalized_path, exc)
             return
+
+        logger.debug("Supabase delete response for %s/%s: %s", bucket, normalized_path, delete_resp)
 
         error = self._response_error(delete_resp)
         if error:
