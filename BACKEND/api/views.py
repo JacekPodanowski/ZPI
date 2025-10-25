@@ -593,10 +593,22 @@ class FileUploadView(APIView):
                 usage_type=MediaUsage.UsageType.SITE_CONTENT,
             ).delete()
 
+        removed = False
         if deleted_count == 0:
-            cleanup_asset_if_unused(asset)
+            # Attempt to cleanup the underlying asset if no usages remain.
+            try:
+                removed = cleanup_asset_if_unused(asset)
+            except Exception:  # pragma: no cover - storage backend dependent
+                logger.exception('Error while attempting to cleanup asset %s', asset.id)
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # Return JSON describing what happened so frontend can react accordingly.
+        payload = {
+            'asset_id': asset.id,
+            'detached_usages': deleted_count,
+            'removed': bool(removed),
+        }
+        status_code = status.HTTP_200_OK if (deleted_count > 0 or removed) else status.HTTP_204_NO_CONTENT
+        return Response(payload, status=status_code)
 
 
 @api_view(['POST'])
