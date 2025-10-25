@@ -225,6 +225,8 @@ class MediaAsset(models.Model):
     file_url = models.CharField(max_length=500, unique=True)
     file_hash = models.CharField(max_length=64, unique=True)
     media_type = models.CharField(max_length=16, choices=MediaType.choices, default=MediaType.OTHER)
+    file_size = models.BigIntegerField(default=0, help_text='Size in bytes of the stored media file')
+    storage_bucket = models.CharField(max_length=100, blank=True, default='', help_text='Supabase bucket name (if applicable)')
     uploaded_by = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='uploaded_media')
     uploaded_at = models.DateTimeField(default=timezone.now)
 

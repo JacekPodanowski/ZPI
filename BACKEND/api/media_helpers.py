@@ -7,8 +7,8 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from django.conf import settings
-from django.core.files.storage import default_storage
 
+from .media_storage import get_media_storage
 from .models import MediaAsset
 
 logger = logging.getLogger(__name__)
@@ -21,19 +21,27 @@ def normalize_media_path(file_url: str) -> Optional[str]:
         return None
 
     parsed = urlparse(trimmed)
-    path = parsed.path or ''
+    candidate = parsed.path if parsed.scheme or parsed.netloc else trimmed
+    candidate = candidate.replace('\\', '/').lstrip()
 
-    if not path and not parsed.netloc:
-        path = trimmed
+    prefixes = []
+    media_url = getattr(settings, 'MEDIA_URL', None)
+    if media_url:
+        prefixes.append(media_url.rstrip('/') + '/')
 
-    if not path.startswith('/'):
-        path = f'/{path}'
+    supabase_public_urls = getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URLS', {}) or {}
+    prefixes.extend(url.rstrip('/') + '/' for url in supabase_public_urls.values() if url)
 
-    media_url = getattr(settings, 'MEDIA_URL', '/media/') or '/media/'
-    if path.startswith(media_url):
-        relative_path = path[len(media_url):]
-    else:
-        relative_path = path.lstrip('/')
+    supabase_public_default = getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URL', None)
+    if supabase_public_default:
+        prefixes.append(str(supabase_public_default).rstrip('/') + '/')
+
+    for prefix in prefixes:
+        if candidate.startswith(prefix):
+            candidate = candidate[len(prefix):]
+            break
+
+    relative_path = candidate.lstrip('/')
 
     if '..' in relative_path or relative_path.startswith('/'):
         return None
@@ -70,9 +78,11 @@ def cleanup_asset_if_unused(asset: Optional[MediaAsset]) -> bool:
     if is_media_asset_in_use(asset):
         return False
 
+    storage = get_media_storage()
+    bucket = asset.storage_bucket or getattr(settings, 'SUPABASE_STORAGE_BUCKET_MAP', {}).get('other', '')
+
     try:
-        if default_storage.exists(asset.storage_path):
-            default_storage.delete(asset.storage_path)
+        storage.delete(bucket, asset.storage_path)
     except Exception:  # pragma: no cover - storage backend dependent
         logger.exception("Failed to delete media file %s", asset.storage_path)
         return False

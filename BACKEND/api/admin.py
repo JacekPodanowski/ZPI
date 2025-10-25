@@ -48,7 +48,7 @@ class TemplateAdmin(admin.ModelAdmin):
 
 @admin.register(MediaAsset)
 class MediaAssetAdmin(admin.ModelAdmin):
-	list_display = ('file_name', 'media_type', 'uploaded_by', 'uploaded_at')
+	list_display = ('file_name', 'media_type', 'storage_bucket', 'file_size', 'uploaded_by', 'uploaded_at')
 	search_fields = ('file_name', 'file_hash')
 	list_filter = ('media_type',)
 	autocomplete_fields = ('uploaded_by',)

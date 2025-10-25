@@ -2,12 +2,15 @@
 
 import hashlib
 import logging
-from datetime import datetime
+import os
+import re
 
 import requests
 from django.conf import settings
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
+from django.db.models import Sum
+from django.http import Http404, HttpResponseRedirect
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_http_methods
 from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -36,6 +39,8 @@ from .media_helpers import (
     get_asset_by_path_or_url,
     normalize_media_path,
 )
+from .media_processing import ImageProcessingError, convert_to_webp
+from .media_storage import StorageError, get_media_storage
 from .serializers import (
     PlatformUserSerializer,
     SiteSerializer,
@@ -49,6 +54,92 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+SAFE_FILENAME_RE = re.compile(r'[^A-Za-z0-9._-]+')
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov'}
+
+MEDIA_KIND_IMAGE = 'image'
+MEDIA_KIND_VIDEO = 'video'
+MEDIA_KIND_OTHER = 'other'
+
+FOLDER_BY_KIND = {
+    MEDIA_KIND_IMAGE: 'images',
+    MEDIA_KIND_VIDEO: 'videos',
+    MEDIA_KIND_OTHER: 'uploads',
+}
+
+MEDIA_TYPE_BY_KIND = {
+    MEDIA_KIND_IMAGE: MediaAsset.MediaType.IMAGE,
+    MEDIA_KIND_VIDEO: MediaAsset.MediaType.VIDEO,
+    MEDIA_KIND_OTHER: MediaAsset.MediaType.OTHER,
+}
+
+
+def sanitize_filename(name: str) -> str:
+    base = os.path.basename(name or '')
+    base = base.strip() or 'asset'
+    sanitized = SAFE_FILENAME_RE.sub('_', base)
+    return sanitized[:255]
+
+
+def classify_media(content_type: str | None, extension: str | None) -> str:
+    normalized_ext = (extension or '').lstrip('.').lower()
+    normalized_type = (content_type or '').lower()
+    if normalized_type in settings.MEDIA_ALLOWED_IMAGE_MIME_TYPES or normalized_ext in ALLOWED_IMAGE_EXTENSIONS:
+        return MEDIA_KIND_IMAGE
+    if normalized_type in settings.MEDIA_ALLOWED_VIDEO_MIME_TYPES or normalized_ext in ALLOWED_VIDEO_EXTENSIONS:
+        return MEDIA_KIND_VIDEO
+    return MEDIA_KIND_OTHER
+
+
+def process_media(
+    kind: str,
+    raw_bytes: bytes,
+    *,
+    usage: str,
+    content_type: str | None,
+    extension: str | None,
+) -> tuple[bytes, str, str]:
+    if kind == MEDIA_KIND_IMAGE:
+        if len(raw_bytes) > settings.MEDIA_IMAGE_MAX_UPLOAD_BYTES:
+            raise ValueError('Image exceeds allowed upload size')
+        quality = (
+            settings.MEDIA_WEBP_QUALITY_AVATAR
+            if usage == MediaUsage.UsageType.AVATAR
+            else settings.MEDIA_WEBP_QUALITY_DEFAULT
+        )
+        converted, converted_mime = convert_to_webp(
+            raw_bytes,
+            max_dimensions=settings.MEDIA_IMAGE_MAX_DIMENSIONS,
+            quality=quality,
+        )
+        if len(converted) > settings.MEDIA_IMAGE_MAX_FINAL_BYTES:
+            raise ValueError('Optimised image exceeds size limit')
+        return converted, converted_mime, '.webp'
+
+    if kind == MEDIA_KIND_VIDEO:
+        if len(raw_bytes) > settings.MEDIA_VIDEO_MAX_UPLOAD_BYTES:
+            raise ValueError('Video exceeds allowed upload size')
+        fallback_ext = (extension or '.mp4')
+        if not fallback_ext.startswith('.'):
+            fallback_ext = f'.{fallback_ext}'
+        mime = content_type or 'video/mp4'
+        return raw_bytes, mime, fallback_ext.lower()
+
+    fallback_ext = (extension or '.bin')
+    if not fallback_ext.startswith('.'):
+        fallback_ext = f'.{fallback_ext}'
+    mime = content_type or 'application/octet-stream'
+    return raw_bytes, mime, fallback_ext.lower()
+
+
+def ensure_storage_capacity(user, additional_bytes: int) -> None:
+    usage = MediaAsset.objects.filter(uploaded_by=user).aggregate(total=Sum('file_size'))
+    current_total = usage.get('total') or 0
+    if current_total + additional_bytes > settings.MEDIA_TOTAL_STORAGE_PER_USER:
+        raise ValueError('Storage quota exceeded for this account')
 
 
 class GoogleLogin(SocialLoginView):
@@ -342,6 +433,9 @@ class FileUploadView(APIView):
             except Site.DoesNotExist as exc:
                 raise PermissionDenied('Site not found or access denied') from exc
 
+        storage = get_media_storage()
+        safe_name = sanitize_filename(getattr(file_obj, 'name', ''))
+
         try:
             file_bytes = file_obj.read()
         except Exception as exc:  # pragma: no cover - depends on storage backend
@@ -352,43 +446,86 @@ class FileUploadView(APIView):
             return Response({'error': 'Uploaded file is empty'}, status=status.HTTP_400_BAD_REQUEST)
 
         file_hash = hashlib.sha256(file_bytes).hexdigest()
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        extension = os.path.splitext(safe_name)[1].lower()
+        media_kind = classify_media(file_obj.content_type, extension)
+        bucket_name = (
+            settings.SUPABASE_STORAGE_BUCKET_MAP.get(media_kind)
+            or settings.SUPABASE_STORAGE_BUCKET_MAP.get('other')
+            or ''
+        )
 
-        content_type = file_obj.content_type or ''
-        if content_type.startswith('image'):
-            subdirectory = 'images'
-            media_type = MediaAsset.MediaType.IMAGE
-        elif content_type.startswith('video'):
-            subdirectory = 'videos'
-            media_type = MediaAsset.MediaType.VIDEO
-        else:
-            subdirectory = 'uploads'
-            media_type = MediaAsset.MediaType.OTHER
-
-        safe_name = file_obj.name.replace(' ', '_')
-        file_name = f"{subdirectory}/{timestamp}_{safe_name}"
-
-        asset = MediaAsset.objects.filter(file_hash=file_hash).first()
-        created = False
         try:
-            if asset:
-                if not default_storage.exists(asset.storage_path):
-                    default_storage.save(asset.storage_path, ContentFile(file_bytes))
-            else:
-                saved_path = default_storage.save(file_name, ContentFile(file_bytes))
-                file_url = default_storage.url(saved_path)
-                asset = MediaAsset.objects.create(
-                    file_name=safe_name,
-                    storage_path=saved_path,
-                    file_url=file_url,
-                    file_hash=file_hash,
-                    media_type=media_type,
-                    uploaded_by=request.user,
-                )
-                created = True
-        except Exception as exc:  # pragma: no cover - storage backend dependent
-            logger.exception("Failed to upload file")
-            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            processed_bytes, processed_mime, final_extension = process_media(
+                media_kind,
+                file_bytes,
+                usage=usage,
+                content_type=file_obj.content_type,
+                extension=extension,
+            )
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except ImageProcessingError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        final_size = len(processed_bytes)
+        asset = MediaAsset.objects.filter(file_hash=file_hash).first()
+        if asset and asset.storage_bucket:
+            bucket_name = asset.storage_bucket
+        created = asset is None
+        storage_result = None
+
+        if created:
+            try:
+                ensure_storage_capacity(request.user, final_size)
+            except ValueError as exc:
+                return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+            storage_key = f"{FOLDER_BY_KIND[media_kind]}/{file_hash}{final_extension}"
+            try:
+                storage_result = storage.save(bucket_name, storage_key, processed_bytes, processed_mime)
+                bucket_name = storage_result.bucket or bucket_name
+            except StorageError as exc:  # pragma: no cover - storage backend dependent
+                logger.exception("Storage backend rejected file upload")
+                return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as exc:  # pragma: no cover - storage backend dependent
+                logger.exception("Unexpected error while saving media asset")
+                return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            asset = MediaAsset.objects.create(
+                file_name=safe_name,
+                storage_path=storage_result.path,
+                file_url=storage_result.url,
+                file_hash=file_hash,
+                media_type=MEDIA_TYPE_BY_KIND[media_kind],
+                file_size=final_size,
+                storage_bucket=bucket_name,
+                uploaded_by=request.user,
+            )
+        else:
+            if asset.file_size == 0 and final_size:
+                MediaAsset.objects.filter(pk=asset.pk, file_size=0).update(file_size=final_size)
+                asset.file_size = final_size
+            if not asset.storage_bucket and bucket_name:
+                MediaAsset.objects.filter(pk=asset.pk, storage_bucket='').update(storage_bucket=bucket_name)
+                asset.storage_bucket = bucket_name
+
+        asset_url = asset.file_url or (storage_result.url if storage_result else None)
+        if not asset_url and bucket_name:
+            public_map = getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URLS', {})
+            public_base = public_map.get(bucket_name)
+            if public_base:
+                asset_url = f"{public_base.rstrip('/')}/{asset.storage_path.lstrip('/')}"
+        if not asset_url:
+            built_url = None
+            try:
+                built_url = storage.build_url(bucket_name, asset.storage_path)
+            except Exception:  # pragma: no cover - storage backend dependent
+                built_url = None
+            asset_url = built_url or asset.file_url
+
+        if not asset.file_url and asset_url:
+            MediaAsset.objects.filter(pk=asset.pk, file_url='').update(file_url=asset_url)
+            asset.file_url = asset_url
 
         usage_filters = {'asset': asset, 'usage_type': usage}
         if usage == MediaUsage.UsageType.AVATAR:
@@ -404,9 +541,10 @@ class FileUploadView(APIView):
         response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
         return Response(
             {
-                'url': asset.file_url,
+                'url': asset_url,
                 'hash': asset.file_hash,
                 'asset_id': asset.id,
+                'bucket': asset.storage_bucket,
                 'deduplicated': not created,
             },
             status=response_status,
@@ -484,6 +622,37 @@ def publish_site(request, site_id):
     except requests.RequestException as exc:
         logger.error("Failed to trigger Vercel build for site ID %s: %s", site.id, exc)
         return Response({'error': 'Failed to trigger Vercel build', 'details': str(exc)}, status=500)
+
+
+@require_http_methods(['GET'])
+@never_cache
+def supabase_media_redirect(request, media_path: str):
+    """Redirect `/media/...` requests to the Supabase public URL."""
+    if not getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URLS', None):
+        raise Http404()
+
+    normalized = normalize_media_path(media_path)
+    if not normalized:
+        raise Http404()
+
+    asset = (
+        MediaAsset.objects.filter(storage_path=normalized).first()
+        or get_asset_by_path_or_url(media_path)
+    )
+    if asset is None:
+        raise Http404()
+
+    target_url = asset.file_url
+    if not target_url:
+        bucket_name = asset.storage_bucket or settings.SUPABASE_STORAGE_BUCKET_MAP.get('other')
+        public_base = settings.SUPABASE_STORAGE_PUBLIC_URLS.get(bucket_name)
+        if public_base:
+            target_url = f"{public_base.rstrip('/')}/{normalized}"
+
+    if not target_url or not target_url.startswith(('http://', 'https://')):
+        raise Http404()
+
+    return HttpResponseRedirect(target_url)
 
 
 class CustomReactComponentViewSet(viewsets.ModelViewSet):
