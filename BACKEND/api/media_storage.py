@@ -113,7 +113,15 @@ class SupabaseStorageProvider(BaseStorageProvider):
             return response.get('data')
         return None
 
-     def _ensure_bucket(self, bucket: str) -> None:
+    @staticmethod
+    def _response_data(response: Any) -> Any:
+        if hasattr(response, 'data'):
+            return getattr(response, 'data')
+        if isinstance(response, dict):
+            return response.get('data')
+        return None
+
+    def _ensure_bucket(self, bucket: str) -> None:
         bucket = (bucket or '').strip()
         if not bucket or bucket in self._known_buckets:
             return
@@ -150,6 +158,7 @@ class SupabaseStorageProvider(BaseStorageProvider):
                 raise StorageError(f'Failed to create Supabase bucket `{bucket}`: {error}')
 
             self._known_buckets.add(bucket)
+
 
 
     def save(self, bucket: str, path: str, data: bytes, content_type: str) -> StorageSaveResult:
