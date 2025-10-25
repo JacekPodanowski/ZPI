@@ -114,7 +114,7 @@ class SupabaseStorageProvider(BaseStorageProvider):
         return None
 
     def _ensure_bucket(self, bucket: str) -> None:
-        bucket = (bucket or '').strip()
+        bucket = str(bucket or '').strip()
         if not bucket or bucket in self._known_buckets:
             return
 
@@ -135,7 +135,11 @@ class SupabaseStorageProvider(BaseStorageProvider):
                     self._known_buckets.update(names)
                     return
 
-            payload = {'name': bucket, 'public': True}
+            payload = {
+                'id': bucket,
+                'name': bucket,
+                'public': True,
+            }
 
             try:
                 create_resp = self._client.storage.create_bucket(bucket, payload)
