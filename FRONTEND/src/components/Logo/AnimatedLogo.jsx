@@ -51,7 +51,7 @@ const AnimatedLogo = ({
     const palette = theme?.colors || {};
     const typography = theme?.typography || {};
     const isDark = theme?.mode === 'dark';
-    const glowColor = palette?.brand?.primary ?? '#a00428ff';
+    const glowColor = palette?.brand?.primary ?? '#82001F';
     const textPrimary = palette?.text?.primary ?? '#1D1D1D';
     const sizes = sizeMap(typography);
     const fontSize = sizes[size] ?? sizes.hero;
