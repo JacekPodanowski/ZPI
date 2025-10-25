@@ -272,4 +272,9 @@ MEDIA_ALLOWED_VIDEO_MIME_TYPES = (
     'video/mp4',
     'video/webm',
     'video/quicktime',
+
+
 )
+
+
+print(f"DEBUG IN SETTINGS: Service Key Loaded: {SUPABASE_SERVICE_ROLE_KEY}")

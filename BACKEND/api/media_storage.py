@@ -131,6 +131,7 @@ class SupabaseStorageProvider(BaseStorageProvider):
             if existing_resp is not None:
                 data = self._response_data(existing_resp) or []
                 names = {item.get('name') for item in data if isinstance(item, dict)}
+                print(f"DEBUG: Found buckets in Supabase: {names} | Trying to ensure bucket: '{bucket}'")
                 if bucket in names:
                     self._known_buckets.update(names)
                     return
@@ -155,7 +156,7 @@ class SupabaseStorageProvider(BaseStorageProvider):
     def save(self, bucket: str, path: str, data: bytes, content_type: str) -> StorageSaveResult:
         if not bucket:
             raise StorageError('Supabase bucket must be provided')
-        self._ensure_bucket(bucket)
+#        self._ensure_bucket(bucket)
 
         normalized_path = path.lstrip('/')
         file_bytes = data if isinstance(data, (bytes, bytearray)) else bytes(data)
@@ -186,7 +187,7 @@ class SupabaseStorageProvider(BaseStorageProvider):
     def delete(self, bucket: str, path: str) -> None:
         if not bucket:
             return
-        self._ensure_bucket(bucket)
+#        self._ensure_bucket(bucket)
         normalized_path = path.lstrip('/')
 
         try:
@@ -201,7 +202,7 @@ class SupabaseStorageProvider(BaseStorageProvider):
 
     def build_url(self, bucket: str, path: str) -> str:
         normalized_path = path.lstrip('/')
-        self._ensure_bucket(bucket)
+#        self._ensure_bucket(bucket)
 
         public_url: Optional[str] = None
         try:
