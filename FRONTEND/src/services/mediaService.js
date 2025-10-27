@@ -37,14 +37,23 @@ export const deleteMediaAsset = async (url = '', options = {}) => {
     if (options.siteId) {
       payload.site_id = options.siteId
     }
-
-    await apiClient.delete('/upload/', {
+    const response = await apiClient.delete('/upload/', {
       data: payload,
       headers: {
         'Content-Type': 'application/json',
       },
     })
+
+    // Backend returns JSON with info about detached usages and whether the
+    // underlying asset was removed. If the backend responds with 204 No Content
+    // axios will return a response with no data; normalize that to an object.
+    if (!response || response.status === 204) {
+      return { asset_id: null, detached_usages: 0, removed: false }
+    }
+
+    return response.data || { asset_id: null, detached_usages: 0, removed: false }
   } catch (error) {
     console.error('Failed to delete media asset', error)
+    return { asset_id: null, detached_usages: 0, removed: false, error: error?.message }
   }
 }
