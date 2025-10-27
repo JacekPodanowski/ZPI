@@ -17,8 +17,39 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() in ['true', '1', 't', 'yes']
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 DISCORD_SERVER_URL = os.environ.get("DISCORD_SERVER_URL")
 
+SUPABASE_URL = os.environ.get('supabase_url')
+SUPABASE_ANON_KEY = os.environ.get('supabase_api_key')
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+SUPABASE_STORAGE_BUCKET_DEFAULT = os.environ.get('SUPABASE_STORAGE_BUCKET')
+SUPABASE_STORAGE_BUCKET_IMAGE = (
+    os.environ.get('SUPABASE_STORAGE_BUCKET_IMAGE')
+    or os.environ.get('SUPABASE_STORAGE_BUCKET_1')
+)
+SUPABASE_STORAGE_BUCKET_VIDEO = (
+    os.environ.get('SUPABASE_STORAGE_BUCKET_VIDEO')
+    or os.environ.get('SUPABASE_STORAGE_BUCKET_2')
+)
+if not SUPABASE_STORAGE_BUCKET_DEFAULT:
+    SUPABASE_STORAGE_BUCKET_DEFAULT = SUPABASE_STORAGE_BUCKET_IMAGE or SUPABASE_STORAGE_BUCKET_VIDEO
+
+SUPABASE_STORAGE_BUCKET_MAP = {
+    'image': SUPABASE_STORAGE_BUCKET_IMAGE or SUPABASE_STORAGE_BUCKET_DEFAULT,
+    'video': SUPABASE_STORAGE_BUCKET_VIDEO or SUPABASE_STORAGE_BUCKET_DEFAULT,
+    'other': SUPABASE_STORAGE_BUCKET_DEFAULT or SUPABASE_STORAGE_BUCKET_IMAGE or SUPABASE_STORAGE_BUCKET_VIDEO,
+}
+
+SUPABASE_STORAGE_PUBLIC_URL = None
+SUPABASE_STORAGE_PUBLIC_URLS = {}
+if SUPABASE_URL:
+    buckets = {bucket for bucket in SUPABASE_STORAGE_BUCKET_MAP.values() if bucket}
+    for bucket in buckets:
+        SUPABASE_STORAGE_PUBLIC_URLS[bucket] = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{bucket}/"
+    default_bucket = SUPABASE_STORAGE_BUCKET_MAP.get('other')
+    if default_bucket:
+        SUPABASE_STORAGE_PUBLIC_URL = SUPABASE_STORAGE_PUBLIC_URLS.get(default_bucket)
+
 # --- Konfiguracja sieci i bezpieczeństwa ---
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104', '136.115.41.232']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -113,12 +144,16 @@ if DEBUG:
         "http://127.0.0.1:5173",
         "http://192.168.0.104:3001",
         "http://localhost:3001",
+        "http://136.115.41.232:3001",
+        "http://136.115.41.232:3000",
     })
 
 CORS_ALLOWED_ORIGINS = sorted(cors_origins)
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",
     r"^http://127\.0\.0\.1:\d+$",
+    r"^http://192\.168\.0\.104:\d+$",
+    r"^http://136\.115\.41\.232:\d+$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -213,3 +248,30 @@ VERCEL_BUILD_HOOK_URL = os.environ.get('VERCEL_BUILD_HOOK_URL')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+MEDIA_TOTAL_STORAGE_PER_USER = int(os.environ.get('MEDIA_MAX_TOTAL_STORAGE_PER_USER', 1024 * 1024 * 1024))
+MEDIA_IMAGE_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_UPLOAD_BYTES', 10 * 1024 * 1024))
+MEDIA_IMAGE_MAX_FINAL_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_FINAL_BYTES', 5 * 1024 * 1024))
+MEDIA_IMAGE_MAX_DIMENSIONS = (
+    int(os.environ.get('MEDIA_IMAGE_MAX_WIDTH', 1920)),
+    int(os.environ.get('MEDIA_IMAGE_MAX_HEIGHT', 1080)),
+)
+MEDIA_VIDEO_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_VIDEO_MAX_UPLOAD_BYTES', 100 * 1024 * 1024))
+MEDIA_WEBP_QUALITY_DEFAULT = int(os.environ.get('MEDIA_WEBP_QUALITY', 90))
+MEDIA_WEBP_QUALITY_AVATAR = int(os.environ.get('MEDIA_WEBP_QUALITY_AVATAR', 90))
+MEDIA_TEMP_STORAGE_MAX_PER_USER = int(os.environ.get('MEDIA_MAX_TEMP_STORAGE_PER_USER', 100 * 1024 * 1024))
+MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = int(os.environ.get('MEDIA_TEMP_STORAGE_EXPIRE', 24 * 60 * 60))
+MEDIA_STORAGE_TIMEOUT = int(os.environ.get('MEDIA_STORAGE_TIMEOUT', 15))
+MEDIA_ALLOWED_IMAGE_MIME_TYPES = (
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+)
+MEDIA_ALLOWED_VIDEO_MIME_TYPES = (
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+
+
+)
