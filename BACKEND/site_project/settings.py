@@ -131,22 +131,34 @@ AUTH_PASSWORD_VALIDATORS = [ {'NAME': 'django.contrib.auth.password_validation.U
 LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "verbose": { "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(process)d %(thread)d %(message)s" }, "simple": {"format": "%(levelname)s %(name)s %(message)s"}, "json": { "()": "pythonjsonlogger.jsonlogger.JsonFormatter", "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(message)s", }, }, "handlers": { "console": { "class": "logging.StreamHandler", "formatter": "json" if not DEBUG else "simple", }, }, "root": { "handlers": ["console"], "level": "INFO", }, "loggers": { "django": { "handlers": ["console"], "level": "INFO", "propagate": False, }, "django.db.backends": { "handlers": ["console"], "level": "WARNING", "propagate": False, }, "api": { "handlers": ["console"], "level": "INFO", "propagate": False, }, }, }
 
 # --- CORS ---
-cors_origins = set()
-frontend_env = os.environ.get('FRONTEND_URL')
-if frontend_env:
-    cors_origins.add(frontend_env)
-if DEBUG:
-    cors_origins.update({
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://192.168.0.104:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://192.168.0.104:3001",
-        "http://localhost:3001",
-        "http://136.115.41.232:3001",
-        "http://136.115.41.232:3000",
-    })
+
+
+cors_origins.update({
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.0.104:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://192.168.0.104:3001",
+    "http://localhost:3001",
+    "http://136.115.41.232:3001",
+    "http://136.115.41.232:3000",
+})
+#frontend_env = os.environ.get('FRONTEND_URL')
+#if frontend_env:
+#    cors_origins.add(frontend_env)
+#if DEBUG:
+#    cors_origins.update({
+#        "http://localhost:3000/",
+#        "http://127.0.0.1:3000/",
+#        "http://192.168.0.104:3000/",
+#        "http://localhost:5173/",
+#        "http://127.0.0.1:5173/",
+#        "http://192.168.0.104:3001/",
+#        "http://localhost:3001/",
+#        "http://136.115.41.232:3001/",
+#        "http://136.115.41.232:3000/",
+#    })
 
 CORS_ALLOWED_ORIGINS = sorted(cors_origins)
 CORS_ALLOWED_ORIGIN_REGEXES = [
