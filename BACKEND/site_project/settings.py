@@ -131,7 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [ {'NAME': 'django.contrib.auth.password_validation.U
 LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "verbose": { "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(process)d %(thread)d %(message)s" }, "simple": {"format": "%(levelname)s %(name)s %(message)s"}, "json": { "()": "pythonjsonlogger.jsonlogger.JsonFormatter", "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(message)s", }, }, "handlers": { "console": { "class": "logging.StreamHandler", "formatter": "json" if not DEBUG else "simple", }, }, "root": { "handlers": ["console"], "level": "INFO", }, "loggers": { "django": { "handlers": ["console"], "level": "INFO", "propagate": False, }, "django.db.backends": { "handlers": ["console"], "level": "WARNING", "propagate": False, }, "api": { "handlers": ["console"], "level": "INFO", "propagate": False, }, }, }
 
 # --- CORS ---
-
+cors_origins = set()
 
 cors_origins.update({
     "http://localhost:3000",
