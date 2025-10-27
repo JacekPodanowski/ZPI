@@ -48,9 +48,13 @@ docker compose --profile viewer up --build
 # Wyświetl logi
 docker compose logs -f                      
 
+
+
+## ---DODATEK---
+==========================================================================
+
 # wyczyść całą pamięć dockera
 docker system prune -a --volumes
-
 
 # migracje
 docker compose exec backend python manage.py migrate

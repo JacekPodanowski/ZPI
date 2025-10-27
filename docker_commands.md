@@ -48,15 +48,19 @@ docker-compose --profile viewer up --build
 # Wyświetl logi
 docker-compose logs -f                      
 
+
+
+## ---DODATEK---
+==========================================================================
+
 # wyczyść całą pamięć dockera
 docker system prune -a --volumes
-
 
 # migracje
 docker-compose exec backend python manage.py migrate
 
 # backup bazy do json
-docker compose exec backend python manage.py dumpdata > backup_bazy.json
+docker-compose exec backend python manage.py dumpdata > backup_bazy.json
 
 # wykonaj testy
 docker-compose exec backend python manage.py test apizrob
