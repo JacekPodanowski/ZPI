@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template, MediaAsset, MediaUsage, CustomReactComponent
+from .models import PlatformUser, Site, Client, Event, Booking, Template, MediaAsset, MediaUsage, CustomReactComponent, Notification
 
 
 @admin.register(PlatformUser)
@@ -66,3 +66,16 @@ class MediaUsageAdmin(admin.ModelAdmin):
 class CustomReactComponentAdmin(admin.ModelAdmin):
 	list_display = ('name', 'created_at', 'updated_at')
 	search_fields = ('name',)
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+	list_display = ('user', 'notification_type', 'is_read', 'created_at', 'message_preview')
+	list_filter = ('notification_type', 'is_read', 'created_at')
+	search_fields = ('user__email', 'message')
+	autocomplete_fields = ('user',)
+	date_hierarchy = 'created_at'
+	
+	def message_preview(self, obj):
+		return obj.message[:50] + '...' if len(obj.message) > 50 else obj.message
+	message_preview.short_description = 'Message'

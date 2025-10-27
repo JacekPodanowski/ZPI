@@ -33,6 +33,7 @@ from .models import (
     CustomReactComponent,
     MediaAsset,
     MediaUsage,
+    Notification,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -51,6 +52,7 @@ from .serializers import (
     TemplateSerializer,
     PublicSiteSerializer,
     CustomReactComponentSerializer,
+    NotificationSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -689,3 +691,14 @@ class CustomReactComponentViewSet(viewsets.ModelViewSet):
         component.save()
         serializer = self.get_serializer(component)
         return Response(serializer.data)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.notifications.all()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

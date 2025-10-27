@@ -13,6 +13,7 @@ from .models import (
     Template,
     CustomReactComponent,
     MediaUsage,
+    Notification,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -214,3 +215,10 @@ class CustomReactComponentSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'source_code', 'compiled_js',
             'created_at', 'updated_at'
         ]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'is_read', 'created_at', 'notification_type']
+        read_only_fields = ['id', 'created_at']

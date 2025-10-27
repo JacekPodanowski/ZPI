@@ -17,12 +17,14 @@ import ServicesModule from '@shared/SITES/components/ServicesModule'
 import TeamModule from '@shared/SITES/components/TeamModule'
 import RowModule from '@shared/SITES/components/RowModule'
 import ReactComponentModule from '@shared/SITES/components/ReactComponentModule'
+import JsonFilePicker from './components/JsonFilePicker'
 
 const DEFAULT_PAGE_SLUG = 'home'
+const DEFAULT_JSON_FILE = 'json_test.json'
 
-const fetchPublicSiteConfig = async () => {
+const fetchPublicSiteConfig = async (fileName = DEFAULT_JSON_FILE) => {
   // Load from local JSON file
-  const response = await fetch('/json_test.json')
+  const response = await fetch(`/${fileName}`)
   if (!response.ok) {
     throw new Error(`Failed to load JSON: ${response.status}`)
   }
@@ -80,12 +82,13 @@ const SiteRendererPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activePageSlug, setActivePageSlug] = useState(null)
+  const [currentJsonFile, setCurrentJsonFile] = useState(DEFAULT_JSON_FILE)
 
   useEffect(() => {
     const loadSite = async () => {
       try {
         setLoading(true)
-        const siteConfig = await fetchPublicSiteConfig()
+        const siteConfig = await fetchPublicSiteConfig(currentJsonFile)
         console.log('Loaded site config:', siteConfig)
         setConfig(siteConfig)
       } catch (err) {
@@ -97,7 +100,12 @@ const SiteRendererPage = () => {
     }
 
     loadSite()
-  }, [])
+  }, [currentJsonFile])
+
+  const handleFileChange = (newFile) => {
+    setCurrentJsonFile(newFile)
+    setActivePageSlug(null) // Reset page slug when changing files
+  }
 
   const templateConfig = useMemo(() => {
     if (!config) return null
@@ -180,6 +188,12 @@ const SiteRendererPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f7f7f4] text-neutral-900">
+      {/* JSON File Picker */}
+      <JsonFilePicker 
+        currentFile={currentJsonFile} 
+        onFileChange={handleFileChange}
+      />
+      
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-neutral-200">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
           <div>

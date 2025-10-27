@@ -8,36 +8,72 @@ import {
   ListItemIcon,
   CircularProgress,
   Divider,
-  Chip
+  Chip,
+  Button,
+  Stack
 } from '@mui/material';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import DoneIcon from '@mui/icons-material/Done';
+import SendIcon from '@mui/icons-material/Send';
 import { alpha } from '@mui/material/styles';
 import useTheme from '../../../theme/useTheme';
+import apiClient from '../../../services/apiClient';
+import { useToast } from '../../../contexts/ToastContext';
 
 const NotificationsPage = () => {
   const theme = useTheme();
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
+  const addToast = useToast();
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sending, setSending] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await apiClient.get('/notifications/');
+      setNotifications(response.data || []);
+      setError(null);
+    } catch (err) {
+      // Provide a clearer, localized error message
+      const msg = err?.response?.status
+        ? `Błąd ${err.response.status}: nie udało się pobrać powiadomień`
+        : 'Nie udało się pobrać powiadomień. Upewnij się, że jesteś zalogowany.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await fetch('/notifications/');
-        if (!response.ok) throw new Error('błąd pobierania powiadomień');
-        const data = await response.json();
-        setNotifications(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchNotifications();
   }, []);
+
+  const sendMockNotification = async () => {
+    setSending(true);
+    try {
+      const mockNotifications = [
+        { message: 'Nowa rezerwacja na jutro o 10:00', notification_type: 'other' },
+        { message: 'Gratulacje! Osiągnięto 50 sesji', notification_type: 'achievement' },
+        { message: 'Klient anulował spotkanie zaplanowane na 15:00', notification_type: 'cancellation' },
+        { message: 'Grupa "Joga dla początkujących" jest pełna', notification_type: 'group_full' },
+      ];
+      
+      const randomNotification = mockNotifications[Math.floor(Math.random() * mockNotifications.length)];
+      
+      await apiClient.post('/notifications/', randomNotification);
+      addToast('Wysłano testowe powiadomienie!', { variant: 'success' });
+      
+      // Refresh the notifications list
+      await fetchNotifications();
+    } catch (err) {
+      const msg = err?.response?.data?.detail || 'Nie udało się wysłać powiadomienia';
+      addToast(msg, { variant: 'error' });
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <Paper
@@ -53,17 +89,33 @@ const NotificationsPage = () => {
         alignItems: 'center'
       }}
     >
-      <Typography
-        variant="h5"
-        sx={{
-          fontWeight: 600,
-          mb: 3,
-          textAlign: 'center',
-          color: theme.colors?.text?.primary || theme.palette.text.primary
-        }}
-      >
-        powiadomienia
-      </Typography>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3, width: '100%', maxWidth: 700 }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 600,
+            flex: 1,
+            color: theme.colors?.text?.primary || theme.palette.text.primary
+          }}
+        >
+          powiadomienia
+        </Typography>
+        
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<SendIcon />}
+          onClick={sendMockNotification}
+          disabled={sending}
+          sx={{
+            borderRadius: '8px',
+            textTransform: 'none',
+            fontWeight: 500,
+          }}
+        >
+          {sending ? 'Wysyłanie...' : 'Test'}
+        </Button>
+      </Stack>
 
       {loading ? (
         <CircularProgress />

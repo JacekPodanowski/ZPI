@@ -291,3 +291,24 @@ class CustomReactComponent(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPE_CHOICES = (
+        ('achievement', 'Achievement'),
+        ('cancellation', 'Cancellation'),
+        ('group_full', 'Group Full'),
+        ('other', 'Other'),
+    )
+
+    user = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPE_CHOICES, default='other')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Notification for {self.user.email}: {self.message[:20]}'
