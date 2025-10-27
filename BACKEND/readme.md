@@ -36,10 +36,6 @@ Każdy endpoint wymaga JWT chyba że wskazano inaczej. Uprawnienia egzekwuje `Is
 
 ### Dokumentacja interaktywna
 
-Obsługę API opisuje automatycznie generowany OpenAPI 3.2 przez **drf-spectacular**:
-
 - `GET /api/schema/` – surowy plik OpenAPI (YAML/JSON).
 - `GET /api/docs/` – Swagger UI.
 - `GET /api/redoc/` – Redoc.
-
-Opis schematu koncentruje się na wielo-tenantowej architekturze i prezentuje powiązania pomiędzy użytkownikiem platformy, witryną, klientem oraz rezerwacją.
