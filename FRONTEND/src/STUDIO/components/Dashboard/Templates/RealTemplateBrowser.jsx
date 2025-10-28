@@ -9,7 +9,7 @@ import Logo from '../../../../components/Logo/Logo';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 import TemplateDeletionModal from './TemplateDeletionModal';
 
-const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
+const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemplateDragStart, onTemplateDragEnd }) => {
     const templateLibraryWidth = 230; // Fixed width for templates-only mode
     const [draggingTemplate, setDraggingTemplate] = useState(null);
     const [dayTemplatesExpanded, setDayTemplatesExpanded] = useState(true);
@@ -22,10 +22,12 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
 
     const handleTemplateDragStart = (template) => {
         setDraggingTemplate(template);
+        onTemplateDragStart?.(template); // Notify parent
     };
 
     const handleTemplateDragEnd = () => {
         setDraggingTemplate(null);
+        onTemplateDragEnd?.(); // Notify parent
     };
 
     // Mock templates - replace with actual data from store/API
@@ -95,7 +97,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                 backgroundColor: 'rgba(228, 229, 218, 0.5)',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'visible'
+                overflow: 'visible',
+                position: 'relative' // For absolute positioning of trash zone
             }}
         >
             <Box
@@ -462,73 +465,81 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
                             )}
                         </AnimatePresence>
                     </Box>
-
-                    {/* Trash Zone - appears when dragging */}
-                    <AnimatePresence>
-                        {draggingTemplate && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 80, opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                                style={{ overflow: 'visible' }}
-                            >
-                                <Box
-                                    sx={{
-                                        mt: 2,
-                                        p: 2,
-                                        borderRadius: 2,
-                                        border: '2px dashed',
-                                        borderColor: isOverTrash ? 'error.dark' : 'error.main',
-                                        backgroundColor: isOverTrash ? 'rgba(211, 47, 47, 0.20)' : 'rgba(211, 47, 47, 0.08)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: 0.5,
-                                        transition: 'all 200ms ease',
-                                        transform: isOverTrash ? 'translateY(-2px)' : 'none'
-                                    }}
-                                    onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.dataTransfer.dropEffect = 'move';
-                                        setIsOverTrash(true);
-                                    }}
-                                    onDragLeave={() => {
-                                        setIsOverTrash(false);
-                                    }}
-                                    onDrop={(e) => {
-                                        e.preventDefault();
-                                        setIsOverTrash(false);
-                                        const templateType = e.dataTransfer.getData('templateType');
-                                        const templateId = e.dataTransfer.getData('templateId');
-                                        const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
-                                        
-                                        console.log('Delete template:', { templateType, templateId, templateData });
-                                        
-                                        // Open deletion confirmation modal
-                                        setTemplateToDelete(templateData);
-                                        setDeletionModalOpen(true);
-                                        setDraggingTemplate(null);
-                                    }}
-                                >
-                                    <DeleteIcon sx={{ fontSize: 28, color: 'error.main' }} />
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            fontWeight: 600,
-                                            color: 'error.main',
-                                            fontSize: '0.7rem'
-                                        }}
-                                    >
-                                        Usuń szablon
-                                    </Typography>
-                                </Box>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </Box>
             </Box>
+            
+            {/* Trash Zone - appears when dragging, positioned absolutely at bottom */}
+            <AnimatePresence>
+                {draggingTemplate && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                        style={{ 
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            zIndex: 100
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                mx: 2.5,
+                                mb: 2.5,
+                                p: 2,
+                                borderRadius: 2,
+                                border: '2px dashed',
+                                borderColor: isOverTrash ? 'error.dark' : 'error.main',
+                                backgroundColor: isOverTrash ? 'rgba(211, 47, 47, 0.20)' : 'rgba(211, 47, 47, 0.08)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                                transition: 'all 200ms ease',
+                                transform: isOverTrash ? 'translateY(-2px)' : 'none',
+                                backdropFilter: 'blur(4px)'
+                            }}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                                setIsOverTrash(true);
+                            }}
+                            onDragLeave={() => {
+                                setIsOverTrash(false);
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                setIsOverTrash(false);
+                                const templateType = e.dataTransfer.getData('templateType');
+                                const templateId = e.dataTransfer.getData('templateId');
+                                const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
+                                
+                                console.log('Delete template:', { templateType, templateId, templateData });
+                                
+                                // Open deletion confirmation modal
+                                setTemplateToDelete(templateData);
+                                setDeletionModalOpen(true);
+                                setDraggingTemplate(null);
+                            }}
+                        >
+                            <DeleteIcon sx={{ fontSize: 28, color: 'error.main' }} />
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    fontWeight: 600,
+                                    color: 'error.main',
+                                    fontSize: '0.7rem'
+                                }}
+                            >
+                                Usuń szablon
+                            </Typography>
+                        </Box>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             
             {/* Template Deletion Modal */}
             <TemplateDeletionModal
@@ -551,12 +562,16 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate }) => {
 
 RealTemplateBrowser.propTypes = {
     onCreateDayTemplate: PropTypes.func,
-    onCreateWeekTemplate: PropTypes.func
+    onCreateWeekTemplate: PropTypes.func,
+    onTemplateDragStart: PropTypes.func,
+    onTemplateDragEnd: PropTypes.func
 };
 
 RealTemplateBrowser.defaultProps = {
     onCreateDayTemplate: () => console.log('Create day template'),
-    onCreateWeekTemplate: () => console.log('Create week template')
+    onCreateWeekTemplate: () => console.log('Create week template'),
+    onTemplateDragStart: () => {},
+    onTemplateDragEnd: () => {}
 };
 
 export default RealTemplateBrowser;

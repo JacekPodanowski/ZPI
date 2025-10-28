@@ -17,6 +17,7 @@ const CreatorCalendarApp = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [draggingTemplate, setDraggingTemplate] = useState(null); // Track template being dragged
 
     // Fetch sites from API
     useEffect(() => {
@@ -118,6 +119,16 @@ const CreatorCalendarApp = () => {
         // TODO: Implement week template creation
     };
 
+    const handleTemplateDragStart = (template) => {
+        console.log('Template drag started:', template);
+        setDraggingTemplate(template);
+    };
+
+    const handleTemplateDragEnd = () => {
+        console.log('Template drag ended');
+        setDraggingTemplate(null);
+    };
+
     if (loading) {
         return (
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }}>
@@ -147,6 +158,8 @@ const CreatorCalendarApp = () => {
                 <RealTemplateBrowser
                     onCreateDayTemplate={handleCreateDayTemplate}
                     onCreateWeekTemplate={handleCreateWeekTemplate}
+                    onTemplateDragStart={handleTemplateDragStart}
+                    onTemplateDragEnd={handleTemplateDragEnd}
                 />
 
                 <Box
@@ -186,6 +199,7 @@ const CreatorCalendarApp = () => {
                             onDayClick={handleDayClick}
                             onMonthChange={setCurrentMonth}
                             onSiteSelect={handleSiteSelect}
+                            draggingTemplate={draggingTemplate}
                         />
                     </motion.div>
                 </Box>

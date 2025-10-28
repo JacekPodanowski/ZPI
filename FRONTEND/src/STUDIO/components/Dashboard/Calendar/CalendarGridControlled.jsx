@@ -17,7 +17,8 @@ const CalendarGridControlled = ({
     currentMonth,
     onDayClick,
     onMonthChange,
-    onSiteSelect
+    onSiteSelect,
+    draggingTemplate // NEW: receive dragging state from parent
 }) => {
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredEventDayKey, setHoveredEventDayKey] = useState(null); // Track which day the hovered event is in
@@ -25,7 +26,7 @@ const CalendarGridControlled = ({
     const [draggedOverDay, setDraggedOverDay] = useState(null); // Track day being dragged over
     const [isDragging, setIsDragging] = useState(false); // Track if dragging is active
     const [isOverMonthName, setIsOverMonthName] = useState(false); // Track if dragging over month name
-    const [draggedTemplate, setDraggedTemplate] = useState(null); // Track the template being dragged
+    const [draggedTemplate, setDraggedTemplate] = useState(null); // Track the template being dragged (from dragOver)
     const [draggedTemplateType, setDraggedTemplateType] = useState(null); // Track template type explicitly
     
     // Template confirmation modal state
@@ -150,6 +151,30 @@ const CalendarGridControlled = ({
                         boxShadow: '0 0 30px rgba(146, 0, 32, 0.7)',
                         transform: 'scale(1.08)'
                     }
+                },
+                '@keyframes arrowBounce': {
+                    '0%, 100%': {
+                        transform: 'translateX(0)'
+                    },
+                    '50%': {
+                        transform: 'translateX(-3px)'
+                    }
+                },
+                '@keyframes arrowBounceRight': {
+                    '0%, 100%': {
+                        transform: 'translateX(0)'
+                    },
+                    '50%': {
+                        transform: 'translateX(3px)'
+                    }
+                },
+                '@keyframes shine': {
+                    '0%': {
+                        backgroundPosition: '-200% center'
+                    },
+                    '100%': {
+                        backgroundPosition: '200% center'
+                    }
                 }
             }}
         >
@@ -191,7 +216,30 @@ const CalendarGridControlled = ({
                     </AnimatePresence>
                 </Box>
 
-                <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                    {/* Left Arrow */}
+                    <AnimatePresence>
+                        {draggingTemplate && (
+                            <motion.div
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <Typography
+                                    sx={{
+                                        fontSize: '1.5rem',
+                                        color: 'primary.main',
+                                        animation: 'arrowBounce 1s ease-in-out infinite',
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    →
+                                </Typography>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     <Box
                         onDragOver={(e) => {
                             e.preventDefault();
@@ -225,13 +273,16 @@ const CalendarGridControlled = ({
                             backgroundColor: isOverMonthName ? 'rgba(146, 0, 32, 0.12)' : 'transparent',
                             border: isOverMonthName ? '2px dashed' : '2px solid transparent',
                             borderColor: isOverMonthName ? 'primary.main' : 'transparent',
-                            ...(draggedTemplate && {
-                                animation: 'monthGlow 2s ease-in-out infinite',
-                                cursor: 'pointer'
+                            position: 'relative',
+                            overflow: 'hidden',
+                            ...(draggingTemplate && {
+                                cursor: 'pointer',
+                                transform: 'scale(1.1)',
+                                transition: 'all 350ms ease'
                             }),
                             ...(isOverMonthName && {
                                 animation: 'none',
-                                transform: 'scale(1.05)',
+                                transform: 'scale(1.15)',
                                 boxShadow: '0 0 20px rgba(146, 0, 32, 0.3)'
                             })
                         }}
@@ -239,15 +290,49 @@ const CalendarGridControlled = ({
                         <Typography 
                             variant="h5" 
                             sx={{ 
-                                fontWeight: 600, 
-                                letterSpacing: 0.4,
-                                color: (isOverMonthName || draggedTemplate) ? 'primary.main' : 'text.primary',
-                                transition: 'color 250ms ease'
+                                fontWeight: draggingTemplate ? 700 : 600,
+                                letterSpacing: draggingTemplate ? 0.8 : 0.4,
+                                color: (isOverMonthName || draggingTemplate) ? 'primary.main' : 'text.primary',
+                                transition: 'all 250ms ease',
+                                position: 'relative',
+                                zIndex: 1,
+                                // Shine effect on text only
+                                ...(draggingTemplate && !isOverMonthName && {
+                                    backgroundImage: 'linear-gradient(90deg, transparent, rgba(146, 0, 32, 0.8), transparent)',
+                                    backgroundSize: '200% 100%',
+                                    backgroundClip: 'text',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    animation: 'shine 2s linear infinite'
+                                })
                             }}
                         >
                             {currentMonthMoment.format('MMMM YYYY')}
                         </Typography>
                     </Box>
+
+                    {/* Right Arrow */}
+                    <AnimatePresence>
+                        {draggingTemplate && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <Typography
+                                    sx={{
+                                        fontSize: '1.5rem',
+                                        color: 'primary.main',
+                                        animation: 'arrowBounceRight 1s ease-in-out infinite',
+                                        fontWeight: 700
+                                    }}
+                                >
+                                    ←
+                                </Typography>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </Box>
 
                 <Box
@@ -352,54 +437,46 @@ const CalendarGridControlled = ({
                     const isDayHovered = hoveredDayKey === dateKey && !hoveredEventId;
                     const isBeingDraggedOver = draggedOverDay === dateKey;
                     
-                    // Week template logic
-                    const isWeekTemplate = draggedTemplateType === 'week';
-                    const currentWeekStart = moment().startOf('isoWeek'); // Monday of current week
+                    // Week template logic - Use draggingTemplate from parent to determine type
+                    const isWeekTemplate = draggingTemplate?.type === 'week' || draggedTemplateType === 'week';
                     
                     // Check if this day is part of the hovered week (for week templates)
-                    const isInHoveredWeek = isWeekTemplate && draggedOverDay && 
-                        dayMoment.isBetween(
-                            moment(draggedOverDay).startOf('isoWeek'),
-                            moment(draggedOverDay).endOf('isoWeek'),
-                            'day',
-                            '[]'
-                        );
-                    
-                    // Determine if this day should be grayed out for week templates
-                    let isGrayedOut = false;
-                    let isInTemplateWeek = false;
-                    
+                    let isInHoveredWeek = false;
                     if (isWeekTemplate && draggedOverDay) {
                         const hoveredDayMoment = moment(draggedOverDay);
                         const hoveredWeekStart = hoveredDayMoment.clone().startOf('isoWeek'); // Monday
                         const hoveredWeekEnd = hoveredDayMoment.clone().endOf('isoWeek'); // Sunday
                         
-                        isInTemplateWeek = dayMoment.isBetween(hoveredWeekStart, hoveredWeekEnd, 'day', '[]');
+                        isInHoveredWeek = dayMoment.isBetween(hoveredWeekStart, hoveredWeekEnd, 'day', '[]');
+                    }
+                    
+                    // Determine if this day should be grayed out for week templates
+                    let isGrayedOut = false;
+                    
+                    if (isWeekTemplate && isInHoveredWeek && (draggedTemplate || draggingTemplate)) {
+                        const template = draggedTemplate || draggingTemplate;
+                        const templateActiveDays = template.active_days || [0, 1, 2, 3, 4, 5, 6]; // Default all days
+                        const dayOfWeek = dayMoment.day(); // 0 = Sunday, 1 = Monday, etc.
+                        const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0 = Monday
                         
-                        if (isInTemplateWeek) {
-                            const templateActiveDays = draggedTemplate.active_days || [0, 1, 2, 3, 4, 5, 6]; // Default all days
-                            const dayOfWeek = dayMoment.day(); // 0 = Sunday, 1 = Monday, etc.
-                            const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0 = Monday
-                            
-                            // Gray out if not in active days
-                            if (!templateActiveDays.includes(adjustedDayOfWeek)) {
-                                isGrayedOut = true;
-                            }
-                            
-                            // Gray out if in next month
-                            if (!isCurrentMonth) {
-                                isGrayedOut = true;
-                            }
-                            
-                            // Gray out past days (except current week)
-                            if (isPast && !hoveredWeekStart.isSame(currentWeekStart, 'week')) {
-                                isGrayedOut = true;
-                            }
+                        // Gray out if not in active days
+                        if (!templateActiveDays.includes(adjustedDayOfWeek)) {
+                            isGrayedOut = true;
+                        }
+                        
+                        // Gray out if in next month (different from current month being viewed)
+                        if (!isCurrentMonth) {
+                            isGrayedOut = true;
+                        }
+                        
+                        // Gray out past days
+                        if (isPast && !isToday) {
+                            isGrayedOut = true;
                         }
                     }
                     
                     // For day templates, gray out past days
-                    if (!isWeekTemplate && draggedTemplate && isPast && !isToday) {
+                    if (!isWeekTemplate && (draggedTemplate || draggingTemplate) && isBeingDraggedOver && isPast && !isToday) {
                         isGrayedOut = true;
                     }
 
@@ -675,14 +752,16 @@ CalendarGridControlled.propTypes = {
     currentMonth: PropTypes.instanceOf(Date).isRequired,
     onDayClick: PropTypes.func,
     onMonthChange: PropTypes.func,
-    onSiteSelect: PropTypes.func
+    onSiteSelect: PropTypes.func,
+    draggingTemplate: PropTypes.object // NEW: template being dragged
 };
 
 CalendarGridControlled.defaultProps = {
     selectedSiteId: null,
     onDayClick: () => {},
     onMonthChange: () => {},
-    onSiteSelect: () => {}
+    onSiteSelect: () => {},
+    draggingTemplate: null
 };
 
 export default CalendarGridControlled;

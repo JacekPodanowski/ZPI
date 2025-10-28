@@ -14,7 +14,7 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
         e.dataTransfer.setData('templateType', 'day');
         e.dataTransfer.setData('templateId', template.id);
         e.dataTransfer.setData('templateData', JSON.stringify(template));
-        onDragStart?.(template);
+        onDragStart?.({ ...template, type: 'day' }); // Include type in callback
     };
 
     const handleDragEnd = (e) => {

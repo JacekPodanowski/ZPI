@@ -15,7 +15,7 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
         e.dataTransfer.setData('templateType', 'week');
         e.dataTransfer.setData('templateId', template.id);
         e.dataTransfer.setData('templateData', JSON.stringify(template));
-        onDragStart?.(template);
+        onDragStart?.({ ...template, type: 'week' }); // Include type in callback
     };
 
     const handleDragEnd = (e) => {
