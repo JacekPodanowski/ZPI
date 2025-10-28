@@ -39,8 +39,8 @@ const CalendarGridControlled = ({
     const calendarDays = useMemo(() => {
         const startOfMonth = currentMonthMoment.clone().startOf('month');
         const endOfMonth = currentMonthMoment.clone().endOf('month');
-        const startDate = startOfMonth.clone().startOf('week');
-        const endDate = endOfMonth.clone().endOf('week');
+        const startDate = startOfMonth.clone().startOf('isoWeek'); // Use ISO week (Monday)
+        const endDate = endOfMonth.clone().endOf('isoWeek'); // Use ISO week (Sunday)
 
         const days = [];
         const cursor = startDate.clone();
@@ -442,42 +442,62 @@ const CalendarGridControlled = ({
                     
                     // Check if this day is part of the hovered week (for week templates)
                     let isInHoveredWeek = false;
+                    let isAffectedDay = false; // Red highlight - day will receive events
+                    let isUnaffectedDay = false; // Gray overlay - day won't receive events
+                    
                     if (isWeekTemplate && draggedOverDay) {
                         const hoveredDayMoment = moment(draggedOverDay);
-                        const hoveredWeekStart = hoveredDayMoment.clone().startOf('isoWeek'); // Monday
-                        const hoveredWeekEnd = hoveredDayMoment.clone().endOf('isoWeek'); // Sunday
                         
+                        // Find which row this day is in the calendar grid
+                        // Calendar rows are Monday-Sunday (7 days each)
+                        // We want to highlight the visual row the hovered day is in
+                        
+                        const hoveredDayOfWeek = hoveredDayMoment.isoWeekday(); // 1-7, 1=Monday, 7=Sunday
+                        
+                        // Calculate the Monday of the week containing the hovered day
+                        // If hoveredDayOfWeek is 1 (Monday), subtract 0 days (stay on Monday)
+                        // If hoveredDayOfWeek is 2 (Tuesday), subtract 1 day (go back to Monday)
+                        // etc.
+                        const daysFromMonday = hoveredDayOfWeek - 1;
+                        const hoveredWeekStart = hoveredDayMoment.clone().subtract(daysFromMonday, 'days');
+                        const hoveredWeekEnd = hoveredWeekStart.clone().add(6, 'days'); // Sunday is 6 days after Monday
+                        
+                        console.log('Week calculation:', {
+                            hoveredDay: hoveredDayMoment.format('YYYY-MM-DD (dddd)'),
+                            hoveredDayOfWeek: hoveredDayOfWeek + ' (' + hoveredDayMoment.format('dddd') + ')',
+                            daysFromMonday,
+                            weekStart: hoveredWeekStart.format('YYYY-MM-DD (dddd)'),
+                            weekEnd: hoveredWeekEnd.format('YYYY-MM-DD (dddd)'),
+                            checkingDay: dayMoment.format('YYYY-MM-DD (dddd)')
+                        });
+                        
+                        // Check if this day is in the same week
                         isInHoveredWeek = dayMoment.isBetween(hoveredWeekStart, hoveredWeekEnd, 'day', '[]');
-                    }
-                    
-                    // Determine if this day should be grayed out for week templates
-                    let isGrayedOut = false;
-                    
-                    if (isWeekTemplate && isInHoveredWeek && (draggedTemplate || draggingTemplate)) {
-                        const template = draggedTemplate || draggingTemplate;
-                        const templateActiveDays = template.active_days || [0, 1, 2, 3, 4, 5, 6]; // Default all days
-                        const dayOfWeek = dayMoment.day(); // 0 = Sunday, 1 = Monday, etc.
-                        const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0 = Monday
                         
-                        // Gray out if not in active days
-                        if (!templateActiveDays.includes(adjustedDayOfWeek)) {
-                            isGrayedOut = true;
-                        }
-                        
-                        // Gray out if in next month (different from current month being viewed)
-                        if (!isCurrentMonth) {
-                            isGrayedOut = true;
-                        }
-                        
-                        // Gray out past days
-                        if (isPast && !isToday) {
-                            isGrayedOut = true;
+                        if (isInHoveredWeek) {
+                            const template = draggedTemplate || draggingTemplate;
+                            const templateActiveDays = template?.active_days || [0, 1, 2, 3, 4, 5, 6]; // Default all days
+                            const dayOfWeek = dayMoment.day(); // 0 = Sunday, 1 = Monday, etc.
+                            const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0 = Monday
+                            
+                            // Determine if this day is affected
+                            const isDayInTemplate = templateActiveDays.includes(adjustedDayOfWeek);
+                            const isInCurrentMonth = isCurrentMonth;
+                            const isFutureOrToday = !isPast || isToday;
+                            
+                            // Affected = in template, in current month, and not past
+                            if (isDayInTemplate && isInCurrentMonth && isFutureOrToday) {
+                                isAffectedDay = true;
+                            } else {
+                                // Unaffected = in the week but excluded
+                                isUnaffectedDay = true;
+                            }
                         }
                     }
                     
                     // For day templates, gray out past days
                     if (!isWeekTemplate && (draggedTemplate || draggingTemplate) && isBeingDraggedOver && isPast && !isToday) {
-                        isGrayedOut = true;
+                        isUnaffectedDay = true;
                     }
 
                     const handleDragOver = (e) => {
@@ -542,11 +562,13 @@ const CalendarGridControlled = ({
                                 onDrop={handleDrop}
                                 sx={{
                                     border: isToday ? '2px solid' : '1px solid',
-                                    borderColor: (isBeingDraggedOver || isInHoveredWeek)
+                                    borderColor: isAffectedDay
                                         ? 'primary.main' 
-                                        : isToday 
-                                            ? 'primary.main' 
-                                            : 'rgba(146, 0, 32, 0.12)',
+                                        : (isBeingDraggedOver && !isWeekTemplate)
+                                            ? 'primary.main'
+                                            : isToday 
+                                                ? 'primary.main' 
+                                                : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
                                     p: isToday ? 0.75 : 0.85,
                                     height: '100%',
@@ -564,7 +586,8 @@ const CalendarGridControlled = ({
                                     opacity: isDimmed ? 0.45 : 1,
                                     overflow: 'visible', // Allow events to expand on hover
                                     position: 'relative',
-                                    ...(isGrayedOut && {
+                                    // Gray overlay for unaffected days
+                                    ...(isUnaffectedDay && {
                                         '&::after': {
                                             content: '""',
                                             position: 'absolute',
@@ -572,16 +595,25 @@ const CalendarGridControlled = ({
                                             left: 0,
                                             right: 0,
                                             bottom: 0,
-                                            backgroundColor: 'rgba(128, 128, 128, 0.5)',
+                                            backgroundColor: 'rgba(128, 128, 128, 0.4)',
                                             pointerEvents: 'none',
-                                            zIndex: 10
+                                            zIndex: 10,
+                                            borderRadius: 2
                                         }
                                     }),
-                                    ...((isBeingDraggedOver || isInHoveredWeek) && !isGrayedOut && {
+                                    // Red dashed border for affected days
+                                    ...(isAffectedDay && {
+                                        borderStyle: 'dashed',
+                                        borderWidth: '2px',
+                                        backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                        animation: 'pulse 1.5s ease-in-out infinite'
+                                    }),
+                                    // Day template single day highlight
+                                    ...((isBeingDraggedOver && !isWeekTemplate) && !isUnaffectedDay && {
                                         borderStyle: 'dashed',
                                         borderWidth: '2px',
                                         backgroundColor: 'rgba(146, 0, 32, 0.05)',
-                                        animation: isBeingDraggedOver ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                                        animation: 'pulse 1.5s ease-in-out infinite'
                                     }),
                                     ...(isToday && {
                                         boxShadow: '0 0 12px rgba(146, 0, 32, 0.25), 0 0 24px rgba(146, 0, 32, 0.1)',

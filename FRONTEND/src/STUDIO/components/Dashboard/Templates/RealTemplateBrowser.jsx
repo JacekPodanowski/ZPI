@@ -97,7 +97,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                 backgroundColor: 'rgba(228, 229, 218, 0.5)',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'visible',
+                overflow: 'hidden', // Prevent any scroll
                 position: 'relative' // For absolute positioning of trash zone
             }}
         >
@@ -110,7 +110,8 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                     gap: 2.5,
                     flex: 1,
                     minHeight: 0,
-                    overflow: 'visible'
+                    overflow: 'hidden', // Prevent scroll from content
+                    position: 'relative' // For absolute trash zone positioning
                 }}
             >
                 {/* Header with Sessions Logo */}

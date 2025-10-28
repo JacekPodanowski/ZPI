@@ -152,7 +152,7 @@ const CreatorCalendarApp = () => {
                     flex: 1,
                     display: 'flex',
                     minHeight: 0,
-                    overflow: 'visible' // Allow templates to expand beyond boundaries
+                    overflow: 'hidden' // Prevent scroll from child elements
                 }}
             >
                 <RealTemplateBrowser
