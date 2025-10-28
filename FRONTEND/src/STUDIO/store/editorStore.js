@@ -9,9 +9,8 @@ export const createDefaultTemplateConfig = () => ({
   pageOrder: [
     'home',
     'about',
-    'services',
+    'servicesAndPricing',
     'calendar',
-    'pricing',
     'events',
     'faq',
     'team',
@@ -58,6 +57,8 @@ export const createDefaultTemplateConfig = () => ({
             description: 'Jestem certyfikowanym instruktorem wellness z pasją do zdrowego stylu życia.',
             imageUrl: '',
             avatar: '',
+            email: 'kontakt@wellness.pl',
+            phone: '+48 123 456 789',
             bgColor: 'rgb(228, 229, 218)'
           }
         }
@@ -92,8 +93,8 @@ export const createDefaultTemplateConfig = () => ({
       modules: [
         {
           id: 'contact',
-          name: 'Kontakt',
-          type: 'contact',
+          name: 'Formularz kontaktowy',
+          type: 'contactForm',
           enabled: true,
           order: 0,
           config: {
@@ -124,91 +125,66 @@ export const createDefaultTemplateConfig = () => ({
         }
       ]
     },
-    services: {
-      id: 'services',
-      name: 'Usługi',
-      path: '/uslugi',
+    servicesAndPricing: {
+      id: 'servicesAndPricing',
+      name: 'Oferta',
+      path: '/oferta',
       modules: [
         {
-          id: 'default_services',
-          type: 'services',
+          id: 'default_services_and_pricing',
+          type: 'servicesAndPricing',
           name: 'Oferta',
           enabled: true,
           order: 0,
           config: {
-            title: 'Nasze Usługi',
-            subtitle: 'Poznaj sposoby, w jakie możemy Cię wesprzeć',
+            title: 'Oferta',
+            subtitle: 'Poznaj naszą ofertę i przejrzyste ceny',
             bgColor: '#FFFFFF',
             textColor: 'rgb(30, 30, 30)',
             accentColor: 'rgb(146, 0, 32)',
-              items: [
-                {
-                  id: `service-${Date.now()}-1`,
-                  name: 'Sesja indywidualna',
-                  category: '1:1',
-                  description: '<p>60 minut pracy dopasowanej do Twoich potrzeb. Otrzymujesz plan praktyki domowej.</p>',
-                  image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=900&q=60'
-                },
-                {
-                  id: `service-${Date.now()}-2`,
-                  name: 'Warsztaty grupowe',
-                  category: 'Grupa',
-                  description: '<p>Kameralne spotkania tematyczne rozwijające świadomość ciała i oddechu.</p>',
-                  image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=60'
-                },
-                {
-                  id: `service-${Date.now()}-3`,
-                  name: 'Program oddechowy',
-                  category: 'Online',
-                  description: '<p>Czterotygodniowy cykl spotkań online z nagraniami i materiałami PDF.</p>',
-                  image: 'https://images.unsplash.com/photo-1526674183561-3a54354ceaba?auto=format&fit=crop&w=900&q=60'
-                }
-              ]
-          }
-        }
-      ]
-    },
-    pricing: {
-      id: 'pricing',
-      name: 'Cennik',
-      path: '/cennik',
-      modules: [
-        {
-          id: 'default_pricing',
-          type: 'pricing',
-          name: 'Pakiety cenowe',
-          enabled: true,
-          order: 0,
-          config: {
-            title: 'Przejrzyste pakiety',
-            subtitle: 'Wybierz opcję dopasowaną do Twojego planu',
-            bgColor: '#FFFFFF',
-            textColor: 'rgb(30, 30, 30)',
-            accentColor: 'rgb(146, 0, 32)',
-              currency: 'PLN',
-              items: [
-                {
-                  id: `pricing-${Date.now()}-1`,
-                  name: 'Sesja 1:1',
-                  price: '180',
-                  description: '<ul><li>60 minut praktyki</li><li>Plan utrwalenia</li><li>Wsparcie mailowe</li></ul>',
-                  image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=60'
-                },
-                {
-                  id: `pricing-${Date.now()}-2`,
-                  name: 'Karnet 4 spotkania',
-                  price: '640',
-                  description: '<ul><li>4 tygodnie praktyki</li><li>Dostęp do nagrań</li><li>Zniżki na warsztaty</li></ul>',
-                  image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=900&q=60'
-                },
-                {
-                  id: `pricing-${Date.now()}-3`,
-                  name: 'Program regeneracyjny',
-                  price: '920',
-                  description: '<ul><li>Weekend w kameralnej grupie</li><li>Pełne wyżywienie</li><li>Zestaw nagrań medytacyjnych</li></ul>',
-                  image: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=60'
-                }
-              ]
+            currency: 'PLN',
+            offers: [
+              {
+                id: `offer-${Date.now()}-1`,
+                name: 'Sesja indywidualna',
+                category: '1:1',
+                description: '<p>60 minut pracy dopasowanej do Twoich potrzeb. Otrzymujesz plan praktyki domowej.</p>',
+                price: '180',
+                image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=900&q=60'
+              },
+              {
+                id: `offer-${Date.now()}-2`,
+                name: 'Karnet 4 spotkania',
+                category: 'Pakiet',
+                description: '<p>4 tygodnie praktyki z dostępem do nagrań i zniżkami na warsztaty.</p>',
+                price: '640',
+                image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=60'
+              },
+              {
+                id: `offer-${Date.now()}-3`,
+                name: 'Warsztaty grupowe',
+                category: 'Grupa',
+                description: '<p>Kameralne spotkania tematyczne rozwijające świadomość ciała i oddechu.</p>',
+                price: '120',
+                image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=60'
+              },
+              {
+                id: `offer-${Date.now()}-4`,
+                name: 'Program oddechowy',
+                category: 'Online',
+                description: '<p>Czterotygodniowy cykl spotkań online z nagraniami i materiałami PDF.</p>',
+                price: '450',
+                image: 'https://images.unsplash.com/photo-1526674183561-3a54354ceaba?auto=format&fit=crop&w=900&q=60'
+              },
+              {
+                id: `offer-${Date.now()}-5`,
+                name: 'Program regeneracyjny',
+                category: 'Weekend',
+                description: '<p>Weekend w kameralnej grupie z pełnym wyżywieniem i zestawem nagrań medytacyjnych.</p>',
+                price: '920',
+                image: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=60'
+              }
+            ]
           }
         }
       ]
@@ -303,6 +279,58 @@ export const createDefaultTemplateConfig = () => ({
 })
 
 const deepClone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)))
+
+export const buildTemplateFromModules = (moduleIds, siteName = 'Moja Strona', category = 'wellness') => {
+  // Mapping module IDs to page keys
+  const moduleToPageMap = {
+    'publicCalendar': 'calendar',
+    'about': 'about',
+    'servicesAndPricing': 'servicesAndPricing',
+    'events': 'events',
+    'faq': 'faq',
+    'team': 'team',
+    'blog': 'blog',
+    'gallery': 'gallery',
+    'contact': 'contact'
+  }
+
+  console.log('[buildTemplateFromModules] Building template from modules:', moduleIds)
+  
+  const defaultConfig = createDefaultTemplateConfig()
+  const newConfig = {
+    ...defaultConfig,
+    name: siteName,
+    pageOrder: [],
+    pages: {
+      home: defaultConfig.pages.home // Always include home page
+    }
+  }
+
+  // Build the pages based on selected modules
+  moduleIds.forEach(moduleId => {
+    const pageKey = moduleToPageMap[moduleId]
+    if (pageKey && defaultConfig.pages[pageKey]) {
+      console.log(`[buildTemplateFromModules] Adding page: ${pageKey} from module: ${moduleId}`)
+      newConfig.pageOrder.push(pageKey)
+      newConfig.pages[pageKey] = deepClone(defaultConfig.pages[pageKey])
+    } else {
+      console.warn(`[buildTemplateFromModules] Unknown module or page: ${moduleId}`)
+    }
+  })
+
+  // Always add home to the beginning if not already there
+  if (!newConfig.pageOrder.includes('home')) {
+    newConfig.pageOrder.unshift('home')
+  }
+
+  console.log('[buildTemplateFromModules] Final template config:', {
+    pageOrder: newConfig.pageOrder,
+    pageKeys: Object.keys(newConfig.pages)
+  })
+
+  return newConfig
+}
+
 
 const normalizeModule = (module, expectedModule, index) => {
   const fallback = expectedModule ? deepClone(expectedModule) : {
@@ -775,22 +803,21 @@ const useEditorStore = create((set, get) => ({
           }
         ]
       },
-      pricing: {
-        title: 'Cennik',
-        subtitle: 'Transparentne pakiety dopasowane do Twoich potrzeb',
+      servicesAndPricing: {
+        title: 'Oferta',
+        subtitle: 'Poznaj naszą ofertę i przejrzyste ceny',
         bgColor: '#FFFFFF',
         textColor: 'rgb(30, 30, 30)',
         accentColor: 'rgb(146, 0, 32)',
         currency: 'PLN',
-        items: []
+        offers: []
       },
-      services: {
-        title: 'Nasze usługi',
-        subtitle: 'Odkryj jak możemy Ci pomóc',
-        bgColor: '#FFFFFF',
+      contactForm: {
+        title: 'Skontaktuj się ze mną',
+        subtitle: 'Wyślij mi wiadomość, a odezwę się tak szybko jak to możliwe',
+        bgColor: 'rgb(255, 255, 255)',
         textColor: 'rgb(30, 30, 30)',
-        accentColor: 'rgb(146, 0, 32)',
-        items: []
+        accentColor: 'rgb(146, 0, 32)'
       },
       reactComponent: {
         componentId: null,
@@ -813,8 +840,8 @@ const useEditorStore = create((set, get) => ({
       team: 'Zespół',
       blog: 'Blog',
       events: 'Wydarzenia',
-      pricing: 'Cennik',
-      services: 'Usługi',
+      servicesAndPricing: 'Oferta',
+      contactForm: 'Formularz kontaktowy',
       reactComponent: 'Komponent React'
     }
 

@@ -4,7 +4,7 @@ import apiClient from '../services/apiClient';
 import HeroSection from './components/HeroSection';
 import AboutSection from './components/AboutSection';
 import CalendarSection from './components/CalendarSection';
-import ContactSection from './components/ContactSection';
+import ContactForm from './components/ContactForm';
 import TextModule from './components/TextModule';
 import ButtonModule from './components/ButtonModule';
 import GalleryModule from './components/GalleryModule';
@@ -14,8 +14,7 @@ import VideoModule from './components/VideoModule';
 import FAQModule from './components/FAQModule';
 import BlogModule from './components/BlogModule';
 import EventsModule from './components/EventsModule';
-import PricingModule from './components/PricingModule';
-import ServicesModule from './components/ServicesModule';
+import ServicesAndPricingModule from './components/ServicesAndPricingModule';
 import TeamModule from './components/TeamModule';
 import ReactComponentModule from './components/ReactComponentModule';
 
@@ -29,7 +28,8 @@ const componentMap = {
   hero: HeroSection,
   about: AboutSection,
   calendar: CalendarSection,
-  contact: ContactSection,
+  contact: ContactForm,
+  contactForm: ContactForm,
   text: TextModule,
   button: ButtonModule,
   gallery: GalleryModule,
@@ -39,8 +39,7 @@ const componentMap = {
   faq: FAQModule,
   blog: BlogModule,
   events: EventsModule,
-  pricing: PricingModule,
-  services: ServicesModule,
+  servicesAndPricing: ServicesAndPricingModule,
   team: TeamModule,
   reactComponent: ReactComponentModule,
 };

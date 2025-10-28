@@ -2,7 +2,7 @@ import React from 'react'
 import HeroSection from '../components/HeroSection'
 import CalendarSection from '../components/CalendarSection'
 import AboutSection from '../components/AboutSection'
-import ContactSection from '../components/ContactSection'
+import ContactForm from '../components/ContactForm'
 
 const HomePage = () => {
   return (
@@ -23,7 +23,7 @@ const HomePage = () => {
           imageUrl: '',
         }}
       />
-      <ContactSection config={{ email: 'kontakt@wellness.pl', phone: '+48 123 456 789' }} />
+      <ContactForm config={{ email: 'kontakt@wellness.pl', phone: '+48 123 456 789' }} />
     </div>
   )
 }

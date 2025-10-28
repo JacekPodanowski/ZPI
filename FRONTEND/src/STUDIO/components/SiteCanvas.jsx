@@ -6,7 +6,7 @@ import SiteNavigation from './SiteNavigation'
 import HeroSection from '../../SITES/components/HeroSection'
 import CalendarSection from '../../SITES/components/CalendarSection'
 import AboutSection from '../../SITES/components/AboutSection'
-import ContactSection from '../../SITES/components/ContactSection'
+import ContactForm from '../../SITES/components/ContactForm'
 import TextModule from '../../SITES/components/TextModule'
 import ButtonModule from '../../SITES/components/ButtonModule'
 import GalleryModule from '../../SITES/components/GalleryModule'
@@ -17,8 +17,7 @@ import VideoModule from '../../SITES/components/VideoModule'
 import FAQModule from '../../SITES/components/FAQModule'
 import BlogModule from '../../SITES/components/BlogModule'
 import EventsModule from '../../SITES/components/EventsModule'
-import PricingModule from '../../SITES/components/PricingModule'
-import ServicesModule from '../../SITES/components/ServicesModule'
+import ServicesAndPricingModule from '../../SITES/components/ServicesAndPricingModule'
 import TeamModule from '../../SITES/components/TeamModule'
 import ReactComponentModule from '../../SITES/components/ReactComponentModule'
 
@@ -141,14 +140,16 @@ const SiteCanvas = () => {
     hero: HeroSection,
     calendar: CalendarSection,
     about: AboutSection,
-    contact: ContactSection
+    contact: ContactForm,
+    contactForm: ContactForm
   }
 
   const baseComponentsByType = {
     hero: HeroSection,
     calendar: CalendarSection,
     about: AboutSection,
-    contact: ContactSection
+    contact: ContactForm,
+    contactForm: ContactForm
   }
 
   const expertComponents = {
@@ -161,8 +162,8 @@ const SiteCanvas = () => {
     faq: FAQModule,
     blog: BlogModule,
     events: EventsModule,
-    pricing: PricingModule,
-    services: ServicesModule,
+    servicesAndPricing: ServicesAndPricingModule,
+    servicesandpricing: ServicesAndPricingModule,
     team: TeamModule,
     reactcomponent: ReactComponentModule,
   }
@@ -185,7 +186,7 @@ const SiteCanvas = () => {
       } else if (moduleTypeKey.includes('calendar') || moduleIdKey.includes('calendar')) {
         Component = CalendarSection
       } else if (moduleTypeKey.includes('contact') || moduleIdKey.includes('contact')) {
-        Component = ContactSection
+        Component = ContactForm
       } else if (moduleTypeKey === 'reactcomponent') {
         Component = ReactComponentModule
       }

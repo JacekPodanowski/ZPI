@@ -4,7 +4,7 @@ import { resolveMediaUrl } from '../../config/api'
 import { isVideoUrl } from '../../utils/mediaUtils'
 
 const AboutSection = ({ config }) => {
-  const { title, description, imageUrl, avatar, bgColor } = config
+  const { title, description, imageUrl, avatar, bgColor, email, phone } = config
   const primaryMedia = imageUrl || avatar
   const fallbackImage = imageUrl && avatar && imageUrl !== avatar ? avatar : ''
   const primaryIsVideo = isVideoUrl(primaryMedia)
@@ -22,9 +22,43 @@ const AboutSection = ({ config }) => {
             <h2 className="text-4xl font-bold mb-6" style={{ color: 'rgb(30, 30, 30)' }}>
               {title}
             </h2>
-            <p className="text-lg leading-relaxed" style={{ color: 'rgb(30, 30, 30)' }}>
+            <p className="text-lg leading-relaxed mb-8" style={{ color: 'rgb(30, 30, 30)' }}>
               {description}
             </p>
+            
+            {/* Contact Info */}
+            {(email || phone) && (
+              <div className="space-y-4 mt-8">
+                {email && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-900 flex items-center justify-center">
+                      <span className="text-white text-lg">📧</span>
+                    </div>
+                    <a 
+                      href={`mailto:${email}`} 
+                      className="text-lg hover:underline"
+                      style={{ color: 'rgb(146, 0, 32)' }}
+                    >
+                      {email}
+                    </a>
+                  </div>
+                )}
+                {phone && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-900 flex items-center justify-center">
+                      <span className="text-white text-lg">📱</span>
+                    </div>
+                    <a 
+                      href={`tel:${phone}`} 
+                      className="text-lg hover:underline"
+                      style={{ color: 'rgb(146, 0, 32)' }}
+                    >
+                      {phone}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Obrazek lub wideo albo placeholder */}

@@ -180,6 +180,7 @@ const NewProjectPage = () => {
     const [pageVisible, setPageVisible] = useState(false);
     const [titleConfirmed, setTitleConfirmed] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [showAdditionalModules, setShowAdditionalModules] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setPageVisible(true), 80);
@@ -236,6 +237,13 @@ const NewProjectPage = () => {
 
         const enabledModules = modules.filter((m) => m.enabled).map((m) => m.id);
 
+        console.log('[NewProjectPage] Creating site with:', {
+            siteName,
+            selectedCategory,
+            enabledModules,
+            allModules: modules
+        });
+
         const templateConfig = {
             name: siteName,
             category: selectedCategory,
@@ -244,12 +252,34 @@ const NewProjectPage = () => {
             structure: { sections: [] }
         };
 
+        console.log('[NewProjectPage] Template config being sent:', templateConfig);
+
         try {
             const newSite = await createSite({ name: siteName, template_config: templateConfig });
+            console.log('[NewProjectPage] Site created successfully:', newSite);
+            
+            // Store the config and module info for the editor to use
             setTemplateConfig(templateConfig);
+            
+            // Also store in localStorage so editor can access it
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem('editor:pendingTemplateConfig', JSON.stringify({
+                    templateConfig,
+                    enabledModules,
+                    category: selectedCategory
+                }));
+                window.localStorage.setItem('editor:pendingSiteMeta', JSON.stringify({
+                    meta: {
+                        name: siteName,
+                        id: newSite.id
+                    }
+                }));
+            }
+            
+            console.log('[NewProjectPage] Navigating to editor with site ID:', newSite.id);
             navigate(`/studio/editor/${newSite.id}`);
         } catch (error) {
-            console.error('Failed to create site:', error);
+            console.error('[NewProjectPage] Failed to create site:', error);
         }
     };
 
@@ -543,10 +573,12 @@ const NewProjectPage = () => {
                                         letterSpacing: 0.5
                                     }}
                                 >
-                                    Elementy Strony
+                                    Główne Moduły
                                 </Typography>
+                                
+                                {/* Main Modules */}
                                 <Stack spacing={0}>
-                                    {modules.map((module, index) => (
+                                    {modules.filter(m => !m.isAdditional).map((module, index) => (
                                         <ModuleCard 
                                             key={module.id} 
                                             module={module} 
@@ -555,6 +587,82 @@ const NewProjectPage = () => {
                                         />
                                     ))}
                                 </Stack>
+
+                                {/* Więcej Button */}
+                                {modules.some(m => m.isAdditional) && (
+                                    <Box sx={{ textAlign: 'center', my: 3 }}>
+                                        <Box
+                                            onClick={() => setShowAdditionalModules(!showAdditionalModules)}
+                                            sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                cursor: 'pointer',
+                                                color: 'text.secondary',
+                                                fontSize: '0.9rem',
+                                                fontWeight: 600,
+                                                letterSpacing: 1.2,
+                                                px: 2,
+                                                py: 1,
+                                                borderRadius: 2,
+                                                transition: 'all 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                                '&:hover': {
+                                                    color: 'primary.main',
+                                                    backgroundColor: 'rgba(146, 0, 32, 0.05)',
+                                                    transform: 'scale(1.05)',
+                                                    '& .chevron-icon': {
+                                                        transform: showAdditionalModules ? 'rotate(180deg) translateY(2px)' : 'translateY(2px)'
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            Więcej
+                                            <ChevronRightIcon 
+                                                className="chevron-icon"
+                                                sx={{ 
+                                                    fontSize: 20,
+                                                    transform: showAdditionalModules ? 'rotate(90deg)' : 'rotate(90deg)',
+                                                    transition: 'transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                                                }} 
+                                            />
+                                        </Box>
+                                    </Box>
+                                )}
+
+                                {/* Additional Modules */}
+                                {showAdditionalModules && modules.some(m => m.isAdditional) && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.4 }}
+                                    >
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            sx={{ 
+                                                fontWeight: 500, 
+                                                mb: 1.5,
+                                                mt: 2,
+                                                color: 'text.secondary',
+                                                fontSize: '0.85rem',
+                                                letterSpacing: 0.8,
+                                                textTransform: 'uppercase'
+                                            }}
+                                        >
+                                            Dodatkowe moduły
+                                        </Typography>
+                                        <Stack spacing={0}>
+                                            {modules.filter(m => m.isAdditional).map((module, index) => (
+                                                <ModuleCard 
+                                                    key={module.id} 
+                                                    module={module} 
+                                                    onToggle={handleToggle} 
+                                                    index={index + modules.filter(m => !m.isAdditional).length} 
+                                                />
+                                            ))}
+                                        </Stack>
+                                    </motion.div>
+                                )}
                             </Box>
                         </motion.div>
 

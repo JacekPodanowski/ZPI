@@ -36,14 +36,8 @@ RUN pip install --no-cache-dir /wheels/*
 # KROK 5: Kopiujemy resztę plików aplikacji i ZMIENIAMY ICH WŁAŚCICIELA na `appuser`
 COPY --chown=appuser:appuser . .
 
-# 🆕 KROK 5.5: Generujemy migracje podczas budowania obrazu (opcjonalne)
-# Uwaga: To zadziała tylko jeśli masz już pliki modeli w projekcie
-# Jeśli wolisz generować migracje w entrypoint.sh, zakomentuj te linie
-# RUN python manage.py makemigrations --noinput || true
-
 # KROK 5.6: Naprawiamy zakończenia linii w skrypcie entrypoint
 # Używamy dos2unix, aby zapewnić, że skrypt ma zakończenia linii w formacie Unix (LF)
-# i nadajemy mu uprawnienia do wykonywania.
 RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
 
 # KROK 6: Dopiero teraz, gdy wszystko jest gotowe, przełączamy się na użytkownika nie-root

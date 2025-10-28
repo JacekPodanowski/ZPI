@@ -5,7 +5,7 @@ import ModuleSelector from '../../components/ModuleSelector';
 import SiteCanvas from '../../components/SiteCanvas';
 import Configurator from '../../components/Configurator';
 import AIChat from '../../components/AIChat';
-import useEditorStore, { createDefaultTemplateConfig } from '../../store/editorStore';
+import useEditorStore, { createDefaultTemplateConfig, buildTemplateFromModules } from '../../store/editorStore';
 import EditorNavigation from '../../components/EditorNavigation/EditorNavigation';
 import { fetchSiteById, updateSiteTemplate } from '../../../services/siteService';
 import { ThemeProvider as MuiThemeProvider, createTheme as createMuiTheme } from '@mui/material/styles';
@@ -200,14 +200,39 @@ const EditorPage = () => {
           return;
         }
 
+        console.log('[EditorPage] Loaded site from backend:', site);
+
         const storedDraft = readDraft();
         const shouldUseStored = storedDraft?.config && storedDraft?.hasUnsavedChanges;
 
         if (shouldUseStored) {
+          console.log('[EditorPage] Using stored draft');
           setTemplateConfig(storedDraft.config, { markDirty: true });
           setSiteMeta({ id: site.id, name: storedDraft.meta?.name || site.name });
         } else {
-          setTemplateConfig(site.template_config || createDefaultTemplateConfig());
+          const templateConfig = site.template_config || createDefaultTemplateConfig();
+          console.log('[EditorPage] Template config from backend:', templateConfig);
+          
+          // Check if this is a module-based config (has moduleIds or modules array but no pages object)
+          const moduleIds = templateConfig?.moduleIds || templateConfig?.modules || templateConfig?.enabledModules;
+          const hasPages = templateConfig?.pages && typeof templateConfig.pages === 'object';
+          
+          if (moduleIds && Array.isArray(moduleIds) && !hasPages) {
+            console.log('[EditorPage] Detected module-based config in existing site. Building template from modules:', moduleIds);
+            
+            const siteName = site.name || 'Nowa strona';
+            const category = templateConfig?.category || 'wellness';
+            
+            // Build full template config from module IDs
+            const builtConfig = buildTemplateFromModules(moduleIds, siteName, category);
+            console.log('[EditorPage] Built template config for existing site:', builtConfig);
+            
+            setTemplateConfig(builtConfig, { markDirty: false });
+          } else {
+            console.log('[EditorPage] Using full template config directly');
+            setTemplateConfig(templateConfig, { markDirty: false });
+          }
+          
           setSiteMeta({ id: site.id, name: site.name });
           clearLocalDraft();
         }
@@ -276,11 +301,38 @@ const EditorPage = () => {
       }
 
       if (storedDraft?.config) {
+        console.log('[EditorPage] Loading from stored draft');
         setTemplateConfig(storedDraft.config, { markDirty: storedDraft.hasUnsavedChanges });
         setSiteMeta(storedDraft.meta || { id: null, name: storedDraft.meta?.name || pendingMeta?.name || location.state?.siteName || 'Nowa strona' });
       } else if (pendingConfigPayload?.templateConfig) {
-        setTemplateConfig(pendingConfigPayload.templateConfig, { markDirty: true, restrictToDefaultPages: true });
-        setSiteMeta({ id: null, name: pendingMeta?.name || pendingConfigPayload.templateConfig?.name || location.state?.siteName || 'Nowa strona' });
+        console.log('[EditorPage] Received pending config payload:', pendingConfigPayload);
+        
+        // Check if this is a module-based config (has moduleIds or enabledModules array)
+        const moduleIds = pendingConfigPayload.templateConfig?.moduleIds 
+          || pendingConfigPayload.templateConfig?.enabledModules 
+          || pendingConfigPayload.templateConfig?.modules;
+        
+        if (moduleIds && Array.isArray(moduleIds)) {
+          console.log('[EditorPage] Detected module-based config. Building template from modules:', moduleIds);
+          
+          const siteName = pendingMeta?.name 
+            || pendingConfigPayload.templateConfig?.name 
+            || location.state?.siteName 
+            || 'Nowa strona';
+          
+          const category = pendingConfigPayload.templateConfig?.category || 'wellness';
+          
+          // Build full template config from module IDs
+          const builtConfig = buildTemplateFromModules(moduleIds, siteName, category);
+          console.log('[EditorPage] Built template config:', builtConfig);
+          
+          setTemplateConfig(builtConfig, { markDirty: true, restrictToDefaultPages: true });
+          setSiteMeta({ id: null, name: siteName });
+        } else {
+          console.log('[EditorPage] Using full template config directly');
+          setTemplateConfig(pendingConfigPayload.templateConfig, { markDirty: true, restrictToDefaultPages: true });
+          setSiteMeta({ id: null, name: pendingMeta?.name || pendingConfigPayload.templateConfig?.name || location.state?.siteName || 'Nowa strona' });
+        }
       } else if (pendingConfigRaw) {
         try {
           const parsedConfig = JSON.parse(pendingConfigRaw);
