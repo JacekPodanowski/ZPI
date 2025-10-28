@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Automatyczne generowanie migracji --- CZYŚĆIĆ PRZY PRODUKCJI!
+echo "--- Entrypoint: Creating migrations if needed..."
+python manage.py makemigrations --noinput
+echo "--- Entrypoint: Migrations creation complete."
+
 echo "--- Entrypoint: Applying database migrations..."
 python manage.py migrate --noinput
 echo "--- Entrypoint: Migrations complete."
