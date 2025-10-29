@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { Box, Typography, IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Divider, ListSubheader, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,9 +12,12 @@ import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     Settings as SettingsIcon,
-    Palette as PaletteIcon
+    Palette as PaletteIcon,
+    ViewModule as ViewModuleIcon,
+    Warning as WarningIcon,
+    BugReport as BugReportIcon
 } from '@mui/icons-material';
-import { deleteSite, updateSiteColor } from '../../../services/siteService';
+import { deleteSite, updateSiteColor, updateSite } from '../../../services/siteService';
 import SiteColorPicker from './SiteColorPicker';
 import { getSiteColorHex } from '../../../theme/siteColors';
 
@@ -28,12 +31,15 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [colorPickerOpen, setColorPickerOpen] = useState(false);
     const [localColorIndex, setLocalColorIndex] = useState(site.color_index ?? 0);
+    const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
+    const [localStatus, setLocalStatus] = useState(site.status || (site.is_active ? 'online' : 'offline'));
     
     // Debug flag - set to true to see the menu click area
     const DEBUG_MENU_AREA = false;
     
-    // Determine if site is active (default to true if not specified)
-    const isActive = site.is_active ?? false;
+    // Determine site status - can be 'online', 'offline', 'deploying', or 'problem'
+    // Default to 'offline' if not specified
+    const siteStatus = localStatus;
     
     // Get the site color
     const siteColor = getSiteColorHex(localColorIndex);
@@ -114,6 +120,11 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
         navigate(`/studio/editor/${site.id}`);
     };
 
+    const handleManageModules = () => {
+        handleMenuClose();
+        navigate(`/studio/sites/modules/${site.id}`);
+    };
+
     const handleOpenLab = () => {
         handleMenuClose();
         navigate(`/studio/lab/${site.id}`);
@@ -152,6 +163,27 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
     const handleChangeColor = () => {
         handleMenuClose();
         setColorPickerOpen(true);
+    };
+
+    const handleOpenStatusMenu = (event) => {
+        event.stopPropagation();
+        setStatusMenuAnchor(event.currentTarget);
+    };
+
+    const handleCloseStatusMenu = () => {
+        setStatusMenuAnchor(null);
+    };
+
+    const handleChangeStatus = async (newStatus) => {
+        try {
+            await updateSite(site.id, { status: newStatus });
+            setLocalStatus(newStatus);
+            handleCloseStatusMenu();
+            handleMenuClose();
+        } catch (error) {
+            console.error('Failed to update site status:', error);
+            alert('Failed to update site status. Please try again.');
+        }
     };
 
     const handleColorSelect = async (colorIndex) => {
@@ -289,15 +321,19 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             zIndex: 20
                         }}
                     >
+                        {/* Status Icon/Dot */}
                         <Box
                             sx={{
                                 position: 'relative',
-                                width: 12,
-                                height: 12
+                                width: siteStatus === 'problem' ? 16 : 12,
+                                height: siteStatus === 'problem' ? 16 : 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}
                         >
                             {/* Pulsing ring for online status */}
-                            {isActive && (
+                            {siteStatus === 'online' && (
                                 <Box
                                     sx={{
                                         position: 'absolute',
@@ -319,19 +355,112 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                     }}
                                 />
                             )}
-                            {/* Main dot */}
-                            <Box
-                                sx={{
-                                    width: '100%',
-                                    height: '100%',
-                                    borderRadius: '50%',
-                                    backgroundColor: isActive ? '#4ade80' : '#ef4444',
-                                    boxShadow: isActive
-                                        ? '0 0 12px rgba(74, 222, 128, 0.8)'
-                                        : '0 0 12px rgba(239, 68, 68, 0.8)',
-                                    transition: 'all 0.3s ease'
-                                }}
-                            />
+                            
+                            {/* Pulsing triangular glow for problem status - blurred icon */}
+                            {siteStatus === 'problem' && (
+                                <>
+                                    <WarningIcon 
+                                        sx={{
+                                            position: 'absolute',
+                                            fontSize: 16,
+                                            color: '#eab308',
+                                            filter: 'blur(12px)',
+                                            opacity: 0.6,
+                                            animation: 'pulseGlow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                            '@keyframes pulseGlow': {
+                                                '0%, 100%': {
+                                                    opacity: 0.6,
+                                                    transform: 'scale(1.5)'
+                                                },
+                                                '50%': {
+                                                    opacity: 0.3,
+                                                    transform: 'scale(2)'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <WarningIcon 
+                                        sx={{
+                                            position: 'absolute',
+                                            fontSize: 16,
+                                            color: '#eab308',
+                                            filter: 'blur(6px)',
+                                            opacity: 0.5,
+                                            animation: 'pulseGlowInner 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                                            '@keyframes pulseGlowInner': {
+                                                '0%, 100%': {
+                                                    opacity: 0.5,
+                                                    transform: 'scale(1.2)'
+                                                },
+                                                '50%': {
+                                                    opacity: 0.2,
+                                                    transform: 'scale(1.5)'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </>
+                            )}
+                            
+                            {/* Main indicator */}
+                            {siteStatus === 'problem' ? (
+                                <WarningIcon 
+                                    sx={{
+                                        fontSize: 16,
+                                        color: '#eab308',
+                                        transition: 'all 0.3s ease',
+                                        position: 'relative',
+                                        zIndex: 1
+                                    }}
+                                />
+                            ) : siteStatus === 'deploying' ? (
+                                <Box
+                                    sx={{
+                                        position: 'relative',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    {/* Blue glow behind spinner */}
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '50%',
+                                            backgroundColor: '#3b82f6',
+                                            filter: 'blur(8px)',
+                                            opacity: 0.6
+                                        }}
+                                    />
+                                    <CircularProgress
+                                        size={16}
+                                        thickness={5}
+                                        sx={{
+                                            color: '#3b82f6',
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.8))'
+                                        }}
+                                    />
+                                </Box>
+                            ) : (
+                                <Box
+                                    sx={{
+                                        width: '100%',
+                                        height: '100%',
+                                        borderRadius: '50%',
+                                        backgroundColor: 
+                                            siteStatus === 'online' ? '#4ade80' : 
+                                            '#ef4444',
+                                        boxShadow: 
+                                            siteStatus === 'online' ? '0 0 12px rgba(74, 222, 128, 0.8)' :
+                                            '0 0 12px rgba(239, 68, 68, 0.8)',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                />
+                            )}
                         </Box>
                         <Typography
                             variant="caption"
@@ -339,11 +468,18 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                 textTransform: 'uppercase',
                                 letterSpacing: 1.2,
                                 fontWeight: 700,
-                                fontSize: '0.7rem',
-                                color: isActive ? '#16a34a' : '#dc2626'
+                                fontSize: '0.8rem',
+                                color: 
+                                    siteStatus === 'online' ? '#16a34a' : 
+                                    siteStatus === 'deploying' ? '#2563eb' :
+                                    siteStatus === 'problem' ? '#ca8a04' :
+                                    '#dc2626'
                             }}
                         >
-                            {isActive ? 'Online' : 'Offline'}
+                            {siteStatus === 'online' ? 'Online' : 
+                             siteStatus === 'deploying' ? 'Deploying' :
+                             siteStatus === 'problem' ? 'Problem' :
+                             'Offline'}
                         </Typography>
                     </Box>
 
@@ -644,6 +780,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
                 onClick={(e) => e.stopPropagation()}
+                disableRestoreFocus
                 anchorOrigin={{
                     vertical: 'bottom',
                     horizontal: 'right',
@@ -668,6 +805,10 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     <PaletteIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Change Color
                 </MenuItem>
+                <MenuItem onClick={handleManageModules}>
+                    <ViewModuleIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
+                    Manage Modules
+                </MenuItem>
                 <MenuItem onClick={handleEdit}>
                     <EditIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Edit Site
@@ -680,9 +821,111 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     <LinkIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Visit Site
                 </MenuItem>
+                <Divider sx={{ my: 1 }} />
+                <MenuItem onClick={handleOpenStatusMenu}>
+                    <BugReportIcon sx={{ mr: 1.5, fontSize: '1.25rem', color: 'info.main' }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+                        <Typography>Set Status (Dev)</Typography>
+                        <Typography variant="caption" sx={{ ml: 2, color: 'text.secondary' }}>
+                            {siteStatus}
+                        </Typography>
+                    </Box>
+                </MenuItem>
+                <Divider sx={{ my: 1 }} />
                 <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
                     <DeleteIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Delete Site
+                </MenuItem>
+            </Menu>
+
+            {/* Status Menu */}
+            <Menu
+                anchorEl={statusMenuAnchor}
+                open={Boolean(statusMenuAnchor)}
+                onClose={handleCloseStatusMenu}
+                onClick={(e) => e.stopPropagation()}
+                disableRestoreFocus
+                anchorOrigin={{
+                    vertical: 'top',
+                    horizontal: 'left',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 2,
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                            minWidth: 180
+                        }
+                    }
+                }}
+            >
+                <ListSubheader sx={{ lineHeight: '32px', fontWeight: 600 }}>
+                    Site Status
+                </ListSubheader>
+                <MenuItem 
+                    onClick={() => handleChangeStatus('online')}
+                    selected={siteStatus === 'online'}
+                >
+                    <Box
+                        sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            backgroundColor: '#4ade80',
+                            mr: 1.5,
+                            boxShadow: '0 0 8px rgba(74, 222, 128, 0.6)'
+                        }}
+                    />
+                    Online
+                </MenuItem>
+                <MenuItem 
+                    onClick={() => handleChangeStatus('offline')}
+                    selected={siteStatus === 'offline'}
+                >
+                    <Box
+                        sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            backgroundColor: '#ef4444',
+                            mr: 1.5,
+                            boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                        }}
+                    />
+                    Offline
+                </MenuItem>
+                <MenuItem 
+                    onClick={() => handleChangeStatus('deploying')}
+                    selected={siteStatus === 'deploying'}
+                >
+                    <Box
+                        sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            backgroundColor: '#3b82f6',
+                            mr: 1.5,
+                            boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)'
+                        }}
+                    />
+                    Deploying
+                </MenuItem>
+                <MenuItem 
+                    onClick={() => handleChangeStatus('problem')}
+                    selected={siteStatus === 'problem'}
+                >
+                    <WarningIcon 
+                        sx={{ 
+                            fontSize: 12, 
+                            color: '#eab308',
+                            mr: 1.5
+                        }}
+                    />
+                    Problem
                 </MenuItem>
             </Menu>
 

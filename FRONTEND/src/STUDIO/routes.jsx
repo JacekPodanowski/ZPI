@@ -4,6 +4,7 @@ import ProtectedRoute from './ProtectedRoute';
 import SitesPage from './pages/Sites/SitesPage';
 import CategorySelectionPage from './pages/NewSite/CategorySelectionPage';
 import NewProjectPage from './pages/NewSite/NewProjectPage';
+import ManageModulesPage from './pages/NewSite/ManageModulesPage';
 import EditorPage from './pages/Editor/EditorPage';
 import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
@@ -28,6 +29,7 @@ const StudioApp = () => (
     {/* Site creation flow - OUTSIDE StudioLayout to avoid layout padding/footer */}
     <Route path="new" element={<ProtectedRoute><CategorySelectionPage /></ProtectedRoute>} />
     <Route path="new_project" element={<ProtectedRoute><NewProjectPage /></ProtectedRoute>} />
+    <Route path="sites/modules/:siteId" element={<ProtectedRoute><ManageModulesPage /></ProtectedRoute>} />
 
     <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}

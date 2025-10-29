@@ -44,3 +44,8 @@ export const updateSiteColor = async (siteId, colorIndex) => {
     });
     return response.data;
 };
+
+export const updateSite = async (siteId, payload) => {
+    const response = await apiClient.patch(`/sites/${siteId}/`, payload);
+    return response.data;
+};
