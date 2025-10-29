@@ -170,3 +170,10 @@ $RECYCLE.BIN/
 *.bak
 *.swp
 *~
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+celerybeat.db
+*.celerybeat-schedule
+*.pid
