@@ -1,25 +1,17 @@
 ## Szybki start Windows
 ```bash
+# tylko jeśli go nie ma
 python -m venv venv_local
 
-venv_local\Scripts\activate
-lub 
+
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 venv_local\Scripts\activate
 
 pip install -r requirements.txt
+python manage.py makemigrations
 python manage.py migrate
-python manage.py runserver
 ```
 
-## Komendy dla systemu Linux/Mac
-```bash
-python3 -m venv venv_local
-source venv_local/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
-```
 ## API w pigułce
 
 Interfejs REST służy do obsługi trzech typów użytkowników platformy YourEasySite: administratorów, twórców witryn oraz klientów rezerwujących sesje.

@@ -2,10 +2,12 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 import json
 import os
+from datetime import datetime, timedelta
 
-from api.models import Site, Template
+from api.models import Site, Template, Event, AvailabilityBlock
 
 User = get_user_model()
 
@@ -24,8 +26,6 @@ class Command(BaseCommand):
         except User.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'Superuser with email {user_email} not found.'))
             return
-
-        self.stdout.write(self.style.SUCCESS(f'Creating mock sites for user: {user.username} ({user.email})'))
 
         demo_sites = [
             {
@@ -289,9 +289,10 @@ class Command(BaseCommand):
                         template_config=site_data['template_config'],
                         color_index=color_index
                     )
-                    self.stdout.write(self.style.WARNING(f'Updated demo site "{site.name}" for {user.email} with color_index={color_index}.'))
-                else:
-                    self.stdout.write(self.style.SUCCESS(f'Created demo site "{site.name}" for {user.email} with color_index={color_index}.'))
+                
+                # Simplified log: Created/Updated mock site
+                action = "Updated" if not created else "Created"
+                self.stdout.write(self.style.SUCCESS(f'{action} mock site "{site.name}" for {user.email}'))
 
         template_catalog = [
             {
@@ -308,7 +309,7 @@ class Command(BaseCommand):
             }
         ]
 
-        self.stdout.write(self.style.SUCCESS('Creating or updating global templates...'))
+        # Removed verbose template logs - templates created/updated silently
         for template_data in template_catalog:
             config_copy = json.loads(json.dumps(template_data['template_config']))
             config_copy['name'] = template_data['name']
@@ -321,7 +322,96 @@ class Command(BaseCommand):
                     'thumbnail_url': template_data['thumbnail_url']
                 }
             )
-            if created:
-                self.stdout.write(self.style.SUCCESS(f'Created template "{template.name}".'))
-            else:
-                self.stdout.write(self.style.WARNING(f'Updated template "{template.name}".'))
+
+        # Create mock events and availability blocks
+        sites = Site.objects.filter(owner=user)
+        
+        for site in sites:
+            # Clear existing events and availability blocks for this site
+            Event.objects.filter(site=site).delete()
+            AvailabilityBlock.objects.filter(site=site).delete()
+            
+            # Create availability blocks for the next 30 days
+            today = timezone.now().date()
+            for day_offset in range(0, 30, 2):  # Every other day
+                target_date = today + timedelta(days=day_offset)
+                
+                # Skip weekends for some variety
+                if target_date.weekday() >= 5:  # Saturday = 5, Sunday = 6
+                    continue
+                
+                # Morning availability block
+                morning_block = AvailabilityBlock.objects.create(
+                    site=site,
+                    creator=user,
+                    title='Dostępny rano',
+                    date=target_date,
+                    start_time='09:00',
+                    end_time='12:00',
+                    meeting_lengths=[30, 45, 60],
+                    time_snapping=30,
+                    buffer_time=15
+                )
+                
+                # Afternoon availability block
+                afternoon_block = AvailabilityBlock.objects.create(
+                    site=site,
+                    creator=user,
+                    title='Dostępny po południu',
+                    date=target_date,
+                    start_time='14:00',
+                    end_time='17:00',
+                    meeting_lengths=[30, 60, 90],
+                    time_snapping=30,
+                    buffer_time=10
+                )
+            
+            # Create some scheduled events
+            event_titles = [
+                'Sesja indywidualna jogi',
+                'Warsztat oddechowy',
+                'Konsultacja wellness',
+                'Zajęcia grupowe',
+                'Sesja relaksacyjna'
+            ]
+            
+            for day_offset in range(1, 15, 3):  # Every 3rd day for next 2 weeks
+                target_date = today + timedelta(days=day_offset)
+                
+                # Skip weekends
+                if target_date.weekday() >= 5:
+                    continue
+                
+                # Create 1-2 events per day
+                import random
+                num_events = random.randint(1, 2)
+                
+                for i in range(num_events):
+                    hour = 10 + i * 3  # 10:00, 13:00, etc.
+                    if hour >= 18:  # Don't schedule after 6 PM
+                        break
+                        
+                    start_datetime = timezone.make_aware(
+                        datetime.combine(target_date, datetime.min.time().replace(hour=hour))
+                    )
+                    end_datetime = start_datetime + timedelta(hours=1)
+                    
+                    event = Event.objects.create(
+                        site=site,
+                        creator=user,
+                        title=random.choice(event_titles),
+                        description=f'Sesja {random.choice(["online", "stacjonarna"])} dla {site.name}',
+                        start_time=start_datetime,
+                        end_time=end_datetime,
+                        capacity=random.choice([1, 1, 1, 8, 12]),  # Mostly individual sessions
+                        event_type=random.choice(['individual', 'individual', 'individual', 'group'])
+                    )
+            
+            # Log summary for this site
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Added mock data for "{site.name}": '
+                    f'{AvailabilityBlock.objects.filter(site=site).count()} availability blocks, '
+                    f'{Event.objects.filter(site=site).count()} events'
+                )
+            )

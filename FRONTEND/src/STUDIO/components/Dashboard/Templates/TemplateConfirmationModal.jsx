@@ -29,9 +29,19 @@ const TemplateConfirmationModal = ({
     // Don't render anything if modal is not open or data is missing
     if (!open || !template || !targetDate) return null;
 
-    const formattedDate = moment(targetDate).format('DD MMMM YYYY');
     const templateType = template.day_abbreviation ? 'day' : 'week';
     const willOverwrite = affectedEvents.length > 0;
+    
+    // Format date based on template type
+    let formattedDate;
+    if (templateType === 'day') {
+        formattedDate = moment(targetDate).format('DD MMMM YYYY');
+    } else {
+        // For week template, show date range
+        const startOfWeek = moment(targetDate).startOf('week');
+        const endOfWeek = moment(targetDate).endOf('week');
+        formattedDate = `${startOfWeek.format('DD MMMM')} - ${endOfWeek.format('DD MMMM YYYY')}`;
+    }
 
     return (
         <Dialog
@@ -57,9 +67,11 @@ const TemplateConfirmationModal = ({
                 }}
             >
                 <EventIcon sx={{ color: 'primary.main', fontSize: 28 }} />
-                <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
-                    Zastosować szablon "{template.name}"?
-                </Typography>
+                <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        Zastosować szablon "{template.name}"?
+                    </Typography>
+                </Box>
             </DialogTitle>
 
             <DialogContent sx={{ pt: 3, pb: 2 }}>
@@ -78,7 +90,7 @@ const TemplateConfirmationModal = ({
                         <CalendarIcon sx={{ color: 'primary.main' }} />
                         <Box>
                             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-                                Data docelowa
+                                Data
                             </Typography>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                 {formattedDate}

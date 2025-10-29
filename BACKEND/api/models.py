@@ -132,7 +132,7 @@ class Event(models.Model):
         GROUP = 'group', 'Group'
 
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='events')
-    admin = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='managed_events')
+    creator = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='created_events')
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     start_time = models.DateTimeField()
@@ -160,7 +160,7 @@ class AvailabilityBlock(models.Model):
     The creator defines meeting lengths, time snapping, and buffer time.
     """
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='availability_blocks')
-    admin = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='availability_blocks')
+    creator = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='created_availability_blocks')
     title = models.CharField(max_length=255, default='Dostępny')
     date = models.DateField()
     start_time = models.TimeField()

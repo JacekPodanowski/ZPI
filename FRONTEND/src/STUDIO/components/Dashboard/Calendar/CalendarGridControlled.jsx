@@ -18,7 +18,8 @@ const CalendarGridControlled = ({
     onDayClick,
     onMonthChange,
     onSiteSelect,
-    draggingTemplate // NEW: receive dragging state from parent
+    draggingTemplate, // NEW: receive dragging state from parent
+    onApplyTemplate // NEW: callback for applying templates
 }) => {
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredEventDayKey, setHoveredEventDayKey] = useState(null); // Track which day the hovered event is in
@@ -745,12 +746,14 @@ const CalendarGridControlled = ({
                     setPendingTargetDate(null);
                 }}
                 onConfirm={() => {
-                    // TODO: Apply template logic
-                    console.log('Applying template:', {
-                        template: pendingTemplate,
-                        targetDate: pendingTargetDate,
-                        affectedEvents: eventsByDate.get(pendingTargetDate) || []
-                    });
+                    // Apply template logic
+                    if (onApplyTemplate && pendingTemplate && pendingTargetDate) {
+                        onApplyTemplate(
+                            pendingTemplate,
+                            pendingTargetDate,
+                            eventsByDate.get(pendingTargetDate) || []
+                        );
+                    }
                     setConfirmModalOpen(false);
                     setPendingTemplate(null);
                     setPendingTargetDate(null);
@@ -785,7 +788,8 @@ CalendarGridControlled.propTypes = {
     onDayClick: PropTypes.func,
     onMonthChange: PropTypes.func,
     onSiteSelect: PropTypes.func,
-    draggingTemplate: PropTypes.object // NEW: template being dragged
+    draggingTemplate: PropTypes.object, // NEW: template being dragged
+    onApplyTemplate: PropTypes.func // NEW: callback for applying templates
 };
 
 CalendarGridControlled.defaultProps = {
@@ -793,7 +797,8 @@ CalendarGridControlled.defaultProps = {
     onDayClick: () => {},
     onMonthChange: () => {},
     onSiteSelect: () => {},
-    draggingTemplate: null
+    draggingTemplate: null,
+    onApplyTemplate: () => {}
 };
 
 export default CalendarGridControlled;

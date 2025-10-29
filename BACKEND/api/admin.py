@@ -26,10 +26,10 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-	list_display = ('title', 'site', 'admin', 'start_time', 'end_time', 'event_type', 'capacity')
+	list_display = ('title', 'site', 'creator', 'start_time', 'end_time', 'event_type', 'capacity')
 	list_filter = ('event_type', 'site')
 	search_fields = ('title', 'description')
-	autocomplete_fields = ('site', 'admin', 'attendees')
+	autocomplete_fields = ('site', 'creator', 'attendees')
 
 
 @admin.register(Booking)

@@ -64,11 +64,17 @@ const computeBlockMetrics = (start, end) => {
     
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
-    const clampedStart = Math.max(startMinutes, DAY_START_MINUTES);
-    const clampedEnd = Math.min(endMinutes, DAY_END_MINUTES);
-    const duration = Math.max(clampedEnd - clampedStart, 15);
-    const top = ((clampedStart - DAY_START_MINUTES) / 60) * HOUR_HEIGHT;
+    
+    // Calculate position relative to the timeline (which starts at 6:00)
+    const relativeStartMinutes = Math.max(startMinutes - DAY_START_MINUTES, 0);
+    const relativeEndMinutes = Math.min(endMinutes - DAY_START_MINUTES, DAY_END_MINUTES - DAY_START_MINUTES);
+    
+    const duration = Math.max(relativeEndMinutes - relativeStartMinutes, 15);
+    const top = (relativeStartMinutes / 60) * HOUR_HEIGHT;
     const height = (duration / 60) * HOUR_HEIGHT;
+    
+    console.log('computeBlockMetrics:', { start, end, startMinutes, endMinutes, relativeStartMinutes, relativeEndMinutes, top, height });
+    
     return { top, height };
 };
 
@@ -285,21 +291,42 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                 date: dateKey
             });
         }
-        handleClose();
+        
+        // Reset form and return to timeline instead of closing modal
+        setFormData({
+            title: '',
+            startTime: '10:00',
+            endTime: '11:00',
+            type: 'online',
+            location: '',
+            meetingType: 'individual',
+            capacity: 1,
+            meetingLengths: ['30', '60'],
+            timeSnapping: '30',
+            bufferTime: '0'
+        });
+        setView('timeline');
     };
 
     const renderTimeline = () => (
         <Box
             sx={{
-                position: 'relative',
                 width: '100%',
-                height: timelineHeight,
-                backgroundColor: theme.palette.background.default,
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: 2,
+                height: '60vh',
+                overflow: 'auto',
                 mt: 2
             }}
         >
+            <Box
+                sx={{
+                    position: 'relative',
+                    width: '100%',
+                    height: timelineHeight,
+                    backgroundColor: theme.palette.background.default,
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 2
+                }}
+            >
             {/* Hour lines */}
             {HOURS.map((hour) => {
                 const top = ((hour - 6) * 60 * HOUR_HEIGHT) / 60;
@@ -339,7 +366,7 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                 <AvailabilityBlockDisplay
                     key={block.id}
                     block={block}
-                    siteColor={sites.find(s => s.id === block.site_id)?.color_tag || 'rgb(146, 0, 32)'}
+                    siteColor={sites.find(s => s.id === (block.site_id || block.site))?.color_tag || 'rgb(146, 0, 32)'}
                 />
             ))}
 
@@ -348,10 +375,11 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                 <EventDisplay
                     key={event.id}
                     event={event}
-                    siteColor={sites.find(s => s.id === event.site_id)?.color_tag || 'rgb(146, 0, 32)'}
+                    siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
                     onHover={setHoveredEventId}
                 />
             ))}
+            </Box>
         </Box>
     );
 
@@ -498,8 +526,9 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
             PaperProps={{
                 sx: {
                     borderRadius: 3,
-                    minHeight: '70vh',
-                    maxHeight: '90vh'
+                    minHeight: '80vh',
+                    maxHeight: '90vh',
+                    height: '80vh'
                 }
             }}
         >
@@ -535,7 +564,7 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                 </Stack>
             </DialogTitle>
 
-            <DialogContent sx={{ pb: 3 }}>
+            <DialogContent sx={{ pb: 3, height: '100%', overflow: 'hidden' }}>
                 <AnimatePresence mode="wait">
                     {view === 'timeline' && (
                         <motion.div

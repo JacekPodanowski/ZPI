@@ -34,6 +34,7 @@ from .models import (
     MediaAsset,
     MediaUsage,
     Notification,
+    AvailabilityBlock,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -53,6 +54,7 @@ from .serializers import (
     PublicSiteSerializer,
     CustomReactComponentSerializer,
     NotificationSerializer,
+    AvailabilityBlockSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -331,30 +333,30 @@ class EventViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Event.objects.select_related('site', 'site__owner', 'admin')
+        qs = Event.objects.select_related('site', 'site__owner', 'creator')
         if not self.request.user.is_staff:
             qs = qs.filter(site__owner=self.request.user)
         return self._filter_by_site_param(qs)
 
     def perform_create(self, serializer):
         site = serializer.validated_data['site']
-        admin = serializer.validated_data.get('admin', self.request.user)
-        if not self.request.user.is_staff and admin != self.request.user:
+        creator = serializer.validated_data.get('creator', self.request.user)
+        if not self.request.user.is_staff and creator != self.request.user:
             raise PermissionDenied('You can only create events as yourself.')
         self._ensure_site_access(site)
-        serializer.save(admin=admin)
+        serializer.save(creator=creator)
 
     def perform_update(self, serializer):
         site = serializer.validated_data.get('site', serializer.instance.site)
-        admin = serializer.validated_data.get('admin', serializer.instance.admin)
-        if not self.request.user.is_staff and admin != self.request.user:
+        creator = serializer.validated_data.get('creator', serializer.instance.creator)
+        if not self.request.user.is_staff and creator != self.request.user:
             raise PermissionDenied('You can only manage your own events.')
         self._ensure_site_access(site)
         serializer.save()
 
     def perform_destroy(self, instance):
         self._ensure_site_access(instance.site)
-        if not self.request.user.is_staff and instance.admin != self.request.user:
+        if not self.request.user.is_staff and instance.creator != self.request.user:
             raise PermissionDenied('You can only delete your own events.')
         instance.delete()
 
@@ -388,6 +390,39 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     def _sync_attendance(self, booking: Booking):
         if booking.client:
             booking.event.attendees.add(booking.client)
+
+
+class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
+    serializer_class = AvailabilityBlockSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = AvailabilityBlock.objects.select_related('site', 'site__owner', 'creator')
+        if not self.request.user.is_staff:
+            qs = qs.filter(site__owner=self.request.user)
+        return self._filter_by_site_param(qs)
+
+    def perform_create(self, serializer):
+        site = serializer.validated_data['site']
+        creator = serializer.validated_data.get('creator', self.request.user)
+        if not self.request.user.is_staff and creator != self.request.user:
+            raise PermissionDenied('You can only create availability blocks as yourself.')
+        self._ensure_site_access(site)
+        serializer.save(creator=creator)
+
+    def perform_update(self, serializer):
+        site = serializer.validated_data.get('site', serializer.instance.site)
+        creator = serializer.validated_data.get('creator', serializer.instance.creator)
+        if not self.request.user.is_staff and creator != self.request.user:
+            raise PermissionDenied('You can only manage your own availability blocks.')
+        self._ensure_site_access(site)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._ensure_site_access(instance.site)
+        if not self.request.user.is_staff and instance.creator != self.request.user:
+            raise PermissionDenied('You can only delete your own availability blocks.')
+        instance.delete()
 
 
 class TemplateViewSet(viewsets.ReadOnlyModelViewSet):

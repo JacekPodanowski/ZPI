@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
+import moment from 'moment';
 import { fetchSites } from '../../../services/siteService';
+import { fetchEvents, createEvent, fetchAvailabilityBlocks, createAvailabilityBlock, deleteEvent } from '../../../services/eventService';
 import CalendarGridControlled from '../../components/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components/Dashboard/Templates/RealTemplateBrowser';
 import DayDetailsModal from '../../components/Dashboard/Calendar/DayDetailsModal';
@@ -19,46 +21,57 @@ const CreatorCalendarApp = () => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [draggingTemplate, setDraggingTemplate] = useState(null); // Track template being dragged
 
-    // Fetch sites from API
+    // Fetch sites and events from API
     useEffect(() => {
         let active = true;
 
         const load = async () => {
             try {
                 setLoading(true);
-                const response = await fetchSites();
+                
+                // Fetch sites
+                const sitesResponse = await fetchSites();
                 if (active) {
-                    setSites(response);
+                    setSites(sitesResponse);
                     
-                    // Mock events for demonstration
-                    // TODO: Replace with actual API call
-                    const mockEvents = [];
-                    response.forEach((site) => {
-                        // Use the same color system as calendar buttons
-                        const siteColor = getSiteColorHex(site.color_index ?? 0);
-                        
-                        for (let i = 0; i < 5; i++) {
-                            const date = new Date();
-                            date.setDate(date.getDate() + Math.floor(Math.random() * 30));
-                            mockEvents.push({
-                                id: `${site.id}-event-${i}`,
-                                site_id: site.id,
-                                site_color: siteColor,
-                                date: date.toISOString().split('T')[0],
-                                title: `Event ${i + 1}`,
-                                start_time: `${9 + i}:00`,
-                                event_type: i % 2 === 0 ? 'individual' : 'group',
-                                max_capacity: 12,
-                                current_capacity: Math.floor(Math.random() * 12)
-                            });
+                    // Fetch events for all sites
+                    const eventsResponse = await fetchEvents();
+                    if (active) {
+                        // Transform events to include site colors
+                        const transformedEvents = eventsResponse.map(event => ({
+                            ...event,
+                            site_color: getSiteColorHex(
+                                sitesResponse.find(s => s.id === event.site)?.color_index ?? 0
+                            ),
+                            // Convert datetime to date for the calendar
+                            date: new Date(event.start_time).toISOString().split('T')[0],
+                            start_time: new Date(event.start_time).toTimeString().substring(0, 5),
+                            end_time: new Date(event.end_time).toTimeString().substring(0, 5)
+                        }));
+                        setEvents(transformedEvents);
+                    }
+                    
+                    // Fetch availability blocks
+                    try {
+                        const availabilityResponse = await fetchAvailabilityBlocks();
+                        if (active) {
+                            const transformedAvailability = availabilityResponse.map(block => ({
+                                ...block,
+                                site_color: getSiteColorHex(
+                                    sitesResponse.find(s => s.id === block.site)?.color_index ?? 0
+                                )
+                            }));
+                            setAvailabilityBlocks(transformedAvailability);
                         }
-                    });
-                    setEvents(mockEvents);
+                    } catch (availError) {
+                        console.warn('Could not fetch availability blocks:', availError);
+                        setAvailabilityBlocks([]);
+                    }
                 }
             } catch (err) {
                 if (active) {
-                    console.error('Error loading sites:', err);
-                    setError('Nie udało się pobrać listy stron. Spróbuj ponownie później.');
+                    console.error('Error loading calendar data:', err);
+                    setError('Nie udało się pobrać danych kalendarza. Spróbuj ponownie później.');
                 }
             } finally {
                 if (active) {
@@ -84,29 +97,61 @@ const CreatorCalendarApp = () => {
         setSelectedSiteId(siteId);
     };
 
-    const handleCreateEvent = (eventData) => {
+    const handleCreateEvent = async (eventData) => {
         console.log('Create event:', eventData);
-        // TODO: Call API to create event
-        // For now, just add to local state
-        const newEvent = {
-            id: `event-${Date.now()}`,
-            ...eventData,
-            site_id: selectedSiteId || sites[0]?.id,
-            site_color: sites.find(s => s.id === (selectedSiteId || sites[0]?.id))?.color_tag
-        };
-        setEvents([...events, newEvent]);
+        try {
+            // Add site_id to event data
+            const eventWithSite = {
+                ...eventData,
+                site_id: selectedSiteId || sites[0]?.id
+            };
+            
+            const newEvent = await createEvent(eventWithSite);
+            
+            // Transform the response to match our UI format
+            const transformedEvent = {
+                ...newEvent,
+                site_color: getSiteColorHex(
+                    sites.find(s => s.id === newEvent.site)?.color_index ?? 0
+                ),
+                site_id: newEvent.site,
+                date: new Date(newEvent.start_time).toISOString().split('T')[0],
+                start_time: new Date(newEvent.start_time).toTimeString().substring(0, 5),
+                end_time: new Date(newEvent.end_time).toTimeString().substring(0, 5)
+            };
+            
+            setEvents(prevEvents => [...prevEvents, transformedEvent]);
+        } catch (error) {
+            console.error('Error creating event:', error);
+            setError('Nie udało się utworzyć wydarzenia. Spróbuj ponownie.');
+        }
     };
 
-    const handleCreateAvailability = (availabilityData) => {
+    const handleCreateAvailability = async (availabilityData) => {
         console.log('Create availability:', availabilityData);
-        // TODO: Call API to create availability block
-        // For now, just add to local state
-        const newBlock = {
-            id: `availability-${Date.now()}`,
-            ...availabilityData,
-            site_id: selectedSiteId || sites[0]?.id
-        };
-        setAvailabilityBlocks([...availabilityBlocks, newBlock]);
+        try {
+            // Add site_id to availability data
+            const availabilityWithSite = {
+                ...availabilityData,
+                site_id: selectedSiteId || sites[0]?.id
+            };
+            
+            const newBlock = await createAvailabilityBlock(availabilityWithSite);
+            
+            // Transform the response to match our UI format
+            const transformedBlock = {
+                ...newBlock,
+                site_color: getSiteColorHex(
+                    sites.find(s => s.id === newBlock.site)?.color_index ?? 0
+                ),
+                site_id: newBlock.site
+            };
+            
+            setAvailabilityBlocks(prevBlocks => [...prevBlocks, transformedBlock]);
+        } catch (error) {
+            console.error('Error creating availability block:', error);
+            setError('Nie udało się utworzyć bloku dostępności. Spróbuj ponownie.');
+        }
     };
 
     const handleCreateDayTemplate = () => {
@@ -127,6 +172,80 @@ const CreatorCalendarApp = () => {
     const handleTemplateDragEnd = () => {
         console.log('Template drag ended');
         setDraggingTemplate(null);
+    };
+
+    const handleApplyTemplate = async (template, targetDate, affectedEvents) => {
+        console.log('Applying template:', { template, targetDate, affectedEvents });
+        
+        try {
+            // First, delete affected events if any
+            if (affectedEvents.length > 0) {
+                for (const event of affectedEvents) {
+                    try {
+                        await deleteEvent(event.id);
+                        // Remove from local state
+                        setEvents(prevEvents => prevEvents.filter(e => e.id !== event.id));
+                    } catch (deleteError) {
+                        console.error('Error deleting event:', deleteError);
+                    }
+                }
+            }
+            
+            // Then create new events from template
+            if (template.events && template.events.length > 0) {
+                const templateType = template.day_abbreviation ? 'day' : 'week';
+                
+                if (templateType === 'day') {
+                    // Apply day template - create events for the specific date
+                    for (const templateEvent of template.events) {
+                        const eventData = {
+                            title: templateEvent.title,
+                            description: templateEvent.description || '',
+                            date: targetDate,
+                            startTime: templateEvent.start_time,
+                            endTime: templateEvent.end_time,
+                            meetingType: templateEvent.event_type || 'individual',
+                            capacity: templateEvent.capacity || 1,
+                            type: templateEvent.type || 'online',
+                            location: templateEvent.location || '',
+                            site_id: selectedSiteId || sites[0]?.id
+                        };
+                        
+                        console.log('Creating event from template:', eventData);
+                        await handleCreateEvent(eventData);
+                    }
+                } else {
+                    // Apply week template - create events for the whole week
+                    const startOfWeek = moment(targetDate).startOf('isoWeek');
+                    
+                    for (const templateEvent of template.events) {
+                        // Calculate the actual date based on day_of_week
+                        const eventDate = startOfWeek.clone().add(templateEvent.day_of_week - 1, 'days');
+                        
+                        const eventData = {
+                            title: templateEvent.title,
+                            description: templateEvent.description || '',
+                            date: eventDate.format('YYYY-MM-DD'),
+                            startTime: templateEvent.start_time,
+                            endTime: templateEvent.end_time,
+                            meetingType: templateEvent.event_type || 'individual',
+                            capacity: templateEvent.capacity || 1,
+                            type: templateEvent.type || 'online',
+                            location: templateEvent.location || '',
+                            site_id: selectedSiteId || sites[0]?.id
+                        };
+                        
+                        console.log('Creating event from template:', eventData);
+                        await handleCreateEvent(eventData);
+                    }
+                }
+            }
+            
+            console.log('Template applied successfully');
+        } catch (error) {
+            console.error('Error applying template:', error);
+            setError('Nie udało się zastosować szablonu. Spróbuj ponownie.');
+        }
     };
 
     if (loading) {
@@ -200,6 +319,7 @@ const CreatorCalendarApp = () => {
                             onMonthChange={setCurrentMonth}
                             onSiteSelect={handleSiteSelect}
                             draggingTemplate={draggingTemplate}
+                            onApplyTemplate={handleApplyTemplate}
                         />
                     </motion.div>
                 </Box>

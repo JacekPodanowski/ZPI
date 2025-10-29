@@ -15,6 +15,7 @@ from .views import (
     FileUploadView,
     CustomReactComponentViewSet,
     NotificationViewSet,
+    AvailabilityBlockViewSet,
 )
 
 router = DefaultRouter()
@@ -26,6 +27,7 @@ router.register(r'bookings', BookingViewSet, basename='booking')
 router.register(r'templates', TemplateViewSet, basename='template')
 router.register(r'custom-components', CustomReactComponentViewSet, basename='customcomponent')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='availabilityblock')
 
 urlpatterns = [
     path('', include(router.urls)),

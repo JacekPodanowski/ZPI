@@ -14,6 +14,7 @@ from .models import (
     CustomReactComponent,
     MediaUsage,
     Notification,
+    AvailabilityBlock,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -162,17 +163,16 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'id', 'site', 'admin', 'title', 'description',
+            'id', 'site', 'creator', 'title', 'description',
             'start_time', 'end_time', 'capacity', 'event_type',
             'attendees', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'attendees']
+        read_only_fields = ['created_at', 'updated_at', 'attendees', 'creator']
 
     def validate(self, attrs):
         site = attrs.get('site') or (self.instance.site if self.instance else None)
-        admin = attrs.get('admin') or (self.instance.admin if self.instance else None)
-        if site and admin and not (admin.is_staff or admin.sites.filter(pk=site.pk).exists()):
-            raise serializers.ValidationError({'admin': 'Admin must own or have access to the site.'})
+        # creator is now read-only, so it won't be in attrs during creation
+        # validation will happen in the ViewSet's perform_create
         return attrs
 
 
@@ -221,4 +221,18 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'message', 'is_read', 'created_at', 'notification_type']
-        read_only_fields = ['id', 'created_at']
+
+
+class AvailabilityBlockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AvailabilityBlock
+        fields = [
+            'id', 'site', 'creator', 'title', 'date', 'start_time', 'end_time',
+            'meeting_lengths', 'time_snapping', 'buffer_time', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        # Automatically set creator to the current user
+        validated_data['creator'] = self.context['request'].user
+        return super().create(validated_data)
