@@ -1,11 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Button from './Button'
-import apiClient from '../services/apiClient'
 import { resolveMediaUrl } from '../config/api'
 import { deleteMediaAsset } from '../services/mediaService'
 import { isVideoUrl } from '../utils/mediaUtils'
 import useEditorStore from '../STUDIO/store/editorStore'
+import { storeTempImage, isTempBlobUrl } from '../services/tempMediaCache'
 
 const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false, usage = 'site_content', siteId: explicitSiteId }) => {
   const [isDragging, setIsDragging] = useState(false)
@@ -36,7 +36,7 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
       return
     }
 
-    const uploadFile = async (file) => {
+    const cacheFileAndGetBlobUrl = async (file) => {
       const isImage = file.type.startsWith('image/')
       const isVideo = file.type.startsWith('video/')
 
@@ -50,42 +50,25 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
         return null
       }
 
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('usage', usage)
-      if (resolvedSiteId) {
-        formData.append('site_id', resolvedSiteId)
-      }
-
-      try {
-        const response = await apiClient.post('/upload/', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        })
-        return response.data.url
-      } catch (error) {
-        console.error('Upload failed:', error)
-        alert(`Failed to upload ${file.name}.`)
-        return null
-      }
+      // Store the file in the browser cache and get a blob URL
+      const result = await storeTempImage(file)
+      return result ? result.blobUrl : null
     }
 
     if (multiple) {
-      const uploadPromises = Array.from(files).map(uploadFile)
-      const urls = (await Promise.all(uploadPromises)).filter(Boolean)
-      if (urls.length > 0) {
-        onChange(urls)
+      const cachePromises = Array.from(files).map(file => cacheFileAndGetBlobUrl(file))
+      const blobUrls = (await Promise.all(cachePromises)).filter(Boolean)
+      if (blobUrls.length > 0) {
+        onChange(blobUrls)
       }
     } else {
-      const previousUrl = preview
-      const url = await uploadFile(files[0])
-      if (url) {
-        setPreview(url)
-        onChange(url)
-        if (previousUrl && previousUrl !== url) {
-          void deleteMediaAsset(previousUrl, getDeletionContext())
-        }
+      const file = files[0]
+      const blobUrl = await cacheFileAndGetBlobUrl(file)
+      
+      if (blobUrl) {
+        // Use the blob URL for both preview and state
+        setPreview(blobUrl)
+        onChange(blobUrl)
       }
     }
   }
@@ -147,6 +130,11 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
 
   const resolvedPreview = resolveMediaUrl(preview)
   const previewIsVideo = isVideoUrl(preview)
+
+  // Update preview when parent's value changes
+  useEffect(() => {
+    setPreview(value || '')
+  }, [value])
 
   // Dla multiple nie pokazujemy podglądu - tylko upload area
   if (multiple) {
@@ -235,23 +223,29 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
             className="relative rounded-xl overflow-hidden shadow-md"
             style={{ aspectRatio }}
           >
-            {previewIsVideo ? (
-              <video
-                src={resolvedPreview}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-full object-cover"
-              >
-                Twoja przeglądarka nie obsługuje odtwarzania wideo.
-              </video>
+            {resolvedPreview && resolvedPreview.trim() !== '' ? (
+              previewIsVideo ? (
+                <video
+                  src={resolvedPreview}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  className="w-full h-full object-cover"
+                >
+                  Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                </video>
+              ) : (
+                <img
+                  src={resolvedPreview}
+                  alt="Podgląd"
+                  className="w-full h-full object-cover"
+                />
+              )
             ) : (
-              <img
-                src={resolvedPreview}
-                alt="Podgląd"
-                className="w-full h-full object-cover"
-              />
+              <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
+                Ładowanie...
+              </div>
             )}
             <div className="absolute top-2 right-2 flex gap-2">
               <Button

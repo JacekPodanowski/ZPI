@@ -660,6 +660,14 @@ const useEditorStore = create((set, get) => ({
     }
     
     const currentPageModules = state.templateConfig.pages[targetPage].modules
+    
+    // Create completely new objects to ensure React detects the change
+    const updatedModules = currentPageModules.map((m) =>
+      m.id === moduleId 
+        ? { ...m, config: { ...m.config, ...config } } 
+        : m
+    )
+    
     return {
       templateConfig: {
         ...state.templateConfig,
@@ -667,9 +675,7 @@ const useEditorStore = create((set, get) => ({
           ...state.templateConfig.pages,
           [targetPage]: {
             ...state.templateConfig.pages[targetPage],
-            modules: currentPageModules.map((m) =>
-              m.id === moduleId ? { ...m, config: { ...m.config, ...config } } : m
-            )
+            modules: updatedModules
           }
         }
       },

@@ -32,37 +32,41 @@ const TeamModule = ({ config }) => {
         )}
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {members.map((member) => (
-            <motion.article
-              key={member.id}
-              className="relative rounded-3xl overflow-hidden shadow-lg group h-full bg-white"
-              whileHover={{ y: -8 }}
-            >
-              <div className="relative aspect-[3/4] overflow-hidden bg-black">
-                {member.image ? (
-                  isVideoUrl(member.image) ? (
-                    <video
-                      src={resolveMediaUrl(member.image)}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    >
-                      Twoja przeglądarka nie obsługuje odtwarzania wideo.
-                    </video>
+          {members.map((member) => {
+            const resolvedImage = resolveMediaUrl(member.image)
+            const hasValidImage = resolvedImage && resolvedImage.trim() !== ''
+            
+            return (
+              <motion.article
+                key={member.id}
+                className="relative rounded-3xl overflow-hidden shadow-lg group h-full bg-white"
+                whileHover={{ y: -8 }}
+              >
+                <div className="relative aspect-[3/4] overflow-hidden bg-black">
+                  {hasValidImage ? (
+                    isVideoUrl(member.image) ? (
+                      <video
+                        src={resolvedImage}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      >
+                        Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                      </video>
+                    ) : (
+                      <img
+                        src={resolvedImage}
+                        alt={member.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    )
                   ) : (
-                    <img
-                      src={resolveMediaUrl(member.image)}
-                      alt={member.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  )
-                ) : (
-                  <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
-                    Dodaj zdjęcie
-                  </div>
-                )}
+                    <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
+                      Dodaj zdjęcie
+                    </div>
+                  )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute inset-x-0 bottom-0 p-6 text-white opacity-0 translate-y-6 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
                   {member.bio && (
@@ -84,7 +88,8 @@ const TeamModule = ({ config }) => {
                 )}
               </div>
             </motion.article>
-          ))}
+            )
+          })}
         </div>
 
         {members.length === 0 && (
