@@ -1,3 +1,6 @@
+# Generowanie wykresu bazy
+docker-compose exec backend python manage.py graph_models -a -o my_models.png
+
 ##      ---HOSTED---
 
 # Wyłącz
