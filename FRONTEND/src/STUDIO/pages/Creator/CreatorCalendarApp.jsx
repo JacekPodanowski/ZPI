@@ -55,12 +55,14 @@ const CreatorCalendarApp = () => {
                     try {
                         const availabilityResponse = await fetchAvailabilityBlocks();
                         if (active) {
+                            console.log('Raw availability blocks from API:', availabilityResponse);
                             const transformedAvailability = availabilityResponse.map(block => ({
                                 ...block,
                                 site_color: getSiteColorHex(
                                     sitesResponse.find(s => s.id === block.site)?.color_index ?? 0
                                 )
                             }));
+                            console.log('Transformed availability blocks:', transformedAvailability);
                             setAvailabilityBlocks(transformedAvailability);
                         }
                     } catch (availError) {
@@ -312,6 +314,7 @@ const CreatorCalendarApp = () => {
                     >
                         <CalendarGridControlled
                             events={events}
+                            availabilityBlocks={availabilityBlocks}
                             sites={sites}
                             selectedSiteId={selectedSiteId}
                             currentMonth={currentMonth}

@@ -333,7 +333,7 @@ class Command(BaseCommand):
             
             # Create availability blocks for the next 30 days
             today = timezone.now().date()
-            for day_offset in range(0, 30, 2):  # Every other day
+            for day_offset in range(0, 30, 4):  # Every 4th day
                 target_date = today + timedelta(days=day_offset)
                 
                 # Skip weekends for some variety

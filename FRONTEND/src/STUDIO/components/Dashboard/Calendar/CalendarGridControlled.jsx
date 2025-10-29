@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Typography, IconButton } from '@mui/material';
-import { ChevronLeft, ChevronRight } from '@mui/icons-material';
+import { Box, Typography, IconButton, Button, TextField } from '@mui/material';
+import { ChevronLeft, ChevronRight, WbSunny, NightsStay } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 import PropTypes from 'prop-types';
@@ -12,6 +12,7 @@ import TemplateConfirmationModal from '../Templates/TemplateConfirmationModal';
 // Controlled-only view of the calendar grid; all state comes from props.
 const CalendarGridControlled = ({
     events,
+    availabilityBlocks, // NEW: availability blocks
     sites,
     selectedSiteId,
     currentMonth,
@@ -34,6 +35,12 @@ const CalendarGridControlled = ({
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [pendingTemplate, setPendingTemplate] = useState(null);
     const [pendingTargetDate, setPendingTargetDate] = useState(null);
+    
+    // Operating hours state
+    const [operatingStartHour, setOperatingStartHour] = useState(6);
+    const [operatingEndHour, setOperatingEndHour] = useState(22);
+    const [editingStartHour, setEditingStartHour] = useState(false);
+    const [editingEndHour, setEditingEndHour] = useState(false);
 
     const currentMonthMoment = useMemo(() => moment(currentMonth), [currentMonth]);
 
@@ -69,8 +76,79 @@ const CalendarGridControlled = ({
         return map;
     }, [events]);
 
-    const primarySites = useMemo(() => (sites || []).slice(0, 3), [sites]);
-    const secondarySites = useMemo(() => (sites || []).slice(3, 6), [sites]);
+    const availabilityByDate = useMemo(() => {
+        const map = new Map();
+        (availabilityBlocks || []).forEach((block) => {
+            const dateKey = moment(block.date).format('YYYY-MM-DD');
+            if (!map.has(dateKey)) {
+                map.set(dateKey, []);
+            }
+            map.get(dateKey).push(block);
+        });
+        console.log('Availability blocks by date:', Object.fromEntries(map));
+        return map;
+    }, [availabilityBlocks]);
+
+    const primarySites = useMemo(() => {
+        const allSites = sites || [];
+        // If we have more than 3 sites, limit to 5 total, otherwise show first 3
+        if (allSites.length > 3) {
+            return allSites.slice(0, 5);
+        }
+        return allSites.slice(0, 3);
+    }, [sites]);
+    
+    const secondarySites = useMemo(() => {
+        // Don't show secondary sites anymore - all sites go in primary (max 5)
+        return [];
+    }, [sites]);
+    
+    const handleGoToToday = () => {
+        const today = new Date();
+        onMonthChange?.(today);
+    };
+    
+    const handleStartHourChange = (e) => {
+        const value = e.target.value;
+        // Allow user to type freely, we'll parse on blur
+        // Extract just the hour number (first 1-2 digits before :)
+        const match = value.match(/^(\d{1,2})/);
+        if (match) {
+            const hour = parseInt(match[1]);
+            if (!isNaN(hour) && hour >= 0 && hour < 24) {
+                setOperatingStartHour(hour);
+            }
+        }
+    };
+    
+    const handleEndHourChange = (e) => {
+        const value = e.target.value;
+        // Allow user to type freely, we'll parse on blur
+        // Extract just the hour number (first 1-2 digits before :)
+        const match = value.match(/^(\d{1,2})/);
+        if (match) {
+            const hour = parseInt(match[1]);
+            if (!isNaN(hour) && hour >= 0 && hour <= 24) {
+                setOperatingEndHour(hour);
+            }
+        }
+    };
+    
+    const handleStartHourBlur = () => {
+        // Validate on blur
+        if (operatingStartHour >= operatingEndHour) {
+            setOperatingStartHour(operatingEndHour - 1);
+        }
+        setEditingStartHour(false);
+    };
+    
+    const handleEndHourBlur = () => {
+        // Validate on blur
+        if (operatingEndHour <= operatingStartHour) {
+            setOperatingEndHour(operatingStartHour + 1);
+        }
+        setEditingEndHour(false);
+    };
 
     const handleMonthChange = (direction) => {
         const newMonth = currentMonthMoment.clone().add(direction, 'month').toDate();
@@ -86,6 +164,10 @@ const CalendarGridControlled = ({
         // Use the same color system as SiteTile
         const siteColor = getSiteColorHex(site.color_index ?? 0);
         const isSelected = selectedSiteId === site.id;
+        
+        // Determine if we need to scale down (more than 3 sites)
+        const totalSites = sites?.length || 0;
+        const needsScaling = totalSites > 3;
 
         return (
             <motion.div
@@ -99,13 +181,13 @@ const CalendarGridControlled = ({
                 <Box
                     onClick={() => handleSiteToggle(site.id)}
                     sx={{
-                        px: 1.75,
-                        py: 0.85,
+                        px: needsScaling ? 1.25 : 1.75,
+                        py: needsScaling ? 0.65 : 0.85,
                         borderRadius: 3,
                         cursor: 'pointer',
-                        minWidth: 90,
+                        minWidth: needsScaling ? 70 : 90,
                         textAlign: 'center',
-                        fontSize: '13px',
+                        fontSize: needsScaling ? '11.5px' : '13px',
                         fontWeight: 500,
                         letterSpacing: 0.2,
                         backgroundColor: isSelected ? siteColor : alpha(siteColor, 0.12),
@@ -342,13 +424,177 @@ const CalendarGridControlled = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'flex-end',
-                        gap: 1,
+                        gap: 1.5,
                         minHeight: 38
                     }}
                 >
-                    <AnimatePresence mode="popLayout">
-                        {secondarySites.map(renderSiteChip)}
-                    </AnimatePresence>
+                    {/* Now Button */}
+                    <Button
+                        onClick={handleGoToToday}
+                        size="small"
+                        sx={{
+                            px: 2,
+                            py: 0.75,
+                            borderRadius: 2,
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                            border: '1px solid',
+                            borderColor: 'rgba(146, 0, 32, 0.2)',
+                            textTransform: 'none',
+                            transition: 'all 200ms ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(146, 0, 32, 0.15)',
+                                borderColor: 'rgba(146, 0, 32, 0.4)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 2px 8px rgba(146, 0, 32, 0.15)'
+                            }
+                        }}
+                    >
+                        Now
+                    </Button>
+                    
+                    {/* Operating Hours - Minimalist Design */}
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
+                        }}
+                    >
+                        {/* Start Hour */}
+                        <WbSunny 
+                            sx={{ 
+                                fontSize: 20, 
+                                color: 'rgba(0, 0, 0, 0.7)',
+                                flexShrink: 0
+                            }} 
+                        />
+                        {editingStartHour ? (
+                            <TextField
+                                autoFocus
+                                type="text"
+                                value={`${operatingStartHour.toString().padStart(2, '0')}:00`}
+                                onChange={handleStartHourChange}
+                                onBlur={handleStartHourBlur}
+                                size="small"
+                                inputProps={{
+                                    style: { 
+                                        textAlign: 'center',
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        padding: '4px 4px'
+                                    }
+                                }}
+                                sx={{
+                                    width: 52,
+                                    height: 28,
+                                    '& .MuiOutlinedInput-root': {
+                                        height: 28,
+                                        borderRadius: 1,
+                                        '& fieldset': {
+                                            border: '1px solid',
+                                            borderColor: 'primary.main'
+                                        },
+                                        '& input': {
+                                            padding: '4px 4px'
+                                        }
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <Typography
+                                onClick={() => setEditingStartHour(true)}
+                                sx={{
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: 'text.primary',
+                                    cursor: 'pointer',
+                                    width: 52,
+                                    height: 28,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    textAlign: 'center',
+                                    borderRadius: 1,
+                                    transition: 'all 150ms ease',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                        color: 'primary.main'
+                                    }
+                                }}
+                            >
+                                {`${operatingStartHour.toString().padStart(2, '0')}:00`}
+                            </Typography>
+                        )}
+                        
+                        {/* End Hour */}
+                        <NightsStay 
+                            sx={{ 
+                                fontSize: 20, 
+                                color: 'rgba(0, 0, 0, 0.7)',
+                                flexShrink: 0
+                            }} 
+                        />
+                        {editingEndHour ? (
+                            <TextField
+                                autoFocus
+                                type="text"
+                                value={`${operatingEndHour.toString().padStart(2, '0')}:00`}
+                                onChange={handleEndHourChange}
+                                onBlur={handleEndHourBlur}
+                                size="small"
+                                inputProps={{
+                                    style: { 
+                                        textAlign: 'center',
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        padding: '4px 4px'
+                                    }
+                                }}
+                                sx={{
+                                    width: 52,
+                                    height: 28,
+                                    '& .MuiOutlinedInput-root': {
+                                        height: 28,
+                                        borderRadius: 1,
+                                        '& fieldset': {
+                                            border: '1px solid',
+                                            borderColor: 'primary.main'
+                                        },
+                                        '& input': {
+                                            padding: '4px 4px'
+                                        }
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <Typography
+                                onClick={() => setEditingEndHour(true)}
+                                sx={{
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: 'text.primary',
+                                    cursor: 'pointer',
+                                    width: 52,
+                                    height: 28,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    textAlign: 'center',
+                                    borderRadius: 1,
+                                    transition: 'all 150ms ease',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                        color: 'primary.main'
+                                    }
+                                }}
+                            >
+                                {`${operatingEndHour.toString().padStart(2, '0')}:00`}
+                            </Typography>
+                        )}
+                    </Box>
                 </Box>
 
                 <IconButton
@@ -421,6 +667,8 @@ const CalendarGridControlled = ({
                 {calendarDays.map((dayMoment) => {
                     const dateKey = dayMoment.format('YYYY-MM-DD');
                     const dayEvents = eventsByDate.get(dateKey) || [];
+                    const dayAvailability = availabilityByDate.get(dateKey) || [];
+                    const hasAvailability = dayAvailability.length > 0;
                     const isCurrentMonth = dayMoment.month() === currentMonthMoment.month();
                     const isToday = dayMoment.isSame(moment(), 'day');
                     const isPast = dayMoment.isBefore(moment(), 'day');
@@ -627,30 +875,51 @@ const CalendarGridControlled = ({
                                 }}
                             >
                                 {/* Day number - unified with day tile hover */}
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        fontWeight: isToday ? 700 : 600,
-                                        mb: 0.25, // Reduced from 0.5 to save space
-                                        fontSize: '15px',
-                                        color: isToday ? 'primary.main' : 'text.primary',
-                                        flexShrink: 0,
-                                        transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-                                        position: 'relative',
-                                        zIndex: 5,
-                                        pointerEvents: 'none', // Let parent handle clicks
-                                        transformOrigin: 'center center', // Expand from center
-                                        ...(isToday && {
-                                            textShadow: '0 0 8px rgba(146, 0, 32, 0.3)',
-                                        }),
-                                        ...(isDayHovered && isClickable && {
-                                            color: 'primary.main',
-                                            fontSize: '16px', // Slightly bigger on hover
-                                        })
-                                    }}
-                                >
-                                    {dayMoment.date()}
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: isToday ? 700 : 600,
+                                            fontSize: '15px',
+                                            color: isToday ? 'primary.main' : 'text.primary',
+                                            flexShrink: 0,
+                                            transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                            position: 'relative',
+                                            zIndex: 5,
+                                            pointerEvents: 'none', // Let parent handle clicks
+                                            transformOrigin: 'center center', // Expand from center
+                                            ...(isToday && {
+                                                textShadow: '0 0 8px rgba(146, 0, 32, 0.3)',
+                                            }),
+                                            ...(isDayHovered && isClickable && {
+                                                color: 'primary.main',
+                                                fontSize: '16px', // Slightly bigger on hover
+                                            })
+                                        }}
+                                    >
+                                        {dayMoment.date()}
+                                    </Typography>
+                                    
+                                    {/* Green availability indicator */}
+                                    {hasAvailability && (
+                                        <Box
+                                            sx={{
+                                                width: 8,
+                                                height: 8,
+                                                borderRadius: '50%',
+                                                backgroundColor: 'rgba(76, 175, 80, 0.8)',
+                                                flexShrink: 0,
+                                                transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                                boxShadow: '0 0 4px rgba(76, 175, 80, 0.6)',
+                                                ...(isDayHovered && isClickable && {
+                                                    backgroundColor: 'rgba(76, 175, 80, 1)',
+                                                    transform: 'scale(1.2)',
+                                                    boxShadow: '0 0 8px rgba(76, 175, 80, 0.8)',
+                                                })
+                                            }}
+                                        />
+                                    )}
+                                </Box>
 
                                 {shouldCollapse ? (
                                     // Collapsed view for 10+ events
@@ -776,6 +1045,16 @@ CalendarGridControlled.propTypes = {
             site_color: PropTypes.string
         })
     ).isRequired,
+    availabilityBlocks: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+            date: PropTypes.string.isRequired,
+            start_time: PropTypes.string.isRequired,
+            end_time: PropTypes.string.isRequired,
+            site: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+            site_color: PropTypes.string
+        })
+    ),
     sites: PropTypes.arrayOf(
         PropTypes.shape({
             id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
@@ -793,6 +1072,7 @@ CalendarGridControlled.propTypes = {
 };
 
 CalendarGridControlled.defaultProps = {
+    availabilityBlocks: [],
     selectedSiteId: null,
     onDayClick: () => {},
     onMonthChange: () => {},

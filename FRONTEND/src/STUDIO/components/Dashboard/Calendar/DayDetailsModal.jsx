@@ -19,7 +19,8 @@ import {
     TextField,
     ToggleButtonGroup,
     ToggleButton,
-    Alert
+    Alert,
+    Divider
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -34,24 +35,29 @@ import moment from 'moment';
 import PropTypes from 'prop-types';
 import useTheme from '../../../../theme/useTheme';
 
-const HOURS = Array.from({ length: 16 }, (_, idx) => 6 + idx);
-const DAY_START_MINUTES = 6 * 60;
-const DAY_END_MINUTES = 22 * 60;
+// Operating hours constants - can be made dynamic later
+const OPERATING_START_HOUR = 6;
+const OPERATING_END_HOUR = 22;
+
+const HOURS = Array.from({ length: OPERATING_END_HOUR - OPERATING_START_HOUR }, (_, idx) => OPERATING_START_HOUR + idx);
+const DAY_START_MINUTES = OPERATING_START_HOUR * 60;
+const DAY_END_MINUTES = OPERATING_END_HOUR * 60;
 const HOUR_HEIGHT = 60;
 
 const computeBlockMetrics = (start, end) => {
     // Handle undefined or invalid time strings
     if (!start || !end || typeof start !== 'string' || typeof end !== 'string') {
         console.warn('Invalid time values:', { start, end });
-        return { top: 0, height: HOUR_HEIGHT }; // Default to 1 hour at start
+        return { top: '0%', height: '8.33%' }; // Default to 1 hour at start
     }
     
     const startParts = start.split(':');
     const endParts = end.split(':');
     
-    if (startParts.length !== 2 || endParts.length !== 2) {
+    // Accept both HH:MM and HH:MM:SS formats
+    if (startParts.length < 2 || startParts.length > 3 || endParts.length < 2 || endParts.length > 3) {
         console.warn('Invalid time format:', { start, end });
-        return { top: 0, height: HOUR_HEIGHT };
+        return { top: '0%', height: '8.33%' };
     }
     
     const [startHour, startMinute] = startParts.map(Number);
@@ -59,30 +65,34 @@ const computeBlockMetrics = (start, end) => {
     
     if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
         console.warn('Non-numeric time values:', { start, end });
-        return { top: 0, height: HOUR_HEIGHT };
+        return { top: '0%', height: '8.33%' };
     }
     
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
     
-    // Calculate position relative to the timeline (which starts at 6:00)
+    // Calculate position relative to the timeline (which starts at OPERATING_START_HOUR)
     const relativeStartMinutes = Math.max(startMinutes - DAY_START_MINUTES, 0);
     const relativeEndMinutes = Math.min(endMinutes - DAY_START_MINUTES, DAY_END_MINUTES - DAY_START_MINUTES);
     
     const duration = Math.max(relativeEndMinutes - relativeStartMinutes, 15);
-    const top = (relativeStartMinutes / 60) * HOUR_HEIGHT;
-    const height = (duration / 60) * HOUR_HEIGHT;
     
-    console.log('computeBlockMetrics:', { start, end, startMinutes, endMinutes, relativeStartMinutes, relativeEndMinutes, top, height });
+    // Convert to percentages of total day range
+    const totalMinutes = DAY_END_MINUTES - DAY_START_MINUTES;
+    const topPercent = (relativeStartMinutes / totalMinutes) * 100;
+    const heightPercent = (duration / totalMinutes) * 100;
     
-    return { top, height };
+    console.log('computeBlockMetrics:', { start, end, startMinutes, endMinutes, relativeStartMinutes, relativeEndMinutes, topPercent, heightPercent });
+    
+    return { top: `${topPercent}%`, height: `${heightPercent}%` };
 };
 
-const AvailabilityBlockDisplay = ({ block, siteColor }) => {
+const AvailabilityBlockDisplay = ({ block, siteColor, onClick }) => {
     const metrics = computeBlockMetrics(block.start_time, block.end_time);
 
     return (
         <Box
+            onClick={() => onClick?.(block)}
             sx={{
                 position: 'absolute',
                 left: 60,
@@ -96,7 +106,13 @@ const AvailabilityBlockDisplay = ({ block, siteColor }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 1,
-                pointerEvents: 'none'
+                cursor: 'pointer',
+                transition: 'all 200ms ease',
+                '&:hover': {
+                    backgroundColor: 'rgba(76, 175, 80, 0.25)',
+                    border: '2px dashed rgba(76, 175, 80, 0.6)',
+                    transform: 'scale(1.01)'
+                }
             }}
         >
             <Typography
@@ -119,10 +135,12 @@ AvailabilityBlockDisplay.propTypes = {
         end_time: PropTypes.string.isRequired,
         title: PropTypes.string
     }).isRequired,
-    siteColor: PropTypes.string.isRequired
+    siteColor: PropTypes.string.isRequired,
+    onClick: PropTypes.func
 };
 
-const EventDisplay = ({ event, siteColor, onHover }) => {
+
+const EventDisplay = ({ event, siteColor, onHover, onClick }) => {
     const metrics = computeBlockMetrics(event.start_time, event.end_time);
     const [isHovered, setIsHovered] = useState(false);
 
@@ -147,6 +165,7 @@ const EventDisplay = ({ event, siteColor, onHover }) => {
             }}
         >
             <Box
+                onClick={() => onClick?.(event)}
                 sx={{
                     height: '100%',
                     backgroundColor: siteColor,
@@ -225,13 +244,15 @@ EventDisplay.propTypes = {
         max_capacity: PropTypes.number
     }).isRequired,
     siteColor: PropTypes.string.isRequired,
-    onHover: PropTypes.func
+    onHover: PropTypes.func,
+    onClick: PropTypes.func
 };
 
 const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClose, onCreateEvent, onCreateAvailability }) => {
     const theme = useTheme();
-    const [view, setView] = useState('timeline'); // 'timeline' | 'createEvent' | 'createAvailability'
+    const [view, setView] = useState('timeline'); // 'timeline' | 'chooser' | 'createEvent' | 'createAvailability' | 'editEvent' | 'editAvailability'
     const [hoveredEventId, setHoveredEventId] = useState(null);
+    const [editingItem, setEditingItem] = useState(null); // Store the item being edited
     const [formData, setFormData] = useState({
         title: '',
         startTime: '10:00',
@@ -279,6 +300,40 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
         setView(type === 'event' ? 'createEvent' : 'createAvailability');
     };
 
+    const handleEventClick = (event) => {
+        setEditingItem(event);
+        setFormData({
+            title: event.title || '',
+            startTime: event.start_time || '10:00',
+            endTime: event.end_time || '11:00',
+            type: event.type || 'online',
+            location: event.location || '',
+            meetingType: event.event_type || 'individual',
+            capacity: event.max_capacity || 1,
+            meetingLengths: ['30', '60'],
+            timeSnapping: '30',
+            bufferTime: '0'
+        });
+        setView('editEvent');
+    };
+
+    const handleAvailabilityClick = (block) => {
+        setEditingItem(block);
+        setFormData({
+            title: block.title || 'Dostępny',
+            startTime: block.start_time || '10:00',
+            endTime: block.end_time || '11:00',
+            type: 'online',
+            location: '',
+            meetingType: 'individual',
+            capacity: 1,
+            meetingLengths: block.meeting_lengths || ['30', '60'],
+            timeSnapping: block.time_snapping || '30',
+            bufferTime: block.buffer_time || '0'
+        });
+        setView('editAvailability');
+    };
+
     const handleSubmit = () => {
         if (view === 'createEvent') {
             onCreateEvent?.({
@@ -312,24 +367,27 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
         <Box
             sx={{
                 width: '100%',
-                height: '60vh',
-                overflow: 'auto',
-                mt: 2
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'visible',
+                position: 'relative'
             }}
         >
             <Box
                 sx={{
                     position: 'relative',
                     width: '100%',
-                    height: timelineHeight,
+                    height: '100%',  // Fill available space
                     backgroundColor: theme.palette.background.default,
                     border: `1px solid ${theme.palette.divider}`,
                     borderRadius: 2
                 }}
             >
             {/* Hour lines */}
-            {HOURS.map((hour) => {
-                const top = ((hour - 6) * 60 * HOUR_HEIGHT) / 60;
+            {HOURS.map((hour, index) => {
+                const topPercent = (index / HOURS.length) * 100;
+                const heightPercent = (1 / HOURS.length) * 100;
                 return (
                     <Box
                         key={hour}
@@ -337,8 +395,8 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                             position: 'absolute',
                             left: 0,
                             right: 0,
-                            top,
-                            height: HOUR_HEIGHT,
+                            top: `${topPercent}%`,
+                            height: `${heightPercent}%`,
                             borderBottom: `1px solid ${theme.palette.divider}`,
                             display: 'flex',
                             alignItems: 'flex-start'
@@ -367,6 +425,7 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                     key={block.id}
                     block={block}
                     siteColor={sites.find(s => s.id === (block.site_id || block.site))?.color_tag || 'rgb(146, 0, 32)'}
+                    onClick={handleAvailabilityClick}
                 />
             ))}
 
@@ -377,6 +436,7 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                     event={event}
                     siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
                     onHover={setHoveredEventId}
+                    onClick={handleEventClick}
                 />
             ))}
             </Box>
@@ -384,7 +444,8 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
     );
 
     const renderCreationForm = () => {
-        const isEvent = view === 'createEvent';
+        const isEvent = view === 'createEvent' || view === 'editEvent';
+        const isEditing = view === 'editEvent' || view === 'editAvailability';
 
         return (
             <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -392,12 +453,12 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                     {isEvent ? (
                         <>
                             <EventNoteIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
-                            Tworzysz <strong>konkretne spotkanie</strong> - zapisz datę i czas w kalendarzu
+                            {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>konkretne spotkanie</strong> - zapisz datę i czas w kalendarzu
                         </>
                     ) : (
                         <>
                             <ScheduleIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
-                            Tworzysz <strong>okno dostępności</strong> - klienci będą mogli zarezerwować w tym czasie
+                            {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>okno dostępności</strong> - klienci będą mogli zarezerwować w tym czasie
                         </>
                     )}
                 </Alert>
@@ -526,16 +587,19 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
             PaperProps={{
                 sx: {
                     borderRadius: 3,
-                    minHeight: '80vh',
-                    maxHeight: '90vh',
-                    height: '80vh'
+                    minHeight: '96vh',
+                    maxHeight: '98vh',
+                    height: '96vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 1.5  // Reduced padding on the paper itself
                 }
             }}
         >
-            <DialogTitle>
+            <DialogTitle sx={{ pb: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0, mt: 0 }}>
                             {dateFormatted}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -564,7 +628,9 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                 </Stack>
             </DialogTitle>
 
-            <DialogContent sx={{ pb: 3, height: '100%', overflow: 'hidden' }}>
+            <Divider sx={{ mx: -1.5 }} />
+
+            <DialogContent sx={{ pb: 2, px: 2, pt: 2, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <AnimatePresence mode="wait">
                     {view === 'timeline' && (
                         <motion.div
@@ -573,6 +639,7 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2 }}
+                            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
                         >
                             {renderTimeline()}
                         </motion.div>
@@ -657,7 +724,7 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                         </motion.div>
                     )}
 
-                    {(view === 'createEvent' || view === 'createAvailability') && (
+                    {(view === 'createEvent' || view === 'createAvailability' || view === 'editEvent' || view === 'editAvailability') && (
                         <motion.div
                             key="form"
                             initial={{ opacity: 0, x: 20 }}
@@ -671,13 +738,13 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                 </AnimatePresence>
             </DialogContent>
 
-            {(view === 'createEvent' || view === 'createAvailability') && (
+            {(view === 'createEvent' || view === 'createAvailability' || view === 'editEvent' || view === 'editAvailability') && (
                 <DialogActions sx={{ px: 3, pb: 2 }}>
                     <Button onClick={() => setView('timeline')} variant="outlined">
                         Anuluj
                     </Button>
                     <Button onClick={handleSubmit} variant="contained">
-                        Zapisz
+                        {(view === 'editEvent' || view === 'editAvailability') ? 'Zaktualizuj' : 'Zapisz'}
                     </Button>
                 </DialogActions>
             )}
