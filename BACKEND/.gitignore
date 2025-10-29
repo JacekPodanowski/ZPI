@@ -173,6 +173,8 @@ $RECYCLE.BIN/
 
 # Celery
 celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
 celerybeat.pid
 celerybeat.db
 *.celerybeat-schedule
