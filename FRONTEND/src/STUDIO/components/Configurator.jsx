@@ -752,6 +752,7 @@ const Configurator = () => {
                     {childData.config.images.map((item, idx) => {
                       const rawImageUrl = typeof item === 'string' ? item : item.url
                       const imgUrl = resolveMediaUrl(rawImageUrl)
+                      const hasValidImage = imgUrl && imgUrl.trim() !== ''
                       const caption = typeof item === 'object' ? item.caption : ''
                       const isEditing = editingCaption === idx
 
@@ -759,9 +760,11 @@ const Configurator = () => {
                         <div key={idx} className="bg-gray-50 rounded-lg group hover:bg-gray-100 transition-all">
                           {/* Image preview */}
                           <div className="flex items-center gap-3 p-2">
-                            <div className="flex-shrink-0">
-                              <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
-                            </div>
+                            {hasValidImage && (
+                              <div className="flex-shrink-0">
+                                <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
+                              </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium opacity-60">Zdjęcie {idx + 1}</p>
                               <p className="text-xs truncate opacity-40">{(rawImageUrl || '').substring(0, 40)}...</p>
@@ -1187,6 +1190,7 @@ const Configurator = () => {
                   {module.config.images.map((item, idx) => {
                     const rawImageUrl = typeof item === 'string' ? item : item.url
                     const imgUrl = resolveMediaUrl(rawImageUrl)
+                    const hasValidImage = imgUrl && imgUrl.trim() !== ''
                     const caption = typeof item === 'object' ? item.caption : ''
                     const isEditing = editingCaption === idx
 
@@ -1194,9 +1198,11 @@ const Configurator = () => {
                       <div key={idx} className="bg-gray-50 rounded-lg group hover:bg-gray-100 transition-all">
                         {/* Image preview */}
                         <div className="flex items-center gap-3 p-2">
-                          <div className="flex-shrink-0">
-                            <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
-                          </div>
+                          {hasValidImage && (
+                            <div className="flex-shrink-0">
+                              <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium opacity-60">Zdjęcie {idx + 1}</p>
                             <p className="text-xs truncate opacity-40">{(rawImageUrl || '').substring(0, 40)}...</p>

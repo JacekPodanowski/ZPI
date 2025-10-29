@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { isTempBlobUrl } from '../services/tempMediaCache'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.0.104:8000'
 
@@ -39,8 +40,26 @@ export const resolveMediaUrl = (input) => {
   const url = String(input).trim()
   if (!url) return ''
 
-  if (/^(https?:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+  // Handle absolute URLs (http://, https://, //)
+  if (/^(https?:)?\/\//i.test(url)) {
     return url
+  }
+  
+  // Handle data: URIs
+  if (url.startsWith('data:')) {
+    return url
+  }
+  
+  // Handle blob: URLs (only valid during current session)
+  if (url.startsWith('blob:')) {
+    // Check if this is a temporary blob from our cache
+    if (isTempBlobUrl(url)) {
+      return url // Valid temporary blob
+    }
+    // Stale blob URL - these are invalid after page reload
+    // Return a placeholder or the URL as-is to let the browser handle it
+    console.warn('Stale blob URL detected (page may have been reloaded):', url.substring(0, 50))
+    return '' // Return empty to prevent broken image attempts
   }
 
   const normalizedPath = url.startsWith('/') ? url : `/${url}`

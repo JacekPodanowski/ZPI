@@ -63,10 +63,24 @@ const AboutSection = ({ config }) => {
           
           {/* Obrazek lub wideo albo placeholder */}
           <div className="rounded-xl h-96 overflow-hidden shadow-lg bg-black">
-            {primaryMedia ? (
-              primaryIsVideo ? (
+            {primaryMedia ? (() => {
+              const resolvedMedia = resolveMediaUrl(primaryMedia)
+              const hasValidMedia = resolvedMedia && resolvedMedia.trim() !== ''
+              
+              if (!hasValidMedia) {
+                return (
+                  <div 
+                    className="w-full h-full grid place-items-center text-sm opacity-40"
+                    style={{ color: textColor }}
+                  >
+                    Dodaj zdjęcie lub wideo w konfiguratorze
+                  </div>
+                )
+              }
+              
+              return primaryIsVideo ? (
                 <video
-                  src={resolveMediaUrl(primaryMedia)}
+                  src={resolvedMedia}
                   autoPlay
                   loop
                   muted
@@ -76,12 +90,12 @@ const AboutSection = ({ config }) => {
                 />
               ) : (
                 <img 
-                  src={resolveMediaUrl(primaryMedia)} 
+                  src={resolvedMedia} 
                   alt={title} 
                   className="w-full h-full object-cover"
                 />
               )
-            ) : (
+            })() : (
               <div 
                 className="w-full h-full flex items-center justify-center"
                 style={{ 

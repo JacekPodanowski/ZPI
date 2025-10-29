@@ -10,6 +10,16 @@ const GalleryModule = ({ config }) => {
 
   const renderMedia = (rawUrl, altText, className = 'w-full h-full object-cover') => {
     const resolvedUrl = resolveMediaUrl(rawUrl)
+    const hasValidUrl = resolvedUrl && resolvedUrl.trim() !== ''
+    
+    if (!hasValidUrl) {
+      return (
+        <div className={`${className} bg-black/5 grid place-items-center text-sm text-black/40`}>
+          Dodaj media
+        </div>
+      )
+    }
+    
     if (isVideoUrl(rawUrl)) {
       return (
         <video

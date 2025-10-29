@@ -25,6 +25,39 @@ const createDraftId = () => {
   return `draft-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 };
 
+const BLOB_URL_PATTERN = /blob:[^"')\s]+/g;
+const BLOB_URL_WRAPPED_PATTERN = /url\((['"]?)blob:[^)"']*(\1)\)/g;
+
+const stripBlobUrlsFromString = (value) => {
+  if (!value || typeof value !== 'string' || !value.includes('blob:')) {
+    return value;
+  }
+
+  let sanitized = value.replace(BLOB_URL_WRAPPED_PATTERN, '');
+  sanitized = sanitized.replace(BLOB_URL_PATTERN, '');
+
+  return sanitized.trim();
+};
+
+const sanitizeTemplateConfig = (input) => {
+  if (input === null || input === undefined) {
+    return input;
+  }
+  if (typeof input === 'string') {
+    return stripBlobUrlsFromString(input);
+  }
+  if (Array.isArray(input)) {
+    return input.map((item) => sanitizeTemplateConfig(item));
+  }
+  if (typeof input === 'object') {
+    return Object.entries(input).reduce((acc, [key, value]) => {
+      acc[key] = sanitizeTemplateConfig(value);
+      return acc;
+    }, Array.isArray(input) ? [] : {});
+  }
+  return input;
+};
+
 const getDraftStorageKey = (siteIdentifier, draftIdentifier) => {
   if (siteIdentifier) {
     return `${EXISTING_DRAFT_PREFIX}${siteIdentifier}`;
@@ -79,7 +112,20 @@ const EditorPage = () => {
       return null;
     }
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed?.config) {
+        const sanitizedConfig = sanitizeTemplateConfig(parsed.config);
+        if (JSON.stringify(sanitizedConfig) !== JSON.stringify(parsed.config)) {
+          console.warn('[EditorPage] Sanitized stale blob URLs in stored draft.');
+          parsed.config = sanitizedConfig;
+          try {
+            window.localStorage.setItem(draftStorageKey, JSON.stringify(parsed));
+          } catch (storageError) {
+            console.error('Nie udało się zaktualizować szkicu po sanitacji.', storageError);
+          }
+        }
+      }
+      return parsed;
     } catch (error) {
       console.error('Nie udało się odczytać szkicu z localStorage.', error);
       return null;
@@ -125,23 +171,30 @@ const EditorPage = () => {
   }, [draftStorageKey, siteId, draftId]);
 
   const flushDraft = useCallback(async ({ forceRemove = false } = {}) => {
-    const hasSiteIdentifier = Boolean(siteMeta?.id);
+    const {
+      siteMeta: currentSiteMeta,
+      templateConfig: currentTemplateConfig,
+      hasUnsavedChanges: currentHasUnsavedChanges,
+      setHasUnsavedChanges: setUnsavedFlag
+    } = useEditorStore.getState();
+
+    const hasSiteIdentifier = Boolean(currentSiteMeta?.id);
     let persisted = false;
 
-    if (hasSiteIdentifier && hasUnsavedChanges) {
+    if (hasSiteIdentifier && currentHasUnsavedChanges) {
       try {
-        await updateSiteTemplate(siteMeta.id, templateConfig, siteMeta.name);
-        setHasUnsavedChanges(false);
+        await updateSiteTemplate(currentSiteMeta.id, currentTemplateConfig, currentSiteMeta.name);
+        setUnsavedFlag(false);
         persisted = true;
       } catch (error) {
         console.error('Nie udało się zapisać zmian przed opuszczeniem edytora.', error);
       }
     }
 
-    if (forceRemove || (hasSiteIdentifier && (!hasUnsavedChanges || persisted))) {
+    if (forceRemove || (hasSiteIdentifier && (!currentHasUnsavedChanges || persisted))) {
       clearLocalDraft();
     }
-  }, [siteMeta?.id, siteMeta?.name, hasUnsavedChanges, templateConfig, setHasUnsavedChanges, clearLocalDraft]);
+  }, [clearLocalDraft]);
 
   useEffect(() => {
     if (!siteId && draftId && typeof window !== 'undefined') {
@@ -207,11 +260,31 @@ const EditorPage = () => {
 
         if (shouldUseStored) {
           console.log('[EditorPage] Using stored draft');
-          setTemplateConfig(storedDraft.config, { markDirty: true });
+          const sanitizedDraftConfig = sanitizeTemplateConfig(storedDraft.config);
+          if (JSON.stringify(sanitizedDraftConfig) !== JSON.stringify(storedDraft.config)) {
+            console.warn('[EditorPage] Removed stale blob URLs from stored draft config');
+            if (typeof window !== 'undefined') {
+              try {
+                window.localStorage.setItem(draftStorageKey, JSON.stringify({
+                  ...storedDraft,
+                  config: sanitizedDraftConfig
+                }));
+              } catch (storageError) {
+                console.error('Nie udało się zaktualizować szkicu po czyszczeniu blobów.', storageError);
+              }
+            }
+          }
+          setTemplateConfig(sanitizedDraftConfig, { markDirty: true });
           setSiteMeta({ id: site.id, name: storedDraft.meta?.name || site.name });
         } else {
-          const templateConfig = site.template_config || createDefaultTemplateConfig();
+          let templateConfig = site.template_config || createDefaultTemplateConfig();
           console.log('[EditorPage] Template config from backend:', templateConfig);
+          
+          const sanitizedBackendConfig = sanitizeTemplateConfig(templateConfig);
+          if (JSON.stringify(sanitizedBackendConfig) !== JSON.stringify(templateConfig)) {
+            console.warn('[EditorPage] Removed stale blob URLs from backend config');
+            templateConfig = sanitizedBackendConfig;
+          }
           
           // Check if this is a module-based config (has moduleIds or modules array but no pages object)
           const moduleIds = templateConfig?.moduleIds || templateConfig?.modules || templateConfig?.enabledModules;
@@ -302,7 +375,21 @@ const EditorPage = () => {
 
       if (storedDraft?.config) {
         console.log('[EditorPage] Loading from stored draft');
-        setTemplateConfig(storedDraft.config, { markDirty: storedDraft.hasUnsavedChanges });
+        const sanitizedDraftConfig = sanitizeTemplateConfig(storedDraft.config);
+        if (JSON.stringify(sanitizedDraftConfig) !== JSON.stringify(storedDraft.config)) {
+          console.warn('[EditorPage] Removed stale blob URLs from new-site stored draft');
+          if (typeof window !== 'undefined') {
+            try {
+              window.localStorage.setItem(draftStorageKey, JSON.stringify({
+                ...storedDraft,
+                config: sanitizedDraftConfig
+              }));
+            } catch (storageError) {
+              console.error('Nie udało się zaktualizować nowego szkicu po czyszczeniu blobów.', storageError);
+            }
+          }
+        }
+        setTemplateConfig(sanitizedDraftConfig, { markDirty: storedDraft.hasUnsavedChanges });
         setSiteMeta(storedDraft.meta || { id: null, name: storedDraft.meta?.name || pendingMeta?.name || location.state?.siteName || 'Nowa strona' });
       } else if (pendingConfigPayload?.templateConfig) {
         console.log('[EditorPage] Received pending config payload:', pendingConfigPayload);
@@ -330,13 +417,39 @@ const EditorPage = () => {
           setSiteMeta({ id: null, name: siteName });
         } else {
           console.log('[EditorPage] Using full template config directly');
-          setTemplateConfig(pendingConfigPayload.templateConfig, { markDirty: true, restrictToDefaultPages: true });
+          const sanitizedPendingConfig = sanitizeTemplateConfig(pendingConfigPayload.templateConfig);
+          if (JSON.stringify(sanitizedPendingConfig) !== JSON.stringify(pendingConfigPayload.templateConfig)) {
+            console.warn('[EditorPage] Removed stale blob URLs from pending config payload');
+            if (typeof window !== 'undefined') {
+              try {
+                const updatedPayload = {
+                  ...pendingConfigPayload,
+                  templateConfig: sanitizedPendingConfig
+                };
+                window.localStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(updatedPayload));
+              } catch (storageError) {
+                console.error('Nie udało się zaktualizować lokalnego pending config po czyszczeniu blobów.', storageError);
+              }
+            }
+          }
+          setTemplateConfig(sanitizedPendingConfig, { markDirty: true, restrictToDefaultPages: true });
           setSiteMeta({ id: null, name: pendingMeta?.name || pendingConfigPayload.templateConfig?.name || location.state?.siteName || 'Nowa strona' });
         }
       } else if (pendingConfigRaw) {
         try {
           const parsedConfig = JSON.parse(pendingConfigRaw);
-          setTemplateConfig(parsedConfig, { markDirty: true, restrictToDefaultPages: true });
+          const sanitizedPendingConfig = sanitizeTemplateConfig(parsedConfig);
+          if (JSON.stringify(sanitizedPendingConfig) !== JSON.stringify(parsedConfig)) {
+            console.warn('[EditorPage] Removed stale blob URLs from pending session config');
+            if (typeof window !== 'undefined') {
+              try {
+                window.sessionStorage.setItem(PENDING_CONFIG_KEY, JSON.stringify(sanitizedPendingConfig));
+              } catch (storageError) {
+                console.error('Nie udało się zaktualizować session pending config po czyszczeniu blobów.', storageError);
+              }
+            }
+          }
+          setTemplateConfig(sanitizedPendingConfig, { markDirty: true, restrictToDefaultPages: true });
           setSiteMeta({ id: null, name: pendingMeta?.name || parsedConfig?.name || location.state?.siteName || 'Nowa strona' });
         } catch (error) {
           console.error('Nie udało się odczytać zapisanej konfiguracji edytora.', error);

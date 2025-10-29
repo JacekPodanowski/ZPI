@@ -124,11 +124,16 @@ const EventsModule = ({ config }) => {
 
                 {activeEvent.images && activeEvent.images.length > 0 && (
                   <div className="grid gap-4 md:grid-cols-2">
-                    {activeEvent.images.map((image, index) => (
-                      <div key={index} className="rounded-2xl overflow-hidden">
-                        <img src={resolveMediaUrl(image)} alt={`${activeEvent.title} ${index + 1}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
+                    {activeEvent.images.map((image, index) => {
+                      const resolvedImage = resolveMediaUrl(image)
+                      const hasValidImage = resolvedImage && resolvedImage.trim() !== ''
+                      
+                      return hasValidImage ? (
+                        <div key={index} className="rounded-2xl overflow-hidden">
+                          <img src={resolvedImage} alt={`${activeEvent.title} ${index + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ) : null
+                    })}
                   </div>
                 )}
 

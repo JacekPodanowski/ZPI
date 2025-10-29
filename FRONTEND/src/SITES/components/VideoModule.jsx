@@ -69,6 +69,7 @@ const VideoModule = ({ config }) => {
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted })
   const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'))
   const fullSelfHostedUrl = isSelfHosted ? resolveMediaUrl(embedUrl) : ''
+  const hasValidVideo = fullSelfHostedUrl ? fullSelfHostedUrl.trim() !== '' : Boolean(embedUrl)
 
 
   return (
@@ -81,31 +82,33 @@ const VideoModule = ({ config }) => {
           transition={{ duration: 0.5 }}
           className="w-full aspect-video rounded-2xl overflow-hidden shadow-xl bg-black/20"
         >
-          {isSelfHosted ? (
-            <video
-              src={fullSelfHostedUrl}
-              controls
-              muted={muted}
-              autoPlay={muted}
-              loop
-              playsInline
-              className="w-full h-full object-cover"
-            >
-              Your browser does not support the video tag.
-            </video>
-          ) : embedUrl ? (
-            <iframe
-              src={embedUrl}
-              title={caption || 'Embedded Video'}
-              className="w-full h-full"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          ) : (
-            <div className="w-full h-full grid place-items-center text-sm text-gray-500 bg-white/60">
-              Ustaw adres URL wideo w konfiguratorze
-            </div>
+          {hasValidVideo && (
+            isSelfHosted ? (
+              <video
+                src={fullSelfHostedUrl}
+                controls
+                muted={muted}
+                autoPlay={muted}
+                loop
+                playsInline
+                className="w-full h-full object-cover"
+              >
+                Your browser does not support the video tag.
+              </video>
+            ) : embedUrl ? (
+              <iframe
+                src={embedUrl}
+                title={caption || 'Embedded Video'}
+                className="w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            ) : (
+              <div className="w-full h-full grid place-items-center text-sm text-gray-500 bg-white/60">
+                Ustaw adres URL wideo w konfiguratorze
+              </div>
+            )
           )}
         </motion.div>
         {caption && (

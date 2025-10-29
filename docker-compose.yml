@@ -25,6 +25,20 @@ services:
       retries: 5
       start_period: 15s
 
+  # --- Serwis Redis (Message Broker dla Celery) ---
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT_HOST:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   # --- Serwis Backendu (Django) ---
   backend:
     build:
@@ -45,6 +59,44 @@ services:
     depends_on:
       db:
         # Gwarantuje, że backend uruchomi się dopiero, gdy healthcheck bazy danych zakończy się sukcesem.
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Serwis Celery Worker (Asynchroniczne przetwarzanie) ---
+  celery-worker:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
+    restart: unless-stopped
+    command: celery -A site_project worker --loglevel=info
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Serwis Celery Beat (Scheduler dla zadań okresowych) ---
+  celery-beat:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_beat
+    restart: unless-stopped
+    command: celery -A site_project beat --loglevel=info
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   # --- Serwis Studio Frontendu (React) ---

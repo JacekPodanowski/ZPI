@@ -38,10 +38,21 @@ const BlogModule = ({ config }) => {
               className="rounded-3xl overflow-hidden shadow-lg group bg-white"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-black">
-                {post.image ? (
-                  isVideoUrl(post.image) ? (
+                {post.image ? (() => {
+                  const resolvedImage = resolveMediaUrl(post.image)
+                  const hasValidImage = resolvedImage && resolvedImage.trim() !== ''
+                  
+                  if (!hasValidImage) {
+                    return (
+                      <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
+                        Dodaj zdjęcie
+                      </div>
+                    )
+                  }
+                  
+                  return isVideoUrl(post.image) ? (
                     <video
-                      src={resolveMediaUrl(post.image)}
+                      src={resolvedImage}
                       autoPlay
                       loop
                       muted
@@ -52,12 +63,12 @@ const BlogModule = ({ config }) => {
                     </video>
                   ) : (
                     <img
-                      src={resolveMediaUrl(post.image)}
+                      src={resolvedImage}
                       alt={post.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   )
-                ) : (
+                })() : (
                   <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
                     Dodaj zdjęcie
                   </div>

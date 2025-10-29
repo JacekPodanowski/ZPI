@@ -7,6 +7,7 @@ const HeroSection = ({ config }) => {
   const { title, subtitle, bgColor, textColor, backgroundImage } = config
   const resolvedBackground = resolveMediaUrl(backgroundImage)
   const isVideo = isVideoUrl(backgroundImage)
+  const hasValidBackground = resolvedBackground && resolvedBackground.trim() !== ''
 
   return (
     <section
@@ -14,7 +15,7 @@ const HeroSection = ({ config }) => {
       style={{ backgroundColor: bgColor, color: textColor }}
     >
       {/* Obrazek lub wideo tła */}
-      {backgroundImage && (
+      {hasValidBackground && (
         isVideo ? (
           <video
             autoPlay

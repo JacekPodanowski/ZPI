@@ -41,12 +41,14 @@ import useEditorStore from '../../store/editorStore';
 import { createSite, renameSite, updateSiteTemplate } from '../../../services/siteService';
 import apiClient from '../../../services/apiClient';
 import useNavigationBlocker, { BLOCK_STATES } from '../../../hooks/useNavigationBlocker';
+import { retrieveTempImage, isTempBlobUrl } from '../../../services/tempMediaCache';
 
 const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
     const {
         expertMode,
         setExpertMode,
         templateConfig,
+        setTemplateConfig,
         saveVersion,
         exportTemplate,
         importTemplate,
@@ -238,36 +240,158 @@ const EditorNavigation = ({ siteId, siteName, isNewSite, disabled }) => {
 
         try {
             setSaving(true);
+            
+            // Deep clone the config
+            let finalConfig = JSON.parse(JSON.stringify(templateConfig));
+            const uploadPromises = [];
+
+            console.log('[Save] Starting save process. Initial config:', JSON.stringify(finalConfig).substring(0, 300));
+
+            // Find all blob URLs (including those wrapped in CSS strings) in the configuration
+            const allBlobUrls = new Set();
+            JSON.stringify(finalConfig, (key, value) => {
+                if (typeof value === 'string' && value.includes('blob:')) {
+                    const matches = value.match(/blob:[^"')\s]+/g);
+                    if (matches) {
+                        matches.forEach((match) => allBlobUrls.add(match));
+                    }
+                }
+                return value;
+            });
+
+            console.log('[Save] Found blob URLs in config:', Array.from(allBlobUrls));
+
+            // Upload every discovered blob URL exactly once
+            Array.from(allBlobUrls).forEach((blobUrl) => {
+                const promise = (async () => {
+                    let file = null;
+
+                    if (isTempBlobUrl(blobUrl)) {
+                        console.log('[Save] ✓ Blob URL is tracked and will be uploaded:', blobUrl);
+                        file = await retrieveTempImage(blobUrl);
+                    } else {
+                        console.warn('[Save] Blob URL not tracked in cache, attempting direct fetch:', blobUrl);
+                    }
+
+                    if (!file) {
+                        try {
+                            const response = await fetch(blobUrl);
+                            const blob = await response.blob();
+                            const extension = (blob.type && blob.type.split('/')[1]) || 'bin';
+                            const fallbackName = `upload-${Date.now()}.${extension}`;
+                            file = new File([blob], fallbackName, { type: blob.type || 'application/octet-stream' });
+                            console.log('[Save] Retrieved file via fetch fallback for blob URL:', blobUrl);
+                        } catch (fetchError) {
+                            console.error('[Save] Failed to fetch blob URL directly:', blobUrl, fetchError);
+                        }
+                    }
+
+                    if (!file) {
+                        return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('usage', 'site_content');
+                    if (siteId) {
+                        formData.append('site_id', siteId);
+                    }
+
+                    const response = await apiClient.post('/upload/', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+
+                    const uploadedUrl = response?.data?.url;
+                    if (!uploadedUrl) {
+                        console.error('[Save] Upload response missing URL for blob:', blobUrl);
+                        return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
+                    }
+
+                    return { tempUrl: blobUrl, finalUrl: uploadedUrl, failed: false };
+                })();
+                uploadPromises.push(promise);
+            });
+
+            // Wait for all uploads to complete
+            const results = await Promise.all(uploadPromises);
+            const failedUploads = results.filter((result) => result.failed);
+            if (failedUploads.length > 0) {
+                console.error('[Save] Failed to upload blob URLs:', failedUploads.map((item) => item.tempUrl));
+                setStatus({ type: 'error', message: 'Nie udało się przesłać części obrazów. Spróbuj ponownie.' });
+                return false;
+            }
+
+            const urlMap = new Map(results.map((r) => [r.tempUrl, r.finalUrl]));
+
+            console.log('[Save] Upload complete. URL mappings:', Object.fromEntries(urlMap));
+
+            // Replace all temporary blob URLs in the config with the new permanent URLs
+            if (urlMap.size > 0) {
+                let configString = JSON.stringify(finalConfig);
+                console.log('[Save] Config BEFORE replacement:', configString.substring(0, 500));
+                urlMap.forEach((finalUrl, tempUrl) => {
+                    // Replace the raw URL strings (they're already properly escaped in the JSON)
+                    // We don't need to JSON.stringify because the URLs are already in the JSON string
+                    
+                    // Escape special regex characters in the URL
+                    const escapedTempUrl = tempUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedTempUrl, 'g');
+                    
+                    // Count occurrences before replacement
+                    const matchCount = (configString.match(regex) || []).length;
+                    
+                    // Replace all occurrences
+                    configString = configString.replace(regex, finalUrl);
+                    
+                    console.log(`[Save] Replaced ${tempUrl} → ${finalUrl} (${matchCount} occurrences)`);
+                });
+                finalConfig = JSON.parse(configString);
+                console.log('[Save] Config AFTER replacement:', JSON.stringify(finalConfig).substring(0, 500));
+                
+                // Verify no blob URLs remain
+                const remainingBlobs = JSON.stringify(finalConfig).match(/blob:http[^\s"']*/g);
+                if (remainingBlobs) {
+                    console.error('[Save] ERROR: Blob URLs still present after replacement!', remainingBlobs);
+                } else {
+                    console.log('[Save] ✓ No blob URLs remaining in finalConfig');
+                }
+            }
+            
             let resultingId = siteId;
             if (!siteId) {
+                console.log('[Save] Creating new site with config:', JSON.stringify(finalConfig).substring(0, 300));
                 const created = await createSite({
                     name: trimmedName,
-                    template_config: templateConfig
+                    template_config: finalConfig
                 });
                 resultingId = created.id;
                 setSiteMeta({ id: created.id, name: created.name });
                 setStatus({ type: 'success', message: 'Nowa strona została zapisana.' });
                 saveVersion();
                 setHasUnsavedChanges(false);
+                setTemplateConfig(finalConfig, { markDirty: false }); // Update store with final URLs
                 if (redirectToEditor) {
                     navigate(`/studio/editor/${created.id}`, { replace: true });
                 }
                 return resultingId;
             }
 
-            await updateSiteTemplate(siteId, templateConfig, trimmedName);
+            console.log('[Save] Updating existing site with config:', JSON.stringify(finalConfig).substring(0, 300));
+            await updateSiteTemplate(siteId, finalConfig, trimmedName);
             setSiteMeta({ id: siteId, name: trimmedName });
             setStatus({ type: 'success', message: 'Zmiany zapisane.' });
             saveVersion();
             setHasUnsavedChanges(false);
+            setTemplateConfig(finalConfig, { markDirty: false }); // Update store with final URLs
             return resultingId;
         } catch (error) {
             setStatus({ type: 'error', message: 'Nie udało się zapisać zmian.' });
+            console.error("Save failed:", error);
             return false;
         } finally {
             setSaving(false);
         }
-    }, [navigate, nameDraft, saveVersion, setHasUnsavedChanges, setSiteMeta, siteId, templateConfig]);
+    }, [navigate, nameDraft, saveVersion, setHasUnsavedChanges, setSiteMeta, siteId, templateConfig, setTemplateConfig]);
 
     const handlePublish = async () => {
         if (!siteId) {
