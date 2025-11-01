@@ -10,9 +10,6 @@ from typing import Any, Dict
 import requests
 from django.conf import settings
 from django.db.models import Sum
-from django.http import Http404, HttpResponseRedirect
-from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from rest_framework import viewsets, permissions, status, generics, serializers
@@ -831,37 +828,6 @@ def publish_site(request, site_id):
     except requests.RequestException as exc:
         logger.error("Failed to trigger Vercel build for site ID %s: %s", site.id, exc)
         return Response({'error': 'Failed to trigger Vercel build', 'details': str(exc)}, status=500)
-
-
-@require_http_methods(['GET'])
-@never_cache
-def supabase_media_redirect(request, media_path: str):
-    """Redirect `/media/...` requests to the Supabase public URL."""
-    if not getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URLS', None):
-        raise Http404()
-
-    normalized = normalize_media_path(media_path)
-    if not normalized:
-        raise Http404()
-
-    asset = (
-        MediaAsset.objects.filter(storage_path=normalized).first()
-        or get_asset_by_path_or_url(media_path)
-    )
-    if asset is None:
-        raise Http404()
-
-    target_url = asset.file_url
-    if not target_url:
-        bucket_name = asset.storage_bucket or settings.SUPABASE_STORAGE_BUCKET_MAP.get('other')
-        public_base = settings.SUPABASE_STORAGE_PUBLIC_URLS.get(bucket_name)
-        if public_base:
-            target_url = f"{public_base.rstrip('/')}/{normalized}"
-
-    if not target_url or not target_url.startswith(('http://', 'https://')):
-        raise Http404()
-
-    return HttpResponseRedirect(target_url)
 
 
 @tag_viewset('Custom Components')
