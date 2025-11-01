@@ -1,9 +1,11 @@
 """REST API views for the multi-tenant Personal Site Generator backend."""
 
+import base64
 import hashlib
 import logging
 import os
 import re
+from typing import Any, Dict
 
 import requests
 from django.conf import settings
@@ -11,7 +13,9 @@ from django.db.models import Sum
 from django.http import Http404, HttpResponseRedirect
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
-from rest_framework import viewsets, permissions, status, generics
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from rest_framework import viewsets, permissions, status, generics, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -43,6 +47,15 @@ from .media_helpers import (
 )
 from .media_processing import ImageProcessingError, convert_to_webp
 from .media_storage import StorageError, get_media_storage
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
+
 from .serializers import (
     PlatformUserSerializer,
     SiteSerializer,
@@ -55,9 +68,88 @@ from .serializers import (
     CustomReactComponentSerializer,
     NotificationSerializer,
     AvailabilityBlockSerializer,
+    SendEmailSerializer,
+    AdminSessionCancellationEmailSerializer,
+    AdminSessionNewReservationEmailSerializer,
+    SessionCanceledByAdminEmailSerializer,
+    SessionConfirmedDiscordEmailSerializer,
+    SessionConfirmedGoogleMeetEmailSerializer,
+    SessionNewReservationEmailSerializer,
 )
+from .tasks import send_custom_email_task_async
 
 logger = logging.getLogger(__name__)
+
+
+def tag_viewset(*tags, operations=None):
+    """Decorator to apply tags and common metadata to specified viewset operations."""
+
+    def decorator(cls):
+        ops = operations or ['list', 'retrieve', 'create', 'update', 'partial_update', 'destroy']
+        
+        # Define typed path parameter for detail operations
+        # DefaultRouter uses 'id' in the OpenAPI schema even though internally it's 'pk'
+        detail_param = OpenApiParameter(
+            name='id',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description=f"A unique integer value identifying this {getattr(cls, '__name__', 'resource').replace('ViewSet', '').lower()}.",
+        )
+        
+        schema_kwargs = {}
+        for op in ops:
+            kwargs: Dict[str, Any] = {'tags': list(tags)}
+            # Add typed parameter for detail operations
+            if op in {'retrieve', 'update', 'partial_update', 'destroy'}:
+                kwargs['parameters'] = [detail_param]
+            schema_kwargs[op] = extend_schema(**kwargs)
+        return extend_schema_view(**schema_kwargs)(cls)
+
+    return decorator
+
+
+EMAIL_ACCEPTED_RESPONSE_SERIALIZER = inline_serializer(
+    name='EmailSendAcceptedResponse',
+    fields={
+        'status': serializers.CharField(),
+        'detail': serializers.CharField(),
+    },
+)
+
+EMAIL_ACCEPTED_RESPONSE = OpenApiResponse(
+    response=EMAIL_ACCEPTED_RESPONSE_SERIALIZER,
+    description='Email send task accepted for processing.',
+)
+
+
+FILE_UPLOAD_REQUEST_SERIALIZER = inline_serializer(
+    name='FileUploadRequest',
+    fields={
+        'file': serializers.FileField(),
+        'usage': serializers.ChoiceField(choices=list(MediaUsage.UsageType.values)),
+        'site_id': serializers.IntegerField(required=False),
+    },
+)
+
+FILE_UPLOAD_RESPONSE_SERIALIZER = inline_serializer(
+    name='FileUploadResponse',
+    fields={
+        'url': serializers.CharField(),
+        'hash': serializers.CharField(),
+        'asset_id': serializers.IntegerField(),
+        'bucket': serializers.CharField(allow_null=True, required=False),
+        'deduplicated': serializers.BooleanField(),
+    },
+)
+
+FILE_DELETE_RESPONSE_SERIALIZER = inline_serializer(
+    name='FileDeleteResponse',
+    fields={
+        'asset_id': serializers.IntegerField(),
+        'detached_usages': serializers.IntegerField(),
+        'removed': serializers.BooleanField(),
+    },
+)
 
 
 SAFE_FILENAME_RE = re.compile(r'[^A-Za-z0-9._-]+')
@@ -146,12 +238,14 @@ def ensure_storage_capacity(user, additional_bytes: int) -> None:
         raise ValueError('Storage quota exceeded for this account')
 
 
+@extend_schema(tags=['Auth'])
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = settings.FRONTEND_URL
     client_class = OAuth2Client
 
 
+@extend_schema(tags=['Auth'])
 class CustomRegisterView(generics.CreateAPIView):
     queryset = PlatformUser.objects.all()
     permission_classes = (AllowAny,)
@@ -182,6 +276,7 @@ class IsOwnerOrStaff(permissions.BasePermission):
         return False
 
 
+@tag_viewset('Users')
 class PlatformUserViewSet(viewsets.ModelViewSet):
     queryset = PlatformUser.objects.all().order_by('-created_at')
     serializer_class = PlatformUserSerializer
@@ -206,6 +301,7 @@ class PlatformUserViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
 
+@tag_viewset('Sites')
 class SiteViewSet(viewsets.ModelViewSet):
     serializer_class = SiteSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrStaff]
@@ -303,6 +399,7 @@ class SiteScopedMixin:
         return queryset
 
 
+@tag_viewset('Clients')
 class ClientViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     permission_classes = [IsAuthenticated]
@@ -328,6 +425,7 @@ class ClientViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         instance.delete()
 
 
+@tag_viewset('Events')
 class EventViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
@@ -361,6 +459,7 @@ class EventViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         instance.delete()
 
 
+@tag_viewset('Bookings')
 class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -392,6 +491,7 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             booking.event.attendees.add(booking.client)
 
 
+@tag_viewset('Availability')
 class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = AvailabilityBlockSerializer
     permission_classes = [IsAuthenticated]
@@ -425,12 +525,14 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         instance.delete()
 
 
+@tag_viewset('Templates', operations=['list', 'retrieve'])
 class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Template.objects.filter(is_public=True)
     serializer_class = TemplateSerializer
     permission_classes = [AllowAny]
 
 
+@extend_schema(tags=['Public Sites'])
 class PublicSiteView(generics.RetrieveAPIView):
     queryset = Site.objects.select_related('owner')
     serializer_class = PublicSiteSerializer
@@ -438,6 +540,7 @@ class PublicSiteView(generics.RetrieveAPIView):
     lookup_field = 'identifier'
 
 
+@extend_schema(tags=['Public Sites'])
 class PublicSiteByIdView(generics.RetrieveAPIView):
     queryset = Site.objects.select_related('owner')
     serializer_class = PublicSiteSerializer
@@ -450,6 +553,16 @@ class FileUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=['Media'],
+        request=FILE_UPLOAD_REQUEST_SERIALIZER,
+        responses={
+            201: FILE_UPLOAD_RESPONSE_SERIALIZER,
+            200: FILE_UPLOAD_RESPONSE_SERIALIZER,
+            400: OpenApiResponse(description='Validation error'),
+            500: OpenApiResponse(description='Storage backend error'),
+        },
+    )
     def post(self, request, *args, **kwargs):
         file_obj = request.data.get('file')
         usage = request.data.get('usage') or MediaUsage.UsageType.SITE_CONTENT
@@ -575,18 +688,30 @@ class FileUploadView(APIView):
         if usage == MediaUsage.UsageType.AVATAR:
             MediaUsage.objects.filter(user=request.user, usage_type=MediaUsage.UsageType.AVATAR).exclude(asset=asset).delete()
 
+        payload = {
+            'url': asset_url,
+            'hash': asset.file_hash,
+            'asset_id': asset.id,
+            'bucket': asset.storage_bucket,
+            'deduplicated': not created,
+        }
         response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        return Response(
-            {
-                'url': asset_url,
-                'hash': asset.file_hash,
-                'asset_id': asset.id,
-                'bucket': asset.storage_bucket,
-                'deduplicated': not created,
-            },
-            status=response_status,
-        )
+        return Response(payload, status=response_status)
 
+    @extend_schema(
+        tags=['Media'],
+        request=None,
+        parameters=[
+            OpenApiParameter('url', OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('usage', OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('site_id', OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+        ],
+        responses={
+            200: FILE_DELETE_RESPONSE_SERIALIZER,
+            204: OpenApiResponse(description='No content'),
+            400: OpenApiResponse(description='Validation error'),
+        },
+    )
     def delete(self, request, *args, **kwargs):
         raw_url = request.data.get('url') or request.query_params.get('url')
         if not raw_url:
@@ -645,9 +770,28 @@ class FileUploadView(APIView):
             'removed': bool(removed),
         }
         status_code = status.HTTP_200_OK if (deleted_count > 0 or removed) else status.HTTP_204_NO_CONTENT
+        if status_code == status.HTTP_204_NO_CONTENT:
+            return Response(status=status_code)
         return Response(payload, status=status_code)
 
 
+@extend_schema(
+    tags=['Sites'],
+    summary='Trigger site publish',
+    description='Invoke the Vercel build hook to publish the specified site.',
+    request=None,
+    responses={
+        200: inline_serializer(
+            name='PublishSiteResponse',
+            fields={
+                'message': serializers.CharField(),
+                'site_identifier': serializers.CharField(),
+            },
+        ),
+        404: OpenApiResponse(description='Site not found'),
+        500: OpenApiResponse(description='Failed to trigger Vercel build'),
+    },
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def publish_site(request, site_id):
@@ -704,12 +848,14 @@ def supabase_media_redirect(request, media_path: str):
     return HttpResponseRedirect(target_url)
 
 
+@tag_viewset('Custom Components')
 class CustomReactComponentViewSet(viewsets.ModelViewSet):
     queryset = CustomReactComponent.objects.all()
     serializer_class = CustomReactComponentSerializer
     permission_classes = [IsAuthenticated]
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @extend_schema(tags=['Custom Components'])
     def upload_compiled(self, request, pk=None):
         component = self.get_object()
         file_obj = request.FILES.get('file')
@@ -728,6 +874,7 @@ class CustomReactComponentViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+@tag_viewset('Notifications')
 class NotificationViewSet(viewsets.ModelViewSet):
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
@@ -737,3 +884,280 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+@extend_schema(tags=['Messaging'])
+class SendEmailView(APIView):
+    """Queue a custom email for delivery, optionally including an attachment."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    @extend_schema(
+        summary="Send custom email",
+        description=(
+            "Queue a custom email delivery. Accepts multipart data containing recipient, "
+            "subject, message, and optional attachment."
+        ),
+        request=SendEmailSerializer,
+        responses={
+            202: EMAIL_ACCEPTED_RESPONSE,
+            400: OpenApiResponse(description='Validation error'),
+            500: OpenApiResponse(description='Attachment read failure'),
+        },
+        tags=['Messaging'],
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = SendEmailSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated = serializer.validated_data
+        recipient = validated['recipient']
+        subject = validated['subject']
+        message = validated['message']
+        attachment = validated.get('attachment')
+
+        attachment_content_b64 = None
+        attachment_filename = None
+        attachment_mimetype = None
+
+        if attachment:
+            try:
+                attachment_content = attachment.read()
+            except Exception as exc:  # pragma: no cover - backend specific
+                logger.exception("Failed to read attachment for custom email send")
+                return Response(
+                    {'detail': 'Failed to read the provided attachment.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            attachment_content_b64 = base64.b64encode(attachment_content).decode('utf-8')
+            attachment_filename = attachment.name
+            attachment_mimetype = getattr(attachment, 'content_type', None)
+
+        send_custom_email_task_async.delay(
+            recipient_list=[recipient],
+            subject=subject,
+            message=message,
+            attachment_content_b64=attachment_content_b64,
+            attachment_filename=attachment_filename,
+            attachment_mimetype=attachment_mimetype,
+        )
+
+        return Response(
+            {
+                'status': 'success',
+                'detail': 'Email send task has been queued for processing.',
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class BaseTemplatedEmailView(APIView):
+    """Base view for queuing templated emails with JSON payloads."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = (JSONParser,)
+    serializer_class = None
+    template_name: str = ''
+    default_subject: str = ''
+    success_detail: str = 'Email send task has been queued for processing.'
+
+    def get_serializer_class(self):
+        if self.serializer_class is None:
+            raise NotImplementedError('serializer_class must be defined.')
+        return self.serializer_class
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Transform validated serializer data (excluding meta fields) into template context."""
+
+        return data
+
+    def get_email_subject(self, data: Dict[str, Any]) -> str:
+        return data.get('email_subject') or self.default_subject
+
+    def get_plain_message(self, html_content: str, context: Dict[str, Any]) -> str | None:
+        plain = strip_tags(html_content).strip()
+        return plain or None
+
+    def post(self, request, *args, **kwargs):
+        serializer_cls = self.get_serializer_class()
+        serializer = serializer_cls(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated = serializer.validated_data
+        recipient = validated.get('recipient')
+        subject = self.get_email_subject(validated)
+
+        if not subject:
+            return Response(
+                {'email_subject': ['Subject is required for this email template.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        context_input = {
+            key: value
+            for key, value in validated.items()
+            if key not in {'recipient', 'email_subject'}
+        }
+        context = self.build_context(context_input)
+        html_content = render_to_string(self.template_name, context)
+        plain_message = self.get_plain_message(html_content, context)
+
+        logger.info(
+            "Queueing templated email '%s' to %s using template %s",
+            subject,
+            recipient,
+            self.template_name,
+        )
+
+        send_custom_email_task_async.delay(
+            recipient_list=[recipient],
+            subject=subject,
+            message=plain_message,
+            html_content=html_content,
+        )
+
+        return Response(
+            {
+                'status': 'success',
+                'detail': self.success_detail,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+@extend_schema(
+    tags=['Messaging'],
+    summary='Send admin session cancellation notification',
+    description='Queue an email informing admin about a student-cancelled session.',
+    request=AdminSessionCancellationEmailSerializer,
+    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
+)
+class AdminSessionCancellationEmailView(BaseTemplatedEmailView):
+    serializer_class = AdminSessionCancellationEmailSerializer
+    template_name = 'emails/admin_session_cancellation_notification.html'
+    default_subject = 'Powiadomienie: Student anulował sesję'
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            'student_name': data['student_name'],
+            'subject': data['session_title'],
+            'date': data['date'],
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+        }
+
+
+@extend_schema(
+    tags=['Messaging'],
+    summary='Send pending reservation notification to admin',
+    description='Queue an email notifying admin about a new reservation awaiting confirmation.',
+    request=AdminSessionNewReservationEmailSerializer,
+    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
+)
+class AdminSessionNewReservationEmailView(BaseTemplatedEmailView):
+    serializer_class = AdminSessionNewReservationEmailSerializer
+    template_name = 'emails/admin_session_new_reservation_notification.html'
+    default_subject = 'Nowa rezerwacja sesji oczekuje na potwierdzenie!'
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            'student_name': data['student_name'],
+            'subject': data['session_title'],
+            'date': data['date'],
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+            'admin_url': data['admin_url'],
+        }
+
+
+@extend_schema(
+    tags=['Messaging'],
+    summary='Send cancellation notice to student',
+    description='Queue an email informing student that the tutor cancelled the session.',
+    request=SessionCanceledByAdminEmailSerializer,
+    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
+)
+class SessionCanceledByAdminEmailView(BaseTemplatedEmailView):
+    serializer_class = SessionCanceledByAdminEmailSerializer
+    template_name = 'emails/session_canceled_by_admin.html'
+    default_subject = 'Twoja sesja korepetycji została odwołana'
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            'student_name': data['student_name'],
+            'subject': data['session_title'],
+            'date': data['date'],
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+            'calendar_url': data['calendar_url'],
+        }
+
+
+@extend_schema(
+    tags=['Messaging'],
+    summary='Send Discord confirmation to student',
+    description='Queue an email confirming a Discord session for the student.',
+    request=SessionConfirmedDiscordEmailSerializer,
+    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
+)
+class SessionConfirmedDiscordEmailView(BaseTemplatedEmailView):
+    serializer_class = SessionConfirmedDiscordEmailSerializer
+    template_name = 'emails/session_confirmed_discord.html'
+    default_subject = 'Twoja sesja na Discord została potwierdzona!'
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            'student_name': data['student_name'],
+            'subject': data['session_title'],
+            'date': data['date'],
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+            'discord_url': data['discord_url'],
+        }
+
+
+@extend_schema(
+    tags=['Messaging'],
+    summary='Send Google Meet confirmation to student',
+    description='Queue an email confirming a Google Meet session for the student.',
+    request=SessionConfirmedGoogleMeetEmailSerializer,
+    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
+)
+class SessionConfirmedGoogleMeetEmailView(BaseTemplatedEmailView):
+    serializer_class = SessionConfirmedGoogleMeetEmailSerializer
+    template_name = 'emails/session_confirmed_google_meet.html'
+    default_subject = 'Twoja sesja na Google Meet została potwierdzona!'
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            'student_name': data['student_name'],
+            'subject': data['session_title'],
+            'date': data['date'],
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+        }
+
+
+@extend_schema(
+    tags=['Messaging'],
+    summary='Send reservation receipt to student',
+    description='Queue an email confirming reception of a new reservation to the student.',
+    request=SessionNewReservationEmailSerializer,
+    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
+)
+class SessionNewReservationEmailView(BaseTemplatedEmailView):
+    serializer_class = SessionNewReservationEmailSerializer
+    template_name = 'emails/session_new_reservation.html'
+    default_subject = 'Potwierdzenie rezerwacji sesji'
+
+    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            'student_name': data['student_name'],
+            'subject': data['session_title'],
+            'date': data['date'],
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+        }
