@@ -46,7 +46,7 @@ from .media_helpers import (
     normalize_media_path,
 )
 from .media_processing import ImageProcessingError, convert_to_webp
-from .media_storage import StorageError, get_media_storage
+from .media_storage import StorageError, StorageSaveResult, get_media_storage
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -635,8 +635,24 @@ class FileUploadView(APIView):
                 storage_result = storage.save(bucket_name, storage_key, processed_bytes, processed_mime)
                 bucket_name = storage_result.bucket or bucket_name
             except StorageError as exc:  # pragma: no cover - storage backend dependent
-                logger.exception("Storage backend rejected file upload")
-                return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                exc_str = str(exc).lower()
+                # Handle case where file exists in storage but not in DB (after DB reset)
+                if 'duplicate' in exc_str or 'already exists' in exc_str:
+                    logger.warning(f"File already exists in storage, using existing file: {storage_key}")
+                    # Build URL for existing file
+                    try:
+                        storage_url = storage.build_url(bucket_name, storage_key)
+                        storage_result = StorageSaveResult(
+                            bucket=bucket_name,
+                            path=storage_key,
+                            url=storage_url
+                        )
+                    except Exception as build_exc:
+                        logger.error(f"Failed to build URL for existing file: {build_exc}")
+                        return Response({'error': 'File exists but cannot access it'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                else:
+                    logger.exception("Storage backend rejected file upload")
+                    return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except Exception as exc:  # pragma: no cover - storage backend dependent
                 logger.exception("Unexpected error while saving media asset")
                 return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
