@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchMe, googleLogin as googleLoginService, login as loginService, logout as logoutService, register as registerService } from '../services/authService';
+import { fetchMe, googleLogin as googleLoginService, login as loginService, logout as logoutService, register as registerService, updateUserPreferences } from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -93,6 +93,17 @@ export const AuthProvider = ({ children }) => {
         navigate('/', { replace: true });
     }, [navigate]);
 
+    const updatePreferences = useCallback(async (preferences) => {
+        try {
+            const updatedUser = await updateUserPreferences(preferences);
+            setUser(updatedUser);
+            return updatedUser;
+        } catch (error) {
+            console.error('Failed to update preferences:', error);
+            throw error;
+        }
+    }, []);
+
     const value = useMemo(
         () => ({
             user,
@@ -103,9 +114,10 @@ export const AuthProvider = ({ children }) => {
             signup,
             googleLogin,
             mockLogin,
-            refresh: loadCurrentUser
+            refresh: loadCurrentUser,
+            updatePreferences
         }),
-        [user, loading, login, logout, signup, googleLogin, mockLogin, loadCurrentUser]
+        [user, loading, login, logout, signup, googleLogin, mockLogin, loadCurrentUser, updatePreferences]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

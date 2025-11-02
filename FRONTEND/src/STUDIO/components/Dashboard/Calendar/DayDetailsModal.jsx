@@ -35,16 +35,7 @@ import moment from 'moment';
 import PropTypes from 'prop-types';
 import useTheme from '../../../../theme/useTheme';
 
-// Operating hours constants - can be made dynamic later
-const OPERATING_START_HOUR = 6;
-const OPERATING_END_HOUR = 22;
-
-const HOURS = Array.from({ length: OPERATING_END_HOUR - OPERATING_START_HOUR }, (_, idx) => OPERATING_START_HOUR + idx);
-const DAY_START_MINUTES = OPERATING_START_HOUR * 60;
-const DAY_END_MINUTES = OPERATING_END_HOUR * 60;
-const HOUR_HEIGHT = 60;
-
-const computeBlockMetrics = (start, end) => {
+const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
     if (!start || !end || typeof start !== 'string' || typeof end !== 'string') {
         console.warn('Invalid time values:', { start, end });
@@ -71,24 +62,22 @@ const computeBlockMetrics = (start, end) => {
     const startMinutes = startHour * 60 + startMinute;
     const endMinutes = endHour * 60 + endMinute;
     
-    // Calculate position relative to the timeline (which starts at OPERATING_START_HOUR)
-    const relativeStartMinutes = Math.max(startMinutes - DAY_START_MINUTES, 0);
-    const relativeEndMinutes = Math.min(endMinutes - DAY_START_MINUTES, DAY_END_MINUTES - DAY_START_MINUTES);
+    // Calculate position relative to the timeline (which starts at dayStartMinutes)
+    const relativeStartMinutes = Math.max(startMinutes - dayStartMinutes, 0);
+    const relativeEndMinutes = Math.min(endMinutes - dayStartMinutes, dayEndMinutes - dayStartMinutes);
     
     const duration = Math.max(relativeEndMinutes - relativeStartMinutes, 15);
     
     // Convert to percentages of total day range
-    const totalMinutes = DAY_END_MINUTES - DAY_START_MINUTES;
+    const totalMinutes = dayEndMinutes - dayStartMinutes;
     const topPercent = (relativeStartMinutes / totalMinutes) * 100;
     const heightPercent = (duration / totalMinutes) * 100;
-    
-    console.log('computeBlockMetrics:', { start, end, startMinutes, endMinutes, relativeStartMinutes, relativeEndMinutes, topPercent, heightPercent });
     
     return { top: `${topPercent}%`, height: `${heightPercent}%` };
 };
 
-const AvailabilityBlockDisplay = ({ block, siteColor, onClick }) => {
-    const metrics = computeBlockMetrics(block.start_time, block.end_time);
+const AvailabilityBlockDisplay = ({ block, siteColor, onClick, dayStartMinutes, dayEndMinutes }) => {
+    const metrics = computeBlockMetrics(block.start_time, block.end_time, dayStartMinutes, dayEndMinutes);
 
     return (
         <Box
@@ -136,12 +125,14 @@ AvailabilityBlockDisplay.propTypes = {
         title: PropTypes.string
     }).isRequired,
     siteColor: PropTypes.string.isRequired,
-    onClick: PropTypes.func
+    onClick: PropTypes.func,
+    dayStartMinutes: PropTypes.number.isRequired,
+    dayEndMinutes: PropTypes.number.isRequired
 };
 
 
-const EventDisplay = ({ event, siteColor, onHover, onClick }) => {
-    const metrics = computeBlockMetrics(event.start_time, event.end_time);
+const EventDisplay = ({ event, siteColor, onHover, onClick, dayStartMinutes, dayEndMinutes }) => {
+    const metrics = computeBlockMetrics(event.start_time, event.end_time, dayStartMinutes, dayEndMinutes);
     const [isHovered, setIsHovered] = useState(false);
 
     return (
@@ -245,10 +236,23 @@ EventDisplay.propTypes = {
     }).isRequired,
     siteColor: PropTypes.string.isRequired,
     onHover: PropTypes.func,
-    onClick: PropTypes.func
+    onClick: PropTypes.func,
+    dayStartMinutes: PropTypes.number.isRequired,
+    dayEndMinutes: PropTypes.number.isRequired
 };
 
-const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClose, onCreateEvent, onCreateAvailability }) => {
+const DayDetailsModal = ({ 
+    open, 
+    date, 
+    events, 
+    availabilityBlocks, 
+    sites, 
+    onClose, 
+    onCreateEvent, 
+    onCreateAvailability,
+    operatingStartHour = 6,
+    operatingEndHour = 22
+}) => {
     const theme = useTheme();
     const [view, setView] = useState('timeline'); // 'timeline' | 'chooser' | 'createEvent' | 'createAvailability' | 'editEvent' | 'editAvailability'
     const [hoveredEventId, setHoveredEventId] = useState(null);
@@ -277,7 +281,54 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
         return availabilityBlocks.filter(b => moment(b.date).format('YYYY-MM-DD') === dateKey);
     }, [availabilityBlocks, dateKey]);
 
-    const timelineHeight = ((DAY_END_MINUTES - DAY_START_MINUTES) / 60) * HOUR_HEIGHT;
+    // Calculate extended timeline based on events outside operating hours
+    const { actualStartHour, actualEndHour, dayStartMinutes, dayEndMinutes } = useMemo(() => {
+        // Parse operating hours - floor the start hour, ceil the end hour
+        const parseHour = (timeValue) => {
+            if (typeof timeValue === 'string') {
+                const [hours] = timeValue.split(':').map(Number);
+                return hours;
+            }
+            return timeValue;
+        };
+        
+        let minHour = Math.floor(parseHour(operatingStartHour));
+        let maxHour = Math.ceil(parseHour(operatingEndHour));
+
+        // Check all events for times outside operating hours
+        [...dayEvents, ...dayAvailability].forEach(item => {
+            const startTime = item.start_time;
+            const endTime = item.end_time;
+            
+            if (startTime && typeof startTime === 'string') {
+                const [startHour] = startTime.split(':').map(Number);
+                if (!isNaN(startHour) && startHour < minHour) {
+                    minHour = Math.floor(startHour);
+                }
+            }
+            
+            if (endTime && typeof endTime === 'string') {
+                const [endHour] = endTime.split(':').map(Number);
+                if (!isNaN(endHour) && endHour > maxHour) {
+                    maxHour = Math.ceil(endHour);
+                }
+            }
+        });
+
+        return {
+            actualStartHour: minHour,
+            actualEndHour: maxHour,
+            dayStartMinutes: minHour * 60,
+            dayEndMinutes: maxHour * 60
+        };
+    }, [dayEvents, dayAvailability, operatingStartHour, operatingEndHour]);
+
+    const HOURS = useMemo(() => {
+        return Array.from({ length: actualEndHour - actualStartHour }, (_, idx) => actualStartHour + idx);
+    }, [actualStartHour, actualEndHour]);
+
+    const HOUR_HEIGHT = 60;
+    const timelineHeight = ((dayEndMinutes - dayStartMinutes) / 60) * HOUR_HEIGHT;
 
     const handleClose = () => {
         setView('timeline');
@@ -426,6 +477,8 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                     block={block}
                     siteColor={sites.find(s => s.id === (block.site_id || block.site))?.color_tag || 'rgb(146, 0, 32)'}
                     onClick={handleAvailabilityClick}
+                    dayStartMinutes={dayStartMinutes}
+                    dayEndMinutes={dayEndMinutes}
                 />
             ))}
 
@@ -437,6 +490,8 @@ const DayDetailsModal = ({ open, date, events, availabilityBlocks, sites, onClos
                     siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
                     onHover={setHoveredEventId}
                     onClick={handleEventClick}
+                    dayStartMinutes={dayStartMinutes}
+                    dayEndMinutes={dayEndMinutes}
                 />
             ))}
             </Box>
@@ -760,7 +815,9 @@ DayDetailsModal.propTypes = {
     sites: PropTypes.arrayOf(PropTypes.object),
     onClose: PropTypes.func.isRequired,
     onCreateEvent: PropTypes.func,
-    onCreateAvailability: PropTypes.func
+    onCreateAvailability: PropTypes.func,
+    operatingStartHour: PropTypes.number,
+    operatingEndHour: PropTypes.number
 };
 
 DayDetailsModal.defaultProps = {
@@ -769,7 +826,9 @@ DayDetailsModal.defaultProps = {
     availabilityBlocks: [],
     sites: [],
     onCreateEvent: undefined,
-    onCreateAvailability: undefined
+    onCreateAvailability: undefined,
+    operatingStartHour: 6,
+    operatingEndHour: 22
 };
 
 export default DayDetailsModal;

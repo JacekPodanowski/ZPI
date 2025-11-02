@@ -42,3 +42,8 @@ export const fetchMe = async () => {
     const response = await apiClient.get('/users/me/');
     return response.data;
 };
+
+export const updateUserPreferences = async (preferences) => {
+    const response = await apiClient.patch('/users/me/', { preferences });
+    return response.data;
+};

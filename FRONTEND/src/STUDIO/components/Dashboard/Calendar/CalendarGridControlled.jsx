@@ -8,6 +8,8 @@ import { alpha } from '@mui/material/styles';
 import { EventBlock, CollapsedEventsBlock, COLLAPSE_THRESHOLD } from './EventDisplay';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 import TemplateConfirmationModal from '../Templates/TemplateConfirmationModal';
+import TimeInput from '../../../../components/TimeInput';
+import { useToast } from '../../../../contexts/ToastContext';
 
 // Controlled-only view of the calendar grid; all state comes from props.
 const CalendarGridControlled = ({
@@ -20,7 +22,11 @@ const CalendarGridControlled = ({
     onMonthChange,
     onSiteSelect,
     draggingTemplate, // NEW: receive dragging state from parent
-    onApplyTemplate // NEW: callback for applying templates
+    onApplyTemplate, // NEW: callback for applying templates
+    operatingStartHour: propOperatingStartHour,
+    operatingEndHour: propOperatingEndHour,
+    onOperatingStartHourChange,
+    onOperatingEndHourChange
 }) => {
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredEventDayKey, setHoveredEventDayKey] = useState(null); // Track which day the hovered event is in
@@ -36,13 +42,18 @@ const CalendarGridControlled = ({
     const [pendingTemplate, setPendingTemplate] = useState(null);
     const [pendingTargetDate, setPendingTargetDate] = useState(null);
     
-    // Operating hours state
-    const [operatingStartHour, setOperatingStartHour] = useState(6);
-    const [operatingEndHour, setOperatingEndHour] = useState(22);
-    const [editingStartHour, setEditingStartHour] = useState(false);
-    const [editingEndHour, setEditingEndHour] = useState(false);
+    // Operating hours - use props if provided, otherwise use defaults
+    const operatingStartHour = propOperatingStartHour ?? '06:00';
+    const operatingEndHour = propOperatingEndHour ?? '22:00';
+    
+    const addToast = useToast();
 
     const currentMonthMoment = useMemo(() => moment(currentMonth), [currentMonth]);
+    
+    // Check if we're viewing the current month
+    const isCurrentMonth = useMemo(() => {
+        return currentMonthMoment.isSame(moment(), 'month');
+    }, [currentMonthMoment]);
 
     const calendarDays = useMemo(() => {
         const startOfMonth = currentMonthMoment.clone().startOf('month');
@@ -108,46 +119,40 @@ const CalendarGridControlled = ({
         onMonthChange?.(today);
     };
     
-    const handleStartHourChange = (e) => {
-        const value = e.target.value;
-        // Allow user to type freely, we'll parse on blur
-        // Extract just the hour number (first 1-2 digits before :)
-        const match = value.match(/^(\d{1,2})/);
-        if (match) {
-            const hour = parseInt(match[1]);
-            if (!isNaN(hour) && hour >= 0 && hour < 24) {
-                setOperatingStartHour(hour);
-            }
+    const handleStartHourChange = (newHour) => {
+        if (onOperatingStartHourChange) {
+            onOperatingStartHourChange(newHour);
         }
     };
     
-    const handleEndHourChange = (e) => {
-        const value = e.target.value;
-        // Allow user to type freely, we'll parse on blur
-        // Extract just the hour number (first 1-2 digits before :)
-        const match = value.match(/^(\d{1,2})/);
-        if (match) {
-            const hour = parseInt(match[1]);
-            if (!isNaN(hour) && hour >= 0 && hour <= 24) {
-                setOperatingEndHour(hour);
-            }
+    const handleEndHourChange = (newHour) => {
+        if (onOperatingEndHourChange) {
+            onOperatingEndHourChange(newHour);
         }
     };
     
-    const handleStartHourBlur = () => {
-        // Validate on blur
-        if (operatingStartHour >= operatingEndHour) {
-            setOperatingStartHour(operatingEndHour - 1);
+    const validateStartHour = (hours, minutes) => {
+        // Parse end hour if it's in HH:MM format
+        const endHourNum = typeof operatingEndHour === 'string' 
+            ? parseInt(operatingEndHour.split(':')[0], 10) 
+            : operatingEndHour;
+            
+        if (hours >= endHourNum) {
+            return `Godzina rozpoczęcia musi być wcześniejsza niż godzina zakończenia (${endHourNum}:00).`;
         }
-        setEditingStartHour(false);
+        return null;
     };
     
-    const handleEndHourBlur = () => {
-        // Validate on blur
-        if (operatingEndHour <= operatingStartHour) {
-            setOperatingEndHour(operatingStartHour + 1);
+    const validateEndHour = (hours, minutes) => {
+        // Parse start hour if it's in HH:MM format
+        const startHourNum = typeof operatingStartHour === 'string' 
+            ? parseInt(operatingStartHour.split(':')[0], 10) 
+            : operatingStartHour;
+            
+        if (hours <= startHourNum) {
+            return `Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia (${startHourNum}:00).`;
         }
-        setEditingEndHour(false);
+        return null;
     };
 
     const handleMonthChange = (direction) => {
@@ -428,173 +433,60 @@ const CalendarGridControlled = ({
                         minHeight: 38
                     }}
                 >
-                    {/* Now Button */}
-                    <Button
-                        onClick={handleGoToToday}
-                        size="small"
-                        sx={{
-                            px: 2,
-                            py: 0.75,
-                            borderRadius: 2,
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: 'primary.main',
-                            backgroundColor: 'rgba(146, 0, 32, 0.08)',
-                            border: '1px solid',
-                            borderColor: 'rgba(146, 0, 32, 0.2)',
-                            textTransform: 'none',
-                            transition: 'all 200ms ease',
-                            '&:hover': {
-                                backgroundColor: 'rgba(146, 0, 32, 0.15)',
-                                borderColor: 'rgba(146, 0, 32, 0.4)',
-                                transform: 'translateY(-1px)',
-                                boxShadow: '0 2px 8px rgba(146, 0, 32, 0.15)'
-                            }
-                        }}
-                    >
-                        Now
-                    </Button>
+                    {/* Now Button - Only visible when not on current month */}
+                    <AnimatePresence>
+                        {!isCurrentMonth && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8, x: -10 }}
+                                animate={{ opacity: 1, scale: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.8, x: -10 }}
+                                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                            >
+                                <Button
+                                    onClick={handleGoToToday}
+                                    size="small"
+                                    sx={{
+                                        px: 2,
+                                        py: 0.75,
+                                        borderRadius: 2,
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        color: 'primary.main',
+                                        backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                        border: '1px solid',
+                                        borderColor: 'rgba(146, 0, 32, 0.2)',
+                                        textTransform: 'none',
+                                        transition: 'all 200ms ease',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(146, 0, 32, 0.15)',
+                                            borderColor: 'rgba(146, 0, 32, 0.4)',
+                                            transform: 'translateY(-1px)',
+                                            boxShadow: '0 2px 8px rgba(146, 0, 32, 0.15)'
+                                        }
+                                    }}
+                                >
+                                    Now
+                                </Button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                     
-                    {/* Operating Hours - Minimalist Design */}
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                        }}
-                    >
-                        {/* Start Hour */}
-                        <WbSunny 
-                            sx={{ 
-                                fontSize: 20, 
-                                color: 'rgba(0, 0, 0, 0.7)',
-                                flexShrink: 0
-                            }} 
-                        />
-                        {editingStartHour ? (
-                            <TextField
-                                autoFocus
-                                type="text"
-                                value={`${operatingStartHour.toString().padStart(2, '0')}:00`}
-                                onChange={handleStartHourChange}
-                                onBlur={handleStartHourBlur}
-                                size="small"
-                                inputProps={{
-                                    style: { 
-                                        textAlign: 'center',
-                                        fontSize: '14px',
-                                        fontWeight: 500,
-                                        padding: '4px 4px'
-                                    }
-                                }}
-                                sx={{
-                                    width: 52,
-                                    height: 28,
-                                    '& .MuiOutlinedInput-root': {
-                                        height: 28,
-                                        borderRadius: 1,
-                                        '& fieldset': {
-                                            border: '1px solid',
-                                            borderColor: 'primary.main'
-                                        },
-                                        '& input': {
-                                            padding: '4px 4px'
-                                        }
-                                    }
-                                }}
-                            />
-                        ) : (
-                            <Typography
-                                onClick={() => setEditingStartHour(true)}
-                                sx={{
-                                    fontSize: '14px',
-                                    fontWeight: 500,
-                                    color: 'text.primary',
-                                    cursor: 'pointer',
-                                    width: 52,
-                                    height: 28,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    textAlign: 'center',
-                                    borderRadius: 1,
-                                    transition: 'all 150ms ease',
-                                    '&:hover': {
-                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                                        color: 'primary.main'
-                                    }
-                                }}
-                            >
-                                {`${operatingStartHour.toString().padStart(2, '0')}:00`}
-                            </Typography>
-                        )}
-                        
-                        {/* End Hour */}
-                        <NightsStay 
-                            sx={{ 
-                                fontSize: 20, 
-                                color: 'rgba(0, 0, 0, 0.7)',
-                                flexShrink: 0
-                            }} 
-                        />
-                        {editingEndHour ? (
-                            <TextField
-                                autoFocus
-                                type="text"
-                                value={`${operatingEndHour.toString().padStart(2, '0')}:00`}
-                                onChange={handleEndHourChange}
-                                onBlur={handleEndHourBlur}
-                                size="small"
-                                inputProps={{
-                                    style: { 
-                                        textAlign: 'center',
-                                        fontSize: '14px',
-                                        fontWeight: 500,
-                                        padding: '4px 4px'
-                                    }
-                                }}
-                                sx={{
-                                    width: 52,
-                                    height: 28,
-                                    '& .MuiOutlinedInput-root': {
-                                        height: 28,
-                                        borderRadius: 1,
-                                        '& fieldset': {
-                                            border: '1px solid',
-                                            borderColor: 'primary.main'
-                                        },
-                                        '& input': {
-                                            padding: '4px 4px'
-                                        }
-                                    }
-                                }}
-                            />
-                        ) : (
-                            <Typography
-                                onClick={() => setEditingEndHour(true)}
-                                sx={{
-                                    fontSize: '14px',
-                                    fontWeight: 500,
-                                    color: 'text.primary',
-                                    cursor: 'pointer',
-                                    width: 52,
-                                    height: 28,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    textAlign: 'center',
-                                    borderRadius: 1,
-                                    transition: 'all 150ms ease',
-                                    '&:hover': {
-                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                                        color: 'primary.main'
-                                    }
-                                }}
-                            >
-                                {`${operatingEndHour.toString().padStart(2, '0')}:00`}
-                            </Typography>
-                        )}
-                    </Box>
+                    {/* Operating Hours - Using TimeInput Component */}
+                    <TimeInput
+                        value={operatingStartHour}
+                        onChange={handleStartHourChange}
+                        onValidationError={(msg) => addToast(msg, { variant: 'error', duration: 4000 })}
+                        validator={validateStartHour}
+                        icon={WbSunny}
+                    />
+                    
+                    <TimeInput
+                        value={operatingEndHour}
+                        onChange={handleEndHourChange}
+                        onValidationError={(msg) => addToast(msg, { variant: 'error', duration: 4000 })}
+                        validator={validateEndHour}
+                        icon={NightsStay}
+                    />
                 </Box>
 
                 <IconButton
@@ -1068,7 +960,11 @@ CalendarGridControlled.propTypes = {
     onMonthChange: PropTypes.func,
     onSiteSelect: PropTypes.func,
     draggingTemplate: PropTypes.object, // NEW: template being dragged
-    onApplyTemplate: PropTypes.func // NEW: callback for applying templates
+    onApplyTemplate: PropTypes.func, // NEW: callback for applying templates
+    operatingStartHour: PropTypes.number,
+    operatingEndHour: PropTypes.number,
+    onOperatingStartHourChange: PropTypes.func,
+    onOperatingEndHourChange: PropTypes.func
 };
 
 CalendarGridControlled.defaultProps = {
@@ -1078,7 +974,11 @@ CalendarGridControlled.defaultProps = {
     onMonthChange: () => {},
     onSiteSelect: () => {},
     draggingTemplate: null,
-    onApplyTemplate: () => {}
+    onApplyTemplate: () => {},
+    operatingStartHour: 6,
+    operatingEndHour: 22,
+    onOperatingStartHourChange: () => {},
+    onOperatingEndHourChange: () => {}
 };
 
 export default CalendarGridControlled;

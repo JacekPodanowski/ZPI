@@ -54,6 +54,11 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     avatar = models.CharField(max_length=500, blank=True, null=True, help_text='URL to user avatar image')
     account_type = models.CharField(max_length=10, choices=AccountType.choices, default=AccountType.FREE)
     source_tag = models.CharField(max_length=10, choices=SourceTag.choices, default=SourceTag.WEB)
+    preferences = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='User preferences: {"theme": {"mode": "dark", "themeId": "studio"}, "calendar": {"operating_start_hour": 6, "operating_end_hour": 22}}'
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)

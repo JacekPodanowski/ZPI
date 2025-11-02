@@ -8,8 +8,10 @@ import CalendarGridControlled from '../../components/Dashboard/Calendar/Calendar
 import RealTemplateBrowser from '../../components/Dashboard/Templates/RealTemplateBrowser';
 import DayDetailsModal from '../../components/Dashboard/Calendar/DayDetailsModal';
 import { getSiteColorHex } from '../../../theme/siteColors';
+import { usePreferences } from '../../../contexts/PreferencesContext';
 
 const CreatorCalendarApp = () => {
+    const { calendar, updateCalendarPreferences } = usePreferences();
     const [sites, setSites] = useState([]);
     const [events, setEvents] = useState([]);
     const [availabilityBlocks, setAvailabilityBlocks] = useState([]);
@@ -19,7 +21,20 @@ const CreatorCalendarApp = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [draggingTemplate, setDraggingTemplate] = useState(null); // Track template being dragged
+    const [draggingTemplate, setDraggingTemplate] = useState(null);
+    
+    // Get operating hours directly from preferences
+    const operatingStartHour = calendar?.operating_start_hour ?? '06:00';
+    const operatingEndHour = calendar?.operating_end_hour ?? '22:00';
+    
+    // Handlers that update preferences
+    const handleOperatingStartHourChange = (newHour) => {
+        updateCalendarPreferences({ operating_start_hour: newHour });
+    };
+    
+    const handleOperatingEndHourChange = (newHour) => {
+        updateCalendarPreferences({ operating_end_hour: newHour });
+    };
 
     // Fetch sites and events from API
     useEffect(() => {
@@ -323,6 +338,10 @@ const CreatorCalendarApp = () => {
                             onSiteSelect={handleSiteSelect}
                             draggingTemplate={draggingTemplate}
                             onApplyTemplate={handleApplyTemplate}
+                            operatingStartHour={operatingStartHour}
+                            operatingEndHour={operatingEndHour}
+                            onOperatingStartHourChange={handleOperatingStartHourChange}
+                            onOperatingEndHourChange={handleOperatingEndHourChange}
                         />
                     </motion.div>
                 </Box>
@@ -337,6 +356,8 @@ const CreatorCalendarApp = () => {
                 onClose={() => setModalOpen(false)}
                 onCreateEvent={handleCreateEvent}
                 onCreateAvailability={handleCreateAvailability}
+                operatingStartHour={operatingStartHour}
+                operatingEndHour={operatingEndHour}
             />
         </Box>
     );

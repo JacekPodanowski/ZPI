@@ -164,7 +164,7 @@ const mergeWithBase = (baseTheme, config) => {
   return applyColorOverrides(merged, config);
 };
 
-export function ThemeProvider({ children, initialTheme = defaultThemeId, initialMode }) {
+export function ThemeProvider({ children, initialTheme = defaultThemeId, initialMode, onThemeChange, onModeChange }) {
   const [customThemes, setCustomThemes] = useState(() => {
     const stored = readStorage(STORAGE_KEYS.customThemes, null);
     if (!stored) return [];
@@ -360,15 +360,20 @@ export function ThemeProvider({ children, initialTheme = defaultThemeId, initial
       }, 400);
     }
     
-    setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
-  }, []);
+    setMode((prev) => {
+      const newMode = prev === 'light' ? 'dark' : 'light';
+      onModeChange?.(newMode);
+      return newMode;
+    });
+  }, [onModeChange]);
 
   const selectTheme = useCallback((themeId) => {
     if (themeId === themeDefinition.id) return;
     if (themeDefinitions[themeId] || customThemeMap[themeId]) {
       setCurrentThemeId(themeId);
+      onThemeChange?.(themeId);
     }
-  }, [themeDefinition.id, customThemeMap]);
+  }, [themeDefinition.id, customThemeMap, onThemeChange]);
 
   const setNestedValue = (target, path, value) => {
     const segments = path.split('.');

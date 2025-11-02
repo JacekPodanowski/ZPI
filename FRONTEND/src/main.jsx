@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 import SiteApp from './SITES/SiteApp';
 import { AuthProvider } from './contexts/AuthContext';
+import { PreferencesProvider } from './contexts/PreferencesContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider } from './theme/ThemeProvider';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -36,15 +37,17 @@ if (buildTarget === 'SITE') {
     <ErrorBoundary>
       <React.StrictMode>
         <GoogleOAuthProvider clientId={googleClientId || 'missing-google-client-id'}>
-          <ThemeProvider initialTheme="studio">
-            <BrowserRouter>
-              <AuthProvider>
-                <ToastProvider>
-                  <App />
-                </ToastProvider>
-              </AuthProvider>
-            </BrowserRouter>
-          </ThemeProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <ThemeProvider initialTheme="studio">
+                <PreferencesProvider>
+                  <ToastProvider>
+                    <App />
+                  </ToastProvider>
+                </PreferencesProvider>
+              </ThemeProvider>
+            </AuthProvider>
+          </BrowserRouter>
         </GoogleOAuthProvider>
       </React.StrictMode>
     </ErrorBoundary>
