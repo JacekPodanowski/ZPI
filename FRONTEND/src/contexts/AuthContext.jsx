@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchMe, googleLogin as googleLoginService, login as loginService, logout as logoutService, register as registerService, updateUserPreferences } from '../services/authService';
+import { clearUserCache } from '../utils/cache';
 
 const AuthContext = createContext(null);
 
@@ -88,10 +89,14 @@ export const AuthProvider = ({ children }) => {
     );
 
     const logout = useCallback(() => {
+        // Clear user-specific cache on logout
+        if (user?.id) {
+            clearUserCache(user.id);
+        }
         logoutService();
         setUser(null);
         navigate('/', { replace: true });
-    }, [navigate]);
+    }, [navigate, user?.id]);
 
     const updatePreferences = useCallback(async (preferences) => {
         try {

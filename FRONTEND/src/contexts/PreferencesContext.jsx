@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { useAuth } from './AuthContext';
 import useDebounce from '../hooks/useDebounce';
 import useTheme from '../theme/useTheme';
+import { getCache, setCache, CACHE_KEYS } from '../utils/cache';
 
 const PreferencesContext = createContext(null);
 
@@ -37,10 +38,18 @@ export const PreferencesProvider = ({ children }) => {
     const { user, updatePreferences: updateUserPreferences, isAuthenticated } = useAuth();
     const theme = useTheme();
     
-    // Initialize preferences from user data or defaults
+    // Initialize preferences from cache, user data, or defaults
     const [preferences, setPreferences] = useState(() => {
+        // Try cache first for instant load
+        const cacheKey = user?.id ? `${CACHE_KEYS.USER_PREFERENCES}_${user.id}` : CACHE_KEYS.USER_PREFERENCES;
+        const cached = getCache(cacheKey);
+        if (cached) {
+            return cached;
+        }
+        
+        // Fall back to user data
         if (user?.preferences && Object.keys(user.preferences).length > 0) {
-            return {
+            const prefs = {
                 ...DEFAULT_PREFERENCES,
                 ...user.preferences,
                 theme: {
@@ -52,15 +61,18 @@ export const PreferencesProvider = ({ children }) => {
                     ...(user.preferences.calendar || {})
                 }
             };
+            // Cache it immediately
+            setCache(cacheKey, prefs, 1000 * 60 * 60 * 24); // 24 hour cache
+            return prefs;
         }
         return DEFAULT_PREFERENCES;
     });
 
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [hasInitialized, setHasInitialized] = useState(false);
     
-    // Debounce preferences to avoid too many API calls
-    const debouncedPreferences = useDebounce(preferences, 1000);
+    // Debounce theme preferences to avoid too many API calls during theme selection
+    // Calendar preferences are saved immediately (no debounce)
+    const debouncedThemePreferences = useDebounce(preferences.theme, 1000);
 
     // Sync theme from ThemeProvider to preferences on mount and when theme changes
     useEffect(() => {
@@ -74,7 +86,6 @@ export const PreferencesProvider = ({ children }) => {
                         mode: theme.mode
                     }
                 }));
-                setHasUnsavedChanges(true);
             }
         }
     }, [theme?.themeId, theme?.mode]);
@@ -97,7 +108,7 @@ export const PreferencesProvider = ({ children }) => {
     // Only sync on initial load, not on every user.preferences change to avoid overwriting local edits
     useEffect(() => {
         if (user?.preferences && Object.keys(user.preferences).length > 0 && !hasInitialized) {
-            setPreferences({
+            const prefs = {
                 ...DEFAULT_PREFERENCES,
                 ...user.preferences,
                 theme: {
@@ -108,32 +119,39 @@ export const PreferencesProvider = ({ children }) => {
                     ...DEFAULT_PREFERENCES.calendar,
                     ...(user.preferences.calendar || {})
                 }
-            });
-            setHasUnsavedChanges(false);
+            };
+            setPreferences(prefs);
+            
+            // Cache the preferences
+            const cacheKey = user.id ? `${CACHE_KEYS.USER_PREFERENCES}_${user.id}` : CACHE_KEYS.USER_PREFERENCES;
+            setCache(cacheKey, prefs, 1000 * 60 * 60 * 24); // 24 hour cache
+            
             setHasInitialized(true);
         }
     }, [user?.id, hasInitialized]); // Only depend on user ID, not preferences
 
-    // Persist debounced preferences to backend
+    // Persist debounced THEME preferences to backend (theme changes are debounced)
     useEffect(() => {
-        const persistPreferences = async () => {
-            if (!isAuthenticated || !hasUnsavedChanges) {
+        const persistThemePreferences = async () => {
+            if (!isAuthenticated || !hasInitialized) {
                 return;
             }
 
             try {
-                await updateUserPreferences(debouncedPreferences);
-                setHasUnsavedChanges(false);
+                await updateUserPreferences({
+                    ...preferences,
+                    theme: debouncedThemePreferences
+                });
             } catch (error) {
-                console.error('[PreferencesContext] Failed to save preferences:', error);
+                console.error('[PreferencesContext] Failed to save theme preferences:', error);
             }
         };
 
-        persistPreferences();
-    }, [debouncedPreferences, isAuthenticated, hasUnsavedChanges, updateUserPreferences]);
+        persistThemePreferences();
+    }, [debouncedThemePreferences, isAuthenticated, hasInitialized]);
 
     /**
-     * Update theme preferences
+     * Update theme preferences (debounced save via useEffect above)
      */
     const updateThemePreferences = useCallback((updates) => {
         setPreferences(prev => ({
@@ -143,41 +161,77 @@ export const PreferencesProvider = ({ children }) => {
                 ...updates
             }
         }));
-        setHasUnsavedChanges(true);
+        // Theme preferences are saved via debounced effect
     }, []);
 
     /**
-     * Update calendar preferences
+     * Update calendar preferences - saves immediately (no debounce)
      */
-    const updateCalendarPreferences = useCallback((updates) => {
-        setPreferences(prev => ({
-            ...prev,
+    const updateCalendarPreferences = useCallback(async (updates) => {
+        const newPreferences = {
+            ...preferences,
             calendar: {
-                ...prev.calendar,
+                ...preferences.calendar,
                 ...updates
             }
-        }));
-        setHasUnsavedChanges(true);
-    }, []); // No dependencies needed since we use the functional update form
+        };
+        
+        setPreferences(newPreferences);
+        
+        // Update cache immediately for instant response
+        const cacheKey = user?.id ? `${CACHE_KEYS.USER_PREFERENCES}_${user.id}` : CACHE_KEYS.USER_PREFERENCES;
+        setCache(cacheKey, newPreferences, 1000 * 60 * 60 * 24); // 24 hour cache
+        
+        // Save to backend in background (no debounce for calendar changes)
+        if (isAuthenticated) {
+            try {
+                await updateUserPreferences(newPreferences);
+            } catch (error) {
+                console.error('[PreferencesContext] Failed to save calendar preferences:', error);
+            }
+        }
+    }, [preferences, isAuthenticated, updateUserPreferences, user?.id]);
 
     /**
      * Update any preferences (for bulk updates)
      */
-    const updatePreferences = useCallback((updates) => {
-        setPreferences(prev => ({
-            ...prev,
+    const updatePreferences = useCallback(async (updates) => {
+        const newPreferences = {
+            ...preferences,
             ...updates
-        }));
-        setHasUnsavedChanges(true);
-    }, []);
+        };
+        
+        setPreferences(newPreferences);
+        
+        // Update cache immediately
+        const cacheKey = user?.id ? `${CACHE_KEYS.USER_PREFERENCES}_${user.id}` : CACHE_KEYS.USER_PREFERENCES;
+        setCache(cacheKey, newPreferences, 1000 * 60 * 60 * 24); // 24 hour cache
+        
+        // Save to backend in background
+        if (isAuthenticated) {
+            try {
+                await updateUserPreferences(newPreferences);
+            } catch (error) {
+                console.error('[PreferencesContext] Failed to save preferences:', error);
+            }
+        }
+    }, [preferences, isAuthenticated, updateUserPreferences, user?.id]);
 
     /**
      * Reset preferences to defaults
      */
-    const resetPreferences = useCallback(() => {
+    const resetPreferences = useCallback(async () => {
         setPreferences(DEFAULT_PREFERENCES);
-        setHasUnsavedChanges(true);
-    }, []);
+        
+        // Save immediately to backend
+        if (isAuthenticated) {
+            try {
+                await updateUserPreferences(DEFAULT_PREFERENCES);
+            } catch (error) {
+                console.error('[PreferencesContext] Failed to reset preferences:', error);
+            }
+        }
+    }, [isAuthenticated, updateUserPreferences]);
 
     const value = useMemo(
         () => ({
@@ -187,16 +241,14 @@ export const PreferencesProvider = ({ children }) => {
             updateThemePreferences,
             updateCalendarPreferences,
             updatePreferences,
-            resetPreferences,
-            hasUnsavedChanges
+            resetPreferences
         }),
         [
             preferences,
             updateThemePreferences,
             updateCalendarPreferences,
             updatePreferences,
-            resetPreferences,
-            hasUnsavedChanges
+            resetPreferences
         ]
     );
 

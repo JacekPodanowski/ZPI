@@ -9,9 +9,12 @@ import RealTemplateBrowser from '../../components/Dashboard/Templates/RealTempla
 import DayDetailsModal from '../../components/Dashboard/Calendar/DayDetailsModal';
 import { getSiteColorHex } from '../../../theme/siteColors';
 import { usePreferences } from '../../../contexts/PreferencesContext';
+import { getCache, setCache, removeCache, CACHE_KEYS } from '../../../utils/cache';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const CreatorCalendarApp = () => {
     const { calendar, updateCalendarPreferences } = usePreferences();
+    const { user } = useAuth();
     const [sites, setSites] = useState([]);
     const [events, setEvents] = useState([]);
     const [availabilityBlocks, setAvailabilityBlocks] = useState([]);
@@ -42,12 +45,29 @@ const CreatorCalendarApp = () => {
 
         const load = async () => {
             try {
-                setLoading(true);
+                // Try loading from cache first for instant display
+                const userId = user?.id;
+                const cachedSites = userId ? getCache(`${CACHE_KEYS.SITES}_${userId}`) : null;
+                const cachedEvents = userId ? getCache(`${CACHE_KEYS.EVENTS}_${userId}`) : null;
+                const cachedAvailability = userId ? getCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`) : null;
                 
-                // Fetch sites
+                if (cachedSites && cachedEvents) {
+                    // Show cached data immediately
+                    setSites(cachedSites);
+                    setEvents(cachedEvents);
+                    if (cachedAvailability) {
+                        setAvailabilityBlocks(cachedAvailability);
+                    }
+                    setLoading(false);
+                }
+                
+                // Fetch fresh data in background
                 const sitesResponse = await fetchSites();
                 if (active) {
                     setSites(sitesResponse);
+                    if (userId) {
+                        setCache(`${CACHE_KEYS.SITES}_${userId}`, sitesResponse, 1000 * 60 * 5); // 5 min cache
+                    }
                     
                     // Fetch events for all sites
                     const eventsResponse = await fetchEvents();
@@ -64,6 +84,9 @@ const CreatorCalendarApp = () => {
                             end_time: new Date(event.end_time).toTimeString().substring(0, 5)
                         }));
                         setEvents(transformedEvents);
+                        if (userId) {
+                            setCache(`${CACHE_KEYS.EVENTS}_${userId}`, transformedEvents, 1000 * 60 * 5); // 5 min cache
+                        }
                     }
                     
                     // Fetch availability blocks
@@ -79,6 +102,9 @@ const CreatorCalendarApp = () => {
                             }));
                             console.log('Transformed availability blocks:', transformedAvailability);
                             setAvailabilityBlocks(transformedAvailability);
+                            if (userId) {
+                                setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, transformedAvailability, 1000 * 60 * 5); // 5 min cache
+                            }
                         }
                     } catch (availError) {
                         console.warn('Could not fetch availability blocks:', availError);
@@ -137,7 +163,14 @@ const CreatorCalendarApp = () => {
                 end_time: new Date(newEvent.end_time).toTimeString().substring(0, 5)
             };
             
-            setEvents(prevEvents => [...prevEvents, transformedEvent]);
+            setEvents(prevEvents => {
+                const updatedEvents = [...prevEvents, transformedEvent];
+                // Update cache immediately
+                if (user?.id) {
+                    setCache(`${CACHE_KEYS.EVENTS}_${user.id}`, updatedEvents, 1000 * 60 * 5);
+                }
+                return updatedEvents;
+            });
         } catch (error) {
             console.error('Error creating event:', error);
             setError('Nie udało się utworzyć wydarzenia. Spróbuj ponownie.');
@@ -164,7 +197,14 @@ const CreatorCalendarApp = () => {
                 site_id: newBlock.site
             };
             
-            setAvailabilityBlocks(prevBlocks => [...prevBlocks, transformedBlock]);
+            setAvailabilityBlocks(prevBlocks => {
+                const updatedBlocks = [...prevBlocks, transformedBlock];
+                // Update cache immediately
+                if (user?.id) {
+                    setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${user.id}`, updatedBlocks, 1000 * 60 * 5);
+                }
+                return updatedBlocks;
+            });
         } catch (error) {
             console.error('Error creating availability block:', error);
             setError('Nie udało się utworzyć bloku dostępności. Spróbuj ponownie.');
@@ -201,7 +241,14 @@ const CreatorCalendarApp = () => {
                     try {
                         await deleteEvent(event.id);
                         // Remove from local state
-                        setEvents(prevEvents => prevEvents.filter(e => e.id !== event.id));
+                        setEvents(prevEvents => {
+                            const updatedEvents = prevEvents.filter(e => e.id !== event.id);
+                            // Update cache immediately
+                            if (user?.id) {
+                                setCache(`${CACHE_KEYS.EVENTS}_${user.id}`, updatedEvents, 1000 * 60 * 5);
+                            }
+                            return updatedEvents;
+                        });
                     } catch (deleteError) {
                         console.error('Error deleting event:', deleteError);
                     }
