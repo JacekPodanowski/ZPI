@@ -15,7 +15,8 @@ import {
     Palette as PaletteIcon,
     ViewModule as ViewModuleIcon,
     Warning as WarningIcon,
-    BugReport as BugReportIcon
+    BugReport as BugReportIcon,
+    People as PeopleIcon
 } from '@mui/icons-material';
 import { deleteSite, updateSiteColor, updateSite } from '../../../services/siteService';
 import SiteColorPicker from './SiteColorPicker';
@@ -48,8 +49,8 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
     const [analytics] = useState({
         traffic: Math.floor(Math.random() * 5000) + 500,
         trafficChange: (Math.random() * 40 - 10).toFixed(1),
-        onlineEvents: Math.floor(Math.random() * 20),
-        offlineEvents: Math.floor(Math.random() * 15),
+        totalEvents: Math.floor(Math.random() * 35),
+        teamMembers: 1, // Default to 1
         nextEvent: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000)
     });
 
@@ -705,11 +706,11 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             </Typography>
                         </Box>
 
-                        {/* Online Events */}
+                        {/* Team Members */}
                         <Box
                             onClick={(e) => {
                                 e.stopPropagation();
-                                navigate('/studio/calendar/creator');
+                                navigate(`/studio/team/${site.id}`);
                             }}
                             sx={{
                                 p: 1.5,
@@ -725,20 +726,20 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             }}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-                                <EventAvailableIcon sx={{ fontSize: '0.9rem', color: 'success.main' }} />
+                                <PeopleIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} fontSize="0.7rem">
-                                    Online
+                                    Team
                                 </Typography>
                             </Box>
                             <Typography variant="h6" fontWeight={700} fontSize="1.1rem">
-                                {analytics.onlineEvents}
+                                {analytics.teamMembers}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                                events
+                                {analytics.teamMembers === 1 ? 'member' : 'members'}
                             </Typography>
                         </Box>
 
-                        {/* Offline Events */}
+                        {/* Total Events */}
                         <Box
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -758,16 +759,16 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             }}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-                                <EventBusyIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
+                                <EventAvailableIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} fontSize="0.7rem">
-                                    In-Person
+                                    Events
                                 </Typography>
                             </Box>
                             <Typography variant="h6" fontWeight={700} fontSize="1.1rem">
-                                {analytics.offlineEvents}
+                                {analytics.totalEvents}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                                events
+                                scheduled
                             </Typography>
                         </Box>
                     </Box>

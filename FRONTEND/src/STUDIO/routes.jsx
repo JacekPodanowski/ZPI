@@ -22,6 +22,7 @@ import SiteLabPage from './pages/Lab/SiteLabPage';
 import ToastTestPage from './pages/Lab/ToastTestPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import EditorLabPage from './pages/Lab/EditorLabPage';
+import TeamPage from './pages/Team/TeamPage';
 
 const StudioApp = () => (
   <Routes>
@@ -36,6 +37,9 @@ const StudioApp = () => (
     <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
+      
+      {/* Team management */}
+      <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
 
       {/* Calendar previews for development */}
       <Route path="calendar/public" element={<PublicCalendarPage />} />
