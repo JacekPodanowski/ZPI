@@ -53,7 +53,8 @@ const componentMap = {
 }
 
 const renderModule = (module) => {
-  if (!module?.enabled) return null
+  // Modules are enabled by default (no 'enabled' field needed)
+  if (module?.enabled === false) return null
 
   const Component = componentMap[module.type] || componentMap[module.id]
 
@@ -63,18 +64,18 @@ const renderModule = (module) => {
   }
 
   const children = module.children
-    ?.filter((child) => child?.enabled)
+    ?.filter((child) => child?.enabled !== false)
     ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0))
 
   if (children?.length) {
     return (
-      <Component key={module.id} config={module.config || {}}>
+      <Component key={module.id} config={module.content || {}}>
         {children.map((child) => renderModule(child))}
       </Component>
     )
   }
 
-  return <Component key={module.id} config={module.config || {}} />
+  return <Component key={module.id} config={module.content || {}} />
 }
 
 const SiteRendererPage = () => {
@@ -109,15 +110,26 @@ const SiteRendererPage = () => {
 
   const templateConfig = useMemo(() => {
     if (!config) return null
-    // Support both structures: new (config.config) and old (config.template_config)
-    return config.config ?? config.template_config ?? config
+    // Only support new format: config.site
+    return config.site || config
   }, [config])
 
-  const pages = useMemo(() => templateConfig?.pages ?? {}, [templateConfig])
-  const pageOrder = useMemo(() => (
-    Array.isArray(templateConfig?.pageOrder) ? templateConfig.pageOrder : []
-  ), [templateConfig])
-  const preferredDefaultSlug = templateConfig?.currentPage || DEFAULT_PAGE_SLUG
+  // Convert pages array to object for rendering
+  const pages = useMemo(() => {
+    if (!templateConfig?.pages || !Array.isArray(templateConfig.pages)) return {}
+    
+    return templateConfig.pages.reduce((acc, page) => {
+      acc[page.id] = page
+      return acc
+    }, {})
+  }, [templateConfig])
+
+  const pageOrder = useMemo(() => {
+    if (!templateConfig?.pages || !Array.isArray(templateConfig.pages)) return []
+    return templateConfig.pages.map(p => p.id)
+  }, [templateConfig])
+
+  const preferredDefaultSlug = templateConfig?.entryPointPageId || DEFAULT_PAGE_SLUG
   const siteTitle = templateConfig?.name || config?.name || 'YourEasySite'
 
   useEffect(() => {
@@ -179,7 +191,7 @@ const SiteRendererPage = () => {
 
   const selectedPage = pages[activePageSlug]
   const modulesToRender = selectedPage?.modules
-    ?.filter((module) => module?.enabled)
+    ?.filter((module) => module?.enabled !== false)
     ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0)) || []
 
   console.log('Active page:', activePageSlug)

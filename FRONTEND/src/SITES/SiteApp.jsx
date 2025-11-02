@@ -45,10 +45,11 @@ const componentMap = {
 };
 
 const renderModule = (module) => {
-  if (!module?.enabled) return null;
+  // Modules are enabled by default (no 'enabled' field needed)
+  if (module?.enabled === false) return null
   const Component = componentMap[module.type] || componentMap[module.id];
   if (!Component) return null;
-  return <Component key={module.id} config={module.config || {}} />;
+  return <Component key={module.id} config={module.content || {}} />;
 };
 
 const SiteApp = () => {
@@ -68,7 +69,9 @@ const SiteApp = () => {
     const loadSite = async () => {
       try {
         const siteConfig = await fetchPublicSiteConfig(siteId);
-        setConfig(siteConfig.template_config);
+        // Only support new format: template_config.site
+        const templateConfig = siteConfig.template_config?.site || {};
+        setConfig(templateConfig);
       } catch (err) {
         setError('Could not load site configuration.');
         console.error(err);
@@ -83,16 +86,23 @@ const SiteApp = () => {
   useEffect(() => {
     if (!config) return;
 
-    const pages = config.pages || {};
+    // Convert pages array to object for rendering
+    const pages = Array.isArray(config.pages)
+      ? config.pages.reduce((acc, page) => {
+          acc[page.id] = page;
+          return acc;
+        }, {})
+      : {};
 
     const getPageKeyFromPath = (path) => {
       if (!path) return null;
-      const entry = Object.entries(pages).find(([, page]) => page?.path === path);
+      const entry = Object.entries(pages).find(([, page]) => page?.route === path);
       return entry ? entry[0] : null;
     };
 
     const determineInitialPage = () => {
-      const defaultKey = config.currentPage && pages[config.currentPage] ? config.currentPage : Object.keys(pages)[0];
+      const entryPoint = config.entryPointPageId;
+      const defaultKey = entryPoint && pages[entryPoint] ? entryPoint : Object.keys(pages)[0];
       if (typeof window === 'undefined') {
         return defaultKey;
       }
@@ -120,11 +130,17 @@ const SiteApp = () => {
   useEffect(() => {
     if (!config) return;
 
-    const pages = config.pages || {};
+    // Convert pages array to object for rendering
+    const pages = Array.isArray(config.pages)
+      ? config.pages.reduce((acc, page) => {
+          acc[page.id] = page;
+          return acc;
+        }, {})
+      : {};
 
     const getPageKeyFromPath = (path) => {
       if (!path) return null;
-      const entry = Object.entries(pages).find(([, page]) => page?.path === path);
+      const entry = Object.entries(pages).find(([, page]) => page?.route === path);
       return entry ? entry[0] : null;
     };
 
@@ -149,7 +165,7 @@ const SiteApp = () => {
       if (pageKey && pages[pageKey]) {
         setActivePageKey(pageKey);
         if (typeof window !== 'undefined') {
-          const nextPath = pages[pageKey].path || `/${pageKey}`;
+          const nextPath = pages[pageKey].route || `/${pageKey}`;
           if (window.location.pathname !== nextPath) {
             window.history.pushState({}, '', nextPath);
           }
@@ -168,7 +184,10 @@ const SiteApp = () => {
   }, [config]);
 
   const activePage = config?.pages
-    ? config.pages[activePageKey || config.currentPage || 'home']
+    ? (Array.isArray(config.pages) 
+        ? config.pages.find(p => p.id === (activePageKey || config.entryPointPageId || config.currentPage || 'home'))
+        : config.pages[activePageKey || config.entryPointPageId || config.currentPage || 'home']
+      )
     : null;
 
   if (loading) return <div>Loading Site...</div>;
@@ -176,7 +195,7 @@ const SiteApp = () => {
   if (!config || !activePage) return <div>Site configuration is incomplete.</div>;
 
   const modulesToRender = activePage.modules
-    ?.filter((module) => module?.enabled)
+    ?.filter((module) => module?.enabled !== false)
     ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0)) || [];
 
   return (
