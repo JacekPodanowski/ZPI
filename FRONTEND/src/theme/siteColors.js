@@ -14,7 +14,7 @@ export const SITE_COLOR_PALETTE = [
         hex: '#920020',      // Primary Red
         name: 'Crimson',
         light: '#B8002B',
-        dark: '#6B0018',
+        dark: '#B8002B',
     },
     {
         index: 1,
