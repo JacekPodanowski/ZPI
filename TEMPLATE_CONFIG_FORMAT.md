@@ -292,4 +292,3 @@ Site viewers automatically handle both formats during rendering.
 ---
 
 **Status:** ✅ Active Format (v2.0)
-**Backward Compatibility:** Frontend handles both old and new formats

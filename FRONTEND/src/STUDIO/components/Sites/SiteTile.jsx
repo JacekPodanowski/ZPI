@@ -673,7 +673,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             </Typography>
                         </Box>
 
-                        {/* Next Event */}
+                        {/* Total Events */}
                         <Box
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -693,16 +693,16 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             }}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-                                <CalendarTodayIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+                                <EventAvailableIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} fontSize="0.7rem">
-                                    Next Event
+                                    Events
                                 </Typography>
                             </Box>
-                            <Typography variant="body2" fontWeight={600} fontSize="0.9rem">
-                                {analytics.nextEvent.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            <Typography variant="h6" fontWeight={700} fontSize="1.1rem">
+                                {analytics.totalEvents}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                                {analytics.nextEvent.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                scheduled
                             </Typography>
                         </Box>
 
@@ -739,7 +739,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             </Typography>
                         </Box>
 
-                        {/* Total Events */}
+                        {/* Next Event */}
                         <Box
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -759,16 +759,16 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                             }}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-                                <EventAvailableIcon sx={{ fontSize: '0.9rem', color: 'primary.main' }} />
+                                <CalendarTodayIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} fontSize="0.7rem">
-                                    Events
+                                    Next Event
                                 </Typography>
                             </Box>
-                            <Typography variant="h6" fontWeight={700} fontSize="1.1rem">
-                                {analytics.totalEvents}
+                            <Typography variant="body2" fontWeight={600} fontSize="0.9rem">
+                                {analytics.nextEvent.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                                scheduled
+                                {analytics.nextEvent.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                             </Typography>
                         </Box>
                     </Box>
