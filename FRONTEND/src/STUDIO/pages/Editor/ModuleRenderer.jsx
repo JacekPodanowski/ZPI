@@ -6,75 +6,166 @@ const ModuleRenderer = ({ module, pageId }) => {
   const renderContent = () => {
     switch (module.type) {
       case 'hero':
+        const layout = module.content.layout || 'imageRight';
+        const isImageLayout = layout === 'imageRight' || layout === 'imageLeft';
+        
         return (
           <Box
             sx={{
-              minHeight: '500px',
+              minHeight: '600px',
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
               bgcolor: module.content.bgColor || 'rgb(228, 229, 218)',
               color: module.content.textColor || 'rgb(30, 30, 30)',
-              p: 6,
-              textAlign: 'center',
+              px: { xs: 4, md: 8 },
+              py: 6,
               position: 'relative',
-              backgroundImage: module.content.backgroundImage 
-                ? `url(${module.content.backgroundImage})` 
-                : 'none',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              overflow: 'hidden'
             }}
           >
-            {module.visibility?.heading !== false && (
-              <Typography
-                variant="h1"
-                sx={{
-                  fontSize: '64px',
-                  fontWeight: 700,
-                  mb: 2,
-                  letterSpacing: '-1px'
-                }}
-              >
-                {module.content.heading || 'Welcome'}
-              </Typography>
-            )}
-            {module.visibility?.subheading !== false && (
-              <Typography
-                variant="h2"
-                sx={{
-                  fontSize: '24px',
-                  fontWeight: 400,
-                  opacity: 0.8,
-                  maxWidth: '600px'
-                }}
-              >
-                {module.content.subheading || 'Your journey begins here'}
-              </Typography>
-            )}
-            {module.visibility?.cta !== false && module.content.cta && (
+            <Box
+              sx={{
+                maxWidth: '1400px',
+                width: '100%',
+                mx: 'auto',
+                display: 'flex',
+                flexDirection: layout === 'imageLeft' ? 'row-reverse' : 'row',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              {/* Text Content */}
               <Box
                 sx={{
-                  mt: 4,
-                  px: 4,
-                  py: 1.5,
-                  bgcolor: 'rgb(146, 0, 32)',
-                  color: 'white',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: 'rgb(114, 0, 21)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 24px rgba(146, 0, 32, 0.3)'
-                  }
+                  flex: isImageLayout ? '1 1 50%' : '1 1 100%',
+                  textAlign: isImageLayout ? 'left' : 'center',
+                  mx: isImageLayout ? 0 : 'auto',
+                  maxWidth: isImageLayout ? 'none' : '800px'
                 }}
               >
-                {module.content.cta.text || 'Get Started'}
+                {module.visibility?.heading !== false && (
+                  <Typography
+                    variant="h1"
+                    sx={{
+                      fontSize: { xs: '42px', md: '64px' },
+                      fontWeight: 700,
+                      mb: 2,
+                      letterSpacing: '-1px',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {module.content.heading || 'Transform Your Vision'}
+                  </Typography>
+                )}
+                {module.visibility?.subheading !== false && (
+                  <Typography
+                    variant="h2"
+                    sx={{
+                      fontSize: { xs: '18px', md: '24px' },
+                      fontWeight: 500,
+                      opacity: 0.75,
+                      mb: 3
+                    }}
+                  >
+                    {module.content.subheading || 'Discover excellence through personalized service'}
+                  </Typography>
+                )}
+                {module.visibility?.description !== false && module.content.description && (
+                  <Typography
+                    sx={{
+                      fontSize: { xs: '14px', md: '16px' },
+                      lineHeight: 1.7,
+                      opacity: 0.65,
+                      mb: 4
+                    }}
+                  >
+                    {module.content.description}
+                  </Typography>
+                )}
+                
+                {/* CTA Buttons */}
+                {module.visibility?.cta !== false && (module.content.cta?.primary || module.content.cta?.secondary) && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 2,
+                      justifyContent: isImageLayout ? 'flex-start' : 'center',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    {module.content.cta?.primary && (
+                      <Box
+                        sx={{
+                          px: 4,
+                          py: 1.5,
+                          bgcolor: module.content.accentColor || 'rgb(146, 0, 32)',
+                          color: 'white',
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 8px 24px rgba(146, 0, 32, 0.3)'
+                          }
+                        }}
+                      >
+                        {module.content.cta.primary.text || 'Get Started'}
+                      </Box>
+                    )}
+                    {module.content.cta?.secondary && (
+                      <Box
+                        sx={{
+                          px: 4,
+                          py: 1.5,
+                          bgcolor: 'transparent',
+                          color: module.content.textColor || 'rgb(30, 30, 30)',
+                          border: `2px solid ${module.content.textColor || 'rgb(30, 30, 30)'}`,
+                          borderRadius: '8px',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: 'rgba(0, 0, 0, 0.05)',
+                            transform: 'translateY(-2px)'
+                          }
+                        }}
+                      >
+                        {module.content.cta.secondary.text || 'Learn More'}
+                      </Box>
+                    )}
+                  </Box>
+                )}
               </Box>
-            )}
+
+              {/* Image */}
+              {isImageLayout && module.content.image?.url && (
+                <Box
+                  sx={{
+                    flex: '1 1 50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={module.content.image.url}
+                    alt={module.content.image.alt || 'Hero image'}
+                    sx={{
+                      width: '100%',
+                      height: 'auto',
+                      maxHeight: '500px',
+                      objectFit: 'cover',
+                      borderRadius: '16px',
+                      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)'
+                    }}
+                  />
+                </Box>
+              )}
+            </Box>
           </Box>
         );
 

@@ -3,6 +3,8 @@ import { Box, IconButton, Stack, Typography, Tooltip, TextField } from '@mui/mat
 import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import { renameSite } from '../../../services/siteService';
+import { useThemeContext } from '../../../theme/ThemeProvider';
+import useTheme from '../../../theme/useTheme';
 
 const EditorTopBar = () => {
   const { 
@@ -18,10 +20,13 @@ const EditorTopBar = () => {
     site
   } = useNewEditorStore();
 
+  // Get theme context for dark/light mode
+  const { mode, toggleMode } = useThemeContext();
+  const theme = useTheme();
+
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(siteName);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const fileInputRef = useRef(null);
 
   const selectedPage = getSelectedPage();
@@ -81,8 +86,8 @@ const EditorTopBar = () => {
   };
 
   const handleGoBack = () => {
-    // Navigate back to studio dashboard
-    window.location.href = '/studio';
+    // Navigate back to sites list
+    window.location.href = '/studio/sites';
   };
 
   const handleTitleClick = () => {
@@ -125,9 +130,9 @@ const EditorTopBar = () => {
     <Box
       sx={{
         height: '56px',
-        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        bgcolor: theme.colors?.surface?.overlay || 'rgba(255, 255, 255, 0.8)',
         backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(30, 30, 30, 0.06)',
+        borderBottom: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
         display: 'flex',
         alignItems: 'center',
         pr: 2,
@@ -154,11 +159,11 @@ const EditorTopBar = () => {
               height: '56px',
               width: '48px',
               borderRadius: 0,
-              bgcolor: 'rgba(30, 30, 30, 0.02)',
-              color: 'rgb(30, 30, 30)',
-              borderRight: '1px solid rgba(30, 30, 30, 0.06)',
+              bgcolor: theme.colors?.surface?.base || 'rgba(30, 30, 30, 0.02)',
+              color: theme.colors?.text?.base || 'rgb(30, 30, 30)',
+              borderRight: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
               '&:hover': {
-                bgcolor: 'rgba(30, 30, 30, 0.06)'
+                bgcolor: theme.colors?.surface?.hover || 'rgba(30, 30, 30, 0.06)'
               }
             }}
           >
@@ -316,8 +321,106 @@ const EditorTopBar = () => {
         )}
       </Stack>
 
-      {/* Center Section - Device Toggle (Detail Mode Only) */}
-      {editorMode === 'detail' && (
+      {/* Right Section */}
+      <Stack direction="row" spacing={1} alignItems="center" flex={1} justifyContent="flex-end">
+        {/* Undo/Redo */}
+        <Tooltip title="Undo">
+          <IconButton 
+            size="small"
+            sx={{ 
+              color: 'rgb(30, 30, 30)',
+              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+            }}
+          >
+            <Undo fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Redo">
+          <IconButton 
+            size="small"
+            sx={{ 
+              color: 'rgb(30, 30, 30)',
+              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+            }}
+          >
+            <Redo fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Separator */}
+        <Box
+          sx={{
+            width: '1px',
+            height: '24px',
+            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            mx: 0.5
+          }}
+        />
+
+        {/* Dark/Light Mode Toggle */}
+        <Tooltip title={mode === 'dark' ? "Light Mode" : "Dark Mode"}>
+          <IconButton 
+            size="small"
+            onClick={toggleMode}
+            sx={{ 
+              color: 'rgb(30, 30, 30)',
+              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+            }}
+          >
+            {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+
+        {/* Separator */}
+        <Box
+          sx={{
+            width: '1px',
+            height: '24px',
+            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            mx: 0.5
+          }}
+        />
+
+        {/* Download Config */}
+        <Tooltip title="Download Config">
+          <IconButton 
+            size="small"
+            onClick={handleDownload}
+            sx={{ 
+              color: 'rgb(30, 30, 30)',
+              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+            }}
+          >
+            <FileDownload fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Import Config */}
+        <Tooltip title="Import Config">
+          <IconButton 
+            size="small"
+            onClick={handleImport}
+            sx={{ 
+              color: 'rgb(30, 30, 30)',
+              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+            }}
+          >
+            <FileUpload fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Separator */}
+        <Box
+          sx={{
+            width: '1px',
+            height: '24px',
+            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            mx: 0.5
+          }}
+        />
+
+        {/* Device Toggle */}
         <Stack 
           direction="row" 
           spacing={0}
@@ -360,96 +463,6 @@ const EditorTopBar = () => {
             </IconButton>
           </Tooltip>
         </Stack>
-      )}
-
-      {/* Right Section */}
-      <Stack direction="row" spacing={1} alignItems="center" flex={1} justifyContent="flex-end">
-        {/* Undo/Redo */}
-        <Tooltip title="Undo">
-          <IconButton 
-            size="small"
-            sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
-            }}
-          >
-            <Undo fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        
-        <Tooltip title="Redo">
-          <IconButton 
-            size="small"
-            sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
-            }}
-          >
-            <Redo fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: 'rgba(30, 30, 30, 0.1)',
-            mx: 0.5
-          }}
-        />
-
-        {/* Dark/Light Mode Toggle */}
-        <Tooltip title={darkMode ? "Light Mode" : "Dark Mode"}>
-          <IconButton 
-            size="small"
-            onClick={() => setDarkMode(!darkMode)}
-            sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
-            }}
-          >
-            {darkMode ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: 'rgba(30, 30, 30, 0.1)',
-            mx: 0.5
-          }}
-        />
-
-        {/* Download Config */}
-        <Tooltip title="Download Config">
-          <IconButton 
-            size="small"
-            onClick={handleDownload}
-            sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
-            }}
-          >
-            <FileDownload fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Import Config */}
-        <Tooltip title="Import Config">
-          <IconButton 
-            size="small"
-            onClick={handleImport}
-            sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
-            }}
-          >
-            <FileUpload fontSize="small" />
-          </IconButton>
-        </Tooltip>
 
         {/* Separator */}
         <Box

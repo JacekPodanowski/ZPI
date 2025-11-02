@@ -7,22 +7,65 @@ Theme - Color palette
 
 Editor Modes
 Structure Mode
-Visual flowchart showing entire site architecture.
+Visual flowchart showing entire site architecture with a two-canvas system and hierarchical layout:
+
+**Two-Canvas System:**
+1. **Editor Canvas** - The whole background area that:
+   - Shows all pages in a hierarchical two-row layout
+   - Displays canvas settings (render mode, overlays) at top
+   - Shows user entry point with eye icon above home page
+   - Accepts module drops to create NEW pages with that module
+
+2. **Site/Page Canvas(es)** - Individual page previews (16:9 aspect ratio) that:
+   - Display on the editor canvas background in two rows
+   - **First Row**: Home page (700px wide) - main entry point
+   - **Second Row**: Other pages (450px wide, scaled 0.64x) - secondary pages
+   - Show page content and modules
+   - Have page titles above them (left-aligned)
+   - Accept module drops to ADD to that specific page
+   - Support drag-and-drop module reordering within the page
+
+**Layout Structure:**
+```
+👁️ Entry Point (at settings level)
+         ⬇️ (animates once on load)
+   [Home Page - 700px]
+         
+[Page2][Page3][Page4][Page5]
+Dynamically scaled to fit all in one row
+```
+
+**Drag & Drop Behavior:**
+- Drop module on **Editor Canvas** (empty background) → Creates NEW page with that module automatically
+- Drop module **ANYWHERE** on **Site/Page Canvas** → Adds module to THAT specific page (entire canvas is drop zone)
+- Drop module between modules within a page → Inserts at that position
+- NO empty pages are created - modules are added immediately on page creation
+- Multiple modules can be added to same page by dragging onto the page canvas
+
 Interface Components:
-Entry Point: Eye icon at top indicating user landing page and “User Path” between pages  (draggable arrow to change)
-Page Cards: Horizontal floating cards with stacked colored module sections (each module has distinct color and icon miniature)
-Module Toolbar: Left sidebar with draggable modules
-Canvas: Full site structure visualization
+Entry Point: Eye icon at settings level (top left) with "Entry" label
+Arrow Animation: Single smooth arrow animation from eye to home page on editor load (no loop)
+Page Titles: Each page canvas has a title above it (e.g., "Home Page", "Hero Page", "Gallery Page")
+Module Toolbar: Left sidebar (180px wide) with draggable modules
+Canvas Settings: Top bar with entry point indicator, render mode toggle (Icon/Real) and color overlay checkbox
+Home Page Canvas: 700px wide, 16:9 aspect ratio, center-aligned in first row
+Other Page Canvases: Dynamically scaled to fit all in one row (no wrapping), 16:9 aspect ratio maintained
+No Third Row: All secondary pages fit in second row with automatic scaling
+
 Interactions:
-Drag modules from toolbar onto page cards
+Drag modules from toolbar onto editor canvas to create new page with module
+Drag modules onto page canvas to add to that page
 Drag modules within pages to reorder vertically
-Drag entry arrow to change homepage
-Click page card to transition to Detail Mode
-Add/delete/rename pages via controls
+Click page canvas to transition to Detail Mode
+Render modes: Icon (simplified colored blocks) or Real (scaled 50% preview)
+
 Visual Behavior:
-Dragged items scale to 0.7x and follow cursor
+Dragged items follow cursor
 Drop zones highlight with animated dashed border (red accent)
 Smooth spring animations for all transitions
+Page canvases have hover effect and selection outline
+Second row pages scale proportionally to fit smaller width
+Arrows animate with bounce effect
 Toolbar collapses to icons when not in use
 
 
@@ -498,10 +541,18 @@ WORK STATUS:
 - **Routes**: `/studio/editor/:siteId` → New Editor (DEFAULT), legacy moved to `/studio/legacy-editor/`
 
 ### Structure Mode (100%)
-- **StructureMode.jsx**: Redesigned with 16:9 canvas, icon/real render modes, color overlay toggle, page tabs
-- **SiteCanvas.jsx**: Dedicated component with 16:9 aspect ratio, vertical module stacking, real borders, drag-drop zones, icon/real rendering
+- **StructureMode.jsx**: Two-canvas system with hierarchical two-row layout
+  - Row 1: Home page (700px, full size) with eye icon and entry point indicator above
+  - Row 2: Other pages (450px, scaled 0.64x) in horizontal wrap layout
+  - Arrows pointing from home page to other pages
+  - Editor canvas drop creates new page with module automatically (no empty pages)
+  - Page canvas drop adds module to that specific page with stopPropagation to prevent bubbling
+- **SiteCanvas.jsx**: Dedicated component with 16:9 aspect ratio, vertical module stacking, real borders, drag-drop zones with event stopPropagation, icon/real rendering
 - **ModuleToolbar.jsx**: 180px wide (25% reduction), 12 module types
-- **PageCard.jsx**: Entry point, badges, context menu (OLD structure mode component)
+- **PageCard.jsx**: Entry point, badges, context menu (OLD structure mode component - deprecated)
+- **Page Titles**: Dynamic titles above each canvas ("Home Page", "{ModuleType} Page")
+- **Entry Point Indicator**: Eye icon with animated downward arrow above home page
+- **Removed**: "Drop to create new page" zone - new pages created instantly via editor canvas drop
 
 ### Detail Mode (100%)
 - **DetailMode.jsx**: Three-panel layout (navigator/canvas/properties)
@@ -515,7 +566,8 @@ WORK STATUS:
 
 ### UI Components
 - **EditorTopBar.jsx**: Editable site title with OK/Cancel, API integration, mode-aware controls, device preview toggle
-- **NewEditorPage.jsx**: API fetch on mount, loading/error states, populates siteId/siteName/template_config
+- **NewEditorPage.jsx**: API fetch on mount, loading/error states, populates siteId/siteName/template_config, wrapped with EditorErrorBoundary
+- **EditorErrorBoundary.jsx**: Catches and displays editor errors with reload option, prevents crashes
 
 ### Design System
 - ✅ Ethereal minimalism: rgb(228,229,218), rgb(146,0,32)

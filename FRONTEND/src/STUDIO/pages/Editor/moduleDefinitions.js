@@ -127,11 +127,21 @@ export const MODULE_COLORS = Object.keys(MODULE_DEFINITIONS).reduce((acc, key) =
 export const getDefaultModuleContent = (moduleType) => {
   const defaults = {
     hero: {
-      heading: 'Welcome to My Site',
-      subheading: 'Your journey begins here',
+      layout: 'imageRight', // 'imageRight', 'imageLeft', 'centered', 'fullImage'
+      heading: 'Transform Your Vision Into Reality',
+      subheading: 'Discover excellence through personalized service and dedication',
+      description: 'Experience the perfect blend of innovation and tradition. We bring your ideas to life with passion and expertise.',
+      image: {
+        url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800',
+        alt: 'Hero background'
+      },
+      cta: {
+        primary: { text: 'Get Started', link: '#contact' },
+        secondary: { text: 'Learn More', link: '#about' }
+      },
       bgColor: 'rgb(228, 229, 218)',
       textColor: 'rgb(30, 30, 30)',
-      cta: { text: 'Get Started', link: '#' }
+      accentColor: 'rgb(146, 0, 32)'
     },
     about: {
       title: 'About Me',

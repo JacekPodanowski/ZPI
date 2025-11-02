@@ -106,23 +106,4 @@ See **EDITOR_PLAN.md** for complete roadmap. Immediate priorities:
 - Body: 400-500 weight
 - Labels: 11px uppercase, 700 weight, letter-spacing 0.8-1px
 
-## 🔧 Development
 
-The editor runs in hot-reload mode within Docker. All changes are instantly reflected.
-
-```bash
-# Access the editor lab
-http://localhost:5173/studio/lab/editor
-
-# Start a new site in structure mode
-http://localhost:5173/studio/editor-v2/new
-```
-
-## 📦 Dependencies
-
-- **framer-motion**: Spring animations
-- **zustand**: State management
-- **@mui/material**: UI components
-- **@mui/icons-material**: Icons
-
-All dependencies are already installed.
