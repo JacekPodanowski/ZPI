@@ -16,7 +16,15 @@ from .views import (
     CustomReactComponentViewSet,
     NotificationViewSet,
     AvailabilityBlockViewSet,
+    SendEmailView,
+    AdminSessionCancellationEmailView,
+    AdminSessionNewReservationEmailView,
+    SessionCanceledByAdminEmailView,
+    SessionConfirmedDiscordEmailView,
+    SessionConfirmedGoogleMeetEmailView,
+    SessionNewReservationEmailView,
 )
+
 
 router = DefaultRouter()
 router.register(r'users', PlatformUserViewSet, basename='user')
@@ -37,4 +45,11 @@ urlpatterns = [
     path('public-sites/<slug:identifier>/', PublicSiteView.as_view(), name='public_site_detail'),
     path('sites/<int:site_id>/publish/', publish_site, name='publish-site'),
     path('upload/', FileUploadView.as_view(), name='file-upload'),
+    path('send-custom-email/', SendEmailView.as_view(), name='send-custom-email'),
+    path('emails/admin-session-cancellation/', AdminSessionCancellationEmailView.as_view(), name='email-admin-session-cancellation'),
+    path('emails/admin-session-new-reservation/', AdminSessionNewReservationEmailView.as_view(), name='email-admin-session-new-reservation'),
+    path('emails/session-canceled-by-admin/', SessionCanceledByAdminEmailView.as_view(), name='email-session-canceled-by-admin'),
+    path('emails/session-confirmed-discord/', SessionConfirmedDiscordEmailView.as_view(), name='email-session-confirmed-discord'),
+    path('emails/session-confirmed-google-meet/', SessionConfirmedGoogleMeetEmailView.as_view(), name='email-session-confirmed-google-meet'),
+    path('emails/session-new-reservation/', SessionNewReservationEmailView.as_view(), name='email-session-new-reservation'),
 ]

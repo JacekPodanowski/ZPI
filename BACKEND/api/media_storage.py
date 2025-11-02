@@ -6,7 +6,6 @@ import logging
 from dataclasses import dataclass
 import os
 from functools import lru_cache
-from threading import Lock
 from typing import Any, Optional
 
 from django.conf import settings
@@ -90,8 +89,6 @@ class SupabaseStorageProvider(BaseStorageProvider):
         self._client = create_client(base_url, service_key)
         self._timeout = timeout  # Reserved for future per-request overrides
         self._public_urls = {bucket: url.rstrip('/') + '/' for bucket, url in public_urls.items()}
-        self._known_buckets: set[str] = set()
-        self._bucket_lock = Lock()
 
     @staticmethod
     def _response_error(response: Any) -> Optional[str]:
@@ -113,50 +110,9 @@ class SupabaseStorageProvider(BaseStorageProvider):
             return response.get('data')
         return None
 
-    def _ensure_bucket(self, bucket: str) -> None:
-        bucket = (bucket or '').strip()
-        if not bucket or bucket in self._known_buckets:
-            return
-
-        with self._bucket_lock:
-            if bucket in self._known_buckets:
-                return
-
-            try:
-                existing_resp = self._client.storage.list_buckets()
-            except Exception as exc:  # pragma: no cover - external dependency
-                logger.warning("Unable to list Supabase buckets: %s", exc)
-                existing_resp = None
-
-            if existing_resp is not None:
-                data = self._response_data(existing_resp) or []
-                names = {item.get('name') for item in data if isinstance(item, dict)}
-                print(f"DEBUG: Found buckets in Supabase: {names} | Trying to ensure bucket: '{bucket}'")
-                if bucket in names:
-                    self._known_buckets.update(names)
-                    return
-
-            payload = {
-                'public': True,
-            }
-
-            try:
-                create_resp = self._client.storage.create_bucket(bucket, payload)
-            except Exception as exc:  # pragma: no cover - external dependency
-                raise StorageError(f'Failed to ensure Supabase bucket `{bucket}`: {exc}') from exc
-
-            error = self._response_error(create_resp)
-            if error and 'already exists' not in error.lower():
-                raise StorageError(f'Failed to create Supabase bucket `{bucket}`: {error}')
-
-            self._known_buckets.add(bucket)
-
-
-
     def save(self, bucket: str, path: str, data: bytes, content_type: str) -> StorageSaveResult:
         if not bucket:
             raise StorageError('Supabase bucket must be provided')
-#        self._ensure_bucket(bucket)
 
         normalized_path = path.lstrip('/')
         file_bytes = data if isinstance(data, (bytes, bytearray)) else bytes(data)
@@ -187,7 +143,6 @@ class SupabaseStorageProvider(BaseStorageProvider):
     def delete(self, bucket: str, path: str) -> None:
         if not bucket:
             return
-#        self._ensure_bucket(bucket)
         normalized_path = path.lstrip('/')
         logger.info("Supabase delete requested for %s/%s", bucket, normalized_path)
         try:
@@ -204,7 +159,6 @@ class SupabaseStorageProvider(BaseStorageProvider):
 
     def build_url(self, bucket: str, path: str) -> str:
         normalized_path = path.lstrip('/')
-#        self._ensure_bucket(bucket)
 
         public_url: Optional[str] = None
         try:

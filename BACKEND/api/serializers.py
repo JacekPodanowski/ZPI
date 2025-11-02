@@ -236,3 +236,79 @@ class AvailabilityBlockSerializer(serializers.ModelSerializer):
         # Automatically set creator to the current user
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+
+class SendEmailSerializer(serializers.Serializer):
+    """Validate payload for sending custom emails with an optional attachment."""
+
+    recipient = serializers.EmailField(required=True)
+    subject = serializers.CharField(required=True, max_length=255)
+    message = serializers.CharField(required=True)
+    attachment = serializers.FileField(required=False, allow_empty_file=False)
+
+    def __init__(self, *args, **kwargs):
+        # Guard against accidental use with model instances
+        kwargs.pop('instance', None)
+        super().__init__(*args, **kwargs)
+
+
+class BaseTemplatedEmailSerializer(serializers.Serializer):
+    """Base serializer for templated emails providing recipient and optional subject override."""
+
+    recipient = serializers.EmailField(required=True)
+    email_subject = serializers.CharField(required=False, max_length=255)
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('instance', None)
+        super().__init__(*args, **kwargs)
+
+
+class AdminSessionCancellationEmailSerializer(BaseTemplatedEmailSerializer):
+    student_name = serializers.CharField(required=True, max_length=255)
+    session_title = serializers.CharField(required=True, max_length=255)
+    date = serializers.CharField(required=True, max_length=255)
+    start_time = serializers.CharField(required=True, max_length=255)
+    end_time = serializers.CharField(required=True, max_length=255)
+
+
+class AdminSessionNewReservationEmailSerializer(BaseTemplatedEmailSerializer):
+    student_name = serializers.CharField(required=True, max_length=255)
+    session_title = serializers.CharField(required=True, max_length=255)
+    date = serializers.CharField(required=True, max_length=255)
+    start_time = serializers.CharField(required=True, max_length=255)
+    end_time = serializers.CharField(required=True, max_length=255)
+    admin_url = serializers.URLField(required=True)
+
+
+class SessionCanceledByAdminEmailSerializer(BaseTemplatedEmailSerializer):
+    student_name = serializers.CharField(required=True, max_length=255)
+    session_title = serializers.CharField(required=True, max_length=255)
+    date = serializers.CharField(required=True, max_length=255)
+    start_time = serializers.CharField(required=True, max_length=255)
+    end_time = serializers.CharField(required=True, max_length=255)
+    calendar_url = serializers.URLField(required=True)
+
+
+class SessionConfirmedDiscordEmailSerializer(BaseTemplatedEmailSerializer):
+    student_name = serializers.CharField(required=True, max_length=255)
+    session_title = serializers.CharField(required=True, max_length=255)
+    date = serializers.CharField(required=True, max_length=255)
+    start_time = serializers.CharField(required=True, max_length=255)
+    end_time = serializers.CharField(required=True, max_length=255)
+    discord_url = serializers.URLField(required=True)
+
+
+class SessionConfirmedGoogleMeetEmailSerializer(BaseTemplatedEmailSerializer):
+    student_name = serializers.CharField(required=True, max_length=255)
+    session_title = serializers.CharField(required=True, max_length=255)
+    date = serializers.CharField(required=True, max_length=255)
+    start_time = serializers.CharField(required=True, max_length=255)
+    end_time = serializers.CharField(required=True, max_length=255)
+
+
+class SessionNewReservationEmailSerializer(BaseTemplatedEmailSerializer):
+    student_name = serializers.CharField(required=True, max_length=255)
+    session_title = serializers.CharField(required=True, max_length=255)
+    date = serializers.CharField(required=True, max_length=255)
+    start_time = serializers.CharField(required=True, max_length=255)
+    end_time = serializers.CharField(required=True, max_length=255)
