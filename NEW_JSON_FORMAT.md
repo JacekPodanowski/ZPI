@@ -36,13 +36,42 @@ This document defines the unified JSON format for storing site configurations in
     "secondary": "#2D5A7B",
     "neutral": "#E4E5DA"
   },
-  "pages": []        // Array of page objects
+  "navigation": {     // Site-wide navigation (optional)
+    "content": {}     // Only include customizations (defaults applied from moduleDefinitions)
+  },
+  "pages": []         // Array of page objects
+}
+```
+
+**Navigation:**
+- Navigation is a special site-level module that appears on every page
+- By default, uses standard navigation from `moduleDefinitions` 
+- Only store customizations in `site.navigation.content`
+- If `navigation` object is omitted or empty, defaults are used
+- Navigation uses site's `vibe` and `theme` like other modules
+
+**Example with custom navigation:**
+```json
+{
+  "vibe": "minimal",
+  "theme": { "primary": "#920020" },
+  "navigation": {
+    "content": {
+      "logo": { "text": "My Brand" },
+      "links": [
+        { "label": "Home", "route": "/" },
+        { "label": "Services", "route": "/services" }
+      ]
+    }
+  },
+  "pages": []
 }
 ```
 
 **Optimizations:**
 - `theme.colors` → `theme` (flattened)
 - Colors stored directly without nesting
+- Navigation only stores differences from default
 
 ---
 
@@ -131,6 +160,29 @@ This document defines the unified JSON format for storing site configurations in
 }
 ```
 
+### Navigation (Site-Level Only)
+```json
+{
+  "logo": {
+    "text": "Logo",      // Logo text (or future: image URL)
+    "type": "text"      // "text" | "image"
+  },
+  "links": [
+    {
+      "label": "Home",
+      "route": "/"
+    },
+    {
+      "label": "About",
+      "route": "/about"
+    }
+  ],
+  "bgColor": "transparent",
+  "textColor": "rgb(30, 30, 30)"
+}
+```
+**Note:** Navigation is stored at `site.navigation.content`, not in page modules. Only customizations need to be saved.
+
 ### Pricing
 ```json
 {
@@ -161,6 +213,16 @@ This document defines the unified JSON format for storing site configurations in
       "primary": "#920020",
       "secondary": "#2D5A7B",
       "neutral": "#E4E5DA"
+    },
+    "navigation": {
+      "content": {
+        "logo": { "text": "Yoga Studio" },
+        "links": [
+          { "label": "Home", "route": "/" },
+          { "label": "Classes", "route": "/classes" },
+          { "label": "Book", "route": "/calendar" }
+        ]
+      }
     },
     "pages": [
       {

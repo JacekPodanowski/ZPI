@@ -1,0 +1,90 @@
+{
+  "site": {
+    "vibe": "minimal",
+    "theme": {
+      "primary": "#920020",
+      "secondary": "#2D5A7B",
+      "neutral": "#E4E5DA"
+    },
+    "pages": [
+      {
+        "id": "home",
+        "name": "Home",
+        "route": "/",
+        "modules": [
+          {
+            "id": "hero-1",
+            "type": "hero",
+            "content": {
+              "layout": "centered",
+              "heading": "Studio Oddechu",
+              "subheading": "Sesje uważności i oddechu online",
+              "description": "Odkryj siłę świadomego oddechu w codziennym życiu. Indywidualne sesje online dostosowane do Twojego tempa.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800",
+                "alt": "Mindful breathing"
+              },
+              "cta": {
+                "primary": { "text": "Zarezerwuj sesję", "link": "/kalendarz" },
+                "secondary": { "text": "O Studiu", "link": "/o-studiu" }
+              },
+              "bgColor": "rgb(228, 229, 218)",
+              "textColor": "rgb(30, 30, 30)",
+              "accentColor": "rgb(146, 0, 32)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "about",
+        "name": "O Studiie",
+        "route": "/o-studiu",
+        "modules": [
+          {
+            "id": "about-1",
+            "type": "about",
+            "content": {
+              "title": "Czym się zajmujemy",
+              "description": "Studio Oddechu to przestrzeń online dedykowana praktyce uważności i pracy z oddechem. Prowadzimy sesje indywidualne i warsztatowe, pomagając odnaleźć spokój w codziennym życiu.",
+              "bgColor": "white"
+            }
+          }
+        ]
+      },
+      {
+        "id": "calendar",
+        "name": "Kalendarz",
+        "route": "/kalendarz",
+        "modules": [
+          {
+            "id": "calendar-1",
+            "type": "calendar",
+            "content": {
+              "title": "Zaplanuj sesję",
+              "description": "Umów się na indywidualną sesję oddechową",
+              "bgColor": "white"
+            }
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "name": "Kontakt",
+        "route": "/kontakt",
+        "modules": [
+          {
+            "id": "contact-1",
+            "type": "contact",
+            "content": {
+              "title": "Get in Touch",
+              "email": "hello@studiooddechu.pl",
+              "phone": "+48 600 000 002",
+              "bgColor": "rgb(228, 229, 218)"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "entryPointPageId": "home"
+}

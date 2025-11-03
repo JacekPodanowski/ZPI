@@ -1,16 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getModuleDefinition, MODULE_COLORS, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
+import { useModuleHeights } from './useModuleHeights';
+
+// Component to render module in real mode and measure its height
+const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFactor, realSiteWidth, definition, showOverlay, recordModuleHeight, renderMode }) => {
+  const moduleRef = useRef(null);
+  
+  useEffect(() => {
+    if (moduleRef.current && renderMode === 'real') {
+      // Measure the actual rendered height of the unscaled content
+      const contentWrapper = moduleRef.current.querySelector('.module-content-wrapper');
+      if (contentWrapper) {
+        // Get the height of the first child (the actual ModuleRenderer output)
+        const actualContent = contentWrapper.firstChild;
+        if (actualContent) {
+          const measuredHeight = actualContent.offsetHeight;
+          if (measuredHeight && measuredHeight > 0) {
+            recordModuleHeight(module.type, measuredHeight);
+            console.log(`[RealModeModule] Recorded height for ${module.type}: ${measuredHeight}px`);
+          }
+        }
+      }
+    }
+  }, [module.type, renderMode, recordModuleHeight]);
+  
+  return (
+    <Box 
+      ref={moduleRef}
+      sx={{ 
+        position: 'relative',
+        width: '100%',
+        height: `${moduleHeight}px`,
+        overflow: 'hidden'
+      }}
+    >
+      <Box
+        className="module-content-wrapper"
+        sx={{
+          transform: `scale(${scaleFactor})`,
+          transformOrigin: 'top left',
+          width: `${realSiteWidth}px`,
+          height: `${unscaledHeight}px`,
+          pointerEvents: 'none'
+        }}
+      >
+        <ModuleRenderer module={module} pageId={pageId} />
+      </Box>
+      {showOverlay && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            bgcolor: definition.color,
+            opacity: 0.12,
+            pointerEvents: 'none',
+            border: `2px solid ${definition.color}`,
+            borderRadius: '4px'
+          }}
+        />
+      )}
+    </Box>
+  );
+};
 
 const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage = false, onModuleDragStart, onModuleDragEnd, onDropHandled, devicePreview = 'desktop' }) => {
-  const { addModule, moveModule } = useNewEditorStore();
+  const { addModule, moveModule, site } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [canvasRef, setCanvasRef] = useState(null);
   const theme = useTheme();
+  const { moduleHeights, recordModuleHeight, getModuleHeight } = useModuleHeights();
 
   console.log('[SiteCanvas] Render - page:', page);
   console.log('[SiteCanvas] Render - page.id:', page?.id);
@@ -18,6 +81,12 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
   console.log('[SiteCanvas] Render - modules count:', page?.modules?.length || 0);
   console.log('[SiteCanvas] Render - renderMode:', renderMode);
   console.log('[SiteCanvas] Render - devicePreview:', devicePreview);
+
+  // Get navigation config - merge site custom navigation with defaults
+  const navigationContent = {
+    ...getDefaultModuleContent('navigation'),
+    ...(site.navigation?.content || {})
+  };
 
   // Calculate scale factor based on device
   const CANVAS_WIDTH_DESKTOP = 700;
@@ -28,6 +97,21 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
   const canvasWidth = devicePreview === 'mobile' ? CANVAS_WIDTH_MOBILE : CANVAS_WIDTH_DESKTOP;
   const realSiteWidth = devicePreview === 'mobile' ? REAL_SITE_WIDTH_MOBILE : REAL_SITE_WIDTH;
   const scaleFactor = canvasWidth / realSiteWidth;
+
+  // Calculate total height using real measured heights or fallback to 600px default
+  const totalHeight = page.modules.reduce((sum, module) => {
+    const realHeight = getModuleHeight(module.type, 600);
+    return sum + realHeight;
+  }, 0);
+
+  // Calculate proportional height for each module
+  const NAVIGATION_HEIGHT_ICON = 15; // Small navigation in icon mode
+  const FOOTER_HEIGHT_ICON = 15; // Same as navigation
+  const NAVIGATION_HEIGHT_REAL = 45; // Real navigation height (reduced by 25% from 60px)
+  const FOOTER_HEIGHT_REAL = 45; // Same as navigation in real mode
+  
+  const CANVAS_HEIGHT = devicePreview === 'mobile' ? 667 : 394; // 16:9 aspect ratio height
+  const AVAILABLE_HEIGHT = CANVAS_HEIGHT - (renderMode === 'icon' ? NAVIGATION_HEIGHT_ICON + FOOTER_HEIGHT_ICON : NAVIGATION_HEIGHT_REAL + FOOTER_HEIGHT_REAL);
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
@@ -87,18 +171,14 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
     }
   };
 
-  const renderIconMode = (module) => {
+  const renderIconMode = (module, moduleHeight) => {
     const definition = getModuleDefinition(module.type);
     const Icon = definition.icon;
-    
-    // Calculate height to match scaled real render
-    // Typical module height is ~400px, scaled down would be ~200px
-    const scaledHeight = 200;
     
     return (
       <Box
         sx={{
-          height: `${scaledHeight}px`,
+          height: `${moduleHeight}px`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -145,40 +225,55 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
     );
   };
 
-  const renderRealMode = (module) => {
-    const definition = getModuleDefinition(module.type);
-    
+  const renderNavigationIcon = () => {
     return (
-      <Box 
-        sx={{ 
+      <Box
+        sx={{
+          height: `${NAVIGATION_HEIGHT_ICON}px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2,
+          bgcolor: theme.colors?.surface?.base || 'white',
+          borderBottom: `1px solid ${theme.colors?.border?.subtle || 'rgba(0, 0, 0, 0.08)'}`,
           position: 'relative',
-          width: '100%'
+          flexShrink: 0
         }}
       >
+        <Typography sx={{ fontSize: '8px', fontWeight: 600, opacity: 0.6 }}>Logo</Typography>
+        <Typography sx={{ fontSize: '7px', fontWeight: 500, opacity: 0.4 }}>Navigation</Typography>
         <Box
           sx={{
-            transform: `scale(${scaleFactor})`,
-            transformOrigin: 'top left',
-            width: `${realSiteWidth}px`,
-            pointerEvents: 'none' // Disable interactions in preview
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            bgcolor: 'rgb(146, 0, 32)',
+            opacity: 0.4
           }}
-        >
-          <ModuleRenderer module={module} pageId={page.id} />
-        </Box>
-        {showOverlay && (
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              bgcolor: definition.color,
-              opacity: 0.12,
-              pointerEvents: 'none',
-              border: `2px solid ${definition.color}`,
-              borderRadius: '4px'
-            }}
-          />
-        )}
+        />
       </Box>
+    );
+  };
+
+  const renderRealMode = (module, moduleHeight) => {
+    const definition = getModuleDefinition(module.type);
+    
+    // Calculate the unscaled height needed to fill the moduleHeight when scaled down
+    const unscaledHeight = moduleHeight / scaleFactor;
+    
+    return (
+      <RealModeModule
+        module={module}
+        pageId={page.id}
+        moduleHeight={moduleHeight}
+        unscaledHeight={unscaledHeight}
+        scaleFactor={scaleFactor}
+        realSiteWidth={realSiteWidth}
+        definition={definition}
+        showOverlay={showOverlay}
+        recordModuleHeight={recordModuleHeight}
+        renderMode={renderMode}
+      />
     );
   };
 
@@ -193,54 +288,49 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
         overflow: 'hidden',
         position: 'relative',
-        transition: 'all 0.4s ease'
+        transition: 'all 0.4s ease',
+        display: 'flex',
+        flexDirection: 'column'
       }}
       onDragOver={(e) => {
         e.preventDefault();
-        e.stopPropagation(); // Prevent bubbling to editor canvas
+        e.stopPropagation();
       }}
     >
-      {/* Drop Zone at Top */}
-      <Box
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleDragOver(e, 0);
-        }}
-        onDragLeave={(e) => {
-          e.stopPropagation();
-          handleDragLeave();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleDrop(e, 0);
-        }}
-        sx={{
-          height: dragOverIndex === 0 ? '60px' : '20px',
-          transition: 'height 0.2s ease',
-          bgcolor: dragOverIndex === 0 ? 'rgba(146, 0, 32, 0.1)' : 'transparent',
-          borderBottom: dragOverIndex === 0 ? '2px dashed rgb(146, 0, 32)' : 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: dragOverIndex === 0 ? 'rgb(146, 0, 32)' : 'transparent',
-          fontSize: '12px',
-          fontWeight: 600,
-          cursor: dragOverIndex === 0 ? 'copy' : 'default'
-        }}
-      >
-        {dragOverIndex === 0 && 'Drop module here'}
-      </Box>
+      {/* Navigation - Always at top, non-draggable */}
+      {renderMode === 'icon' ? renderNavigationIcon() : (
+        <Box sx={{ flexShrink: 0, height: `${NAVIGATION_HEIGHT_REAL}px`, overflow: 'hidden' }}>
+          <Box
+            sx={{
+              transform: `scale(${scaleFactor})`,
+              transformOrigin: 'top left',
+              width: `${realSiteWidth}px`,
+              height: `${NAVIGATION_HEIGHT_REAL / scaleFactor}px`,
+              pointerEvents: 'none'
+            }}
+          >
+            <ModuleRenderer 
+              module={{ 
+                type: 'navigation', 
+                content: navigationContent 
+              }} 
+              pageId={page.id} 
+            />
+          </Box>
+        </Box>
+      )}
 
-      {/* Modules Stack */}
+      {/* Main Content Area - Scrollable */}
       <Box 
-        sx={{ width: '100%', height: 'calc(100% - 40px)', overflow: 'auto' }}
+        sx={{ 
+          flex: 1,
+          overflow: 'auto',
+          position: 'relative'
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          // If not over a specific drop zone, highlight the end
-          if (dragOverIndex === null) {
+          if (dragOverIndex === null && page.modules.length > 0) {
             setDragOverIndex(page.modules.length);
           }
         }}
@@ -251,7 +341,6 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
         onDrop={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          // Drop at the end if not over a specific zone
           handleDrop(e, page.modules.length);
         }}
       >
@@ -265,172 +354,207 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
               color: theme.colors?.text?.muted || 'rgba(30, 30, 30, 0.3)',
               fontSize: '14px',
               fontWeight: 500,
-              border: dragOverIndex === 0 ? '2px dashed rgb(146, 0, 32)' : `2px dashed ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.1)'}`,
+              border: `2px dashed ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.1)'}`,
               bgcolor: dragOverIndex === 0 ? 'rgba(146, 0, 32, 0.05)' : 'transparent',
               transition: 'all 0.2s ease',
-              cursor: dragOverIndex === 0 ? 'copy' : 'default'
+              cursor: dragOverIndex === 0 ? 'copy' : 'default',
+              m: 2
             }}
           >
             Drag modules here to build your page
           </Box>
         ) : (
-          <Stack spacing={0}>
-            {page.modules.map((module, index) => (
-              <motion.div
-                key={module.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.4 }}
-              >
-                <Box
-                  draggable
-                  onDragStart={(e) => {
-                    console.log('[SiteCanvas] Drag start - module:', module.id, 'from page:', page.id);
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('moduleId', module.id);
-                    e.dataTransfer.setData('sourcePageId', page.id);
-                    
-                    // Create a custom drag preview (small rectangle like toolbar modules)
-                    const definition = getModuleDefinition(module.type);
-                    const Icon = definition.icon;
-                    
-                    const dragPreview = document.createElement('div');
-                    dragPreview.style.cssText = `
-                      position: absolute;
-                      top: -1000px;
-                      display: flex;
-                      align-items: center;
-                      gap: 12px;
-                      padding: 10px 16px;
-                      background: white;
-                      border-radius: 8px;
-                      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    `;
-                    
-                    dragPreview.innerHTML = `
-                      <div style="
-                        width: 32px;
-                        height: 32px;
-                        border-radius: 6px;
-                        background: ${definition.color};
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        flex-shrink: 0;
-                      ">
-                        <svg style="width: 18px; height: 18px; fill: white;" viewBox="0 0 24 24">
-                          <path d="${Icon ? 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z' : 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z'}"/>
-                        </svg>
-                      </div>
-                      <span style="
-                        font-size: 14px;
-                        font-weight: 500;
-                        color: rgb(30, 30, 30);
-                      ">${definition.label}</span>
-                    `;
-                    
-                    document.body.appendChild(dragPreview);
-                    e.dataTransfer.setDragImage(dragPreview, 75, 25);
-                    
-                    // Clean up after drag starts
-                    setTimeout(() => {
-                      document.body.removeChild(dragPreview);
-                    }, 0);
-                    
-                    e.stopPropagation();
-                    if (onModuleDragStart) onModuleDragStart();
-                  }}
-                  onDragEnd={(e) => {
-                    console.log('[SiteCanvas] Drag end');
-                    e.stopPropagation();
-                    if (onModuleDragEnd) onModuleDragEnd();
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Calculate if we're in top or bottom 50% of module
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const mouseY = e.clientY;
-                    const relativeY = mouseY - rect.top;
-                    const halfHeight = rect.height / 2;
-                    
-                    if (relativeY < halfHeight) {
-                      // Top 50% - insert before this module
-                      setDragOverIndex(index);
-                    } else {
-                      // Bottom 50% - insert after this module
-                      setDragOverIndex(index + 1);
-                    }
-                  }}
-                  sx={{
-                    borderBottom: index < page.modules.length - 1 
-                      ? `2px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.08)'}` 
-                      : 'none',
-                    position: 'relative',
-                    cursor: 'grab',
-                    transition: 'all 0.2s ease',
-                    overflow: renderMode === 'real' ? 'hidden' : 'visible',
-                    '&:hover': {
-                      boxShadow: `inset 0 0 0 2px ${theme.colors?.primary?.base || 'rgb(146, 0, 32)'}`
-                    },
-                    '&:active': {
-                      cursor: 'grabbing',
-                      opacity: 0.5
-                    }
+          <Stack spacing={0} sx={{ height: '100%' }}>
+            {page.modules.map((module, index) => {
+              const definition = getModuleDefinition(module.type);
+              
+              // Calculate module height based on real measured heights or fallback to 600px
+              const realHeight = getModuleHeight(module.type, 600);
+              const moduleHeight = totalHeight > 0 
+                ? (realHeight / totalHeight) * AVAILABLE_HEIGHT 
+                : AVAILABLE_HEIGHT / page.modules.length;
+
+              return (
+                <motion.div
+                  key={module.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.4 }}
+                  style={{ 
+                    height: `${moduleHeight}px`,
+                    flexShrink: 0
                   }}
                 >
-                  {/* Top drop indicator */}
-                  {dragOverIndex === index && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: '3px',
-                        bgcolor: 'rgb(146, 0, 32)',
-                        zIndex: 10,
-                        '&::before': {
-                          content: '""',
+                  <Box
+                    draggable
+                    onDragStart={(e) => {
+                      console.log('[SiteCanvas] Drag start - module:', module.id, 'from page:', page.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('moduleId', module.id);
+                      e.dataTransfer.setData('sourcePageId', page.id);
+                      
+                      const dragPreview = document.createElement('div');
+                      dragPreview.style.cssText = `
+                        position: absolute;
+                        top: -1000px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        padding: 10px 16px;
+                        background: white;
+                        border-radius: 8px;
+                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                      `;
+                      
+                      const Icon = definition.icon;
+                      dragPreview.innerHTML = `
+                        <div style="
+                          width: 32px;
+                          height: 32px;
+                          border-radius: 6px;
+                          background: ${definition.color};
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          flex-shrink: 0;
+                        ">
+                          <svg style="width: 18px; height: 18px; fill: white;" viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                          </svg>
+                        </div>
+                        <span style="
+                          font-size: 14px;
+                          font-weight: 500;
+                          color: rgb(30, 30, 30);
+                        ">${definition.label}</span>
+                      `;
+                      
+                      document.body.appendChild(dragPreview);
+                      e.dataTransfer.setDragImage(dragPreview, 75, 25);
+                      
+                      setTimeout(() => {
+                        document.body.removeChild(dragPreview);
+                      }, 0);
+                      
+                      e.stopPropagation();
+                      if (onModuleDragStart) onModuleDragStart();
+                    }}
+                    onDragEnd={(e) => {
+                      console.log('[SiteCanvas] Drag end');
+                      e.stopPropagation();
+                      if (onModuleDragEnd) onModuleDragEnd();
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const mouseY = e.clientY;
+                      const relativeY = mouseY - rect.top;
+                      const halfHeight = rect.height / 2;
+                      
+                      if (relativeY < halfHeight) {
+                        setDragOverIndex(index);
+                      } else {
+                        setDragOverIndex(index + 1);
+                      }
+                    }}
+                    sx={{
+                      height: '100%',
+                      borderBottom: index < page.modules.length - 1 
+                        ? `2px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.08)'}` 
+                        : 'none',
+                      position: 'relative',
+                      cursor: 'grab',
+                      transition: 'all 0.2s ease',
+                      overflow: 'hidden',
+                      '&:hover': {
+                        boxShadow: `inset 0 0 0 2px ${theme.colors?.primary?.base || 'rgb(146, 0, 32)'}`
+                      },
+                      '&:active': {
+                        cursor: 'grabbing',
+                        opacity: 0.5
+                      }
+                    }}
+                  >
+                    {dragOverIndex === index && (
+                      <Box
+                        sx={{
                           position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          padding: '4px 12px',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
                           bgcolor: 'rgb(146, 0, 32)',
-                          color: 'white',
-                          fontSize: '10px',
-                          fontWeight: 600,
-                          borderRadius: '4px',
-                          whiteSpace: 'nowrap'
-                        }
-                      }}
-                    />
-                  )}
-                  
-                  {renderMode === 'icon' ? renderIconMode(module) : renderRealMode(module)}
-                  
-                  {/* Bottom drop indicator */}
-                  {dragOverIndex === index + 1 && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: '3px',
-                        bgcolor: 'rgb(146, 0, 32)',
-                        zIndex: 10
-                      }}
-                    />
-                  )}
-                </Box>
-              </motion.div>
-            ))}
+                          zIndex: 10
+                        }}
+                      />
+                    )}
+                    
+                    {renderMode === 'icon' 
+                      ? renderIconMode(module, moduleHeight) 
+                      : renderRealMode(module, moduleHeight)
+                    }
+                    
+                    {dragOverIndex === index + 1 && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
+                          bgcolor: 'rgb(146, 0, 32)',
+                          zIndex: 10
+                        }}
+                      />
+                    )}
+                  </Box>
+                </motion.div>
+              );
+            })}
           </Stack>
         )}
+      </Box>
+
+      {/* Footer - Always at bottom, non-draggable */}
+      <Box
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleDragOver(e, page.modules.length);
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation();
+          handleDragLeave();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleDrop(e, page.modules.length);
+        }}
+        sx={{
+          height: renderMode === 'icon' ? `${FOOTER_HEIGHT_ICON}px` : `${FOOTER_HEIGHT_REAL}px`,
+          flexShrink: 0,
+          bgcolor: 'rgba(0, 0, 0, 0.02)',
+          borderTop: '2px dotted rgba(0, 0, 0, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'rgba(30, 30, 30, 0.3)',
+          fontSize: renderMode === 'icon' ? '7px' : '13px',
+          fontWeight: 500,
+          transition: 'all 0.2s ease',
+          cursor: dragOverIndex === page.modules.length ? 'copy' : 'default',
+          ...(dragOverIndex === page.modules.length && {
+            bgcolor: 'rgba(146, 0, 32, 0.08)',
+            borderTop: '2px dashed rgb(146, 0, 32)',
+            color: 'rgb(146, 0, 32)'
+          })
+        }}
+      >
+        Drop modules here
       </Box>
     </Box>
   );

@@ -76,7 +76,7 @@ When reviewing or writing code, if you identify patterns, implementations, or ar
 - Urgency level (Low/Medium/High/Critical)
 
 **7. AI Summary Format**
-Every response involving code changes MUST include a short max 5 sentence summary of the changes made. 
+Every response involving code changes MUST include a short max 5 sentence summary of the changes made. Summary must be precise and to the point. Do not include unnecessary details. Save tokens.
 
 **Code Quality Alerts in summary:** (only include if issues are identified, otherwise omit this section entirely)
 - **Issue:** [Clear description of the potential problem]
@@ -88,7 +88,7 @@ Every response involving code changes MUST include a short max 5 sentence summar
 All services run in Docker containers with hot-reload enabled, DO NOT propose to run services natively on host machine, assume every change is instantly reflected in running containers.
 
 **9. Readme files**
-DO NOT CREATE README FILES ABOUT CHANGES MADE. just write it in summary.
+DO NOT CREATE README FILES ABOUT CHANGES MADE. DO THEM ONLY IF TOLD TO DO SO.
 
 1.5. Core Color Palette & Typography
 ------------------------------------
@@ -197,70 +197,6 @@ We split the users of our application into 3 groups:
     Studio) and `Client` logins (on personal sites).
 
 ------------------------------------------------------------------------------------------------
-                    **Part 4: Phase 2 Frontend Implementation Plan (Primary Focus)**
-------------------------------------------------------------------------------------------------
-
-4.1. User Flow Implementation
------------------------------
-1.  **HomePage:** The landing page with a "Start Creating" button.
-2.  **Site Creation Wizard:** A multi-step form to gather site details (name, type, colors, etc.). On completion, it calls `POST /api/v1/SITES/` to create a new `Site` and redirects to the Editor.
-3.  **Studio Dashboard:** Lists all sites owned by the user, with options to create a new site or open the editor for an existing one.
-4.  **Editor Launch:** Clicking "Edit" on a site opens the Editor interface for that specific site.
-
-4.2. The Editor Interface
--------------------------
-EDITOR is the most complex part of Phase 2. It must be intuitive, responsive, and seamlessly integrate the AI Assistant.
-
-It should be overlay on top of the `SiteCanvas`, allowing users to see their site as they edit it.
-
-*   **Structure:** The main component will be an `<Editor>` wrapper that contains the user's `<SiteCanvas>`.
-*   **Site Canvas:** The `<SiteCanvas>` component renders the actual user site based on the state-managed `template_config` JSON.
-*   **Minimalist Top Bar:** A small, unobtrusive toolbar at the top with essential tools: Save, Undo/Redo, Mobile/Desktop view toggle.
-*   **AI Assistant Chat:** A dedicated window for the AI Chat. When a user clicks an element in the canvas, the element is outlined, and the chat shows which element is selected. The user can type commands, and the AI will present 3 visual options with instant hover previews.
-
-4.3. "Hot Reload" via State Management
---------------------------------------
-Implement **Zustand** as the state management library. The entire `template_config` JSON for the site being edited will be held in a Zustand store. All editor tools and AI actions will dispatch updates to this store, causing the `<SiteCanvas>` to re-render instantly.
-
-4.4. Saving, Templates, and Versioning
---------------------------------------
-*   **Saving:** The "Save" button will trigger an API call to update the `template_config` JSON in the `Site` model.
-*   **Versioning:** Each save will also create a timestamped snapshot of the `template_config` and add it to the `version_history` field.
-*   **Templates:** The `template_config` is the "template." Loading a template means fetching its JSON and setting it as the current state in the Zustand store.
-
-4.5. Calendar Component
-------------------------------------------
-The calendar is a critical feature for scheduling and must be intuitive and powerful.
-
-There are two calendar views:
-*   **Creator Calendar:** The calendar used by the site owners (creators) in the Studio. It should display all the events from all the sites owned by the user.
-*   **Public Calendar:** Part of the creator sites; it is used by the clients of the creators. It should display only the events from the specific site.
-
-Key Features:
-*   **Multi-Site View:** The calendar must display events from **all** sites owned by the user.
-    -   Events from each site are displayed with the site's name and color.
-*   **Day/Week Templates:**
-    -   **UI:** Implement a "Templates" section on the left side of the calendar, with "Day" and "Week" areas. Each section has a `+` icon to create new templates.
-    -   **Drag-and-Drop:** Templates must be draggable. Implement animations: the template element shrinks and follows the cursor; the target calendar area is highlighted with a red, animated, dotted "edit grid."
-    -   **Drop Logic:** Dropping a template triggers a confirmation modal showing a preview of changes and any overwritten events.
-    -   **Apply to Month:** Dragging a template over the month's name (which will "glow") applies it to the whole month, subject to confirmation.
-    -   **Deletion:** A "trash zone" appears on the left when dragging a template for deletion.
-
-*   **Day Details Modal Rework:**
-    -   Clicking a day opens a modal showing a vertical timeline. Events and availability blocks are rendered on this timeline.
-    -   A `+` button in the corner asks: **"How do you want to schedule this?"** with two options:
-        1.  **[📅 Fixed Meeting]:** Creates a standard `Event`.
-        2.  **[🕐 Available Hours]:** Creates an **Availability Block**.
-
-*   **Availability Blocks:**
-    -   Define windows where clients can book appointments.
-    -   Settings include allowed meeting lengths, time snapping ("Meetings can start at: Every 15 minutes"), and buffer time.
-    -   Rendered as semi-transparent green areas on the timeline.
-    -   When a client books an appointment, we create a event within this block.
-    -   Availability blocks can be dragged and resized, with real-time conflict detection.
-
-*   **Event Creation:** Clicking on the timeline or on + icon opens a modal to create an event, with fields for title, description, type (individual/group), date/time, duration, and location (in-person/Zoom).
-------------------------------------------------------------------------------------------------
                 Part 5: Hosting, Deployment, and the "Publish" Workflow
 ------------------------------------------------------------------------------------------------
 
@@ -279,32 +215,3 @@ Configure Vercel projects as specified in the original plan, using environment v
 2.  **Trigger Hook:** This endpoint's logic will retrieve the site's Vercel Build Hook URL and send a POST request to it.
 3.  **Frontend Build Logic:** In `SiteApp.jsx`, implement logic to read the `REACT_APP_SITE_IDENTIFIER`, fetch the latest `template_config` from a public API endpoint, and use it to generate the static site during the Vercel build.
 4.  **Editor Button:** The "Publish" button in the editor's top bar will trigger the API call.
-
-------------------------------------------------------------------------------------------------
-                       **Part 6: Technology Stack (Established & Planned)**
-------------------------------------------------------------------------------------------------
-
-## Backend (Central API)
-
-*   **Django:** The core Python framework.
-*   **Django REST Framework:** The toolkit for building the RESTful API.
-*   **PostgreSQL:** The primary relational database.
-*   **Simple JWT (with dj-rest-auth):** Handles token-based authentication.
-*   **Gunicorn:** The production-grade WSGI server.
-*   **Docker:** Used to containerize the backend application.
-
-## Frontend (Editor & Site Template)
-
-*   **React:** Builds the user interfaces.
-*   **React Router:** Manages client-side page navigation.
-*   **Zustand:** (To Be Implemented) A lightweight state management library for the editor's "hot reload" feature.
-*   **Axios:** The HTTP client for communicating with the Django API.
-*   **Material-UI (MUI):** The component library for the **Editor/Studio**.
-*   **Tailwind CSS:** (To Be Implemented) The utility-first CSS framework for styling the generated **Personal Sites**.
-*   **@react-oauth/google:** The client-side library for "Sign in with Google."
-
-## Hosting & Deployment
-
-*   **Railway (or similar):** Hosts the containerized Django backend.
-*   **Vercel:** Hosts all static frontend applications.
-*   **Vercel Build Hooks:** The core mechanism for the "Publish" workflow.

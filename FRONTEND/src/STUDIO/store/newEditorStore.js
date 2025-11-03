@@ -14,6 +14,10 @@ const createInitialState = () => ({
       secondary: '#2D5A7B',
       neutral: '#E4E5DA'
     },
+    navigation: {
+      // Only store customizations, defaults applied from moduleDefinitions
+      // content: { } - only include if different from default
+    },
     pages: [
       {
         id: 'home',
@@ -283,6 +287,21 @@ export const useNewEditorStore = create((set, get) => ({
           )
         };
       })
+    },
+    hasUnsavedChanges: true
+  })),
+
+  // === Navigation Management ===
+  updateNavigationContent: (content) => set((state) => ({
+    site: {
+      ...state.site,
+      navigation: {
+        ...state.site.navigation,
+        content: {
+          ...(state.site.navigation?.content || {}),
+          ...content
+        }
+      }
     },
     hasUnsavedChanges: true
   })),

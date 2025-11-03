@@ -11,10 +11,19 @@ import {
   RateReview,
   AttachMoney,
   Help,
-  Group
+  Group,
+  Menu
 } from '@mui/icons-material';
 
 export const MODULE_DEFINITIONS = {
+  navigation: {
+    type: 'navigation',
+    label: 'Navigation',
+    icon: Menu,
+    color: '#333333',
+    description: 'Site navigation bar',
+    special: true // Special module - not draggable, always at top
+  },
   hero: {
     type: 'hero',
     label: 'Hero',
@@ -112,9 +121,9 @@ export const getModuleDefinition = (type) => {
   };
 };
 
-// Get all available module types for toolbar
+// Get all available module types for toolbar (excludes special modules)
 export const getAvailableModules = () => {
-  return Object.values(MODULE_DEFINITIONS);
+  return Object.values(MODULE_DEFINITIONS).filter(module => !module.special);
 };
 
 // Color mapping for backward compatibility
@@ -126,6 +135,19 @@ export const MODULE_COLORS = Object.keys(MODULE_DEFINITIONS).reduce((acc, key) =
 // Default content factory for each module type
 export const getDefaultModuleContent = (moduleType) => {
   const defaults = {
+    navigation: {
+      logo: {
+        text: 'Logo',
+        type: 'text' // or 'image' in the future
+      },
+      links: [
+        { label: 'Home', route: '/' },
+        { label: 'About', route: '/about' },
+        { label: 'Contact', route: '/contact' }
+      ],
+      bgColor: 'transparent',
+      textColor: 'rgb(30, 30, 30)'
+    },
     hero: {
       layout: 'imageRight', // 'imageRight', 'imageLeft', 'centered', 'fullImage'
       heading: 'Transform Your Vision Into Reality',

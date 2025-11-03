@@ -1,6 +1,3 @@
-# Generowanie wykresu bazy
-docker-compose exec backend python manage.py graph_models -a -o my_models.png
-
 ##      ---HOSTED---
 
 # Wyłącz
@@ -67,3 +64,6 @@ docker-compose exec backend python manage.py dumpdata > backup_bazy.json
 
 # wykonaj testy
 docker-compose exec backend python manage.py test apizrob
+
+# Generowanie wykresu bazy
+docker-compose exec backend python manage.py graph_models -a -o my_models.png

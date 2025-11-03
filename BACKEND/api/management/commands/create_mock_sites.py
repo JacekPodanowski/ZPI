@@ -6,6 +6,7 @@ from django.utils import timezone
 import json
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from api.models import Site, Template, Event, AvailabilityBlock
 
@@ -27,226 +28,37 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Superuser with email {user_email} not found.'))
             return
 
+        # Load site configurations from JSON files
+        current_dir = Path(__file__).parent
         demo_sites = [
             {
                 'name': 'Pracownia Jogi',
-                'template_config': {
-                    'site': {
-                        'vibe': 'minimal',
-                        'theme': {
-                            'primary': '#920020',
-                            'secondary': '#2D5A7B',
-                            'neutral': '#E4E5DA'
-                        },
-                        'pages': [
-                            {
-                                'id': 'home',
-                                'name': 'Home',
-                                'route': '/',
-                                'modules': [
-                                    {
-                                        'id': 'hero-1',
-                                        'type': 'hero',
-                                        'content': {
-                                            'heading': 'Pracownia Jogi',
-                                            'subheading': 'Znajdź balans ciała i umysłu',
-                                            'ctaText': 'Zarezerwuj zajęcia',
-                                            'ctaLink': '/kalendarz'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'about',
-                                'name': 'O Mnie',
-                                'route': '/o-mnie',
-                                'modules': [
-                                    {
-                                        'id': 'about-1',
-                                        'type': 'about',
-                                        'content': {
-                                            'title': 'Poznaj mnie',
-                                            'description': 'Instruktor jogi z 10-letnim doświadczeniem w pracy z ciałem i oddechem. Specjalizuję się w pracy indywidualnej i warsztatach grupowych.'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'services',
-                                'name': 'Usługi',
-                                'route': '/uslugi',
-                                'modules': [
-                                    {
-                                        'id': 'services-1',
-                                        'type': 'services',
-                                        'content': {
-                                            'title': 'Usługi dopasowane do Ciebie',
-                                            'subtitle': 'Wybierz formę pracy, która najlepiej wspiera Twoją praktykę',
-                                            'items': [
-                                                {
-                                                    'name': 'Sesje indywidualne',
-                                                    'description': 'Spotkanie dostosowane do Twoich celów i potrzeb ciała',
-                                                    'icon': 'person'
-                                                },
-                                                {
-                                                    'name': 'Warsztaty weekendowe',
-                                                    'description': 'Dwudniowe zanurzenie w praktyce jogi, oddechu i relaksacji',
-                                                    'icon': 'group'
-                                                }
-                                            ]
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'calendar',
-                                'name': 'Kalendarz',
-                                'route': '/kalendarz',
-                                'modules': [
-                                    {
-                                        'id': 'calendar-1',
-                                        'type': 'calendar',
-                                        'content': {
-                                            'title': 'Zarezerwuj zajęcia',
-                                            'description': 'Wybierz dogodny termin dla siebie'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'pricing',
-                                'name': 'Cennik',
-                                'route': '/cennik',
-                                'modules': [
-                                    {
-                                        'id': 'pricing-1',
-                                        'type': 'pricing',
-                                        'content': {
-                                            'title': 'Przejrzyste pakiety',
-                                            'subtitle': 'Wybierz plan, który najlepiej współgra z Twoim rytmem',
-                                            'plans': [
-                                                {
-                                                    'name': 'Sesja indywidualna',
-                                                    'price': '180',
-                                                    'currency': 'PLN',
-                                                    'period': 'sesja',
-                                                    'features': ['60 minut pracy 1:1', 'Personalizowana praktyka', 'Konsultacja przed zajęciami']
-                                                },
-                                                {
-                                                    'name': 'Karnet miesięczny',
-                                                    'price': '520',
-                                                    'currency': 'PLN',
-                                                    'period': 'miesiąc',
-                                                    'features': ['8 spotkań grupowych', 'Dostęp do nagrań', 'Grupa wsparcia'],
-                                                    'featured': True
-                                                }
-                                            ]
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'contact',
-                                'name': 'Kontakt',
-                                'route': '/kontakt',
-                                'modules': [
-                                    {
-                                        'id': 'contact-1',
-                                        'type': 'contact',
-                                        'content': {
-                                            'email': 'kontakt@pracowniajogi.pl',
-                                            'phone': '+48 600 000 001'
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    'entryPointPageId': 'home'
-                }
+                'json_file': 'pracownia_jogi.json'
             },
             {
                 'name': 'Studio Oddechu',
-                'template_config': {
-                    'site': {
-                        'vibe': 'minimal',
-                        'theme': {
-                            'primary': '#920020',
-                            'secondary': '#2D5A7B',
-                            'neutral': '#E4E5DA'
-                        },
-                        'pages': [
-                            {
-                                'id': 'home',
-                                'name': 'Home',
-                                'route': '/',
-                                'modules': [
-                                    {
-                                        'id': 'hero-1',
-                                        'type': 'hero',
-                                        'content': {
-                                            'heading': 'Studio Oddechu',
-                                            'subheading': 'Sesje uważności i oddechu online',
-                                            'ctaText': 'Zarezerwuj sesję',
-                                            'ctaLink': '/kalendarz'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'about',
-                                'name': 'O Studiie',
-                                'route': '/o-studiu',
-                                'modules': [
-                                    {
-                                        'id': 'about-1',
-                                        'type': 'about',
-                                        'content': {
-                                            'title': 'Czym się zajmujemy',
-                                            'description': 'Studio Oddechu to przestrzeń online dedykowana praktyce uważności i pracy z oddechem. Prowadzimy sesje indywidualne i warsztatowe, pomagając odnaleźć spokój w codziennym życiu.'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'calendar',
-                                'name': 'Kalendarz',
-                                'route': '/kalendarz',
-                                'modules': [
-                                    {
-                                        'id': 'calendar-1',
-                                        'type': 'calendar',
-                                        'content': {
-                                            'title': 'Zaplanuj sesję',
-                                            'description': 'Umów się na indywidualną sesję oddechową'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'id': 'contact',
-                                'name': 'Kontakt',
-                                'route': '/kontakt',
-                                'modules': [
-                                    {
-                                        'id': 'contact-1',
-                                        'type': 'contact',
-                                        'content': {
-                                            'email': 'hello@studiooddechu.pl',
-                                            'phone': '+48 600 000 002'
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    'entryPointPageId': 'home'
-                }
+                'json_file': 'studio_oddechu.json'
             }
         ]
 
+        loaded_sites = []
+        for site_info in demo_sites:
+            json_path = current_dir / site_info['json_file']
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    template_config = json.load(f)
+                    loaded_sites.append({
+                        'name': site_info['name'],
+                        'template_config': template_config
+                    })
+                    self.stdout.write(self.style.SUCCESS(f'Loaded config from {site_info["json_file"]}'))
+            except FileNotFoundError:
+                self.stdout.write(self.style.ERROR(f'JSON file not found: {json_path}'))
+            except json.JSONDecodeError as e:
+                self.stdout.write(self.style.ERROR(f'Invalid JSON in {json_path}: {e}'))
+
         with transaction.atomic():
-            for idx, site_data in enumerate(demo_sites):
+            for idx, site_data in enumerate(loaded_sites):
                 # Set color_index: 0 for first site (red), 1 for second site (blue)
                 color_index = idx % 12  # Cycle through 12 available colors
                 
@@ -272,13 +84,13 @@ class Command(BaseCommand):
             {
                 'name': 'Wellness Starter',
                 'description': 'Elegancki szablon dla instruktorów wellness i studiów jogi.',
-                'template_config': demo_sites[0]['template_config'],
+                'template_config': loaded_sites[0]['template_config'] if len(loaded_sites) > 0 else {},
                 'thumbnail_url': None
             },
             {
                 'name': 'Mindfulness Studio',
                 'description': 'Delikatny motyw dla studiów oddechu i pracy z uważnością.',
-                'template_config': demo_sites[1]['template_config'],
+                'template_config': loaded_sites[1]['template_config'] if len(loaded_sites) > 1 else {},
                 'thumbnail_url': None
             }
         ]

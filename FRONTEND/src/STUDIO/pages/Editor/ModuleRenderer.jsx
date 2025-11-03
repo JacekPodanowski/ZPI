@@ -5,6 +5,97 @@ import { Box, Typography, Grid } from '@mui/material';
 const ModuleRenderer = ({ module, pageId }) => {
   const renderContent = () => {
     switch (module.type) {
+      case 'navigation':
+        return (
+          <Box
+            sx={{
+              width: '100%',
+              bgcolor: module.content.bgColor || 'transparent',
+              color: module.content.textColor || 'rgb(30, 30, 30)',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1000
+            }}
+          >
+            <Box
+              sx={{
+                maxWidth: '1400px',
+                mx: 'auto',
+                px: { xs: 3, md: 6 },
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              {/* Logo */}
+              <Typography
+                sx={{
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  letterSpacing: '-0.5px'
+                }}
+              >
+                {module.content.logo?.text || 'Logo'}
+              </Typography>
+
+              {/* Navigation Links */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 4,
+                  alignItems: 'center'
+                }}
+              >
+                {(module.content.links || []).map((link, index) => (
+                  <Typography
+                    key={index}
+                    sx={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s',
+                      '&:hover': {
+                        opacity: 0.7
+                      }
+                    }}
+                  >
+                    {link.label}
+                  </Typography>
+                ))}
+              </Box>
+
+              {/* CTA Button/Circle */}
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: 'rgb(146, 0, 32)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.05)'
+                  }
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: 'white'
+                  }}
+                />
+              </Box>
+            </Box>
+          </Box>
+        );
+      
       case 'hero':
         const layout = module.content.layout || 'imageRight';
         const isImageLayout = layout === 'imageRight' || layout === 'imageLeft';
