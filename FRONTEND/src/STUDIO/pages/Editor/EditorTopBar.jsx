@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, IconButton, Stack, Typography, Tooltip, TextField } from '@mui/material';
-import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode } from '@mui/icons-material';
+import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import { renameSite } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
@@ -151,30 +151,34 @@ const EditorTopBar = () => {
 
       {/* Left Section */}
       <Stack direction="row" spacing={1} alignItems="center" flex={1}>
-        {/* Go Back Button */}
-        <Tooltip title="Back to Dashboard">
+        {/* Go Back Button - changes based on mode */}
+        <Tooltip title={editorMode === 'detail' ? 'Back to Structure' : 'Back to Dashboard'}>
           <IconButton
-            onClick={handleGoBack}
+            onClick={editorMode === 'detail' ? exitDetailMode : handleGoBack}
             sx={{
               height: '56px',
-              width: '48px',
+              width: editorMode === 'detail' ? '72px' : '48px',
               borderRadius: 0,
               bgcolor: theme.colors?.surface?.base || 'rgba(30, 30, 30, 0.02)',
               color: theme.colors?.text?.base || 'rgb(30, 30, 30)',
               borderRight: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
+              display: 'flex',
+              gap: 1,
+              transition: 'width 0.2s ease',
               '&:hover': {
                 bgcolor: theme.colors?.surface?.hover || 'rgba(30, 30, 30, 0.06)'
               }
             }}
           >
             <ArrowBack />
+            {editorMode === 'detail' && <Schema sx={{ fontSize: 20 }} />}
           </IconButton>
         </Tooltip>
 
-        {/* Editable Site Title */}
+        {/* Title - Site name in structure mode, Page name in detail mode */}
         {!isEditingTitle ? (
           <Box
-            onClick={handleTitleClick}
+            onClick={editorMode === 'structure' ? handleTitleClick : undefined}
             sx={{
               display: 'flex',
               alignItems: 'center',
@@ -182,14 +186,16 @@ const EditorTopBar = () => {
               px: 1.5,
               py: 0.75,
               borderRadius: '8px',
-              cursor: 'pointer',
+              cursor: editorMode === 'structure' ? 'pointer' : 'default',
               transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: 'rgba(30, 30, 30, 0.04)',
-                '& .edit-icon': {
-                  opacity: 1
+              ...(editorMode === 'structure' && {
+                '&:hover': {
+                  bgcolor: 'rgba(30, 30, 30, 0.04)',
+                  '& .edit-icon': {
+                    opacity: 1
+                  }
                 }
-              }
+              })
             }}
           >
             <Typography
@@ -200,17 +206,22 @@ const EditorTopBar = () => {
                 fontSize: '16px'
               }}
             >
-              {isSavingTitle ? 'Saving...' : siteName}
+              {editorMode === 'detail' 
+                ? `${selectedPage?.name || 'Untitled'} Page`
+                : (isSavingTitle ? 'Saving...' : siteName)
+              }
             </Typography>
-            <Edit 
-              className="edit-icon"
-              sx={{ 
-                fontSize: 16, 
-                color: 'rgba(30, 30, 30, 0.4)',
-                opacity: 0,
-                transition: 'opacity 0.2s ease'
-              }} 
-            />
+            {editorMode === 'structure' && (
+              <Edit 
+                className="edit-icon"
+                sx={{ 
+                  fontSize: 16, 
+                  color: 'rgba(30, 30, 30, 0.4)',
+                  opacity: 0,
+                  transition: 'opacity 0.2s ease'
+                }} 
+              />
+            )}
           </Box>
         ) : (
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -286,38 +297,6 @@ const EditorTopBar = () => {
               </IconButton>
             </Tooltip>
           </Stack>
-        )}
-
-        {editorMode === 'detail' && (
-          <>
-            <Box
-              sx={{
-                width: '1px',
-                height: '24px',
-                bgcolor: 'rgba(30, 30, 30, 0.1)',
-                mx: 1
-              }}
-            />
-            <IconButton 
-              onClick={exitDetailMode}
-              sx={{ 
-                color: 'rgb(30, 30, 30)',
-                '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
-              }}
-            >
-              <ArrowBack />
-            </IconButton>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                fontWeight: 500,
-                color: 'rgb(30, 30, 30)',
-                ml: 1
-              }}
-            >
-              {selectedPage?.name || 'Untitled Page'}
-            </Typography>
-          </>
         )}
       </Stack>
 
