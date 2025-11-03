@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import {
     Alert,
     Box,
     Button,
+    Checkbox,
     Container,
     Divider,
+    FormControlLabel,
     Link,
     Paper,
     Stack,
@@ -14,30 +16,101 @@ import {
     Typography
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
+import DescriptionIcon from '@mui/icons-material/Description';
+import LockOpenIcon from '@mui/icons-material/LockOpen';
 import { useAuth } from '../../../contexts/AuthContext';
+import { fetchLatestTerms, resendVerificationEmail, requestMagicLink } from '../../../services/authService';
 import Logo from '../../../components/Logo/Logo';
 
 const LoginPage = () => {
-    const { login, googleLogin, mockLogin } = useAuth();
+    const { login, signup, googleLogin, mockLogin } = useAuth();
     const location = useLocation();
     const redirectPath = location.state?.from?.pathname ?? '/admin';
 
+    const [mode, setMode] = useState('login'); // 'login', 'register', or 'magic'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [password2, setPassword2] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [acceptTerms, setAcceptTerms] = useState(false);
+    const [terms, setTerms] = useState({ file_url: '#', version: '' });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [registrationSuccess, setRegistrationSuccess] = useState(false);
+    const [magicLinkSent, setMagicLinkSent] = useState(false);
+    const [registeredEmail, setRegisteredEmail] = useState('');
+    const [resendingEmail, setResendingEmail] = useState(false);
+
+    useEffect(() => {
+        if (mode === 'register') {
+            fetchLatestTerms()
+                .then(setTerms)
+                .catch(console.error);
+        }
+    }, [mode]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError(null);
+        setRegistrationSuccess(false);
+        setMagicLinkSent(false);
         setSubmitting(true);
         try {
-            await login(email, password, redirectPath);
+            if (mode === 'login') {
+                await login(email, password, redirectPath);
+            } else if (mode === 'magic') {
+                const response = await requestMagicLink(email);
+                setMagicLinkSent(true);
+                setRegisteredEmail(email);
+            } else {
+                if (password !== password2) {
+                    setError('Hasła muszą być identyczne.');
+                    setSubmitting(false);
+                    return;
+                }
+                if (!acceptTerms) {
+                    setError('Musisz zaakceptować Regulamin aby się zarejestrować.');
+                    setSubmitting(false);
+                    return;
+                }
+                const response = await signup({
+                    first_name: firstName,
+                    last_name: lastName,
+                    email,
+                    password,
+                    password2,
+                    accept_terms: acceptTerms
+                });
+                // Registration successful - show success message
+                setRegistrationSuccess(true);
+                setRegisteredEmail(email);
+                // Clear form
+                setFirstName('');
+                setLastName('');
+                setEmail('');
+                setPassword('');
+                setPassword2('');
+                setAcceptTerms(false);
+            }
         } catch (err) {
-            const detail = err.response?.data?.detail || err.message || 'Nie udało się zalogować.';
+            const detail = err.response?.data?.detail || err.message || 'Nie udało się przetworzyć żądania.';
             setError(detail);
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        setResendingEmail(true);
+        setError(null);
+        try {
+            await resendVerificationEmail(registeredEmail);
+            alert('Email weryfikacyjny został wysłany ponownie. Sprawdź swoją skrzynkę.');
+        } catch (err) {
+            setError('Nie udało się wysłać emaila. Spróbuj ponownie później.');
+        } finally {
+            setResendingEmail(false);
         }
     };
 
@@ -86,13 +159,72 @@ const LoginPage = () => {
                     </Box>
 
                     <Typography variant="h4" sx={{ fontWeight: 700, textAlign: 'center' }}>
-                        Zaloguj się lub stwórz konto
+                        {mode === 'login' ? 'Zaloguj się' : mode === 'magic' ? 'Magiczny link' : 'Stwórz konto'}
                     </Typography>
+
+                    {magicLinkSent && (
+                        <Alert severity="success">
+                            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                                Magiczny link wysłany!
+                            </Typography>
+                            <Typography variant="body2">
+                                Wysłaliśmy link logowania na adres <strong>{registeredEmail}</strong>.
+                                Kliknij w link w emailu, aby zalogować się bez hasła. Link jest ważny przez 15 minut.
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                                Nie otrzymałeś emaila? Sprawdź folder spam lub wyślij link ponownie używając formularza poniżej.
+                            </Typography>
+                        </Alert>
+                    )}
+
+                    {registrationSuccess && (
+                        <Alert severity="success">
+                            <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                                Rejestracja zakończona pomyślnie!
+                            </Typography>
+                            <Typography variant="body2">
+                                Wysłaliśmy link weryfikacyjny na adres <strong>{registeredEmail}</strong>.
+                                Kliknij w link w emailu, aby aktywować swoje konto i móc się zalogować.
+                            </Typography>
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                                Nie otrzymałeś emaila? Sprawdź folder spam lub{' '}
+                                <Link 
+                                    href="#" 
+                                    onClick={(e) => { 
+                                        e.preventDefault(); 
+                                        handleResendVerification();
+                                    }}
+                                    sx={{ cursor: resendingEmail ? 'wait' : 'pointer' }}
+                                >
+                                    {resendingEmail ? 'Wysyłanie...' : 'wyślij ponownie'}
+                                </Link>.
+                            </Typography>
+                        </Alert>
+                    )}
 
                     {error && <Alert severity="error">{error}</Alert>}
 
                     <Box component="form" onSubmit={handleSubmit} noValidate>
                         <Stack spacing={2}>
+                            {mode === 'register' && (
+                                <>
+                                    <TextField
+                                        label="Imię"
+                                        type="text"
+                                        value={firstName}
+                                        required
+                                        onChange={(event) => setFirstName(event.target.value)}
+                                        autoComplete="given-name"
+                                    />
+                                    <TextField
+                                        label="Nazwisko (opcjonalnie)"
+                                        type="text"
+                                        value={lastName}
+                                        onChange={(event) => setLastName(event.target.value)}
+                                        autoComplete="family-name"
+                                    />
+                                </>
+                            )}
                             <TextField
                                 label="Adres e-mail"
                                 type="email"
@@ -101,19 +233,108 @@ const LoginPage = () => {
                                 onChange={(event) => setEmail(event.target.value)}
                                 autoComplete="email"
                             />
-                            <TextField
-                                label="Hasło"
-                                type="password"
-                                value={password}
-                                required
-                                onChange={(event) => setPassword(event.target.value)}
-                                autoComplete="current-password"
-                            />
+                            {(mode === 'login' || mode === 'register') && (
+                                <TextField
+                                    label="Hasło"
+                                    type="password"
+                                    value={password}
+                                    required
+                                    onChange={(event) => setPassword(event.target.value)}
+                                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                                />
+                            )}
+                            {mode === 'register' && (
+                                <>
+                                    <TextField
+                                        label="Powtórz hasło"
+                                        type="password"
+                                        value={password2}
+                                        required
+                                        onChange={(event) => setPassword2(event.target.value)}
+                                        autoComplete="new-password"
+                                    />
+                                    <Box
+                                        sx={{
+                                            p: 2,
+                                            bgcolor: 'rgba(160, 0, 22, 0.04)',
+                                            borderRadius: 2,
+                                            border: '1px solid rgba(160, 0, 22, 0.1)'
+                                        }}
+                                    >
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={acceptTerms}
+                                                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={
+                                                <Typography variant="body2">
+                                                    Akceptuję{' '}
+                                                    <Link
+                                                        href={terms.file_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        sx={{ fontWeight: 600 }}
+                                                    >
+                                                        Regulamin Świadczenia Usług (v{terms.version})
+                                                    </Link>
+                                                </Typography>
+                                            }
+                                        />
+                                    </Box>
+                                </>
+                            )}
                             <Button type="submit" variant="contained" size="large" disabled={submitting}>
-                                {submitting ? 'Przetwarzanie...' : 'Dalej'}
+                                {submitting ? 'Przetwarzanie...' : mode === 'login' ? 'Zaloguj' : mode === 'magic' ? 'Wyślij magiczny link' : 'Zarejestruj'}
                             </Button>
                         </Stack>
                     </Box>
+
+                    {mode === 'magic' && (
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Button
+                                variant="text"
+                                onClick={() => {
+                                    setMode('login');
+                                    setError(null);
+                                    setMagicLinkSent(false);
+                                }}
+                            >
+                                Wróć do logowania hasłem
+                            </Button>
+                        </Box>
+                    )}
+
+                    {mode === 'login' && (
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Button
+                                variant="text"
+                                startIcon={<LockOpenIcon />}
+                                onClick={() => {
+                                    setMode('magic');
+                                    setError(null);
+                                }}
+                            >
+                                Zaloguj się bez hasła (magiczny link)
+                            </Button>
+                        </Box>
+                    )}
+
+                    {(mode === 'login' || mode === 'register') && (
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Button
+                                variant="text"
+                                onClick={() => {
+                                    setMode(mode === 'login' ? 'register' : 'login');
+                                    setError(null);
+                                }}
+                            >
+                                {mode === 'login' ? 'Nie masz konta? Zarejestruj się' : 'Masz już konto? Zaloguj się'}
+                            </Button>
+                        </Box>
+                    )}
 
                     <Divider>lub</Divider>
 

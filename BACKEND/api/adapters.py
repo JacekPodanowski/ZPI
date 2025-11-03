@@ -1,5 +1,6 @@
 # api/adapters.py
 
+from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.conf import settings
 from django.utils.text import slugify
@@ -10,6 +11,27 @@ import logging
 from .models import PlatformUser
 
 logger = logging.getLogger(__name__)
+
+
+class CustomAccountAdapter(DefaultAccountAdapter):
+    """
+    Custom adapter to override email confirmation URL to point to React frontend.
+    """
+    
+    def get_email_confirmation_url(self, request, emailconfirmation):
+        """
+        Override to return React frontend URL instead of Django backend URL.
+        The key is passed to the React app which will call our API to confirm.
+        """
+        frontend_url = settings.FRONTEND_URL.rstrip('/')
+        key = emailconfirmation.key
+        
+        # React route: /studio/confirm-email/:key
+        confirmation_url = f"{frontend_url}/studio/confirm-email/{key}"
+        
+        logger.info(f"CustomAccountAdapter: Generated confirmation URL: {confirmation_url}")
+        return confirmation_url
+
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     def get_connect_redirect_url(self, request, socialaccount):

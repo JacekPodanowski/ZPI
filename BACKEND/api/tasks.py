@@ -5,6 +5,7 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,6 @@ def cleanup_unused_media(self, older_than_hours: int = 24):
     Returns:
         dict: Cleanup statistics
     """
-    from django.utils import timezone
     from datetime import timedelta
     from .media_helpers import cleanup_asset_if_unused
     from .models import MediaAsset

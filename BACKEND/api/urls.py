@@ -7,6 +7,10 @@ from .views import (
     EventViewSet,
     BookingViewSet,
     CustomRegisterView,
+    ResendVerificationEmailView,
+    ConfirmEmailView,
+    RequestMagicLinkView,
+    VerifyMagicLinkView,
     GoogleLogin,
     TemplateViewSet,
     PublicSiteView,
@@ -23,6 +27,8 @@ from .views import (
     SessionConfirmedDiscordEmailView,
     SessionConfirmedGoogleMeetEmailView,
     SessionNewReservationEmailView,
+    LatestTermsView,
+    AcceptTermsView,
 )
 
 
@@ -40,6 +46,10 @@ router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='avai
 urlpatterns = [
     path('', include(router.urls)),
     path('auth/register/', CustomRegisterView.as_view(), name='custom_register'),
+    path('auth/resend-verification/', ResendVerificationEmailView.as_view(), name='resend_verification'),
+    path('auth/confirm-email/', ConfirmEmailView.as_view(), name='confirm_email'),
+    path('auth/magic-link/request/', RequestMagicLinkView.as_view(), name='request_magic_link'),
+    path('auth/magic-link/verify/', VerifyMagicLinkView.as_view(), name='verify_magic_link'),
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
     path('public-sites/by-id/<int:site_id>/', PublicSiteByIdView.as_view(), name='public_site_detail_by_id'),
     path('public-sites/<slug:identifier>/', PublicSiteView.as_view(), name='public_site_detail'),
@@ -52,4 +62,6 @@ urlpatterns = [
     path('emails/session-confirmed-discord/', SessionConfirmedDiscordEmailView.as_view(), name='email-session-confirmed-discord'),
     path('emails/session-confirmed-google-meet/', SessionConfirmedGoogleMeetEmailView.as_view(), name='email-session-confirmed-google-meet'),
     path('emails/session-new-reservation/', SessionNewReservationEmailView.as_view(), name='email-session-new-reservation'),
+    path('terms/latest/', LatestTermsView.as_view(), name='terms-latest'),
+    path('terms/accept/', AcceptTermsView.as_view(), name='terms-accept'),
 ]

@@ -1,7 +1,28 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
+from django.utils.crypto import get_random_string
+from datetime import timedelta
 from .utils import generate_site_identifier
+
+
+def terms_of_service_path(instance, filename):
+    """File path for ToS uploads: MEDIA_ROOT/terms/v_1.0/terms.pdf"""
+    return f'terms/v_{instance.version}/{filename}'
+
+
+class TermsOfService(models.Model):
+    """Stores different versions of Terms of Service documents."""
+    version = models.CharField(max_length=20, unique=True, help_text="Version number, e.g., '1.0' or '2025-11-01'")
+    file = models.FileField(upload_to=terms_of_service_path, help_text="The PDF file for these terms.")
+    published_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-published_at']
+
+    def __str__(self):
+        return f"Terms of Service v{self.version}"
 
 
 class PlatformUserManager(BaseUserManager):
@@ -59,6 +80,15 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
         blank=True,
         help_text='User preferences: {"theme": {"mode": "dark", "themeId": "studio"}, "calendar": {"operating_start_hour": 6, "operating_end_hour": 22}}'
     )
+    terms_agreement = models.ForeignKey(
+        TermsOfService,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='agreed_users',
+        help_text='The ToS version this user has accepted'
+    )
+    terms_agreement_date = models.DateTimeField(null=True, blank=True, help_text='When the user accepted the ToS')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)
@@ -317,3 +347,50 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'Notification for {self.user.email}: {self.message[:20]}'
+
+
+class MagicLink(models.Model):
+    """Stores magic link tokens for passwordless authentication."""
+    email = models.EmailField(max_length=254)
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f'Magic link for {self.email} ({"used" if self.used else "active"})'
+    
+    def is_valid(self):
+        """Check if the magic link is still valid."""
+        if self.used:
+            return False
+        if timezone.now() > self.expires_at:
+            return False
+        return True
+    
+    def mark_as_used(self):
+        """Mark the magic link as used."""
+        self.used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=['used', 'used_at'])
+    
+    @classmethod
+    def create_for_email(cls, email, expiry_minutes=15):
+        """Create a new magic link for the given email."""
+        token = get_random_string(64)
+        expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
+        return cls.objects.create(
+            email=email,
+            token=token,
+            expires_at=expires_at
+        )
+    
+    @classmethod
+    def cleanup_expired(cls):
+        """Delete expired magic links."""
+        cutoff = timezone.now()
+        cls.objects.filter(expires_at__lt=cutoff).delete()

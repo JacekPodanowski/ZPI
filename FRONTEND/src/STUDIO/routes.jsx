@@ -23,11 +23,23 @@ import ToastTestPage from './pages/Lab/ToastTestPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import EditorLabPage from './pages/Lab/EditorLabPage';
 import TeamPage from './pages/Team/TeamPage';
+import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
+import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
+import MagicLoginPage from './pages/Auth/MagicLoginPage';
 
 const StudioApp = () => (
   <Routes>
     {/* Default redirect when visiting /studio */}
     <Route index element={<Navigate to="" replace />} />
+
+    {/* Terms of Service acceptance - OUTSIDE ProtectedRoute to avoid redirect loop */}
+    <Route path="accept-terms" element={<AcceptTermsPage />} />
+    
+    {/* Email confirmation - PUBLIC route, no auth required */}
+    <Route path="confirm-email/:key" element={<ConfirmEmailPage />} />
+    
+    {/* Magic link login - PUBLIC route, no auth required */}
+    <Route path="magic-login/:token" element={<MagicLoginPage />} />
 
     {/* Site creation flow - OUTSIDE StudioLayout to avoid layout padding/footer */}
     <Route path="new" element={<ProtectedRoute><CategorySelectionPage /></ProtectedRoute>} />

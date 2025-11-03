@@ -47,3 +47,35 @@ export const updateUserPreferences = async (preferences) => {
     const response = await apiClient.patch('/users/me/', { preferences });
     return response.data;
 };
+
+export const fetchLatestTerms = async () => {
+    const response = await apiClient.get('/terms/latest/');
+    return response.data;
+};
+
+export const acceptLatestTerms = async () => {
+    const response = await apiClient.post('/terms/accept/');
+    return response.data;
+};
+
+export const resendVerificationEmail = async (email) => {
+    const response = await apiClient.post('/auth/resend-verification/', { email });
+    return response.data;
+};
+
+export const confirmEmail = async (key) => {
+    const response = await apiClient.post('/auth/confirm-email/', { key });
+    return response.data;
+};
+
+export const requestMagicLink = async (email) => {
+    const response = await apiClient.post('/auth/magic-link/request/', { email });
+    return response.data;
+};
+
+export const verifyMagicLink = async (token) => {
+    const response = await apiClient.post('/auth/magic-link/verify/', { token });
+    const { access, refresh } = response.data;
+    persistTokens(access, refresh);
+    return response.data;
+};

@@ -12,6 +12,9 @@ from django.conf import settings
 from django.db.models import Sum
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from django.utils import timezone
+from allauth.account.models import EmailAddress, EmailConfirmation, EmailConfirmationHMAC
+from allauth.account.utils import send_email_confirmation
 from rest_framework import viewsets, permissions, status, generics, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
@@ -36,6 +39,8 @@ from .models import (
     MediaUsage,
     Notification,
     AvailabilityBlock,
+    TermsOfService,
+    MagicLink,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -244,6 +249,10 @@ class GoogleLogin(SocialLoginView):
 
 @extend_schema(tags=['Auth'])
 class CustomRegisterView(generics.CreateAPIView):
+    """
+    Custom registration endpoint that creates inactive users and sends email verification.
+    Users cannot login until they click the verification link in their email.
+    """
     queryset = PlatformUser.objects.all()
     permission_classes = (AllowAny,)
     serializer_class = CustomRegisterSerializer
@@ -252,10 +261,350 @@ class CustomRegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        logger.info("Created new platform user %s", user.email)
+        
+        logger.info("Created new platform user %s (inactive, pending email verification)", user.email)
+        
+        # Create EmailAddress record for allauth
+        email_address = EmailAddress.objects.create(
+            user=user,
+            email=user.email,
+            primary=True,
+            verified=False
+        )
+        
+        # Send verification email
+        try:
+            send_email_confirmation(request, user, signup=True)
+            logger.info("Verification email sent to %s", user.email)
+        except Exception as e:
+            logger.error("Failed to send verification email to %s: %s", user.email, str(e))
+            # Don't fail the registration, user can request resend
+        
+        return Response({
+            'detail': 'Registration successful. Please check your email to verify your account.',
+            'email': user.email,
+            'verification_sent': True
+        }, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    tags=['Auth'],
+    summary='Resend email verification',
+    description='Resend verification email to a user who has not yet verified their email address.',
+    request=inline_serializer(
+        name='ResendVerificationRequest',
+        fields={'email': serializers.EmailField()}
+    ),
+    responses={
+        200: inline_serializer(
+            name='ResendVerificationResponse',
+            fields={'detail': serializers.CharField()}
+        ),
+        404: OpenApiResponse(description='User not found or already verified'),
+    }
+)
+class ResendVerificationEmailView(APIView):
+    """Resend email verification link to inactive users."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        if not email:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = PlatformUser.objects.get(email=email)
+            
+            # Check if user is already active
+            if user.is_active:
+                return Response({
+                    'detail': 'This account is already verified. You can log in.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Check if EmailAddress exists
+            email_address = EmailAddress.objects.filter(user=user, email=email).first()
+            if email_address and email_address.verified:
+                return Response({
+                    'detail': 'Email is already verified. You can log in.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Send verification email
+            send_email_confirmation(request, user, signup=False)
+            logger.info("Resent verification email to %s", user.email)
+            
+            return Response({
+                'detail': 'Verification email has been resent. Please check your inbox.',
+                'email': user.email
+            }, status=status.HTTP_200_OK)
+            
+        except PlatformUser.DoesNotExist:
+            # Don't reveal if email exists or not for security
+            return Response({
+                'detail': 'If an account with this email exists and is not verified, a verification email will be sent.',
+                'email': email
+            }, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=['Auth'],
+    summary='Confirm email address',
+    description='Confirm user email address using the verification key from the email link.',
+    request=inline_serializer(
+        name='ConfirmEmailRequest',
+        fields={'key': serializers.CharField()}
+    ),
+    responses={
+        200: inline_serializer(
+            name='ConfirmEmailResponse',
+            fields={
+                'detail': serializers.CharField(),
+                'email': serializers.EmailField(),
+            }
+        ),
+        400: OpenApiResponse(description='Invalid or expired key'),
+        404: OpenApiResponse(description='Confirmation not found'),
+    }
+)
+class ConfirmEmailView(APIView):
+    """Confirm email address using verification key from email link."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        key = request.data.get('key')
+        if not key:
+            return Response({'detail': 'Verification key is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Try to get the email confirmation object
+            email_confirmation = EmailConfirmation.objects.get(key=key.lower())
+            
+            # Check if already confirmed
+            if email_confirmation.email_address.verified:
+                return Response({
+                    'detail': 'Email address already verified. You can log in now.',
+                    'email': email_confirmation.email_address.email,
+                    'already_verified': True
+                }, status=status.HTTP_200_OK)
+            
+            # Confirm the email
+            email_confirmation.confirm(request)
+            
+            # Activate the user account
+            user = email_confirmation.email_address.user
+            if not user.is_active:
+                user.is_active = True
+                user.save(update_fields=['is_active'])
+            
+            logger.info("Email verified and account activated for user %s", user.email)
+            
+            return Response({
+                'detail': 'Email verified successfully! You can now log in.',
+                'email': user.email,
+                'verified': True
+            }, status=status.HTTP_200_OK)
+            
+        except EmailConfirmation.DoesNotExist:
+            # Try HMAC-based confirmation as fallback
+            try:
+                email_confirmation_hmac = EmailConfirmationHMAC.from_key(key)
+                if email_confirmation_hmac:
+                    # Check if already confirmed
+                    if email_confirmation_hmac.email_address.verified:
+                        return Response({
+                            'detail': 'Email address already verified. You can log in now.',
+                            'email': email_confirmation_hmac.email_address.email,
+                            'already_verified': True
+                        }, status=status.HTTP_200_OK)
+                    
+                    # Confirm the email
+                    email_confirmation_hmac.confirm(request)
+                    
+                    # Activate the user account
+                    user = email_confirmation_hmac.email_address.user
+                    if not user.is_active:
+                        user.is_active = True
+                        user.save(update_fields=['is_active'])
+                    
+                    logger.info("Email verified (HMAC) and account activated for user %s", user.email)
+                    
+                    return Response({
+                        'detail': 'Email verified successfully! You can now log in.',
+                        'email': user.email,
+                        'verified': True
+                    }, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error("Email confirmation failed: %s", str(e))
+            
+            return Response({
+                'detail': 'Invalid or expired verification link.',
+                'error': 'invalid_key'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=['Auth'],
+    summary='Request magic link login',
+    description='Request a passwordless login link to be sent to the specified email address.',
+    request=inline_serializer(
+        name='RequestMagicLinkRequest',
+        fields={'email': serializers.EmailField()}
+    ),
+    responses={
+        200: inline_serializer(
+            name='RequestMagicLinkResponse',
+            fields={
+                'detail': serializers.CharField(),
+                'email': serializers.EmailField(),
+            }
+        ),
+        400: OpenApiResponse(description='Invalid email'),
+    }
+)
+class RequestMagicLinkView(APIView):
+    """Request a magic link for passwordless login."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if user exists and is active
+        try:
+            user = PlatformUser.objects.get(email=email)
+            if not user.is_active:
+                return Response({
+                    'detail': 'Your account is not verified. Please check your email for the verification link.',
+                    'error': 'account_not_verified'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except PlatformUser.DoesNotExist:
+            # Don't reveal if email exists or not for security
+            return Response({
+                'detail': 'If an account with this email exists, a magic link will be sent.',
+                'email': email
+            }, status=status.HTTP_200_OK)
+        
+        # Create magic link
+        magic_link = MagicLink.create_for_email(email, expiry_minutes=15)
+        
+        # Send email with magic link
+        frontend_url = settings.FRONTEND_URL.rstrip('/')
+        magic_link_url = f"{frontend_url}/studio/magic-login/{magic_link.token}"
+        
+        # Render email
+        email_subject = 'Your Magic Login Link'
+        email_html = render_to_string('emails/magic_link_login.html', {
+            'user': user,
+            'magic_link_url': magic_link_url,
+            'expiry_minutes': 15,
+        })
+        email_text = strip_tags(email_html)
+        
+        # Send email
+        from django.core.mail import send_mail
+        try:
+            send_mail(
+                subject=email_subject,
+                message=email_text,
+                html_message=email_html,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            logger.info("Magic link sent to %s", email)
+        except Exception as e:
+            logger.error("Failed to send magic link email: %s", str(e))
+            return Response({
+                'detail': 'Failed to send magic link. Please try again later.',
+                'error': 'email_failed'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            'detail': 'Magic link sent! Please check your email.',
+            'email': email
+        }, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=['Auth'],
+    summary='Verify magic link and login',
+    description='Verify magic link token and return JWT tokens for authentication.',
+    request=inline_serializer(
+        name='VerifyMagicLinkRequest',
+        fields={'token': serializers.CharField()}
+    ),
+    responses={
+        200: inline_serializer(
+            name='VerifyMagicLinkResponse',
+            fields={
+                'detail': serializers.CharField(),
+                'email': serializers.EmailField(),
+                'access': serializers.CharField(),
+                'refresh': serializers.CharField(),
+            }
+        ),
+        400: OpenApiResponse(description='Invalid or expired token'),
+        404: OpenApiResponse(description='Token not found'),
+    }
+)
+class VerifyMagicLinkView(APIView):
+    """Verify magic link token and login user."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        token = request.data.get('token')
+        if not token:
+            return Response({'detail': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            magic_link = MagicLink.objects.get(token=token)
+        except MagicLink.DoesNotExist:
+            return Response({
+                'detail': 'Invalid magic link.',
+                'error': 'invalid_token'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if valid
+        if not magic_link.is_valid():
+            if magic_link.used:
+                return Response({
+                    'detail': 'This magic link has already been used.',
+                    'error': 'already_used'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'detail': 'This magic link has expired. Please request a new one.',
+                    'error': 'expired'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get user
+        try:
+            user = PlatformUser.objects.get(email=magic_link.email)
+            if not user.is_active:
+                return Response({
+                    'detail': 'Your account is not active.',
+                    'error': 'account_inactive'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except PlatformUser.DoesNotExist:
+            return Response({
+                'detail': 'User account not found.',
+                'error': 'user_not_found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Mark magic link as used
+        magic_link.mark_as_used()
+        
+        # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
-        tokens = {'refresh': str(refresh), 'access': str(refresh.access_token)}
-        return Response(tokens, status=status.HTTP_201_CREATED)
+        
+        logger.info("User %s logged in via magic link", user.email)
+        
+        return Response({
+            'detail': 'Login successful!',
+            'email': user.email,
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+        }, status=status.HTTP_200_OK)
 
 
 class IsOwnerOrStaff(permissions.BasePermission):
@@ -1143,3 +1492,68 @@ class SessionNewReservationEmailView(BaseTemplatedEmailView):
             'start_time': data['start_time'],
             'end_time': data['end_time'],
         }
+
+
+@extend_schema(
+    tags=['Terms of Service'],
+    summary='Get latest Terms of Service',
+    description='Returns the URL and version of the latest Terms of Service document. This is a public endpoint.',
+    responses={
+        200: inline_serializer(
+            name='LatestTermsResponse',
+            fields={
+                'version': serializers.CharField(),
+                'file_url': serializers.URLField(),
+                'published_at': serializers.DateTimeField(),
+            }
+        ),
+        404: OpenApiResponse(description='No terms of service found'),
+    },
+)
+class LatestTermsView(APIView):
+    """Provides the URL and version of the latest Terms of Service."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            latest_terms = TermsOfService.objects.latest('published_at')
+            return Response({
+                'version': latest_terms.version,
+                'file_url': request.build_absolute_uri(latest_terms.file.url),
+                'published_at': latest_terms.published_at,
+            })
+        except TermsOfService.DoesNotExist:
+            return Response({'detail': 'No terms of service found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@extend_schema(
+    tags=['Terms of Service'],
+    summary='Accept latest Terms of Service',
+    description='Allows an authenticated user to accept the latest Terms of Service version.',
+    responses={
+        200: inline_serializer(
+            name='AcceptTermsResponse',
+            fields={
+                'status': serializers.CharField(),
+                'message': serializers.CharField(),
+            }
+        ),
+        400: OpenApiResponse(description='No terms to accept'),
+    },
+)
+class AcceptTermsView(APIView):
+    """Allows an authenticated user to accept the latest Terms of Service."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            latest_terms = TermsOfService.objects.latest('published_at')
+            user = request.user
+            
+            user.terms_agreement = latest_terms
+            user.terms_agreement_date = timezone.now()
+            user.save(update_fields=['terms_agreement', 'terms_agreement_date'])
+            
+            return Response({'status': 'success', 'message': f'Terms v{latest_terms.version} accepted.'})
+        except TermsOfService.DoesNotExist:
+            return Response({'detail': 'No terms to accept.'}, status=status.HTTP_400_BAD_REQUEST)

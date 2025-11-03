@@ -104,6 +104,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'api.middleware.EnforceTermsOfServiceMiddleware',
 ]
 
 # --- Baza Danych ---
@@ -199,22 +200,28 @@ REST_AUTH = {
     'REGISTER_SERIALIZER': 'api.serializers.CustomRegisterSerializer',
     'TOKEN_MODEL': None,
 }
+ACCOUNT_ADAPTER = 'api.adapters.CustomAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'api.adapters.CustomSocialAccountAdapter'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# --- Finalna, poprawna konfiguracja allauth ---
-ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Logowanie za pomocą adresu e-mail
-ACCOUNT_EMAIL_REQUIRED = True            # E-mail jest wymagany przy rejestracji
+# --- Updated allauth configuration (new format, no deprecation warnings) ---
+# Authentication method
+ACCOUNT_LOGIN_METHODS = {'email'}  # Use email for authentication (replaces ACCOUNT_AUTHENTICATION_METHOD)
+
+# Signup fields configuration
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']  # * means required
+
+# Email settings
 ACCOUNT_UNIQUE_EMAIL = True              # E-maile muszą być unikalne
-ACCOUNT_USERNAME_REQUIRED = False        # Nazwa użytkownika nie jest wymagana w formularzu
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory' # Wymagaj weryfikacji e-maila
 ACCOUNT_LOGOUT_ON_GET = True
 
-# Wskazuje allauth, których pól ma używać z Twojego niestandardowego modelu User
+# User model fields
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'
 ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'
 
+# Social account settings
 SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'

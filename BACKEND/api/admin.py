@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from .models import PlatformUser, Site, Client, Event, Booking, Template, MediaAsset, MediaUsage, CustomReactComponent, Notification
+from .models import (
+    PlatformUser, Site, Client, Event, Booking, Template, 
+    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink
+)
 
 
 @admin.register(PlatformUser)
@@ -79,3 +82,23 @@ class NotificationAdmin(admin.ModelAdmin):
 	def message_preview(self, obj):
 		return obj.message[:50] + '...' if len(obj.message) > 50 else obj.message
 	message_preview.short_description = 'Message'
+
+
+@admin.register(TermsOfService)
+class TermsOfServiceAdmin(admin.ModelAdmin):
+	list_display = ('version', 'published_at', 'created_at')
+	search_fields = ('version',)
+	ordering = ('-published_at',)
+
+
+@admin.register(MagicLink)
+class MagicLinkAdmin(admin.ModelAdmin):
+	list_display = ('email', 'token_preview', 'created_at', 'expires_at', 'used', 'used_at')
+	search_fields = ('email', 'token')
+	list_filter = ('used', 'created_at', 'expires_at')
+	ordering = ('-created_at',)
+	readonly_fields = ('token', 'created_at', 'used_at')
+	
+	def token_preview(self, obj):
+		return f"{obj.token[:12]}..." if len(obj.token) > 12 else obj.token
+	token_preview.short_description = 'Token'

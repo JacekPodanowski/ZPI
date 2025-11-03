@@ -21,5 +21,9 @@ echo "--- Entrypoint: Creating mock sites for superuser..."
 python manage.py create_mock_sites
 echo "--- Entrypoint: Mock sites creation complete."
 
+echo "--- Entrypoint: Initializing Terms of Service..."
+python init_tos.py
+echo "--- Entrypoint: ToS initialization complete."
+
 echo "--- Entrypoint: Launching application command: $@"
 exec "$@"

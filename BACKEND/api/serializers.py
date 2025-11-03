@@ -2,6 +2,7 @@
 
 import logging
 from django.utils.text import slugify
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import (
@@ -15,6 +16,7 @@ from .models import (
     MediaUsage,
     Notification,
     AvailabilityBlock,
+    TermsOfService,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -23,10 +25,11 @@ logger = logging.getLogger(__name__)
 
 class CustomRegisterSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    accept_terms = serializers.BooleanField(write_only=True)
 
     class Meta:
         model = PlatformUser
-        fields = ['first_name', 'last_name', 'email', 'password', 'password2', 'account_type', 'source_tag']
+        fields = ['first_name', 'last_name', 'email', 'password', 'password2', 'account_type', 'source_tag', 'accept_terms']
         extra_kwargs = {
             'password': {'write_only': True},
             'account_type': {'required': False},
@@ -36,10 +39,15 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['password2']:
             raise serializers.ValidationError({'detail': 'Passwords must match.'})
+        
+        if not data.get('accept_terms'):
+            raise serializers.ValidationError({'detail': 'You must accept the Terms of Service to register.'})
+            
         return data
 
     def create(self, validated_data):
         validated_data.pop('password2', None)
+        validated_data.pop('accept_terms', None)
         email = validated_data['email']
         base_username = slugify(email.split('@')[0])
         username = base_username
@@ -52,7 +60,23 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
             counter += 1
 
         logger.info("Creating platform user %s with generated username %s", email, username)
-        return PlatformUser.objects.create_user(username=username, **validated_data)
+        # Create user with is_active=False until email is verified
+        user = PlatformUser.objects.create_user(
+            username=username, 
+            is_active=False,  # User cannot login until email is confirmed
+            **validated_data
+        )
+
+        # Associate the latest ToS version with the new user
+        try:
+            latest_terms = TermsOfService.objects.latest('published_at')
+            user.terms_agreement = latest_terms
+            user.terms_agreement_date = timezone.now()
+            user.save(update_fields=['terms_agreement', 'terms_agreement_date'])
+        except TermsOfService.DoesNotExist:
+            logger.warning("No TermsOfService found in the database during registration for user %s.", user.email)
+
+        return user
 
 
 class PlatformUserSerializer(serializers.ModelSerializer):

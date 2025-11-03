@@ -57,11 +57,12 @@ export const AuthProvider = ({ children }) => {
 
     const signup = useCallback(
         async (payload, redirectTo) => {
-            await registerService(payload);
-            await loadCurrentUser();
-            handlePostAuthNavigation(redirectTo);
+            // New flow: registration doesn't return tokens, just confirmation message
+            const response = await registerService(payload);
+            // Don't load user or navigate - user needs to verify email first
+            return response;
         },
-        [loadCurrentUser, handlePostAuthNavigation]
+        []
     );
 
     const googleLogin = useCallback(
