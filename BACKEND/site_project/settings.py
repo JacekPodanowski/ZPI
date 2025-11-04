@@ -1,6 +1,7 @@
 # site_project/settings.py
 
 import os
+import warnings
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
@@ -9,6 +10,10 @@ from dotenv import load_dotenv
 # --- Konfiguracja podstawowa ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+# Suppress deprecation warnings from dj-rest-auth library (internal code we can't fix)
+warnings.filterwarnings('ignore', message='.*app_settings.USERNAME_REQUIRED is deprecated.*')
+warnings.filterwarnings('ignore', message='.*app_settings.EMAIL_REQUIRED is deprecated.*')
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ['true', '1', 't', 'yes']
