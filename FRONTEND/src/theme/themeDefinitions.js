@@ -102,6 +102,96 @@ export const themeDefinitions = {
       secondary: '#5a4a75'
     },
     options: createBaseOptions()
+  },
+  mintBreeze: {
+    id: 'mintBreeze',
+    name: 'Mint Breeze',
+    description: 'Refreshing mint greens with cool grays and soft ivory.',
+    light: {
+      background: '#f0f7f4',
+      text: '#1a2e25',
+      primary: '#4a9b7f',
+      secondary: '#c8ddd4'
+    },
+    dark: {
+      background: '#0e1814',
+      text: '#e2f0ea',
+      primary: '#3d8168',
+      secondary: '#4a5b52'
+    },
+    options: createBaseOptions()
+  },
+  coralSunset: {
+    id: 'coralSunset',
+    name: 'Coral Sunset',
+    description: 'Soft coral and peach tones with warm sandy neutrals.',
+    light: {
+      background: '#fef5f1',
+      text: '#2d1f1a',
+      primary: '#e57373',
+      secondary: '#f4d9c6'
+    },
+    dark: {
+      background: '#1d1311',
+      text: '#f7ebe3',
+      primary: '#c85f5f',
+      secondary: '#6b4a3d'
+    },
+    options: createBaseOptions()
+  },
+  slate: {
+    id: 'slate',
+    name: 'Slate',
+    description: 'Professional grays with deep blue-gray accents and crisp whites.',
+    light: {
+      background: '#f8fafc',
+      text: '#1e293b',
+      primary: '#475569',
+      secondary: '#cbd5e1'
+    },
+    dark: {
+      background: '#0f172a',
+      text: '#e2e8f0',
+      primary: '#64748b',
+      secondary: '#334155'
+    },
+    options: createBaseOptions()
+  },
+  goldenHour: {
+    id: 'goldenHour',
+    name: 'Golden Hour',
+    description: 'Warm honey golds with rich amber and soft cream.',
+    light: {
+      background: '#fef9f1',
+      text: '#2c2416',
+      primary: '#d4a756',
+      secondary: '#f0ddb8'
+    },
+    dark: {
+      background: '#1a1510',
+      text: '#f5ead5',
+      primary: '#b88f47',
+      secondary: '#6b5638'
+    },
+    options: createBaseOptions()
+  },
+  roseGarden: {
+    id: 'roseGarden',
+    name: 'Rose Garden',
+    description: 'Dusty rose with muted mauve and soft blush tones.',
+    light: {
+      background: '#fdf5f7',
+      text: '#2e1c22',
+      primary: '#b87b8a',
+      secondary: '#e8d4d9'
+    },
+    dark: {
+      background: '#1b1214',
+      text: '#f3e3e8',
+      primary: '#9f6775',
+      secondary: '#5d434a'
+    },
+    options: createBaseOptions()
   }
 };
 
