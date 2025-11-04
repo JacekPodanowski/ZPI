@@ -132,12 +132,12 @@ const AcceptTermsPage = () => {
                         <Box sx={{ mt: 2, textAlign: 'center' }}>
                             <Button
                                 variant="outlined"
-                                href={terms.file_url}
+                                href="/terms"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 startIcon={<DescriptionIcon />}
                             >
-                                Pobierz i przejrzyj Regulamin (PDF)
+                                Przejrzyj Regulamin (wersja {terms.version})
                             </Button>
                         </Box>
                     </Box>
@@ -153,7 +153,15 @@ const AcceptTermsPage = () => {
                             }
                             label={
                                 <Typography variant="body2">
-                                    Przeczytałem/-am i akceptuję nowy Regulamin Świadczenia Usług
+                                    Akceptuję{' '}
+                                    <Link
+                                        href="/terms"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        underline="always"
+                                    >
+                                        Regulamin Świadczenia Usług (v{terms.version})
+                                    </Link>
                                 </Typography>
                             }
                         />

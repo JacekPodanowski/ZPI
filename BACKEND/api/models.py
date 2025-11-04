@@ -6,15 +6,9 @@ from datetime import timedelta
 from .utils import generate_site_identifier
 
 
-def terms_of_service_path(instance, filename):
-    """File path for ToS uploads: MEDIA_ROOT/terms/v_1.0/terms.pdf"""
-    return f'terms/v_{instance.version}/{filename}'
-
-
 class TermsOfService(models.Model):
-    """Stores different versions of Terms of Service documents."""
+    """Stores different versions of Terms of Service - content is on frontend page."""
     version = models.CharField(max_length=20, unique=True, help_text="Version number, e.g., '1.0' or '2025-11-01'")
-    file = models.FileField(upload_to=terms_of_service_path, help_text="The PDF file for these terms.")
     published_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 

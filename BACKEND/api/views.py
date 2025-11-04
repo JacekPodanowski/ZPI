@@ -1503,7 +1503,7 @@ class SessionNewReservationEmailView(BaseTemplatedEmailView):
             name='LatestTermsResponse',
             fields={
                 'version': serializers.CharField(),
-                'file_url': serializers.URLField(),
+                'terms_url': serializers.URLField(),
                 'published_at': serializers.DateTimeField(),
             }
         ),
@@ -1517,9 +1517,11 @@ class LatestTermsView(APIView):
     def get(self, request, *args, **kwargs):
         try:
             latest_terms = TermsOfService.objects.latest('published_at')
+            # Return URL to the frontend /terms page
+            terms_url = f"{settings.FRONTEND_URL.rstrip('/')}/terms"
             return Response({
                 'version': latest_terms.version,
-                'file_url': request.build_absolute_uri(latest_terms.file.url),
+                'terms_url': terms_url,
                 'published_at': latest_terms.published_at,
             })
         except TermsOfService.DoesNotExist:
