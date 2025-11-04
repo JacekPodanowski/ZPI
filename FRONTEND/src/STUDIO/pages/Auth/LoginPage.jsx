@@ -273,9 +273,10 @@ const LoginPage = () => {
                                                 <Typography variant="body2">
                                                     Akceptuję{' '}
                                                     <Link
-                                                        href={terms.file_url}
+                                                        href="/terms"
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
                                                         sx={{ fontWeight: 600 }}
                                                     >
                                                         Regulamin Świadczenia Usług (v{terms.version})

@@ -153,15 +153,7 @@ const AcceptTermsPage = () => {
                             }
                             label={
                                 <Typography variant="body2">
-                                    Akceptuję{' '}
-                                    <Link
-                                        href="/terms"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        underline="always"
-                                    >
-                                        Regulamin Świadczenia Usług (v{terms.version})
-                                    </Link>
+                                    Akceptuję Regulamin Świadczenia Usług (v{terms.version})
                                 </Typography>
                             }
                         />
