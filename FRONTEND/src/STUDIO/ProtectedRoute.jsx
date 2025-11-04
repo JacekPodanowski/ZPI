@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import NotFoundPage from './pages/NotFound/NotFoundPage';
 
 const ProtectedRoute = ({ children, requireStaff = false, allowedAccountTypes }) => {
     const { isAuthenticated, user, loading } = useAuth();
@@ -20,8 +21,9 @@ const ProtectedRoute = ({ children, requireStaff = false, allowedAccountTypes })
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    // Show 404 for non-admin users trying to access admin routes
     if (requireStaff && !user?.is_staff) {
-        return <Navigate to="/" replace />;
+        return <NotFoundPage />;
     }
 
     if (allowedAccountTypes && user?.account_type && !allowedAccountTypes.includes(user.account_type)) {

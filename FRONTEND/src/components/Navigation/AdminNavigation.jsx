@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Link as RouterLink, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Link as RouterLink, NavLink, useNavigate } from 'react-router-dom';
 import {
     AppBar,
     Avatar,
     Box,
     Button,
-    Chip,
     Divider,
     Drawer,
     IconButton,
@@ -14,7 +13,6 @@ import {
     ListItemButton,
     ListItemIcon,
     ListItemText,
-    ListSubheader,
     Stack,
     Toolbar,
     Typography
@@ -22,31 +20,30 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../Logo/Logo';
 import useTheme from '../../theme/useTheme';
-import UserAvatarMenu from './UserAvatarMenu';
+import UserAvatarMenu from '../Navigation/UserAvatarMenu';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
-import AdminLink from '../AdminLink/AdminLink';
 
 const drawerWidth = 280;
 const NAV_HEIGHT = 60;
 
-const Navigation = () => {
+const AdminNavigation = () => {
     const { isAuthenticated, user, logout } = useAuth();
     const [mobileOpen, setMobileOpen] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
     const theme = useTheme();
     const { mode, toggleMode } = theme;
 
     const avatarSrc = ShadowAvatarSrc;
-    const isAdminPage = location.pathname.startsWith('/studio/admin');
 
     const displayName = useMemo(() => {
         if (!user) {
@@ -87,36 +84,10 @@ const Navigation = () => {
         []
     );
 
-    const navGroups = useMemo(() => {
-        const primary = [];
-
-        if (isAuthenticated) {
-            primary.push(
-                { label: 'Sites', to: '/studio/sites', requiresAuth: true },
-                { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true }
-            );
-        }
-
-        const dev = [
-            { label: 'Publiczny kalendarz', to: '/studio/calendar/public' },
-            { label: 'Toasty', to: '/studio/lab/toast' }
-        ];
-
-        // Admin-specific navigation items
-        const admin = [];
-        if (isAdminPage && user?.is_staff) {
-            admin.push(
-                { label: 'Dashboard', to: '/studio/admin' },
-                { label: 'Terms', to: '/studio/admin/terms' }
-            );
-        }
-
-        return {
-            primary,
-            dev: dev.filter((item) => !item.requiresAuth || isAuthenticated),
-            admin
-        };
-    }, [isAuthenticated, user, isAdminPage]);
+    const adminNavItems = useMemo(() => [
+        { label: 'Dashboard', to: '/studio/admin', icon: <DashboardIcon fontSize="small" /> },
+        { label: 'Terms', to: '/studio/admin/terms', icon: <DescriptionIcon fontSize="small" /> }
+    ], []);
 
     const handleDrawerToggle = () => {
         setMobileOpen((prevState) => !prevState);
@@ -134,35 +105,17 @@ const Navigation = () => {
             </Box>
             <Divider />
             <List>
-                {navGroups.primary.map((item) => (
+                {adminNavItems.map((item) => (
                     <ListItem key={item.label} disablePadding>
                         <ListItemButton component={RouterLink} to={item.to} sx={{ textAlign: 'center' }}>
+                            <ListItemIcon sx={{ minWidth: 36, justifyContent: 'center' }}>
+                                {item.icon}
+                            </ListItemIcon>
                             <ListItemText primary={item.label} />
                         </ListItemButton>
                     </ListItem>
                 ))}
             </List>
-            <Divider sx={{ my: 2 }} />
-            {navGroups.dev.length > 0 && (
-                <List
-                    subheader={(
-                        <ListSubheader component="div" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
-                            <Chip label="DEV" color="secondary" size="small" />
-                            <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: 2 }}>
-                                Podglądy kalendarza
-                            </Typography>
-                        </ListSubheader>
-                    )}
-                >
-                    {navGroups.dev.map((item) => (
-                        <ListItem key={item.label} disablePadding>
-                            <ListItemButton component={RouterLink} to={item.to} sx={{ textAlign: 'center' }}>
-                                <ListItemText primary={item.label} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-            )}
             <Divider sx={{ my: 2 }} />
             {isAuthenticated ? (
                 <Box sx={{ px: 2, pb: 3, textAlign: 'left' }}>
@@ -281,7 +234,7 @@ const Navigation = () => {
                         </IconButton>
                         <Box
                             component={RouterLink}
-                            to="/"
+                            to="/studio/sites"
                             sx={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -293,73 +246,12 @@ const Navigation = () => {
                     </Box>
 
                     <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
-                        {/* Show admin navigation if on admin pages, otherwise show primary navigation */}
-                        {isAdminPage && navGroups.admin.length > 0 ? (
-                            navGroups.admin.map((item) => (
-                                <Button
-                                    key={item.label}
-                                    component={NavLink}
-                                    to={item.to}
-                                    end={item.to === '/studio/admin'}
-                                    sx={{
-                                        color: 'text.secondary',
-                                        '&.active': {
-                                            color: 'primary.main',
-                                            backgroundColor: 'rgba(160, 0, 22, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {item.label}
-                                </Button>
-                            ))
-                        ) : (
-                            navGroups.primary.map((item) => (
-                                <Button
-                                    key={item.label}
-                                    component={NavLink}
-                                    to={item.to}
-                                    sx={{
-                                        color: 'text.secondary',
-                                        '&.active': {
-                                            color: 'primary.main',
-                                            backgroundColor: 'rgba(160, 0, 22, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {item.label}
-                                </Button>
-                            ))
-                        )}
-                    </Box>
-
-                    {navGroups.dev.length > 0 && (
-                        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                            <Chip label="DEV" color="secondary" size="small" sx={{ fontWeight: 600 }} />
-                            {navGroups.dev.map((item) => (
-                                <Button
-                                    key={item.label}
-                                    component={NavLink}
-                                    to={item.to}
-                                    sx={{
-                                        color: 'text.secondary',
-                                        '&.active': {
-                                            color: 'primary.main',
-                                            backgroundColor: 'rgba(160, 0, 22, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {item.label}
-                                </Button>
-                            ))}
-                        </Box>
-                    )}
-
-                    <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
-                        {/* Admin link button (only for staff users, only on non-admin pages) */}
-                        {user?.is_staff && !isAdminPage && (
+                        {adminNavItems.map((item) => (
                             <Button
+                                key={item.label}
                                 component={NavLink}
-                                to="/studio/admin"
+                                to={item.to}
+                                startIcon={item.icon}
                                 sx={{
                                     color: 'text.secondary',
                                     '&.active': {
@@ -368,9 +260,12 @@ const Navigation = () => {
                                     }
                                 }}
                             >
-                                <AdminLink />
+                                {item.label}
                             </Button>
-                        )}
+                        ))}
+                    </Box>
+
+                    <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
                         <IconButton
                             onClick={toggleMode}
                             color="inherit"
@@ -418,4 +313,4 @@ const Navigation = () => {
     );
 };
 
-export default Navigation;
+export default AdminNavigation;

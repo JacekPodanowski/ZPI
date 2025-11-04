@@ -1649,3 +1649,25 @@ class CreateTermsView(APIView):
             'version': terms.version,
             'published_at': terms.published_at,
         }, status=status.HTTP_201_CREATED)
+
+
+# ==================== ADMIN ENDPOINTS ====================
+
+class AdminUsersListView(APIView):
+    """Admin endpoint to list all platform users."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        users = PlatformUser.objects.all().order_by('-created_at')
+        serializer = PlatformUserSerializer(users, many=True)
+        return Response(serializer.data)
+
+
+class AdminSitesListView(APIView):
+    """Admin endpoint to list all sites."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        sites = Site.objects.select_related('owner').all().order_by('-created_at')
+        serializer = SiteSerializer(sites, many=True)
+        return Response(serializer.data)

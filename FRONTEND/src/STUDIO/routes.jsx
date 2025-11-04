@@ -64,8 +64,9 @@ const StudioApp = () => (
       <Route path="lab/editor" element={<EditorLabPage />} />
 
       {/* Admin area */}
-      <Route path="admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
-      <Route path="admin/terms" element={<ProtectedRoute><TermsAdminPage /></ProtectedRoute>} />
+      <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
+      <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
+
       <Route path="creator" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
     </Route>

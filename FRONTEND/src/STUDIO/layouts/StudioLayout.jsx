@@ -31,17 +31,23 @@ const StudioLayout = ({
     location.pathname.startsWith('/studio/calendar/creator')
   ), [location.pathname]);
 
-  const effectiveShowFooter = isDashboardRoute ? false : showFooter;
+  const isAdminRoute = useMemo(() => (
+    location.pathname.startsWith('/studio/admin')
+  ), [location.pathname]);
 
-  const paddingX = isDashboardRoute
+  const isFullWidthRoute = isDashboardRoute || isAdminRoute;
+
+  const effectiveShowFooter = isFullWidthRoute ? false : showFooter;
+
+  const paddingX = isFullWidthRoute
     ? 0
     : contentPadding?.x ?? { xs: 3, md: 6 };
 
-  const paddingY = isDashboardRoute
+  const paddingY = isFullWidthRoute
     ? 0
     : contentPadding?.y ?? { xs: 4, md: 8 };
 
-  const effectiveContentMaxWidth = isDashboardRoute
+  const effectiveContentMaxWidth = isFullWidthRoute
     ? '100%'
     : contentMaxWidth ?? 1200;
 
@@ -52,7 +58,7 @@ const StudioLayout = ({
     ...(contentWrapperProps?.sx || {})
   };
 
-  const wrapperSx = isDashboardRoute
+  const wrapperSx = isFullWidthRoute
     ? {
         ...wrapperBaseSx,
         maxWidth: '100%',
@@ -69,8 +75,8 @@ const StudioLayout = ({
 
       <Box
         sx={{
-          minHeight: isDashboardRoute ? 'calc(100vh - 60px)' : '100vh',
-          height: isDashboardRoute ? 'calc(100vh - 60px)' : 'auto',
+          minHeight: isFullWidthRoute ? 'calc(100vh - 60px)' : '100vh',
+          height: isFullWidthRoute ? 'calc(100vh - 60px)' : 'auto',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'background.default',
@@ -83,7 +89,7 @@ const StudioLayout = ({
             flex: '1 1 auto',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: isDashboardRoute ? 'stretch' : 'center',
+            alignItems: isFullWidthRoute ? 'stretch' : 'center',
             py: paddingY,
             px: paddingX,
             minHeight: 0,

@@ -31,6 +31,8 @@ from .views import (
     AcceptTermsView,
     AllTermsView,
     CreateTermsView,
+    AdminUsersListView,
+    AdminSitesListView,
 )
 
 
@@ -68,4 +70,6 @@ urlpatterns = [
     path('terms/accept/', AcceptTermsView.as_view(), name='terms-accept'),
     path('terms/all/', AllTermsView.as_view(), name='terms-all'),
     path('terms/create/', CreateTermsView.as_view(), name='terms-create'),
+    path('admin/users/', AdminUsersListView.as_view(), name='admin-users-list'),
+    path('admin/sites/', AdminSitesListView.as_view(), name='admin-sites-list'),
 ]
