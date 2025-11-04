@@ -168,11 +168,11 @@ const LoginPage = () => {
                                 Magiczny link wysłany!
                             </Typography>
                             <Typography variant="body2">
-                                Wysłaliśmy link logowania na adres <strong>{registeredEmail}</strong>.
+                                Wysłaliśmy link logowania na adres <strong>{registeredEmail}</strong>. 
                                 Kliknij w link w emailu, aby zalogować się bez hasła. Link jest ważny przez 15 minut.
                             </Typography>
                             <Typography variant="body2" sx={{ mt: 1 }}>
-                                Nie otrzymałeś emaila? Sprawdź folder spam lub wyślij link ponownie używając formularza poniżej.
+                                Nie otrzymałeś emaila? Sprawdź czy na pewno masz konto na ten mail ? lub folderze spam lub wyślij link ponownie używając formularza poniżej.
                             </Typography>
                         </Alert>
                     )}
