@@ -52,6 +52,5 @@ USER appuser
 # --- EXPOSE PORT ---
 EXPOSE 8000
 
-# --- ENTRYPOINT & DEFAULT CMD ---
-ENTRYPOINT ["sh", "./entrypoint.sh"]
+# --- DEFAULT CMD (można nadpisać w docker-compose) ---
 CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8000", "site_project.wsgi:application"]

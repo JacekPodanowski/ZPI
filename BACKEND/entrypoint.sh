@@ -1,16 +1,15 @@
 #!/bin/sh
 
-# Automatyczne generowanie migracji --- CZYŚĆIĆ PRZY PRODUKCJI!
-echo "--- Entrypoint: Creating migrations if needed..."
-python manage.py makemigrations --noinput
-echo "--- Entrypoint: Migrations creation complete."
+# Zakończ skrypt natychmiast, jeśli jakakolwiek komenda się nie powiedzie
+set -e
 
+# --- ZADANIA KONFIGURACYJNE ---
 echo "--- Entrypoint: Applying database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --no-input
 echo "--- Entrypoint: Migrations complete."
 
 echo "--- Entrypoint: Collecting static files..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --no-input --clear
 echo "--- Entrypoint: Static files collected."
 
 echo "--- Entrypoint: Ensuring initial admin user exists..."
@@ -21,9 +20,4 @@ echo "--- Entrypoint: Creating mock sites for superuser..."
 python manage.py create_mock_sites
 echo "--- Entrypoint: Mock sites creation complete."
 
-echo "--- Entrypoint: Initializing Terms of Service..."
-python init_tos.py
-echo "--- Entrypoint: ToS initialization complete."
-
-echo "--- Entrypoint: Launching application command: $@"
-exec "$@"
+echo "--- Entrypoint: Setup tasks complete. ---"
