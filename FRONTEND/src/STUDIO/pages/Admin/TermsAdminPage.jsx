@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Typography,
@@ -41,6 +41,8 @@ const TermsAdminPage = () => {
     const [success, setSuccess] = useState('');
     const [viewMode, setViewMode] = useState('edit'); // 'edit' or 'preview'
     const theme = useTheme();
+    const textareaRef = useRef(null);
+    const overlayRef = useRef(null);
 
     // Załaduj wszystkie wersje regulaminu
     const loadVersions = async () => {
@@ -97,6 +99,34 @@ const TermsAdminPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Sync scroll between textarea and overlay
+    const handleScroll = (e) => {
+        if (overlayRef.current && textareaRef.current) {
+            overlayRef.current.scrollTop = e.target.scrollTop;
+            overlayRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
+    // Render content with syntax highlighting for headers
+    const renderColoredContent = (text) => {
+        const lines = text.split('\n');
+        return lines.map((line, index) => {
+            const isHeader = /^#{1,3}\s/.test(line);
+            return (
+                <div key={index} style={{ minHeight: '1.6em' }}>
+                    <span style={{ 
+                        color: isHeader 
+                            ? (theme.mode === 'dark' ? '#60a5fa' : '#2563eb')
+                            : (theme.mode === 'dark' ? '#e0e0e0' : '#1a1a1a'),
+                        fontWeight: isHeader ? 600 : 400
+                    }}>
+                        {line || '\u00A0'}
+                    </span>
+                </div>
+            );
+        });
     };
 
     useEffect(() => {
@@ -176,7 +206,7 @@ const TermsAdminPage = () => {
                         transition={{ duration: 0.5, delay: 0.1 }}
                         style={{ 
                             width: '100%', 
-                            maxWidth: '320px',
+                            maxWidth: '160px',
                             display: 'flex',
                             flexDirection: 'column',
                             minHeight: 0
@@ -348,53 +378,71 @@ const TermsAdminPage = () => {
 
                                         <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                                             {viewMode === 'edit' ? (
-                                                <TextField
-                                                    fullWidth
-                                                    multiline
-                                                    value={content}
-                                                    onChange={(e) => setContent(e.target.value)}
-                                                    disabled={!isLatestVersion}
-                                                    placeholder="Enter your Terms of Service in Markdown format..."
-                                                    inputProps={{
-                                                        spellCheck: false,
-                                                        autoComplete: 'off',
-                                                        autoCorrect: 'off',
-                                                        autoCapitalize: 'off',
-                                                        style: {
-                                                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                                                            fontSize: '14px',
-                                                            lineHeight: '1.6',
-                                                            whiteSpace: 'pre',
-                                                            overflowWrap: 'normal',
-                                                        }
-                                                    }}
+                                                <Box
                                                     sx={{
                                                         flex: 1,
                                                         minHeight: 0,
-                                                        '& .MuiInputBase-root': {
-                                                            bgcolor: theme.mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(250, 250, 250, 0.8)',
-                                                            padding: '16px',
-                                                            height: '100%',
-                                                            alignItems: 'flex-start',
-                                                            borderRadius: 2,
-                                                            border: '1px solid',
-                                                            borderColor: theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                                                        },
-                                                        '& .MuiInputBase-input': {
-                                                            color: theme.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
-                                                            overflow: 'auto',
-                                                            '&::selection': {
-                                                                backgroundColor: 'rgba(160, 0, 22, 0.3)'
-                                                            }
-                                                        },
-                                                        '& fieldset': {
-                                                            border: 'none'
-                                                        },
-                                                        '& .MuiInputBase-input:disabled': {
-                                                            WebkitTextFillColor: theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
-                                                        }
+                                                        position: 'relative',
+                                                        bgcolor: theme.mode === 'dark' ? 'rgba(30, 30, 30, 0.6)' : 'rgba(250, 250, 250, 0.8)',
+                                                        borderRadius: 2,
+                                                        border: '1px solid',
+                                                        borderColor: theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                                                        overflow: 'hidden',
                                                     }}
-                                                />
+                                                >
+                                                    {/* Colored overlay */}
+                                                    <Box
+                                                        ref={overlayRef}
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            bottom: 0,
+                                                            padding: '16px',
+                                                            overflow: 'hidden',
+                                                            pointerEvents: 'none',
+                                                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                                                            fontSize: '14px',
+                                                            lineHeight: '1.6',
+                                                            whiteSpace: 'pre-wrap',
+                                                            wordWrap: 'break-word',
+                                                        }}
+                                                    >
+                                                        {renderColoredContent(content)}
+                                                    </Box>
+                                                    
+                                                    {/* Actual textarea */}
+                                                    <textarea
+                                                        ref={textareaRef}
+                                                        value={content}
+                                                        onChange={(e) => setContent(e.target.value)}
+                                                        onScroll={handleScroll}
+                                                        disabled={!isLatestVersion}
+                                                        placeholder="Enter your Terms of Service in Markdown format..."
+                                                        spellCheck={false}
+                                                        autoComplete="off"
+                                                        autoCorrect="off"
+                                                        autoCapitalize="off"
+                                                        style={{
+                                                            width: '100%',
+                                                            height: '100%',
+                                                            padding: '16px',
+                                                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                                                            fontSize: '14px',
+                                                            lineHeight: '1.6',
+                                                            whiteSpace: 'pre-wrap',
+                                                            wordWrap: 'break-word',
+                                                            color: 'transparent',
+                                                            caretColor: theme.mode === 'dark' ? '#e0e0e0' : '#1a1a1a',
+                                                            background: 'transparent',
+                                                            border: 'none',
+                                                            outline: 'none',
+                                                            resize: 'none',
+                                                            overflow: 'auto',
+                                                        }}
+                                                    />
+                                                </Box>
                                             ) : (
                                                 <Box 
                                                     sx={{ 
