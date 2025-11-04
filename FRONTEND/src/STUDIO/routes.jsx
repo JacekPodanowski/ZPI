@@ -26,6 +26,7 @@ import TeamPage from './pages/Team/TeamPage';
 import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
 import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
 import MagicLoginPage from './pages/Auth/MagicLoginPage';
+import TermsAdminPage from './pages/Admin/TermsAdminPage';
 
 const StudioApp = () => (
   <Routes>
@@ -64,6 +65,7 @@ const StudioApp = () => (
 
       {/* Admin area */}
       <Route path="admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+      <Route path="admin/terms" element={<ProtectedRoute><TermsAdminPage /></ProtectedRoute>} />
       <Route path="creator" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
     </Route>

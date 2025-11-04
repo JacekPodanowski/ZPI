@@ -29,6 +29,8 @@ from .views import (
     SessionNewReservationEmailView,
     LatestTermsView,
     AcceptTermsView,
+    AllTermsView,
+    CreateTermsView,
 )
 
 
@@ -64,4 +66,6 @@ urlpatterns = [
     path('emails/session-new-reservation/', SessionNewReservationEmailView.as_view(), name='email-session-new-reservation'),
     path('terms/latest/', LatestTermsView.as_view(), name='terms-latest'),
     path('terms/accept/', AcceptTermsView.as_view(), name='terms-accept'),
+    path('terms/all/', AllTermsView.as_view(), name='terms-all'),
+    path('terms/create/', CreateTermsView.as_view(), name='terms-create'),
 ]

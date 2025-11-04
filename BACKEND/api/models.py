@@ -7,8 +7,9 @@ from .utils import generate_site_identifier
 
 
 class TermsOfService(models.Model):
-    """Stores different versions of Terms of Service - content is on frontend page."""
+    """Stores different versions of Terms of Service with markdown content."""
     version = models.CharField(max_length=20, unique=True, help_text="Version number, e.g., '1.0' or '2025-11-01'")
+    content_md = models.TextField(default='', blank=True, help_text="Markdown content of the terms")
     published_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 

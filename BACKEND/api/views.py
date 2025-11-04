@@ -1497,13 +1497,13 @@ class SessionNewReservationEmailView(BaseTemplatedEmailView):
 @extend_schema(
     tags=['Terms of Service'],
     summary='Get latest Terms of Service',
-    description='Returns the URL and version of the latest Terms of Service document. This is a public endpoint.',
+    description='Returns the version and markdown content of the latest Terms of Service document. This is a public endpoint.',
     responses={
         200: inline_serializer(
             name='LatestTermsResponse',
             fields={
                 'version': serializers.CharField(),
-                'terms_url': serializers.URLField(),
+                'content_md': serializers.CharField(),
                 'published_at': serializers.DateTimeField(),
             }
         ),
@@ -1511,17 +1511,15 @@ class SessionNewReservationEmailView(BaseTemplatedEmailView):
     },
 )
 class LatestTermsView(APIView):
-    """Provides the URL and version of the latest Terms of Service."""
+    """Provides the version and markdown content of the latest Terms of Service."""
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         try:
             latest_terms = TermsOfService.objects.latest('published_at')
-            # Return URL to the frontend /terms page
-            terms_url = f"{settings.FRONTEND_URL.rstrip('/')}/terms"
             return Response({
                 'version': latest_terms.version,
-                'terms_url': terms_url,
+                'content_md': latest_terms.content_md,
                 'published_at': latest_terms.published_at,
             })
         except TermsOfService.DoesNotExist:
@@ -1559,3 +1557,95 @@ class AcceptTermsView(APIView):
             return Response({'status': 'success', 'message': f'Terms v{latest_terms.version} accepted.'})
         except TermsOfService.DoesNotExist:
             return Response({'detail': 'No terms to accept.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=['Terms of Service'],
+    summary='Get all Terms of Service versions',
+    description='Returns all versions of Terms of Service. Requires admin authentication.',
+    responses={
+        200: inline_serializer(
+            name='AllTermsResponse',
+            fields={
+                'id': serializers.IntegerField(),
+                'version': serializers.CharField(),
+                'content_md': serializers.CharField(),
+                'published_at': serializers.DateTimeField(),
+                'created_at': serializers.DateTimeField(),
+            },
+            many=True
+        ),
+    },
+)
+class AllTermsView(APIView):
+    """Returns all versions of Terms of Service for admin management."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, *args, **kwargs):
+        all_terms = TermsOfService.objects.all().order_by('-published_at')
+        data = [{
+            'id': terms.id,
+            'version': terms.version,
+            'content_md': terms.content_md,
+            'published_at': terms.published_at,
+            'created_at': terms.created_at,
+        } for terms in all_terms]
+        return Response(data)
+
+
+@extend_schema(
+    tags=['Terms of Service'],
+    summary='Create new Terms of Service version',
+    description='Create a new version of Terms of Service. Requires admin authentication.',
+    request=inline_serializer(
+        name='CreateTermsRequest',
+        fields={
+            'version': serializers.CharField(),
+            'content_md': serializers.CharField(),
+        }
+    ),
+    responses={
+        201: inline_serializer(
+            name='CreateTermsResponse',
+            fields={
+                'id': serializers.IntegerField(),
+                'version': serializers.CharField(),
+                'published_at': serializers.DateTimeField(),
+            }
+        ),
+        400: OpenApiResponse(description='Validation error'),
+    },
+)
+class CreateTermsView(APIView):
+    """Create a new version of Terms of Service."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, *args, **kwargs):
+        version = request.data.get('version')
+        content_md = request.data.get('content_md')
+
+        if not version or not content_md:
+            return Response(
+                {'detail': 'Version and content_md are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if version already exists
+        if TermsOfService.objects.filter(version=version).exists():
+            return Response(
+                {'detail': f'Version {version} already exists.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        terms = TermsOfService.objects.create(
+            version=version,
+            content_md=content_md
+        )
+
+        logger.info(f"Created new Terms of Service version {version} by {request.user.email}")
+
+        return Response({
+            'id': terms.id,
+            'version': terms.version,
+            'published_at': terms.published_at,
+        }, status=status.HTTP_201_CREATED)

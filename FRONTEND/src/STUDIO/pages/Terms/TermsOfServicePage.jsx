@@ -1,8 +1,55 @@
-import React from 'react';
-import { Box, Container, Paper, Typography, Divider } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, Container, Paper, Typography, Divider, CircularProgress, Alert } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Logo from '../../../components/Logo/Logo';
+import apiClient from '../../../services/apiClient';
 
 const TermsOfServicePage = () => {
+    const [terms, setTerms] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const loadTerms = async () => {
+            try {
+                const response = await apiClient.get('/terms/latest/');
+                setTerms(response.data);
+            } catch (err) {
+                setError('Nie udało się załadować regulaminu');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadTerms();
+    }, []);
+
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container maxWidth="md" sx={{ py: 8 }}>
+                <Alert severity="error">{error}</Alert>
+            </Container>
+        );
+    }
+
+    const publishedDate = terms?.published_at 
+        ? new Date(terms.published_at).toLocaleDateString('pl-PL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })
+        : '';
+
     return (
         <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 8 } }}>
             <Container maxWidth="md">
@@ -21,46 +68,26 @@ const TermsOfServicePage = () => {
                         Regulamin Świadczenia Usług
                     </Typography>
                     <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', mb: 4 }}>
-                        Wersja 1.0 | Ostatnia aktualizacja: 3 listopada 2025
+                        Wersja {terms?.version} | Opublikowano: {publishedDate}
                     </Typography>
                     <Divider sx={{ mb: 4 }} />
 
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-                        1. Postanowienia ogólne
-                    </Typography>
-                    <Typography paragraph>
-                        Niniejszy regulamin określa zasady korzystania z platformy YourEasySite, dostępnej pod adresem youreasy.site. Właścicielem i administratorem platformy jest firma "YES Services".
-                    </Typography>
-                    
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mt: 4 }}>
-                        2. Definicje
-                    </Typography>
-                    <Typography paragraph>
-                        <b>Użytkownik</b> – osoba fizyczna, osoba prawna lub jednostka organizacyjna nieposiadająca osobowości prawnej, która korzysta z usług świadczonych drogą elektroniczną przez Usługodawcę.
-                        <br />
-                        <b>Usługa</b> – usługa świadczona drogą elektroniczną przez Usługodawcę, polegająca na udostępnieniu narzędzi do tworzenia i zarządzania stronami internetowymi.
-                    </Typography>
-
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mt: 4 }}>
-                        3. Rodzaj i zakres usług
-                    </Typography>
-                    <Typography paragraph>
-                        Platforma YourEasySite umożliwia tworzenie, personalizację oraz publikację stron internetowych w oparciu o dostępne szablony i moduły. Zakres funkcjonalności zależy od wybranego planu subskrypcyjnego.
-                    </Typography>
-
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mt: 4 }}>
-                        4. Odpowiedzialność
-                    </Typography>
-                    <Typography paragraph>
-                        Usługodawca nie ponosi odpowiedzialności za treści publikowane przez Użytkowników na stworzonych przez nich stronach. Użytkownik jest zobowiązany do przestrzegania obowiązującego prawa oraz praw autorskich.
-                    </Typography>
-
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mt: 4 }}>
-                        5. Postanowienia końcowe
-                    </Typography>
-                    <Typography paragraph>
-                        Usługodawca zastrzega sobie prawo do wprowadzania zmian w regulaminie. O wszelkich zmianach Użytkownicy zostaną poinformowani drogą elektroniczną.
-                    </Typography>
+                    <Box
+                        sx={{
+                            '& h1': { fontSize: '2rem', fontWeight: 600, mt: 4, mb: 2 },
+                            '& h2': { fontSize: '1.5rem', fontWeight: 600, mt: 3, mb: 1.5 },
+                            '& h3': { fontSize: '1.25rem', fontWeight: 600, mt: 2, mb: 1 },
+                            '& p': { mb: 2, lineHeight: 1.7 },
+                            '& ul, & ol': { mb: 2, pl: 4 },
+                            '& li': { mb: 1 },
+                            '& strong': { fontWeight: 600 },
+                            '& a': { color: 'primary.main', textDecoration: 'underline' },
+                        }}
+                    >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {terms?.content_md || '# Brak treści regulaminu\n\nRegulamin nie został jeszcze utworzony.'}
+                        </ReactMarkdown>
+                    </Box>
                 </Paper>
             </Container>
         </Box>
