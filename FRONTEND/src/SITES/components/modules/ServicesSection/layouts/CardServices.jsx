@@ -8,12 +8,10 @@ const CardServices = ({ content, vibe, theme }) => {
   return (
     <section 
       className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
-      style={{
-        backgroundColor: content.bgColor || theme.background
-      }}
+      style={{ backgroundColor: content.bgColor || theme.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-7xl mx-auto">
         <h2 
           className={`${vibe.headingSize} text-center`}
           style={{ color: theme.primary }}
@@ -47,26 +45,26 @@ const CardServices = ({ content, vibe, theme }) => {
                     className={`w-full h-48 object-cover ${vibe.rounded} mb-4`}
                   />
                 )}
-                
-                {item.icon && (
-                  <div className="text-3xl md:text-4xl mb-3">
-                    {item.icon}
-                  </div>
-                )}
-                
-                <h3 
-                  className="text-xl md:text-2xl font-semibold mb-3"
-                  style={{ color: theme.primary }}
-                >
-                  {item.name}
-                </h3>
-                
-                <p 
-                  className={vibe.textSize}
-                  style={{ color: theme.text }}
-                >
-                  {item.description}
-                </p>
+              
+              {item.icon && (
+                <div className="text-3xl md:text-4xl mb-3">
+                  {item.icon}
+                </div>
+              )}
+              
+              <h3 
+                className="text-xl md:text-2xl font-semibold mb-3"
+                style={{ color: theme.primary }}
+              >
+                {item.name}
+              </h3>
+              
+              <p 
+                className={vibe.textSize}
+                style={{ color: theme.text }}
+              >
+                {item.description}
+              </p>
               </div>
             );
           })}

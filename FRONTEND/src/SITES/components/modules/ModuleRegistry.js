@@ -128,7 +128,7 @@ export const MODULE_REGISTRY = {
     defaultLayout: 'cards',
     category: 'content'
   },
-  // Alias for backward compatibility
+  // Alias for backward compatibility with legacy configurations
   pricing: {
     component: ServicesAndPricingModule,
     descriptor: ServicesAndPricingModule.descriptor,
@@ -137,14 +137,6 @@ export const MODULE_REGISTRY = {
     category: 'content'
   },
   team: {
-    component: TeamModule,
-    descriptor: TeamModule.descriptor,
-    layouts: ['grid', 'carousel', 'list'],
-    defaultLayout: 'grid',
-    category: 'content'
-  },
-  // Alias for backward compatibility
-  testimonials: {
     component: TeamModule,
     descriptor: TeamModule.descriptor,
     layouts: ['grid', 'carousel', 'list'],

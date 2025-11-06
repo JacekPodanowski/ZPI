@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { resolveMediaUrl } from '../../config/api';
-import compileReactSnippet from '../../utils/compileReactSnippet';
-import { REACT_COMPONENT_MEDIA_PROP_KEYS } from '../../constants/reactComponentDefaults';
+import { resolveMediaUrl } from '../../../config/api';
+import compileReactSnippet from '../../../utils/compileReactSnippet';
+import { REACT_COMPONENT_MEDIA_PROP_KEYS } from '../../../constants/reactComponentDefaults';
 
 const resolveBabel = () => {
   if (typeof window === 'undefined') {

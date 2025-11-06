@@ -12,12 +12,7 @@ const AccordionFAQ = ({ content, vibe, theme }) => {
   };
 
   return (
-    <section 
-      className={`${vibe.spacing} px-4 relative overflow-hidden`}
-      style={{
-        backgroundColor: bgColor || theme.background
-      }}
-    >
+    <section className={`${vibe.spacing} px-4 relative overflow-hidden`} style={{ backgroundColor: bgColor || theme.background }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-4xl mx-auto space-y-6 relative z-10">
         {(title || intro) && (

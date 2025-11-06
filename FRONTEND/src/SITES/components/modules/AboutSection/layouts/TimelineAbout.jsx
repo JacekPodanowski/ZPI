@@ -7,9 +7,7 @@ const TimelineAbout = ({ content, vibe, theme }) => {
   return (
     <section 
       className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
-      style={{
-        backgroundColor: content.bgColor || theme.background
-      }}
+      style={{ backgroundColor: content.bgColor || theme.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-5xl mx-auto relative z-10">

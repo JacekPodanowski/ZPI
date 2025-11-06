@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
-import { resolveMediaUrl } from '../../../../../config/api';
+import { renderMedia } from '../helpers';
 
 const GridGallery = ({ content, vibe, theme }) => {
   const { images = [], columns = 3, gap = '1rem', backgroundImage, backgroundOverlayColor } = content;
@@ -21,12 +21,7 @@ const GridGallery = ({ content, vibe, theme }) => {
   }
 
   return (
-    <div 
-      className={`${vibe.spacing} px-4 relative overflow-hidden`}
-      style={{
-        backgroundColor: content.bgColor || theme.background
-      }}
-    >
+    <div className={`${vibe.spacing} px-4 relative overflow-hidden`} style={{ backgroundColor: content.bgColor || theme.background }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div 
         className="max-w-6xl mx-auto grid relative z-10"
@@ -38,7 +33,6 @@ const GridGallery = ({ content, vibe, theme }) => {
         {images.map((item, idx) => {
           const imgUrlRaw = typeof item === 'string' ? item : item.url;
           const caption = typeof item === 'object' ? item.caption : '';
-          const resolvedUrl = imgUrlRaw ? resolveMediaUrl(imgUrlRaw) : '';
           
           return (
             <motion.div
@@ -50,11 +44,7 @@ const GridGallery = ({ content, vibe, theme }) => {
               whileHover={{ scale: 1.05 }}
               className={`${vibe.rounded} overflow-hidden ${vibe.shadows} cursor-pointer`}
             >
-              <img 
-                src={resolvedUrl} 
-                alt={caption || `Gallery ${idx + 1}`}
-                className="w-full h-64 object-cover"
-              />
+              {renderMedia(imgUrlRaw, caption || `Gallery ${idx + 1}`, 'w-full h-64 object-cover')}
               {caption && (
                 <div className="p-3 bg-white">
                   <p className="text-sm text-center" style={{ color: theme.text }}>

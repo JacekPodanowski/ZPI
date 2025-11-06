@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { resolveMediaUrl } from '../../config/api'
+import { resolveMediaUrl } from '../../../config/api'
 
 const normaliseVideoUrl = (rawUrl = '') => {
   if (!rawUrl) return ''

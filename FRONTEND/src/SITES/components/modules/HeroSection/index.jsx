@@ -14,9 +14,9 @@ const LAYOUTS = {
 
 const HeroSection = ({ layout = 'centered', content = {}, vibe, theme }) => {
   const defaults = HERO_DEFAULTS[layout] || HERO_DEFAULTS.centered;
-
+  
   const mergedContent = mergeWithDefaults(defaults, content);
-
+  
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.centered;
   return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
 };

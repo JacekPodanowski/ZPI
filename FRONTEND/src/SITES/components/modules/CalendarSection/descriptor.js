@@ -7,9 +7,7 @@ export const CALENDAR_DESCRIPTOR = {
     description: { t: 'text', d: 'Section description', category: 'content' },
     showAvailability: { t: 'boolean', d: 'Display available slots', category: 'advanced' },
     allowGroupBookings: { t: 'boolean', d: 'Allow group session bookings', category: 'advanced' },
-    bookingUrl: { t: 'text', d: 'External booking system URL', category: 'advanced' },
-    bgColor: { t: 'color', d: 'Background color', category: 'appearance' },
-    backgroundImage: { t: 'image', d: 'Background image', category: 'appearance' }
+    bookingUrl: { t: 'text', d: 'External booking system URL', category: 'advanced' }
   },
   layouts: ['compact', 'detailed', 'list']
 };

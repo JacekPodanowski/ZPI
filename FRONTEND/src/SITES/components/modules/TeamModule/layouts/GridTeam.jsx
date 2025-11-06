@@ -19,12 +19,7 @@ const GridTeam = ({ content, vibe, theme }) => {
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
 
   return (
-    <section 
-      className="py-12 px-4 relative overflow-hidden" 
-      style={{
-        backgroundColor: bgColor
-      }}
-    >
+    <section className="py-12 px-4 relative overflow-hidden" style={{ backgroundColor: bgColor }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-6xl mx-auto space-y-10 relative z-10">
         {(title || subtitle) && (

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { resolveMediaUrl } from '../../config/api'
+import { resolveMediaUrl } from '../../../config/api'
 
 const formatDate = (dateString) => {
   if (!dateString) return ''

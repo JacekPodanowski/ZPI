@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { resolveMediaUrl } from '../../config/api'
-import { isVideoUrl } from '../../utils/mediaUtils'
+import { resolveMediaUrl } from '../../../config/api'
+import { isVideoUrl } from '../../../utils/mediaUtils'
 
 const ServicesAndPricingModule = ({ config }) => {
   const {

@@ -5,7 +5,7 @@ const FullscreenHero = ({ content, vibe, theme }) => {
   const overlayColor = content.overlay
     ? content.backgroundOverlayColor || 'rgba(0, 0, 0, 0.5)'
     : undefined;
-  
+
   return (
     <section 
       className={`relative min-h-[60vh] md:min-h-[80vh] flex items-center justify-center ${vibe.rounded}`}

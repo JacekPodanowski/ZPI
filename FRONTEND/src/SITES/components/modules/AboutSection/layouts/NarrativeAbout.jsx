@@ -3,18 +3,15 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 
 const NarrativeAbout = ({ content, vibe, theme }) => {
-  const imageUrl = content.image ? resolveMediaUrl(content.image) : '';
   const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.3)' : undefined);
-  
+  const imageUrl = content.image ? resolveMediaUrl(content.image) : '';
+
   return (
     <section 
       className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
-      style={{ 
-        backgroundColor: content.bgColor || theme.background
-      }}
+      style={{ backgroundColor: content.bgColor || theme.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
-      
       <div className="max-w-6xl mx-auto relative z-10">
         <h2 
           className={`${vibe.headingSize} text-center`}

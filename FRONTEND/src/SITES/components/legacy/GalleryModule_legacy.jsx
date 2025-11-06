@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { resolveMediaUrl } from '../../config/api'
-import { isVideoUrl } from '../../utils/mediaUtils'
+import { resolveMediaUrl } from '../../../config/api'
+import { isVideoUrl } from '../../../utils/mediaUtils'
 
 const GalleryModule = ({ config }) => {
   const { images = [], columns = 3, gap = '1rem', style = 'grid' } = config

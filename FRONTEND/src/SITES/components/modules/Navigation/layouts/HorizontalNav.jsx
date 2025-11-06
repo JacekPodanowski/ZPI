@@ -1,10 +1,8 @@
 // layouts/HorizontalNav.jsx - Traditional horizontal navigation
 import { useState } from 'react';
-import { resolveMediaUrl } from '../../../../../config/api';
 
 const HorizontalNav = ({ content, vibe, theme }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const logoUrl = content.logo?.src ? resolveMediaUrl(content.logo.src) : '';
   
   return (
     <nav 
@@ -18,9 +16,9 @@ const HorizontalNav = ({ content, vibe, theme }) => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <a href="/" className="flex items-center gap-2 md:gap-3">
-            {logoUrl && (
+            {content.logo?.src && (
               <img 
-                src={logoUrl} 
+                src={content.logo.src} 
                 alt={content.logo.alt || content.logo.text}
                 className="h-8 md:h-10 w-auto"
               />

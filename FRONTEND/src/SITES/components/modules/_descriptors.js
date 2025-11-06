@@ -6,8 +6,10 @@ export const SERVICES_DESCRIPTOR = {
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
     offers: { t: 'array', req: true, d: 'Lista ofert', category: 'content' },
     currency: { t: 'text', d: 'Waluta', category: 'content' },
-    bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
-    textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
+  bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
+  backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
+  backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },
+  textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
     accentColor: { t: 'color', d: 'Kolor akcentu', category: 'appearance' }
   },
   layouts: ['cards', 'list', 'table']
@@ -41,9 +43,7 @@ export const TEAM_DESCRIPTOR = {
     title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
     members: { t: 'array', req: true, d: 'Lista członków zespołu', category: 'content' },
-  bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
-  backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
-  backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },
+    bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
     textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
     accentColor: { t: 'color', d: 'Kolor akcentu', category: 'appearance' }
   },
