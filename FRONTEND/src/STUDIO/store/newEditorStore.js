@@ -45,7 +45,9 @@ const createInitialState = () => ({
   isDragging: false,
   draggedItem: null,
   hasUnsavedChanges: false,
-  entryPointPageId: 'home'
+  entryPointPageId: 'home',
+  // Module heights storage (persisted across all renders)
+  moduleHeights: {} // { [moduleType]: height }
 });
 
 export const useNewEditorStore = create((set, get) => ({
@@ -520,6 +522,22 @@ export const useNewEditorStore = create((set, get) => ({
     if (!state.site || !state.site.pages) return [];
     const page = state.site.pages.find(p => p.id === pageId);
     return page?.modules || [];
+  },
+
+  // === Module Heights Management ===
+  // Records measured heights from real renders (optional - enhances accuracy)
+  recordModuleHeight: (moduleType, height) => set((state) => ({
+    moduleHeights: {
+      ...state.moduleHeights,
+      [moduleType]: height
+    }
+  })),
+
+  // Gets module height: measured height if available, otherwise uses provided default
+  // Primary source should be module definition's defaultHeight
+  getModuleHeight: (moduleType, defaultHeight = 600) => {
+    const state = get();
+    return state.moduleHeights[moduleType] || defaultHeight;
   }
 }));
 

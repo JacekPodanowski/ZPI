@@ -22,91 +22,104 @@ export const MODULE_DEFINITIONS = {
     icon: Menu,
     color: '#333333',
     description: 'Site navigation bar',
-    special: true // Special module - not draggable, always at top
+    special: true, // Special module - not draggable, always at top
+    defaultHeight: 60 // px - matches real Navigation component NAV_HEIGHT
   },
   hero: {
     type: 'hero',
     label: 'Hero',
     icon: ViewColumn,
     color: '#FF6B6B',
-    description: 'Primary introduction section'
+    description: 'Primary introduction section',
+    defaultHeight: 700 // px - large hero section
   },
   about: {
     type: 'about',
     label: 'About',
     icon: Info,
     color: '#4ECDC4',
-    description: 'Story and credibility section'
+    description: 'Story and credibility section',
+    defaultHeight: 600 // px - medium content section
   },
   services: {
     type: 'services',
     label: 'Services',
     icon: GridView,
     color: '#45B7D1',
-    description: 'Display your offerings'
+    description: 'Display your offerings',
+    defaultHeight: 800 // px - large section with cards
   },
   gallery: {
     type: 'gallery',
     label: 'Gallery',
     icon: Image,
     color: '#FFA07A',
-    description: 'Visual showcase'
+    description: 'Visual showcase',
+    defaultHeight: 900 // px - large gallery grid
   },
   calendar: {
     type: 'calendar',
     label: 'Calendar',
     icon: CalendarMonth,
     color: '#98D8C8',
-    description: 'Booking and availability'
+    description: 'Booking and availability',
+    defaultHeight: 750 // px - calendar widget height
   },
   contact: {
     type: 'contact',
     label: 'Contact',
     icon: ContactMail,
     color: '#FFD93D',
-    description: 'Get in touch form'
+    description: 'Get in touch form',
+    defaultHeight: 500 // px - contact form section
   },
   text: {
     type: 'text',
     label: 'Text',
     icon: Article,
     color: '#A8E6CF',
-    description: 'Rich text content'
+    description: 'Rich text content',
+    defaultHeight: 400 // px - flexible text section
   },
   video: {
     type: 'video',
     label: 'Video',
     icon: VideoLibrary,
     color: '#C7CEEA',
-    description: 'Embedded video player'
+    description: 'Embedded video player',
+    defaultHeight: 600 // px - 16:9 video player
   },
   testimonials: {
     type: 'testimonials',
     label: 'Testimonials',
     icon: RateReview,
     color: '#F8B195',
-    description: 'Client reviews'
+    description: 'Client reviews',
+    defaultHeight: 550 // px - testimonial cards
   },
   pricing: {
     type: 'pricing',
     label: 'Pricing',
     icon: AttachMoney,
     color: '#88D8B0',
-    description: 'Pricing tables'
+    description: 'Pricing tables',
+    defaultHeight: 700 // px - pricing cards section
   },
   faq: {
     type: 'faq',
     label: 'FAQ',
     icon: Help,
     color: '#FFEAA7',
-    description: 'Frequently asked questions'
+    description: 'Frequently asked questions',
+    defaultHeight: 650 // px - accordion section
   },
   team: {
     type: 'team',
     label: 'Team',
     icon: Group,
     color: '#DFE6E9',
-    description: 'Team member profiles'
+    description: 'Team member profiles',
+    defaultHeight: 700 // px - team member cards
   }
 };
 
@@ -117,7 +130,8 @@ export const getModuleDefinition = (type) => {
     label: type.charAt(0).toUpperCase() + type.slice(1),
     icon: Article,
     color: '#B0B0B0',
-    description: 'Custom module'
+    description: 'Custom module',
+    defaultHeight: 600 // Default fallback for unknown modules
   };
 };
 

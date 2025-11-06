@@ -5,11 +5,11 @@ import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getModuleDefinition, MODULE_COLORS, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
-import { useModuleHeights } from './useModuleHeights';
 
 // Component to render module in real mode and measure its height
-const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFactor, realSiteWidth, definition, showOverlay, recordModuleHeight, renderMode }) => {
+const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFactor, realSiteWidth, definition, showOverlay, renderMode }) => {
   const moduleRef = useRef(null);
+  const { recordModuleHeight } = useNewEditorStore();
   
   useEffect(() => {
     if (moduleRef.current && renderMode === 'real') {
@@ -59,8 +59,7 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
             bgcolor: definition.color,
             opacity: 0.12,
             pointerEvents: 'none',
-            border: `2px solid ${definition.color}`,
-            borderRadius: '4px'
+            border: `2px solid ${definition.color}`
           }}
         />
       )}
@@ -69,11 +68,10 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
 };
 
 const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage = false, onModuleDragStart, onModuleDragEnd, onDropHandled, devicePreview = 'desktop' }) => {
-  const { addModule, moveModule, site } = useNewEditorStore();
+  const { addModule, moveModule, site, getModuleHeight } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [canvasRef, setCanvasRef] = useState(null);
   const theme = useTheme();
-  const { moduleHeights, recordModuleHeight, getModuleHeight } = useModuleHeights();
 
   console.log('[SiteCanvas] Render - page:', page);
   console.log('[SiteCanvas] Render - page.id:', page?.id);
@@ -98,17 +96,23 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
   const realSiteWidth = devicePreview === 'mobile' ? REAL_SITE_WIDTH_MOBILE : REAL_SITE_WIDTH;
   const scaleFactor = canvasWidth / realSiteWidth;
 
-  // Calculate total height using real measured heights or fallback to 600px default
+  // Calculate total height using default heights from module definitions (with optional measured overrides)
   const totalHeight = page.modules.reduce((sum, module) => {
-    const realHeight = getModuleHeight(module.type, 600);
-    return sum + realHeight;
+    const definition = getModuleDefinition(module.type);
+    // Use measured height if available, otherwise use default height from definition
+    const moduleHeight = getModuleHeight(module.type, definition.defaultHeight);
+    return sum + moduleHeight;
   }, 0);
 
   // Calculate proportional height for each module
-  const NAVIGATION_HEIGHT_ICON = 15; // Small navigation in icon mode
-  const FOOTER_HEIGHT_ICON = 15; // Same as navigation
-  const NAVIGATION_HEIGHT_REAL = 45; // Real navigation height (reduced by 25% from 60px)
-  const FOOTER_HEIGHT_REAL = 45; // Same as navigation in real mode
+  // Get the real navigation height from module definition
+  const navigationDefinition = getModuleDefinition('navigation');
+  const NAVIGATION_HEIGHT_REAL = navigationDefinition.defaultHeight * scaleFactor; // Scale down to canvas size
+  const FOOTER_HEIGHT_REAL = NAVIGATION_HEIGHT_REAL / 2; // Footer is half the height of navigation
+  
+  // Use same navigation height in both modes for consistency
+  const NAVIGATION_HEIGHT_ICON = NAVIGATION_HEIGHT_REAL;
+  const FOOTER_HEIGHT_ICON = FOOTER_HEIGHT_REAL;
   
   const CANVAS_HEIGHT = devicePreview === 'mobile' ? 667 : 394; // 16:9 aspect ratio height
   const AVAILABLE_HEIGHT = CANVAS_HEIGHT - (renderMode === 'icon' ? NAVIGATION_HEIGHT_ICON + FOOTER_HEIGHT_ICON : NAVIGATION_HEIGHT_REAL + FOOTER_HEIGHT_REAL);
@@ -240,12 +244,12 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
           flexShrink: 0
         }}
       >
-        <Typography sx={{ fontSize: '8px', fontWeight: 600, opacity: 0.6 }}>Logo</Typography>
-        <Typography sx={{ fontSize: '7px', fontWeight: 500, opacity: 0.4 }}>Navigation</Typography>
+        <Typography sx={{ fontSize: '11px', fontWeight: 600, opacity: 0.6 }}>Logo</Typography>
+        <Typography sx={{ fontSize: '10px', fontWeight: 500, opacity: 0.4 }}>Navigation Links</Typography>
         <Box
           sx={{
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             borderRadius: '50%',
             bgcolor: 'rgb(146, 0, 32)',
             opacity: 0.4
@@ -271,7 +275,6 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
         realSiteWidth={realSiteWidth}
         definition={definition}
         showOverlay={showOverlay}
-        recordModuleHeight={recordModuleHeight}
         renderMode={renderMode}
       />
     );
@@ -284,7 +287,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
         maxWidth: `${canvasWidth}px`,
         aspectRatio: devicePreview === 'mobile' ? '9/16' : '16/9',
         bgcolor: theme.colors?.surface?.base || 'white',
-        borderRadius: '16px',
+        borderRadius: '14px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
         overflow: 'hidden',
         position: 'relative',
@@ -368,10 +371,10 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
             {page.modules.map((module, index) => {
               const definition = getModuleDefinition(module.type);
               
-              // Calculate module height based on real measured heights or fallback to 600px
-              const realHeight = getModuleHeight(module.type, 600);
+              // Calculate module height based on default height from definition (with optional measured override)
+              const moduleDefaultHeight = getModuleHeight(module.type, definition.defaultHeight);
               const moduleHeight = totalHeight > 0 
-                ? (realHeight / totalHeight) * AVAILABLE_HEIGHT 
+                ? (moduleDefaultHeight / totalHeight) * AVAILABLE_HEIGHT 
                 : AVAILABLE_HEIGHT / page.modules.length;
 
               return (
@@ -543,7 +546,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
           alignItems: 'center',
           justifyContent: 'center',
           color: 'rgba(30, 30, 30, 0.3)',
-          fontSize: renderMode === 'icon' ? '7px' : '13px',
+          fontSize: renderMode === 'icon' ? '10px' : '13px',
           fontWeight: 500,
           transition: 'all 0.2s ease',
           cursor: dragOverIndex === page.modules.length ? 'copy' : 'default',

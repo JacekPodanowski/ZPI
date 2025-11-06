@@ -100,7 +100,7 @@ const ModuleRenderer = ({ module, pageId, theme }) => {
   const effectiveTheme = theme || DEFAULT_THEME;
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box sx={{ position: 'relative', overflow: 'hidden' }}>
       <Component
         layout={layout}
         content={module.content || {}}
