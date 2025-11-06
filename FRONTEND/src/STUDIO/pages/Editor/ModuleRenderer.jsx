@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { MODULE_REGISTRY } from '../../components/modules/ModuleRegistry.js';
+import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry.js';
 
 // Default vibe for STUDIO preview (same structure as SITES vibes)
 const DEFAULT_VIBE = {

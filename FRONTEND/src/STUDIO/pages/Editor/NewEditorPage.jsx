@@ -8,6 +8,37 @@ import EditorTopBar from './EditorTopBar';
 import EditorErrorBoundary from './EditorErrorBoundary';
 import { fetchSiteById } from '../../../services/siteService';
 import useTheme from '../../../theme/useTheme';
+import { getDefaultModuleContent } from './moduleDefinitions';
+
+// Helper function to convert old module format to new format
+const convertModuleNameToObject = (moduleName, index) => {
+  // Map old module names to new types
+  const typeMapping = {
+    'publicCalendar': 'calendar',
+    'about': 'about',
+    'servicesAndPricing': 'services',
+    'services': 'services',
+    'pricing': 'pricing',
+    'gallery': 'gallery',
+    'contact': 'contact',
+    'text': 'text',
+    'video': 'video',
+    'testimonials': 'testimonials',
+    'faq': 'faq',
+    'team': 'team',
+    'hero': 'hero',
+    'navigation': 'navigation'
+  };
+
+  const moduleType = typeMapping[moduleName] || moduleName;
+  
+  return {
+    id: `module-${moduleType}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+    type: moduleType,
+    content: getDefaultModuleContent(moduleType),
+    enabled: true
+  };
+};
 
 const NewEditorPage = () => {
   const { siteId } = useParams();
@@ -71,29 +102,75 @@ const NewEditorPage = () => {
             console.log('[NewEditorPage] No valid config found, creating default structure');
             console.log('[NewEditorPage] template_config value:', JSON.stringify(data.template_config, null, 2));
             
+            // Check if we have old-style module names array
+            const pages = [];
+            const homeModules = [];
+            
+            if (data.template_config && Array.isArray(data.template_config.modules)) {
+              console.log('[NewEditorPage] Converting old module names to new format:', data.template_config.modules);
+              
+              // Always add Hero to home page
+              const heroModule = convertModuleNameToObject('hero', 0);
+              homeModules.push(heroModule);
+              console.log('[NewEditorPage] Added Hero to home page:', heroModule);
+              
+              // Create separate page for each other module
+              data.template_config.modules.forEach((moduleName, index) => {
+                const moduleObj = convertModuleNameToObject(moduleName, index + 1);
+                console.log('[NewEditorPage] Processing module:', moduleName, '->', moduleObj);
+                
+                // Skip hero as it's already on home
+                if (moduleObj.type === 'hero') {
+                  return;
+                }
+                
+                // Create page name from module type
+                const pageName = moduleObj.type.charAt(0).toUpperCase() + moduleObj.type.slice(1);
+                const pageId = `page-${moduleObj.type}-${index}`;
+                const route = `/${moduleObj.type.toLowerCase()}`;
+                
+                pages.push({
+                  id: pageId,
+                  name: pageName,
+                  route: route,
+                  modules: [moduleObj]
+                });
+                
+                console.log('[NewEditorPage] Created page:', { pageId, pageName, route });
+              });
+            }
+            
+            // Create home page with Hero
+            const allPages = [
+              {
+                id: 'home',
+                name: 'Home',
+                route: '/',
+                modules: homeModules
+              },
+              ...pages
+            ];
+            
             loadSite({
               id: data.id,
               name: data.name,
               site: {
-                vibe: 'minimal',
-                theme: {
+                vibe: data.template_config?.vibe || 'minimal',
+                theme: data.template_config?.colors ? {
+                  primary: data.template_config.colors.primary || '#920020',
+                  secondary: data.template_config.colors.secondary || '#2D5A7B',
+                  neutral: '#E4E5DA'
+                } : {
                   primary: '#920020',
                   secondary: '#2D5A7B',
                   neutral: '#E4E5DA'
                 },
-                pages: [
-                  {
-                    id: 'home',
-                    name: 'Home',
-                    route: '/',
-                    modules: []
-                  }
-                ]
+                pages: allPages
               },
               userLibrary: { customAssets: [] },
               entryPointPageId: 'home'
             });
-            console.log('[NewEditorPage] Default structure created');
+            console.log('[NewEditorPage] Default structure created with pages:', allPages);
           }
           
           setLoading(false);

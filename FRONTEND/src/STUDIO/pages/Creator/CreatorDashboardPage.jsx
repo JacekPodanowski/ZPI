@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, CircularProgress, Container, Stack, Typography } from '@mui/material';
-import CreatorCalendar from '../../components_legacy/CreatorCalendar/CreatorCalendar';
+import CreatorCalendar from '../../components_STUDIO/CreatorCalendar/CreatorCalendar';
 import useSiteCalendarData from '../../hooks/useSiteCalendarData';
 import { MOCK_SITE_IDENTIFIER } from '../../data/mockSiteCalendar';
 
