@@ -6,7 +6,7 @@ const CenteredHero = ({ content, vibe, theme }) => {
 
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} text-center relative overflow-hidden`}
+      className={`${vibe.spacing} ${vibe.rounded} text-center relative overflow-hidden py-24 md:py-32`}
       style={{ 
         backgroundColor: content.bgColor || theme.background
       }}
@@ -30,7 +30,7 @@ const CenteredHero = ({ content, vibe, theme }) => {
           </p>
         )}
         
-        {content.ctaText && (
+        {content.showButton !== false && content.ctaText && (
           <a href={content.ctaLink}>
             <button 
               className={`${vibe.buttonStyle} ${vibe.shadows} ${vibe.animations} mt-8 md:mt-10`}

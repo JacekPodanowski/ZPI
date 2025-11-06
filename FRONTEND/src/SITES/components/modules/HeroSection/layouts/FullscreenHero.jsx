@@ -8,7 +8,7 @@ const FullscreenHero = ({ content, vibe, theme }) => {
 
   return (
     <section 
-      className={`relative min-h-[60vh] md:min-h-[80vh] flex items-center justify-center ${vibe.rounded}`}
+      className={`relative min-h-[80vh] md:min-h-[100vh] flex items-center justify-center ${vibe.rounded} py-24 md:py-32`}
       style={{
         backgroundColor: content.bgColor || theme.background
       }}
@@ -33,7 +33,7 @@ const FullscreenHero = ({ content, vibe, theme }) => {
           </p>
         )}
         
-        {content.ctaText && (
+        {content.showButton !== false && content.ctaText && (
           <a href={content.ctaLink}>
             <button 
               className={`${vibe.buttonStyle} ${vibe.shadows} ${vibe.animations} mt-8 md:mt-10`}

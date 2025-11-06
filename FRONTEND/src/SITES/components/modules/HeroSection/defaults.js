@@ -6,7 +6,8 @@ export const HERO_DEFAULTS = {
     heading: "Welcome to Our Space",
     subheading: "Your journey starts here",
     ctaText: "Get Started",
-    ctaLink: "/"
+    ctaLink: "/",
+    showButton: true
   },
   split: {
     heading: "Transform Your Experience",
@@ -14,7 +15,8 @@ export const HERO_DEFAULTS = {
     image: `https://picsum.photos/seed/${randomSeed()}/800/600`,
     imagePosition: 'right',
     ctaText: "Learn More",
-    ctaLink: "/about"
+    ctaLink: "/about",
+    showButton: true
   },
   fullscreen: {
     heading: "Elevate Your Journey",
@@ -22,6 +24,7 @@ export const HERO_DEFAULTS = {
     backgroundImage: `https://picsum.photos/seed/${randomSeed()}/1920/1080`,
     overlay: true,
     ctaText: "Explore",
-    ctaLink: "/services"
+    ctaLink: "/services",
+    showButton: true
   }
 };

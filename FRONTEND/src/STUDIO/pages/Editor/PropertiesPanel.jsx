@@ -643,6 +643,10 @@ const PropertiesPanel = () => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const moduleDef = module ? MODULE_REGISTRY[module.type] : null;
+  
+  // Get available layouts for this module
+  const availableLayouts = moduleDef?.layouts || [];
+  const currentLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
 
   const handleContentChange = (field, value) => {
     if (module && page) {
@@ -797,6 +801,44 @@ const PropertiesPanel = () => {
         {/* Content Sections */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
           <Stack spacing={3}>
+            {/* LAYOUT SELECTOR - Only show if multiple layouts available */}
+            {availableLayouts.length > 1 && (
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'rgba(30, 30, 30, 0.5)',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    mb: 2
+                  }}
+                >
+                  Layout Style
+                </Typography>
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={currentLayout}
+                    onChange={(e) => handleContentChange('layout', e.target.value)}
+                    sx={{
+                      borderRadius: '8px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
+                    }}
+                  >
+                    {availableLayouts.map(layout => (
+                      <MenuItem key={layout} value={layout}>
+                        {layout.charAt(0).toUpperCase() + layout.slice(1)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+            
+            {/* Divider after layout selector if content exists */}
+            {availableLayouts.length > 1 && contentFields.length > 0 && <Divider />}
+            
             {/* CONTENT Section */}
             {contentFields.length > 0 && (
               <Box>

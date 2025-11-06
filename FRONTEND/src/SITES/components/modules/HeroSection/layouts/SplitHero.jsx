@@ -9,7 +9,7 @@ const SplitHero = ({ content, vibe, theme }) => {
   
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden py-24 md:py-32`}
       style={{
         backgroundColor: content.bgColor || theme.background
       }}
@@ -37,7 +37,7 @@ const SplitHero = ({ content, vibe, theme }) => {
             </p>
           )}
           
-          {content.ctaText && (
+          {content.showButton !== false && content.ctaText && (
             <a href={content.ctaLink}>
               <button 
                 className={`${vibe.buttonStyle} ${vibe.shadows} ${vibe.animations} mt-6 md:mt-8`}
@@ -53,12 +53,16 @@ const SplitHero = ({ content, vibe, theme }) => {
         </div>
         
         {/* Image */}
-        <div className={imageOnLeft ? 'md:col-start-1 md:row-start-1' : ''}>
-          {imageUrl && (
+        <div className={`relative w-full h-full ${imageOnLeft ? 'md:col-start-1 md:row-start-1' : ''}`}>
+          {imageUrl ? (
             <img 
               src={imageUrl} 
               alt={content.heading}
-              className={`w-full h-auto ${vibe.rounded} ${vibe.shadows}`}
+              className={`w-full h-full object-cover ${vibe.rounded} ${vibe.shadows}`}
+            />
+          ) : (
+            <div 
+              className={`w-full h-full min-h-[260px] ${vibe.rounded} ${vibe.shadows} bg-neutral-200`}
             />
           )}
         </div>
