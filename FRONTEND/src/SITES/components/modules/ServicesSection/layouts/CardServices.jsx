@@ -1,11 +1,19 @@
-// layouts/CardServices.jsx - Card grid layout
+// layouts/CardServices.jsx - Card grid layout with background media support
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import { resolveMediaUrl } from '../../../../../config/api';
+
 const CardServices = ({ content, vibe, theme }) => {
+  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.25)' : undefined);
+
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded}`}
-      style={{ backgroundColor: theme.background }}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
+      style={{
+        backgroundColor: content.bgColor || theme.background
+      }}
     >
-      <div className="max-w-7xl mx-auto">
+      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <div className="max-w-7xl mx-auto relative z-10">
         <h2 
           className={`${vibe.headingSize} text-center`}
           style={{ color: theme.primary }}
@@ -24,41 +32,44 @@ const CardServices = ({ content, vibe, theme }) => {
         
         {/* Service Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mt-10 md:mt-12">
-          {content.items?.map((item, index) => (
-            <div 
-              key={index}
-              className={`${vibe.cardStyle} ${vibe.animations}`}
-              style={{ borderColor: theme.secondary }}
-            >
-              {item.image && (
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  className={`w-full h-48 object-cover ${vibe.rounded} mb-4`}
-                />
-              )}
-              
-              {item.icon && (
-                <div className="text-3xl md:text-4xl mb-3">
-                  {item.icon}
-                </div>
-              )}
-              
-              <h3 
-                className="text-xl md:text-2xl font-semibold mb-3"
-                style={{ color: theme.primary }}
+          {content.items?.map((item, index) => {
+            const itemImageUrl = item.image ? resolveMediaUrl(item.image) : '';
+            return (
+              <div 
+                key={index}
+                className={`${vibe.cardStyle} ${vibe.animations}`}
+                style={{ borderColor: theme.secondary }}
               >
-                {item.name}
-              </h3>
-              
-              <p 
-                className={vibe.textSize}
-                style={{ color: theme.text }}
-              >
-                {item.description}
-              </p>
-            </div>
-          ))}
+                {itemImageUrl && (
+                  <img 
+                    src={itemImageUrl} 
+                    alt={item.name}
+                    className={`w-full h-48 object-cover ${vibe.rounded} mb-4`}
+                  />
+                )}
+                
+                {item.icon && (
+                  <div className="text-3xl md:text-4xl mb-3">
+                    {item.icon}
+                  </div>
+                )}
+                
+                <h3 
+                  className="text-xl md:text-2xl font-semibold mb-3"
+                  style={{ color: theme.primary }}
+                >
+                  {item.name}
+                </h3>
+                
+                <p 
+                  className={vibe.textSize}
+                  style={{ color: theme.text }}
+                >
+                  {item.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

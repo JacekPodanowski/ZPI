@@ -4,6 +4,7 @@ import { HERO_DESCRIPTOR } from './descriptor';
 import CenteredHero from './layouts/CenteredHero';
 import SplitHero from './layouts/SplitHero';
 import FullscreenHero from './layouts/FullscreenHero';
+import { mergeWithDefaults } from '../../../../utils/contentMerge';
 
 const LAYOUTS = {
   centered: CenteredHero,
@@ -13,15 +14,9 @@ const LAYOUTS = {
 
 const HeroSection = ({ layout = 'centered', content = {}, vibe, theme }) => {
   const defaults = HERO_DEFAULTS[layout] || HERO_DEFAULTS.centered;
-  
-  // Merge: empty string or undefined = use default
-  const mergedContent = Object.keys(defaults).reduce((acc, key) => {
-    acc[key] = (content[key] !== undefined && content[key] !== '') 
-      ? content[key] 
-      : defaults[key];
-    return acc;
-  }, {});
-  
+
+  const mergedContent = mergeWithDefaults(defaults, content);
+
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.centered;
   return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
 };

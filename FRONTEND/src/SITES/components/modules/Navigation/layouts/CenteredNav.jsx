@@ -1,8 +1,10 @@
 // layouts/CenteredNav.jsx - Centered navigation with logo above
 import { useState } from 'react';
+import { resolveMediaUrl } from '../../../../../config/api';
 
 const CenteredNav = ({ content, vibe, theme }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const logoUrl = content.logo?.src ? resolveMediaUrl(content.logo.src) : '';
   
   return (
     <nav 
@@ -15,9 +17,9 @@ const CenteredNav = ({ content, vibe, theme }) => {
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Logo Centered */}
         <a href="/" className="flex flex-col items-center gap-2 mb-6">
-          {content.logo?.src && (
+          {logoUrl && (
             <img 
-              src={content.logo.src} 
+              src={logoUrl} 
               alt={content.logo.alt || content.logo.text}
               className="h-10 md:h-12 w-auto"
             />

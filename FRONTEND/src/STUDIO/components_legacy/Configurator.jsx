@@ -10,6 +10,7 @@ import {
   DEFAULT_REACT_COMPONENT_SOURCE,
   REACT_COMPONENT_MEDIA_PROP_KEYS
 } from '../../constants/reactComponentDefaults'
+import { MODULE_REGISTRY } from '../../SITES/components/modules/ModuleRegistry'
 
 const isHeroModule = (module) => {
   if (!module) return false
@@ -120,6 +121,10 @@ const Configurator = () => {
 
   const currentPageData = templateConfig.pages[currentPage] || templateConfig.pages.home
   const module = currentPageData?.modules?.find((m) => m.id === selectedModule)
+
+  // Znajdź definicję modułu w rejestrze
+  const moduleDef = module ? MODULE_REGISTRY[module.type] : null
+  const fields = moduleDef?.descriptor?.fields
 
   const pageOptions = useMemo(() => {
     const pagesObject = templateConfig.pages || {}
@@ -456,6 +461,404 @@ const Configurator = () => {
     } finally {
       setIsComponentSaving(false)
     }
+  }
+
+  // Funkcja renderująca pole na podstawie deskryptora
+  const renderFieldFromDescriptor = (key, fieldDef) => {
+    const value = module.config?.[key]
+
+    // Pole tekstowe
+    if (fieldDef.t === 'text') {
+      return (
+        <div key={key}>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+            {fieldDef.d || key}
+          </label>
+          <input
+            type="text"
+            value={value || ''}
+            onChange={(e) => handleConfigChange(key, e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+            style={{ 
+              borderColor: 'rgba(30, 30, 30, 0.2)',
+              '--tw-ring-color': 'rgb(146, 0, 32)'
+            }}
+            placeholder={fieldDef.d || ''}
+          />
+        </div>
+      )
+    }
+
+    // Pole textarea/richtext
+    if (fieldDef.t === 'richtext' || fieldDef.t === 'textarea') {
+      return (
+        <div key={key}>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+            {fieldDef.d || key}
+          </label>
+          <textarea
+            value={value || ''}
+            onChange={(e) => handleConfigChange(key, e.target.value)}
+            rows={4}
+            className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 resize-none"
+            style={{ 
+              borderColor: 'rgba(30, 30, 30, 0.2)',
+              '--tw-ring-color': 'rgb(146, 0, 32)'
+            }}
+            placeholder={fieldDef.d || ''}
+          />
+        </div>
+      )
+    }
+
+    // Pole koloru
+    if (fieldDef.t === 'color') {
+      return (
+        <ColorPicker
+          key={key}
+          label={fieldDef.d || key}
+          value={value || '#000000'}
+          onChange={(color) => handleConfigChange(key, color)}
+        />
+      )
+    }
+
+    // Pole obrazka
+    if (fieldDef.t === 'image') {
+      return (
+        <ImageUploader
+          key={key}
+          label={fieldDef.d || key}
+          value={value || ''}
+          onChange={(url) => handleConfigChange(key, url)}
+        />
+      )
+    }
+
+    // Pole boolean (checkbox)
+    if (fieldDef.t === 'boolean') {
+      return (
+        <label 
+          key={key} 
+          className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all"
+          style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}
+        >
+          <input
+            type="checkbox"
+            checked={value === true}
+            onChange={(e) => handleConfigChange(key, e.target.checked)}
+            className="w-6 h-6 rounded"
+            style={{ accentColor: 'rgb(146, 0, 32)' }}
+          />
+          <div className="flex-1">
+            <span className="font-medium block">{fieldDef.d || key}</span>
+          </div>
+        </label>
+      )
+    }
+
+    // Pole numeryczne
+    if (fieldDef.t === 'number') {
+      return (
+        <div key={key}>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+            {fieldDef.d || key}
+          </label>
+          <input
+            type="number"
+            value={value || 0}
+            onChange={(e) => handleConfigChange(key, parseInt(e.target.value))}
+            className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+            style={{ 
+              borderColor: 'rgba(30, 30, 30, 0.2)',
+              '--tw-ring-color': 'rgb(146, 0, 32)'
+            }}
+          />
+        </div>
+      )
+    }
+
+    // Pole enum (select)
+    if (fieldDef.t === 'enum' && fieldDef.vals) {
+      return (
+        <div key={key}>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
+            {fieldDef.d || key}
+          </label>
+          <select
+            value={value || fieldDef.vals[0]}
+            onChange={(e) => handleConfigChange(key, e.target.value)}
+            className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2"
+            style={{ 
+              borderColor: 'rgba(30, 30, 30, 0.2)',
+              '--tw-ring-color': 'rgb(146, 0, 32)'
+            }}
+          >
+            {fieldDef.vals.map((val) => (
+              <option key={val} value={val}>{val}</option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    // Pole array (kolekcja)
+    if (fieldDef.t === 'array') {
+      return renderArrayField(key, fieldDef, value)
+    }
+
+    return null
+  }
+
+  // Funkcja renderująca pole typu array
+  const renderArrayField = (collectionKey, fieldDef, items = []) => {
+    // Gallery
+    if (module.type === 'gallery' && collectionKey === 'images') {
+      return (
+        <div key={collectionKey} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-3" style={{ color: 'rgb(30, 30, 30)' }}>
+              {fieldDef.d || collectionKey}
+            </label>
+            <ImageUploader
+              label=""
+              value=""
+              multiple={true}
+              onChange={(urls) => {
+                const currentImages = items || []
+                const newImages = urls.map(url => ({ url, caption: '' }))
+                handleConfigChange(collectionKey, [...currentImages, ...newImages])
+              }}
+            />
+            <p className="text-xs mt-2 opacity-60">
+              💡 Możesz wybrać wiele zdjęć naraz (Ctrl/Cmd + klik) lub przeciągnąć kilka plików
+            </p>
+          </div>
+
+          {/* Lista dodanych zdjęć */}
+          {items && items.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+                  Dodane zdjęcia ({items.length})
+                </p>
+                <button
+                  onClick={() => {
+                    // eslint-disable-next-line no-restricted-globals
+                    if (confirm('Czy na pewno chcesz usunąć wszystkie zdjęcia?')) {
+                      handleConfigChange(collectionKey, [])
+                    }
+                  }}
+                  className="text-xs px-3 py-1 rounded-lg border transition-all hover:bg-red-50"
+                  style={{ 
+                    borderColor: 'rgb(146, 0, 32)',
+                    color: 'rgb(146, 0, 32)'
+                  }}
+                >
+                  Usuń wszystkie
+                </button>
+              </div>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {items.map((item, idx) => {
+                  const rawImageUrl = typeof item === 'string' ? item : item.url
+                  const imgUrl = resolveMediaUrl(rawImageUrl)
+                  const hasValidImage = imgUrl && imgUrl.trim() !== ''
+                  const caption = typeof item === 'object' ? item.caption : ''
+                  const isEditing = editingCaption === idx
+
+                  return (
+                    <div key={idx} className="bg-gray-50 rounded-lg group hover:bg-gray-100 transition-all">
+                      <div className="flex items-center gap-3 p-2">
+                        {hasValidImage && (
+                          <div className="flex-shrink-0">
+                            <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-16 h-16 object-cover rounded" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium opacity-60">Zdjęcie {idx + 1}</p>
+                          <p className="text-xs truncate opacity-40">{(rawImageUrl || '').substring(0, 40)}...</p>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {idx > 0 && (
+                            <button
+                              onClick={() => {
+                                const images = [...items]
+                                ;[images[idx], images[idx - 1]] = [images[idx - 1], images[idx]]
+                                handleConfigChange(collectionKey, images)
+                              }}
+                              className="p-1.5 hover:bg-white rounded transition-all"
+                              title="Przesuń w górę"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                          )}
+                          {idx < items.length - 1 && (
+                            <button
+                              onClick={() => {
+                                const images = [...items]
+                                ;[images[idx], images[idx + 1]] = [images[idx + 1], images[idx]]
+                                handleConfigChange(collectionKey, images)
+                              }}
+                              className="p-1.5 hover:bg-white rounded transition-all"
+                              title="Przesuń w dół"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const images = items.filter((_, i) => i !== idx)
+                              handleConfigChange(collectionKey, images)
+                            }}
+                            className="p-1.5 hover:bg-red-100 rounded transition-all"
+                            style={{ color: 'rgb(146, 0, 32)' }}
+                            title="Usuń"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Caption editor */}
+                      <div className="px-2 pb-2">
+                        {isEditing ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={caption}
+                              onChange={(e) => {
+                                const images = [...items]
+                                if (typeof images[idx] === 'string') {
+                                  images[idx] = { url: images[idx], caption: e.target.value }
+                                } else {
+                                  images[idx] = { ...images[idx], caption: e.target.value }
+                                }
+                                handleConfigChange(collectionKey, images)
+                              }}
+                              placeholder="Dodaj opis zdjęcia..."
+                              className="flex-1 px-3 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2"
+                              style={{ 
+                                borderColor: 'rgba(30, 30, 30, 0.2)',
+                                '--tw-ring-color': 'rgb(146, 0, 32)'
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => setEditingCaption(null)}
+                              className="px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all"
+                            >
+                              ✓
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEditingCaption(idx)}
+                            className="w-full text-left px-3 py-1.5 text-xs rounded-lg hover:bg-white transition-all"
+                            style={{ color: caption ? 'rgb(30, 30, 30)' : 'rgba(30, 30, 30, 0.4)' }}
+                          >
+                            {caption || '+ Dodaj opis'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // FAQ
+    if (module.type === 'faq') {
+      return (
+        <div key={collectionKey} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+              {fieldDef.d || collectionKey} ({items.length})
+            </h3>
+            <button
+              onClick={() => addCollectionItem(collectionKey, {
+                id: `faq-${Date.now()}`,
+                question: 'Nowe pytanie',
+                answer: '<p>Nowa odpowiedź.</p>'
+              })}
+              className="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-white"
+              style={{
+                borderColor: 'rgb(146, 0, 32)',
+                color: 'rgb(146, 0, 32)'
+              }}
+            >
+              + Dodaj pytanie
+            </button>
+          </div>
+          
+          {items.map((item, index) => (
+            <div key={item.id || index} className="p-4 rounded-xl border" style={{ borderColor: 'rgba(30, 30, 30, 0.1)' }}>
+              <div className="flex items-start gap-3">
+                <span className="text-xl">❓</span>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Pytanie</label>
+                    <input
+                      type="text"
+                      value={item.question || ''}
+                      onChange={(e) => updateCollectionItem(collectionKey, index, { question: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Odpowiedź (HTML)</label>
+                    <textarea
+                      value={item.answer || ''}
+                      onChange={(e) => updateCollectionItem(collectionKey, index, { answer: e.target.value })}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 font-mono text-xs"
+                      style={{
+                        borderColor: 'rgba(30, 30, 30, 0.15)',
+                        '--tw-ring-color': 'rgb(146, 0, 32)'
+                      }}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => removeCollectionItem(collectionKey, index)}
+                  className="p-2 rounded-lg hover:bg-red-50"
+                  style={{ color: 'rgb(146, 0, 32)' }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    // Domyślne renderowanie dla innych typów array
+    return (
+      <div key={collectionKey} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium" style={{ color: 'rgb(30, 30, 30)' }}>
+            {fieldDef.d || collectionKey} ({items.length})
+          </h3>
+        </div>
+        <p className="text-xs opacity-60">
+          Edycja kolekcji dla typu "{module.type}" nie jest jeszcze w pełni zaimplementowana.
+        </p>
+      </div>
+    )
   }
 
   if (!selectedModule || !module) {
@@ -923,8 +1326,21 @@ const Configurator = () => {
 
       {/* Content - scrollable */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* DYNAMICZNE RENDEROWANIE NA PODSTAWIE DESKRYPTORA */}
+        {module && moduleDef && fields ? (
+          // Renderuj pola dynamicznie na podstawie deskryptora
+          <>
+            {Object.entries(fields).map(([key, fieldDef]) => renderFieldFromDescriptor(key, fieldDef))}
+          </>
+        ) : module && !moduleDef ? (
+          // Komunikat dla starych modułów bez deskryptora - renderuj stare pola poniżej
+          <>
+            {/* Stare statyczne bloki dla modułów bez deskryptora */}
+          </>
+        ) : null}
+
         {/* Expert Mode - Text Module */}
-        {module.type === 'text' && (
+        {module.type === 'text' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1005,7 +1421,7 @@ const Configurator = () => {
         )}
 
         {/* Expert Mode - Button Module */}
-        {module.type === 'button' && (
+        {module.type === 'button' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1092,7 +1508,7 @@ const Configurator = () => {
         )}
 
         {/* Expert Mode - Gallery Module */}
-        {module.type === 'gallery' && (
+        {module.type === 'gallery' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1308,7 +1724,7 @@ const Configurator = () => {
         )}
 
         {/* Expert Mode - Video Module */}
-        {module.type === 'video' && (
+        {module.type === 'video' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-3" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1373,7 +1789,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'faq' && (
+        {module.type === 'faq' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1499,7 +1915,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'blog' && (
+        {module.type === 'blog' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1667,7 +2083,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'events' && (
+        {module.type === 'events' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -1886,7 +2302,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'pricing' && (
+        {module.type === 'pricing' && !moduleDef && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -2062,7 +2478,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'services' && (
+        {module.type === 'services' && !moduleDef && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -2222,7 +2638,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'reactComponent' && (
+        {module.type === 'reactComponent' && !moduleDef && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -2618,7 +3034,7 @@ const Configurator = () => {
           </>
         )}
 
-        {module.type === 'team' && (
+        {module.type === 'team' && !moduleDef && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
@@ -2796,7 +3212,7 @@ const Configurator = () => {
         )}
 
         {/* Expert Mode - Spacer Module */}
-        {module.type === 'spacer' && (
+        {module.type === 'spacer' && !moduleDef && (
           <>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'rgb(30, 30, 30)' }}>
@@ -2818,7 +3234,7 @@ const Configurator = () => {
         )}
 
         {/* Expert Mode - Container Module */}
-        {module.type === 'container' && (
+        {module.type === 'container' && !moduleDef && (
           <>
             <div className="p-4 rounded-lg mb-4" style={{ backgroundColor: 'rgba(146, 0, 32, 0.1)' }}>
               <div className="flex items-start gap-3">

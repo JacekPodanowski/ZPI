@@ -1,11 +1,20 @@
 // layouts/GridAbout.jsx - Grid layout with image and highlights
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import { resolveMediaUrl } from '../../../../../config/api';
+
 const GridAbout = ({ content, vibe, theme }) => {
+  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.3)' : undefined);
+  const imageUrl = content.image ? resolveMediaUrl(content.image) : '';
+
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded}`}
-      style={{ backgroundColor: theme.background }}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
+      style={{
+        backgroundColor: content.bgColor || theme.background
+      }}
     >
-      <div className="max-w-7xl mx-auto">
+      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <div className="max-w-7xl mx-auto relative z-10">
         <h2 
           className={`${vibe.headingSize} text-center`}
           style={{ color: theme.primary }}
@@ -15,9 +24,9 @@ const GridAbout = ({ content, vibe, theme }) => {
         
         {/* Image and Description Grid */}
         <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center mt-8 md:mt-12">
-          {content.image && (
+          {imageUrl && (
             <img 
-              src={content.image} 
+              src={imageUrl} 
               alt={content.title}
               className={`w-full h-auto ${vibe.rounded} ${vibe.shadows}`}
             />

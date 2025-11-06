@@ -1,55 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../services/apiClient';
 
-import HeroSection from './components/HeroSection';
-import AboutSection from './components/AboutSection';
-import CalendarSection from './components/CalendarSection';
-import ContactForm from './components/ContactForm';
-import TextModule from './components/TextModule';
-import ButtonModule from './components/ButtonModule';
-import GalleryModule from './components/GalleryModule';
-import SpacerModule from './components/SpacerModule';
-import ContainerModule from './components/ContainerModule';
-import VideoModule from './components/VideoModule';
-import FAQModule from './components/FAQModule';
-import BlogModule from './components/BlogModule';
-import EventsModule from './components/EventsModule';
-import ServicesAndPricingModule from './components/ServicesAndPricingModule';
-import TeamModule from './components/TeamModule';
-import ReactComponentModule from './components/ReactComponentModule';
+// JEDYNE POTRZEBNE IMPORTY SYSTEMOWE
+import { MODULE_REGISTRY } from './components/modules/ModuleRegistry.js';
+import { VIBES } from './vibes';
+import { themeDefinitions } from '../theme/themeDefinitions.js';
+import { createTheme } from '../theme/colorSystem.js';
 
 const fetchPublicSiteConfig = async (siteId) => {
   const response = await apiClient.get(`/public-sites/by-id/${siteId}/`);
   return response.data;
 };
 
-// Component map to render modules dynamically
-const componentMap = {
-  hero: HeroSection,
-  about: AboutSection,
-  calendar: CalendarSection,
-  contact: ContactForm,
-  contactForm: ContactForm,
-  text: TextModule,
-  button: ButtonModule,
-  gallery: GalleryModule,
-  spacer: SpacerModule,
-  container: ContainerModule,
-  video: VideoModule,
-  faq: FAQModule,
-  blog: BlogModule,
-  events: EventsModule,
-  servicesAndPricing: ServicesAndPricingModule,
-  team: TeamModule,
-  reactComponent: ReactComponentModule,
-};
+// NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
+const renderModule = (module, vibe, theme) => {
+  if (module?.enabled === false) return null;
+  
+  const moduleType = (module.type || module.id || '').toLowerCase();
+  const moduleDef = MODULE_REGISTRY[moduleType];
 
-const renderModule = (module) => {
-  // Modules are enabled by default (no 'enabled' field needed)
-  if (module?.enabled === false) return null
-  const Component = componentMap[module.type] || componentMap[module.id];
-  if (!Component) return null;
-  return <Component key={module.id} config={module.content || {}} />;
+  if (moduleDef) {
+    const Component = moduleDef.component;
+    const layout = module.content?.layout || moduleDef.defaultLayout;
+    return (
+      <Component
+        key={module.id}
+        layout={layout}
+        content={module.content || {}}
+        vibe={vibe}
+        theme={theme}
+      />
+    );
+  } else {
+    // Zamiast fallbacku, teraz logujemy błąd. To wymusza pełną migrację.
+    console.error(`[SiteApp] Nie znaleziono definicji w MODULE_REGISTRY dla modułu typu: "${moduleType}". Upewnij się, że moduł został poprawnie zmigrowany i zarejestrowany.`);
+    return (
+      <div style={{ padding: '2rem', border: '2px dashed red', margin: '1rem', backgroundColor: '#fff0f0' }}>
+        <strong>Błąd:</strong> Nie można wyrenderować modułu typu "<strong>{moduleType}</strong>".
+      </div>
+    );
+  }
 };
 
 const SiteApp = () => {
@@ -194,13 +184,20 @@ const SiteApp = () => {
   if (error) return <div>Error: {error}</div>;
   if (!config || !activePage) return <div>Site configuration is incomplete.</div>;
 
+  // Wyznacz motyw i styl
+  const siteThemeId = config?.themeId || 'modernWellness';
+  const siteVibeId = config?.vibeId || 'vibe1';
+  const themeDefinition = themeDefinitions[siteThemeId] || themeDefinitions.modernWellness;
+  const theme = createTheme(themeDefinition, 'light');
+  const vibe = VIBES[siteVibeId] || VIBES.vibe1;
+
   const modulesToRender = activePage.modules
     ?.filter((module) => module?.enabled !== false)
     ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0)) || [];
 
   return (
     <main>
-      {modulesToRender.map((module) => renderModule(module))}
+      {modulesToRender.map((module) => renderModule(module, vibe, theme))}
     </main>
   );
 };

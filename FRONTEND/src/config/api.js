@@ -58,7 +58,8 @@ export const resolveMediaUrl = (input) => {
     }
     // Stale blob URL - these are invalid after page reload
     // Return a placeholder or the URL as-is to let the browser handle it
-    console.warn('Stale blob URL detected (page may have been reloaded):', url.substring(0, 50))
+    console.warn('⚠️ Stale blob URL detected (page may have been reloaded):', url.substring(0, 50))
+    console.warn('   This image needs to be re-uploaded or saved properly.')
     return '' // Return empty to prevent broken image attempts
   }
 
@@ -67,7 +68,9 @@ export const resolveMediaUrl = (input) => {
     return normalizedPath
   }
 
-  return `${MEDIA_BASE_URL}${normalizedPath}`
+  const resolved = `${MEDIA_BASE_URL}${normalizedPath}`
+  console.log('🖼️ Resolved media URL:', { input: url.substring(0, 50), resolved: resolved.substring(0, 80) })
+  return resolved
 }
 
 export const API_PAGE = `${API_BASE}/api/page`

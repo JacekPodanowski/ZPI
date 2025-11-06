@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { useLocation, useParams } from 'react-router-dom';
-import ModuleSelector from '../../components/ModuleSelector';
-import SiteCanvas from '../../components/SiteCanvas';
-import Configurator from '../../components/Configurator';
-import AIChat from '../../components/AIChat';
+import ModuleSelector from '../../components_legacy/ModuleSelector';
+import SiteCanvas from './SiteCanvas';
+import Configurator from '../../components_legacy/Configurator';
+import AIChat from '../../components_legacy/AIChat';
 import useEditorStore, { createDefaultTemplateConfig, buildTemplateFromModules } from '../../store/editorStore';
-import EditorNavigation from '../../components/EditorNavigation/EditorNavigation';
+import EditorNavigation from '../../components_legacy/EditorNavigation/EditorNavigation';
 import { fetchSiteById, updateSiteTemplate } from '../../../services/siteService';
 import { ThemeProvider as MuiThemeProvider, createTheme as createMuiTheme } from '@mui/material/styles';
 import { createTheme as createSemanticTheme, assignCssVariables } from '../../../theme/colorSystem';

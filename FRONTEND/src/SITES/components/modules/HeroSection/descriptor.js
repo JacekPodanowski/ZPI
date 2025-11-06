@@ -3,14 +3,18 @@ export const HERO_DESCRIPTOR = {
   type: 'hero',
   desc: 'Eye-catching intro section',
   fields: {
-    heading: { t: 'text', req: true, d: 'Main headline' },
-    subheading: { t: 'text', d: 'Supporting text' },
-    ctaText: { t: 'text', d: 'Button text' },
-    ctaLink: { t: 'text', d: 'Button URL' },
-    image: { t: 'image', d: 'Featured image' },
-    imagePosition: { t: 'enum', vals: ['left', 'right'], d: 'Image side' },
-    backgroundImage: { t: 'image', d: 'Background image' },
-    overlay: { t: 'boolean', d: 'Dark overlay' }
+    heading: { t: 'text', req: true, d: 'Main headline', category: 'content' },
+    subheading: { t: 'text', d: 'Supporting text', category: 'content' },
+    ctaText: { t: 'text', d: 'Button text', category: 'content' },
+    ctaLink: { t: 'text', d: 'Button URL', category: 'content' },
+    image: { t: 'image', d: 'Featured image (for split layout)', category: 'appearance' },
+    imagePosition: { t: 'enum', vals: ['left', 'right'], d: 'Image side', category: 'appearance' },
+    backgroundImage: { t: 'image', d: 'Background image', category: 'appearance' },
+    bgColor: { t: 'color', d: 'Background color', category: 'appearance' },
+    textColor: { t: 'color', d: 'Text color', category: 'appearance' },
+    ctaBgColor: { t: 'color', d: 'Button background color', category: 'appearance' },
+    ctaTextColor: { t: 'color', d: 'Button text color', category: 'appearance' },
+    overlay: { t: 'boolean', d: 'Dark overlay', category: 'advanced' }
   },
   layouts: ['centered', 'split', 'fullscreen']
 };

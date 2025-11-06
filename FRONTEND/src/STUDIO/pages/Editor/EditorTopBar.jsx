@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, IconButton, Stack, Typography, Tooltip, TextField } from '@mui/material';
 import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import { renameSite } from '../../../services/siteService';
+import { renameSite, updateSiteTemplate } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
+import apiClient from '../../../services/apiClient';
+import { retrieveTempImage, isTempBlobUrl } from '../../../services/tempMediaCache';
 
 const EditorTopBar = () => {
   const { 
@@ -36,9 +38,132 @@ const EditorTopBar = () => {
     setTitleValue(siteName);
   }, [siteName]);
 
-  const handleSave = () => {
-    // TODO: Implement save logic
-    console.log('Saving...');
+  const handleSave = async () => {
+    if (!siteName.trim()) {
+      console.error('Site name is required');
+      return;
+    }
+
+    try {
+      console.log('[Save] Starting save process...');
+      
+      // Deep clone the config
+      let finalConfig = JSON.parse(JSON.stringify(site));
+      
+      // Find all blob URLs in the configuration
+      const allBlobUrls = new Set();
+      JSON.stringify(finalConfig, (key, value) => {
+        if (typeof value === 'string' && value.includes('blob:')) {
+          const matches = value.match(/blob:[^"')\s]+/g);
+          if (matches) {
+            matches.forEach((match) => allBlobUrls.add(match));
+          }
+        }
+        return value;
+      });
+
+      console.log('[Save] Found blob URLs:', Array.from(allBlobUrls));
+
+      // Upload each blob and create a URL map
+      const uploadPromises = Array.from(allBlobUrls).map(async (blobUrl) => {
+        let file = null;
+
+        if (isTempBlobUrl(blobUrl)) {
+          console.log('[Save] Uploading tracked blob:', blobUrl);
+          file = await retrieveTempImage(blobUrl);
+        } else {
+          console.warn('[Save] Blob not tracked, attempting direct fetch:', blobUrl);
+        }
+
+        if (!file) {
+          try {
+            const response = await fetch(blobUrl);
+            const blob = await response.blob();
+            const extension = (blob.type && blob.type.split('/')[1]) || 'bin';
+            const fallbackName = `upload-${Date.now()}.${extension}`;
+            file = new File([blob], fallbackName, { type: blob.type || 'application/octet-stream' });
+            console.log('[Save] Retrieved file via fetch fallback');
+          } catch (fetchError) {
+            console.error('[Save] Failed to fetch blob:', blobUrl, fetchError);
+          }
+        }
+
+        if (!file) {
+          return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('usage', 'site_content');
+        if (siteId) {
+          formData.append('site_id', siteId);
+        }
+
+        const response = await apiClient.post('/upload/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        const uploadedUrl = response?.data?.url;
+        if (!uploadedUrl) {
+          console.error('[Save] Upload response missing URL');
+          return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
+        }
+
+        return { tempUrl: blobUrl, finalUrl: uploadedUrl, failed: false };
+      });
+
+      // Wait for all uploads to complete
+      const results = await Promise.all(uploadPromises);
+      const failedUploads = results.filter((result) => result.failed);
+      
+      if (failedUploads.length > 0) {
+        console.error('[Save] Failed uploads:', failedUploads);
+        alert('Failed to upload some images. Please try again.');
+        return;
+      }
+
+      const urlMap = new Map(results.map((r) => [r.tempUrl, r.finalUrl]));
+
+      // Replace all temporary blob URLs with permanent URLs
+      if (urlMap.size > 0) {
+        let configString = JSON.stringify(finalConfig);
+        urlMap.forEach((finalUrl, tempUrl) => {
+          const escapedTempUrl = tempUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(escapedTempUrl, 'g');
+          configString = configString.replace(regex, finalUrl);
+        });
+        finalConfig = JSON.parse(configString);
+        
+        // Verify no blob URLs remain
+        const remainingBlobs = JSON.stringify(finalConfig).match(/blob:http[^\s"']*/g);
+        if (remainingBlobs) {
+          console.error('[Save] Blob URLs still present after replacement!', remainingBlobs);
+        } else {
+          console.log('[Save] ✓ All blob URLs replaced successfully');
+        }
+      }
+
+      // Save to backend
+      if (siteId) {
+        await updateSiteTemplate(siteId, { site: finalConfig }, siteName);
+        console.log('[Save] Site updated successfully');
+      } else {
+        console.warn('[Save] No siteId - cannot save');
+        return;
+      }
+
+      // Update store with final URLs and mark as saved
+      useNewEditorStore.getState().loadSite({
+        id: siteId,
+        name: siteName,
+        site: finalConfig
+      });
+      
+      alert('Site saved successfully!');
+    } catch (error) {
+      console.error('[Save] Save failed:', error);
+      alert('Failed to save site. Please try again.');
+    }
   };
 
   const handleDownload = () => {

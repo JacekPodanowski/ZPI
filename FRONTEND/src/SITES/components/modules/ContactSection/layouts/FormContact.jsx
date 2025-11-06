@@ -1,11 +1,18 @@
-// layouts/FormContact.jsx - Form-focused layout
+// layouts/FormContact.jsx - Form-focused layout with background media
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
+
 const FormContact = ({ content, vibe, theme }) => {
+  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.25)' : undefined);
+
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded}`}
-      style={{ backgroundColor: theme.background }}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
+      style={{
+        backgroundColor: content.bgColor || theme.background
+      }}
     >
-      <div className="max-w-2xl mx-auto">
+      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <div className="max-w-2xl mx-auto relative z-10">
         <h2 
           className={`${vibe.headingSize} text-center`}
           style={{ color: theme.primary }}

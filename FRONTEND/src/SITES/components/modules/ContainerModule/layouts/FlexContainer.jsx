@@ -1,11 +1,11 @@
-import React from 'react'
-import { motion } from 'framer-motion'
-import TextModule from './TextModule'
-import ButtonModule from './ButtonModule'
-import GalleryModule from './GalleryModule'
-import SpacerModule from './SpacerModule'
+import React from 'react';
+import { motion } from 'framer-motion';
+import TextModule from '../../TextModule';
+import ButtonModule from '../../ButtonModule';
+import GalleryModule from '../../GalleryModule';
+import SpacerModule from '../../SpacerModule';
 
-const ContainerModule = ({ config, isEditing = false }) => {
+const FlexContainer = ({ content, vibe, theme, isEditing = false }) => {
   const { 
     direction = 'horizontal', 
     gap = '1rem', 
@@ -13,20 +13,20 @@ const ContainerModule = ({ config, isEditing = false }) => {
     justify = 'center',
     wrap = true,
     children = []
-  } = config
+  } = content || {};
 
   const components = {
     text: TextModule,
     button: ButtonModule,
     gallery: GalleryModule,
     spacer: SpacerModule,
-  }
+  };
 
   const alignMap = {
     start: 'flex-start',
     center: 'center',
     end: 'flex-end'
-  }
+  };
 
   const justifyMap = {
     start: 'flex-start',
@@ -34,7 +34,7 @@ const ContainerModule = ({ config, isEditing = false }) => {
     end: 'flex-end',
     between: 'space-between',
     around: 'space-around'
-  }
+  };
 
   return (
     <div className="py-8 px-4 relative">
@@ -71,13 +71,13 @@ const ContainerModule = ({ config, isEditing = false }) => {
         )}
         
         {children.map((child, idx) => {
-          const Component = components[child.type]
-          if (!Component) return null
+          const Component = components[child.type];
+          if (!Component) return null;
           
           // Oblicz flex dla tego dziecka
-          const flexGrow = child.config?.flexGrow ? 1 : 0
-          const flexShrink = child.config?.flexGrow ? 1 : 0
-          const flexBasis = child.config?.flexGrow ? '0%' : 'auto'
+          const flexGrow = child.content?.flexGrow ? 1 : 0;
+          const flexShrink = child.content?.flexGrow ? 1 : 0;
+          const flexBasis = child.content?.flexGrow ? '0%' : 'auto';
           
           return (
             <motion.div
@@ -88,7 +88,7 @@ const ContainerModule = ({ config, isEditing = false }) => {
               className="relative"
               style={{ 
                 flex: `${flexGrow} ${flexShrink} ${flexBasis}`,
-                minWidth: child.config?.flexGrow ? '0' : 'auto',
+                minWidth: child.content?.flexGrow ? '0' : 'auto',
                 border: isEditing ? '1px solid rgba(30, 30, 30, 0.1)' : 'none',
                 borderRadius: '0.5rem',
                 padding: isEditing ? '0.5rem' : '0'
@@ -103,16 +103,16 @@ const ContainerModule = ({ config, isEditing = false }) => {
                   {child.type === 'gallery' && '🖼️'}
                   {child.type === 'spacer' && '↕️'}
                   {' '}{child.type}
-                  {child.config?.flexGrow && ' ↔️'}
+                  {child.content?.flexGrow && ' ↔️'}
                 </div>
               )}
-              <Component config={child.config} />
+              <Component content={child.content} vibe={vibe} theme={theme} />
             </motion.div>
-          )
+          );
         })}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ContainerModule
+export default FlexContainer;

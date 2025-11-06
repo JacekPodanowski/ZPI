@@ -14,11 +14,11 @@ const StructureMode = () => {
     selectedPageId, 
     enterDetailMode, 
     addPage, 
-    setEntryPoint,
-    devicePreview 
+    devicePreview
   } = useNewEditorStore();
   
   const theme = useTheme();
+  const pages = site?.pages || [];
   
   const [showModuleToolbar, setShowModuleToolbar] = useState(true);
   const [renderMode, setRenderMode] = useState('icon'); // 'icon' | 'real'
@@ -27,7 +27,7 @@ const StructureMode = () => {
   const [dropHandled, setDropHandled] = useState(false);
 
   // Safety: Reset dragging state on any drag end or drop event
-  React.useEffect(() => {
+  useEffect(() => {
     const handleDragEnd = () => {
       setIsDraggingModule(false);
     };
@@ -332,6 +332,7 @@ const StructureMode = () => {
                     justifyContent: 'space-between',
                     pl: 1
                   }}
+                  data-page-id={site.pages[0]?.id}
                 >
                   <Typography
                     sx={{
@@ -359,6 +360,7 @@ const StructureMode = () => {
                 </Box>
 
                 <motion.div
+                  data-page-id={site.pages[0]?.id}
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
@@ -459,6 +461,7 @@ const StructureMode = () => {
                         justifyContent: 'space-between',
                         pl: 0.5
                       }}
+                      data-page-id={page.id}
                     >
                       <Typography
                         sx={{
@@ -486,6 +489,7 @@ const StructureMode = () => {
                     </Box>
 
                     <motion.div
+                      data-page-id={page.id}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: relativeIndex * 0.05 }}

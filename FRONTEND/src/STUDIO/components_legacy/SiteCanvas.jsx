@@ -3,23 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import useEditorStore from '../store/editorStore'
 import EditableWrapper from './EditableWrapper'
 import SiteNavigation from './SiteNavigation'
-import HeroSection from '../../SITES/components/HeroSection'
-import CalendarSection from '../../SITES/components/CalendarSection'
-import AboutSection from '../../SITES/components/AboutSection'
-import ContactForm from '../../SITES/components/ContactForm'
-import TextModule from '../../SITES/components/TextModule'
-import ButtonModule from '../../SITES/components/ButtonModule'
-import GalleryModule from '../../SITES/components/GalleryModule'
-import SpacerModule from '../../SITES/components/SpacerModule'
-import RowModule from '../../SITES/components/RowModule'
-import ContainerModule from '../../SITES/components/ContainerModule'
-import VideoModule from '../../SITES/components/VideoModule'
-import FAQModule from '../../SITES/components/FAQModule'
-import BlogModule from '../../SITES/components/BlogModule'
-import EventsModule from '../../SITES/components/EventsModule'
-import ServicesAndPricingModule from '../../SITES/components/ServicesAndPricingModule'
-import TeamModule from '../../SITES/components/TeamModule'
-import ReactComponentModule from '../../SITES/components/ReactComponentModule'
+import { MODULE_REGISTRY } from '../../SITES/components/modules/ModuleRegistry'
+import { VIBES } from '../../SITES/vibes'
+import { themeDefinitions } from '../../theme/themeDefinitions'
+import { createTheme } from '../../theme/colorSystem'
 
 const SiteCanvas = () => {
   const {
@@ -89,6 +76,13 @@ const SiteCanvas = () => {
     }
   }
 
+  // Get theme and vibe from templateConfig
+  const siteThemeId = templateConfig?.themeId || 'modernWellness'
+  const siteVibeId = templateConfig?.vibeId || 'vibe1'
+  const themeDefinition = themeDefinitions[siteThemeId] || themeDefinitions.modernWellness
+  const theme = createTheme(themeDefinition, 'light')
+  const vibe = VIBES[siteVibeId] || VIBES.vibe1
+
   // Intersection Observer TYLKO dla single-page
   useEffect(() => {
     if (siteStructure !== 'single-page') return
@@ -136,62 +130,19 @@ const SiteCanvas = () => {
     return () => observer.disconnect()
   }, [orderedPageKeys, setCurrentPage, siteStructure, templateConfig.pages])
 
-  const baseComponentsById = {
-    hero: HeroSection,
-    calendar: CalendarSection,
-    about: AboutSection,
-    contact: ContactForm,
-    contactForm: ContactForm
-  }
-
-  const baseComponentsByType = {
-    hero: HeroSection,
-    calendar: CalendarSection,
-    about: AboutSection,
-    contact: ContactForm,
-    contactForm: ContactForm
-  }
-
-  const expertComponents = {
-    text: TextModule,
-    button: ButtonModule,
-    gallery: GalleryModule,
-    spacer: SpacerModule,
-    container: ContainerModule,
-    video: VideoModule,
-    faq: FAQModule,
-    blog: BlogModule,
-    events: EventsModule,
-    servicesAndPricing: ServicesAndPricingModule,
-    servicesandpricing: ServicesAndPricingModule,
-    team: TeamModule,
-    reactcomponent: ReactComponentModule,
-  }
-
   const renderModule = (module, inSinglePage = false) => {
     if (!module.enabled) return null
 
-    const moduleTypeKey = (module.type || '').toLowerCase()
-    const moduleIdKey = (module.id || '').toLowerCase()
+    const moduleType = (module.type || module.id || '').toLowerCase()
+    const moduleDef = MODULE_REGISTRY[moduleType]
 
-    let Component = baseComponentsByType[moduleTypeKey]
-      || baseComponentsById[moduleIdKey]
-      || expertComponents[moduleTypeKey]
-
-    if (!Component) {
-      if (moduleTypeKey.includes('hero') || moduleIdKey.includes('hero')) {
-        Component = HeroSection
-      } else if (moduleTypeKey.includes('about') || moduleIdKey.includes('about')) {
-        Component = AboutSection
-      } else if (moduleTypeKey.includes('calendar') || moduleIdKey.includes('calendar')) {
-        Component = CalendarSection
-      } else if (moduleTypeKey.includes('contact') || moduleIdKey.includes('contact')) {
-        Component = ContactForm
-      } else if (moduleTypeKey === 'reactcomponent') {
-        Component = ReactComponentModule
-      }
+    if (!moduleDef) {
+      console.warn(`[SiteCanvas] Module type "${moduleType}" not found in MODULE_REGISTRY`)
+      return null
     }
-    if (!Component) return null
+
+    const Component = moduleDef.component
+    const layout = module.config?.layout || module.content?.layout || moduleDef.defaultLayout
 
     const animationVariants = {
       smooth: {
@@ -215,10 +166,13 @@ const SiteCanvas = () => {
       none: {}
     }
 
-    // Dla ContainerModule przekaż isEditing prop
-    const componentProps = module.type === 'container' 
-      ? { config: module.config, isEditing: mode === 'edit' }
-      : { config: module.config }
+    // For new modular architecture
+    const componentProps = {
+      layout: layout,
+      content: module.content || module.config || {},
+      vibe: vibe,
+      theme: theme
+    }
 
     const content = animations.enabled ? (
       <motion.div {...animationVariants[animations.style]}>

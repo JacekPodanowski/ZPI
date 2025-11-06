@@ -66,6 +66,11 @@ const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple 
       const blobUrl = await cacheFileAndGetBlobUrl(file)
       
       if (blobUrl) {
+        console.log('📤 ImageUploader - Calling onChange with blob URL:', {
+          blobUrl: blobUrl.substring(0, 50),
+          fileName: file.name,
+          fileType: file.type
+        });
         // Use the blob URL for both preview and state
         setPreview(blobUrl)
         onChange(blobUrl)

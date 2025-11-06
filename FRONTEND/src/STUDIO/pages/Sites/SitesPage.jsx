@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Add as AddIcon } from '@mui/icons-material';
 import { fetchSites } from '../../../services/siteService';
-import SiteTile from '../../components/Sites/SiteTile';
+import SiteTile from '../../components_legacy/Sites/SiteTile';
 
 const SitesPage = () => {
     const navigate = useNavigate();

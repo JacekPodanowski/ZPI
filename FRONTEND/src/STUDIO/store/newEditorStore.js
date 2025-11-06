@@ -275,21 +275,33 @@ export const useNewEditorStore = create((set, get) => ({
     };
   }),
 
-  updateModuleContent: (pageId, moduleId, content) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(page => {
-        if (page.id !== pageId) return page;
-        return {
-          ...page,
-          modules: page.modules.map(m => 
-            m.id === moduleId ? { ...m, content: { ...m.content, ...content } } : m
-          )
-        };
-      })
-    },
-    hasUnsavedChanges: true
-  })),
+  updateModuleContent: (pageId, moduleId, content) => set((state) => {
+    console.log('🏪 Store - updateModuleContent called:', { pageId, moduleId, content });
+    
+    const newState = {
+      site: {
+        ...state.site,
+        pages: state.site.pages.map(page => {
+          if (page.id !== pageId) return page;
+          return {
+            ...page,
+            modules: page.modules.map(m => {
+              if (m.id === moduleId) {
+                const updatedModule = { ...m, content: { ...m.content, ...content } };
+                console.log('🏪 Store - Updated module:', updatedModule);
+                return updatedModule;
+              }
+              return m;
+            })
+          };
+        })
+      },
+      hasUnsavedChanges: true
+    };
+    
+    console.log('🏪 Store - New state pages:', newState.site.pages);
+    return newState;
+  }),
 
   // === Navigation Management ===
   updateNavigationContent: (content) => set((state) => ({
@@ -454,6 +466,7 @@ export const useNewEditorStore = create((set, get) => ({
   })),
 
   // === Selection ===
+  setSelectedPage: (pageId) => set({ selectedPageId: pageId }),
   selectModule: (moduleId) => set({ selectedModuleId: moduleId }),
   deselectModule: () => set({ selectedModuleId: null }),
 
