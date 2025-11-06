@@ -75,7 +75,7 @@ export const useNewEditorStore = create((set, get) => ({
         id: page.id || `page-${Date.now()}`,
         name: page.name || 'New Page',
         route: page.route || `/${page.name?.toLowerCase().replace(/\s+/g, '-')}`,
-        modules: []
+        modules: page.modules || []
       }]
     },
     hasUnsavedChanges: true

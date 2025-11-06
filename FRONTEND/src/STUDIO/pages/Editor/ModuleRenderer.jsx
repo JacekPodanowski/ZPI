@@ -8,7 +8,7 @@ const DEFAULT_VIBE = {
   spacing: 'space-y-8 py-12 md:py-16 px-4 md:px-6',
   borders: 'border border-gray-200',
   shadows: 'shadow-sm hover:shadow-md',
-  rounded: 'rounded-lg',
+  rounded: '', // No rounded corners in editor - modules should be square
   animations: 'transition-all duration-300 ease-in-out',
   textSize: 'text-base md:text-lg leading-relaxed',
   headingSize: 'text-3xl md:text-4xl lg:text-5xl font-light tracking-tight',

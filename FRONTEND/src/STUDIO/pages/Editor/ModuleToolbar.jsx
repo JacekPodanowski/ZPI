@@ -1,22 +1,73 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, Stack, Typography, IconButton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Delete } from '@mui/icons-material';
-import { getAvailableModules } from './moduleDefinitions';
+import { Delete, Close } from '@mui/icons-material';
+import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
 
 const ModuleToolbar = ({ isDraggingModule = false }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
-  const { removeModule } = useNewEditorStore();
+  const { removeModule, addPage } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [popupCenterY, setPopupCenterY] = useState(16);
+  const [popupTop, setPopupTop] = useState(16);
   const hasInitiallyAnimated = useRef(false);
+  const toolbarRef = useRef(null);
+  const popupRef = useRef(null);
 
   const handleDragStart = (e, moduleType) => {
     console.log('[ModuleToolbar] Drag started:', moduleType);
     e.dataTransfer.setData('moduleType', moduleType);
     e.dataTransfer.effectAllowed = 'copy';
+    setSelectedModule(null); // Close popup when dragging
+  };
+
+  const handleModuleClick = (e, module) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const moduleCenter = rect.top + (rect.height / 2);
+    const container = toolbarRef.current;
+
+    if (container) {
+      let offset = 0;
+      let node = e.currentTarget;
+
+      while (node && node !== container) {
+        offset += node.offsetTop || 0;
+        node = node.offsetParent;
+      }
+
+      const moduleCenterOffset = offset + (e.currentTarget.offsetHeight / 2);
+      setPopupTop(moduleCenterOffset);
+      setPopupCenterY(moduleCenterOffset);
+    } else {
+      setPopupTop(moduleCenter);
+      setPopupCenterY(moduleCenter);
+    }
+    setSelectedModule(module);
+  };
+
+  const handleAddModule = (module) => {
+    const moduleTypeName = module.label;
+    const newPageId = `page-${Date.now()}`;
+    const newModuleId = `module-${Date.now()}`;
+    const defaultContent = getDefaultModuleContent(module.type);
+    
+    addPage({
+      id: newPageId,
+      name: `${moduleTypeName} Page`,
+      route: `/${module.type}`,
+      modules: [{
+        id: newModuleId,
+        type: module.type,
+        content: defaultContent
+      }]
+    });
+    
+    setSelectedModule(null);
   };
 
   const handleTrashDrop = (e) => {
@@ -65,6 +116,36 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
   useEffect(() => {
     hasInitiallyAnimated.current = true;
   }, []);
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (selectedModule && !e.target.closest('[data-module-item]') && !e.target.closest('[data-module-popup]')) {
+        setSelectedModule(null);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectedModule]);
+
+  useEffect(() => {
+    if (!selectedModule) return;
+
+    const updatePopupPosition = () => {
+      const popupHeight = popupRef.current?.offsetHeight || 0;
+      const newTop = Math.max(8, popupCenterY - (popupHeight / 2));
+      setPopupTop(newTop);
+    };
+
+    const frameId = requestAnimationFrame(updatePopupPosition);
+    window.addEventListener('resize', updatePopupPosition);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updatePopupPosition);
+    };
+  }, [selectedModule, popupCenterY]);
 
   return (
     <motion.div
@@ -168,6 +249,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
             }}
           >
             <Box
+              ref={toolbarRef}
               sx={{
                 width: '100%',
                 height: '100%',
@@ -177,7 +259,8 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                 display: 'flex',
                 flexDirection: 'column',
                 p: 2,
-                gap: 1
+                gap: 1,
+                position: 'relative'
               }}
             >
               <Typography
@@ -205,8 +288,10 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                       transition={{ delay: index * 0.05, duration: 0.3 }}
                       draggable
                       onDragStart={(e) => handleDragStart(e, module.type)}
+                      data-module-item
                     >
                     <Box
+                      onClick={(e) => handleModuleClick(e, module)}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -216,9 +301,9 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                         borderRadius: '8px',
                         cursor: 'grab',
                         transition: 'all 0.2s ease',
-                        bgcolor: 'transparent',
+                        bgcolor: selectedModule?.type === module.type ? 'rgba(146, 0, 32, 0.08)' : 'transparent',
                         '&:hover': {
-                          bgcolor: theme.colors?.surface?.hover || 'rgba(30, 30, 30, 0.04)',
+                          bgcolor: selectedModule?.type === module.type ? 'rgba(146, 0, 32, 0.12)' : theme.colors?.surface?.hover || 'rgba(30, 30, 30, 0.04)',
                           transform: 'translateX(4px)'
                         },
                         '&:active': {
@@ -255,6 +340,129 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                 );
               })}
               </Stack>
+
+              {/* Module Info Popup */}
+              <AnimatePresence>
+                {selectedModule && (
+                  <motion.div
+                    data-module-popup
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    ref={popupRef}
+                    style={{
+                      position: 'absolute',
+                      left: 'calc(100% + 16px)',
+                      top: `${popupTop}px`,
+                      width: '300px',
+                      zIndex: 100
+                    }}
+                  >
+                    {/* Main bubble with integrated arrow shape */}
+                    <Box
+                      sx={{
+                        bgcolor: 'white',
+                        borderRadius: '10px',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.12)',
+                        overflow: 'visible',
+                        border: '1px solid rgba(30, 30, 30, 0.08)',
+                        position: 'relative',
+                        zIndex: 2,
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          left: '-10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '20px',
+                          height: '20px',
+                          bgcolor: 'white',
+                          border: '1px solid rgba(30, 30, 30, 0.08)',
+                          borderRight: 'none',
+                          borderBottom: 'none',
+                          borderRadius: '3px 0 0 0',
+                          transform: 'translateY(-50%) rotate(-45deg)',
+                          boxShadow: '-2px -2px 4px rgba(0, 0, 0, 0.03)',
+                          zIndex: 1
+                        }
+                      }}
+                    >
+                      {/* Header */}
+                      <Box
+                        sx={{
+                          px: 1.25,
+                          py: 0.75,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                          bgcolor: 'rgba(0, 0, 0, 0.02)',
+                          borderRadius: '10px 10px 0 0',
+                          position: 'relative',
+                          zIndex: 3
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: '5px',
+                            bgcolor: selectedModule.color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <selectedModule.icon sx={{ fontSize: 16, color: 'white' }} />
+                        </Box>
+                        <Typography
+                          sx={{
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            color: 'rgb(30, 30, 30)',
+                            flex: 1
+                          }}
+                        >
+                          {selectedModule.label}
+                        </Typography>
+                        
+                        <Typography
+                          onClick={() => handleAddModule(selectedModule)}
+                          sx={{
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            color: 'rgb(146, 0, 32)',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            '&:hover': {
+                              textDecoration: 'underline'
+                            }
+                          }}
+                        >
+                          Add
+                        </Typography>
+                      </Box>
+
+                      {/* Description */}
+                      <Box sx={{ px: 1.25, py: 1, position: 'relative', zIndex: 3 }}>
+                        <Typography
+                          sx={{
+                            fontSize: '12px',
+                            lineHeight: 1.4,
+                            color: 'rgba(30, 30, 30, 0.7)',
+                            textAlign: 'justify',
+                            textJustify: 'inter-word',
+                            hyphens: 'auto'
+                          }}
+                        >
+                          {selectedModule.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Box>
           </motion.div>
         )}

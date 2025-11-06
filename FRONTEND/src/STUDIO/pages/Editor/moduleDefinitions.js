@@ -21,7 +21,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Navigation',
     icon: Menu,
     color: '#333333',
-    description: 'Site navigation bar',
+    description: 'Add a navigation bar with logo and menu links. Essential for site structure and user navigation between pages.',
     special: true, // Special module - not draggable, always at top
     defaultHeight: 60 // px - matches real Navigation component NAV_HEIGHT
   },
@@ -30,7 +30,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Hero',
     icon: ViewColumn,
     color: '#FF6B6B',
-    description: 'Primary introduction section',
+    description: 'Create a powerful first impression with a hero section featuring headline, description, image, and call-to-action buttons.',
     defaultHeight: 700 // px - large hero section
   },
   about: {
@@ -38,7 +38,7 @@ export const MODULE_DEFINITIONS = {
     label: 'About',
     icon: Info,
     color: '#4ECDC4',
-    description: 'Story and credibility section',
+    description: 'Share your story and build credibility with an about section featuring your background, mission, and values.',
     defaultHeight: 600 // px - medium content section
   },
   services: {
@@ -46,7 +46,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Services',
     icon: GridView,
     color: '#45B7D1',
-    description: 'Display your offerings',
+    description: 'Showcase your services or offerings in a clean grid or list layout with descriptions and pricing.',
     defaultHeight: 800 // px - large section with cards
   },
   gallery: {
@@ -54,7 +54,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Gallery',
     icon: Image,
     color: '#FFA07A',
-    description: 'Visual showcase',
+    description: 'Display your visual work in an elegant image gallery with multiple layout options including grid, masonry, and carousel.',
     defaultHeight: 900 // px - large gallery grid
   },
   calendar: {
@@ -62,7 +62,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Calendar',
     icon: CalendarMonth,
     color: '#98D8C8',
-    description: 'Booking and availability',
+    description: 'Enable appointment booking with an integrated calendar showing your availability for individual or group sessions.',
     defaultHeight: 750 // px - calendar widget height
   },
   contact: {
@@ -70,7 +70,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Contact',
     icon: ContactMail,
     color: '#FFD93D',
-    description: 'Get in touch form',
+    description: 'Make it easy for visitors to reach you with a contact form including email, phone, and optional location information.',
     defaultHeight: 500 // px - contact form section
   },
   text: {
@@ -78,7 +78,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Text',
     icon: Article,
     color: '#A8E6CF',
-    description: 'Rich text content',
+    description: 'Add rich text content with flexible formatting. Perfect for articles, announcements, or any written content.',
     defaultHeight: 400 // px - flexible text section
   },
   video: {
@@ -86,7 +86,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Video',
     icon: VideoLibrary,
     color: '#C7CEEA',
-    description: 'Embedded video player',
+    description: 'Embed videos from files, YouTube, or other platforms to showcase your work or share multimedia content.',
     defaultHeight: 600 // px - 16:9 video player
   },
   testimonials: {
@@ -94,7 +94,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Testimonials',
     icon: RateReview,
     color: '#F8B195',
-    description: 'Client reviews',
+    description: 'Build trust by displaying client reviews and testimonials. Social proof that validates your expertise and service quality.',
     defaultHeight: 550 // px - testimonial cards
   },
   pricing: {
@@ -102,7 +102,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Pricing',
     icon: AttachMoney,
     color: '#88D8B0',
-    description: 'Pricing tables',
+    description: 'Present your pricing plans in clear, attractive cards with features and call-to-action buttons for easy comparison.',
     defaultHeight: 700 // px - pricing cards section
   },
   faq: {
@@ -110,7 +110,7 @@ export const MODULE_DEFINITIONS = {
     label: 'FAQ',
     icon: Help,
     color: '#FFEAA7',
-    description: 'Frequently asked questions',
+    description: 'Answer common questions in an organized accordion format. Helps reduce support inquiries and inform visitors.',
     defaultHeight: 650 // px - accordion section
   },
   team: {
@@ -118,7 +118,7 @@ export const MODULE_DEFINITIONS = {
     label: 'Team',
     icon: Group,
     color: '#DFE6E9',
-    description: 'Team member profiles',
+    description: 'Introduce your team members with photos, names, roles, and short bios. Perfect for building personal connections.',
     defaultHeight: 700 // px - team member cards
   }
 };
@@ -130,7 +130,7 @@ export const getModuleDefinition = (type) => {
     label: type.charAt(0).toUpperCase() + type.slice(1),
     icon: Article,
     color: '#B0B0B0',
-    description: 'Custom module',
+    description: 'Custom module for specialized content and functionality.',
     defaultHeight: 600 // Default fallback for unknown modules
   };
 };

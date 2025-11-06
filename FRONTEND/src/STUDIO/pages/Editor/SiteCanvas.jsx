@@ -108,11 +108,11 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
   // Get the real navigation height from module definition
   const navigationDefinition = getModuleDefinition('navigation');
   const NAVIGATION_HEIGHT_REAL = navigationDefinition.defaultHeight * scaleFactor; // Scale down to canvas size
-  const FOOTER_HEIGHT_REAL = NAVIGATION_HEIGHT_REAL / 2; // Footer is half the height of navigation
+  const FOOTER_HEIGHT_REAL = 0; // No footer in real render mode
   
   // Use same navigation height in both modes for consistency
   const NAVIGATION_HEIGHT_ICON = NAVIGATION_HEIGHT_REAL;
-  const FOOTER_HEIGHT_ICON = FOOTER_HEIGHT_REAL;
+  const FOOTER_HEIGHT_ICON = NAVIGATION_HEIGHT_REAL / 2; // Footer only in icon mode
   
   const CANVAS_HEIGHT = devicePreview === 'mobile' ? 667 : 394; // 16:9 aspect ratio height
   const AVAILABLE_HEIGHT = CANVAS_HEIGHT - (renderMode === 'icon' ? NAVIGATION_HEIGHT_ICON + FOOTER_HEIGHT_ICON : NAVIGATION_HEIGHT_REAL + FOOTER_HEIGHT_REAL);
@@ -521,44 +521,46 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
         )}
       </Box>
 
-      {/* Footer - Always at bottom, non-draggable */}
-      <Box
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleDragOver(e, page.modules.length);
-        }}
-        onDragLeave={(e) => {
-          e.stopPropagation();
-          handleDragLeave();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleDrop(e, page.modules.length);
-        }}
-        sx={{
-          height: renderMode === 'icon' ? `${FOOTER_HEIGHT_ICON}px` : `${FOOTER_HEIGHT_REAL}px`,
-          flexShrink: 0,
-          bgcolor: 'rgba(0, 0, 0, 0.02)',
-          borderTop: '2px dotted rgba(0, 0, 0, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'rgba(30, 30, 30, 0.3)',
-          fontSize: renderMode === 'icon' ? '10px' : '13px',
-          fontWeight: 500,
-          transition: 'all 0.2s ease',
-          cursor: dragOverIndex === page.modules.length ? 'copy' : 'default',
-          ...(dragOverIndex === page.modules.length && {
-            bgcolor: 'rgba(146, 0, 32, 0.08)',
-            borderTop: '2px dashed rgb(146, 0, 32)',
-            color: 'rgb(146, 0, 32)'
-          })
-        }}
-      >
-        Drop modules here
-      </Box>
+      {/* Footer - Always at bottom, non-draggable - Only shown in icon mode */}
+      {renderMode === 'icon' && (
+        <Box
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDragOver(e, page.modules.length);
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            handleDragLeave();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDrop(e, page.modules.length);
+          }}
+          sx={{
+            height: `${FOOTER_HEIGHT_ICON}px`,
+            flexShrink: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.02)',
+            borderTop: '2px dotted rgba(0, 0, 0, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'rgba(30, 30, 30, 0.3)',
+            fontSize: '10px',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+            cursor: dragOverIndex === page.modules.length ? 'copy' : 'default',
+            ...(dragOverIndex === page.modules.length && {
+              bgcolor: 'rgba(146, 0, 32, 0.08)',
+              borderTop: '2px dashed rgb(146, 0, 32)',
+              color: 'rgb(146, 0, 32)'
+            })
+          }}
+        >
+          Drop modules here
+        </Box>
+      )}
     </Box>
   );
 };
