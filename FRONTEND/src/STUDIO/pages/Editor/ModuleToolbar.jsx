@@ -14,6 +14,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(16);
   const [popupTop, setPopupTop] = useState(16);
+  const [popupReady, setPopupReady] = useState(false);
   const hasInitiallyAnimated = useRef(false);
   const toolbarRef = useRef(null);
   const popupRef = useRef(null);
@@ -47,6 +48,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
       setPopupTop(moduleCenter);
       setPopupCenterY(moduleCenter);
     }
+    setPopupReady(false);
     setSelectedModule(module);
   };
 
@@ -136,6 +138,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
       const popupHeight = popupRef.current?.offsetHeight || 0;
       const newTop = Math.max(8, popupCenterY - (popupHeight / 2));
       setPopupTop(newTop);
+      setPopupReady(true);
     };
 
     const frameId = requestAnimationFrame(updatePopupPosition);
@@ -346,10 +349,10 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                 {selectedModule && (
                   <motion.div
                     data-module-popup
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: popupReady ? 1 : 0, x: popupReady ? 0 : -20 }}
                     exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                     ref={popupRef}
                     style={{
                       position: 'absolute',
