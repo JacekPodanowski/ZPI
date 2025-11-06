@@ -6,18 +6,19 @@ import { getAvailableModules, getDefaultModuleContent } from './moduleDefinition
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
 
+const EDITOR_TOP_BAR_HEIGHT = 56;
+
 const ModuleToolbar = ({ isDraggingModule = false }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
   const { removeModule, addPage } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
-  const [popupCenterY, setPopupCenterY] = useState(16);
-  const [popupTop, setPopupTop] = useState(16);
-  const [popupReady, setPopupReady] = useState(false);
+  const [popupCenterY, setPopupCenterY] = useState(0);
+  const [isFirstRender, setIsFirstRender] = useState(true);
   const hasInitiallyAnimated = useRef(false);
   const toolbarRef = useRef(null);
-  const popupRef = useRef(null);
+  const moduleRefs = useRef({});
 
   const handleDragStart = (e, moduleType) => {
     console.log('[ModuleToolbar] Drag started:', moduleType);
@@ -28,28 +29,23 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
 
   const handleModuleClick = (e, module) => {
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const moduleCenter = rect.top + (rect.height / 2);
-    const container = toolbarRef.current;
-
-    if (container) {
-      let offset = 0;
-      let node = e.currentTarget;
-
-      while (node && node !== container) {
-        offset += node.offsetTop || 0;
-        node = node.offsetParent;
-      }
-
-      const moduleCenterOffset = offset + (e.currentTarget.offsetHeight / 2);
-      setPopupTop(moduleCenterOffset);
-      setPopupCenterY(moduleCenterOffset);
-    } else {
-      setPopupTop(moduleCenter);
-      setPopupCenterY(moduleCenter);
+    
+    const boxElement = e.currentTarget;
+    const toolbarElement = toolbarRef.current;
+    
+    if (boxElement && toolbarElement) {
+      const boxRect = boxElement.getBoundingClientRect();
+      const toolbarRect = toolbarElement.getBoundingClientRect();
+      const scrollTop = toolbarElement.scrollTop || 0;
+      
+      // Calculate position relative to toolbar, then subtract top bar height
+      const moduleCenterY = (boxRect.top - toolbarRect.top) + scrollTop + (boxRect.height / 2) - EDITOR_TOP_BAR_HEIGHT;
+      
+      setPopupCenterY(moduleCenterY);
     }
-    setPopupReady(false);
+    
     setSelectedModule(module);
+    setIsFirstRender(false);
   };
 
   const handleAddModule = (module) => {
@@ -70,6 +66,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
     });
     
     setSelectedModule(null);
+    setIsFirstRender(true);
   };
 
   const handleTrashDrop = (e) => {
@@ -124,31 +121,13 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
     const handleClickOutside = (e) => {
       if (selectedModule && !e.target.closest('[data-module-item]') && !e.target.closest('[data-module-popup]')) {
         setSelectedModule(null);
+        setIsFirstRender(true);
       }
     };
     
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedModule]);
-
-  useEffect(() => {
-    if (!selectedModule) return;
-
-    const updatePopupPosition = () => {
-      const popupHeight = popupRef.current?.offsetHeight || 0;
-      const newTop = Math.max(8, popupCenterY - (popupHeight / 2));
-      setPopupTop(newTop);
-      setPopupReady(true);
-    };
-
-    const frameId = requestAnimationFrame(updatePopupPosition);
-    window.addEventListener('resize', updatePopupPosition);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', updatePopupPosition);
-    };
-  }, [selectedModule, popupCenterY]);
 
   return (
     <motion.div
@@ -294,6 +273,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                       data-module-item
                     >
                     <Box
+                      ref={(el) => moduleRefs.current[module.type] = el}
                       onClick={(e) => handleModuleClick(e, module)}
                       sx={{
                         display: 'flex',
@@ -345,19 +325,24 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
               </Stack>
 
               {/* Module Info Popup */}
-              <AnimatePresence>
+              <AnimatePresence mode="popLayout">
                 {selectedModule && (
                   <motion.div
                     data-module-popup
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: popupReady ? 1 : 0, x: popupReady ? 0 : -20 }}
+                    layout
+                    initial={isFirstRender ? { opacity: 0, x: -20 } : false}
+                    animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    ref={popupRef}
+                    transition={{ 
+                      opacity: { duration: 0.2 },
+                      x: { duration: 0.2 },
+                      layout: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+                    }}
                     style={{
                       position: 'absolute',
                       left: 'calc(100% + 16px)',
-                      top: `${popupTop}px`,
+                      top: `${popupCenterY}px`,
+                      transform: 'translateY(-50%)',
                       width: '300px',
                       zIndex: 100
                     }}
@@ -451,7 +436,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                       <Box sx={{ px: 1.25, py: 1, position: 'relative', zIndex: 3 }}>
                         <Typography
                           sx={{
-                            fontSize: '12px',
+                            fontSize: '13px',
                             lineHeight: 1.4,
                             color: 'rgba(30, 30, 30, 0.7)',
                             textAlign: 'justify',
