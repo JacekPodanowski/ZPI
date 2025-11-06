@@ -330,12 +330,13 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                   <motion.div
                     data-module-popup
                     layout
-                    initial={isFirstRender ? { opacity: 0, x: -20 } : false}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: -12, zIndex: 5 }}
+                    animate={{ opacity: 1, x: 0, zIndex: 100 }}
+                    exit={{ opacity: 0, x: -8, zIndex: 5 }}
                     transition={{ 
-                      opacity: { duration: 0.2 },
-                      x: { duration: 0.2 },
+                      opacity: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+                      x: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] },
+                      zIndex: { duration: 0 },
                       layout: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
                     }}
                     style={{
@@ -343,8 +344,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                       left: 'calc(100% + 16px)',
                       top: `${popupCenterY}px`,
                       transform: 'translateY(-50%)',
-                      width: '300px',
-                      zIndex: 100
+                      width: '300px'
                     }}
                   >
                     {/* Main bubble with integrated arrow shape */}
