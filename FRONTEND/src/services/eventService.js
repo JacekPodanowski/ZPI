@@ -103,7 +103,42 @@ export const createAvailabilityBlock = async (availabilityData) => {
         const response = await apiClient.post('/availability-blocks/', apiAvailabilityData);
         return response.data;
     } catch (error) {
-        console.error('Error creating availability block:', error);
+        console.error('Error deleting availability block:', error);
+        throw error;
+    }
+};
+
+// Bookings API
+export const fetchBookings = async (siteId = null) => {
+    try {
+        const url = siteId ? `/bookings/?site=${siteId}` : '/bookings/';
+        const response = await apiClient.get(url);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching bookings:', error);
+        throw error;
+    }
+};
+
+export const cancelBooking = async (bookingId, reason = '') => {
+    try {
+        const response = await apiClient.post(`/bookings/${bookingId}/cancel/`, { reason });
+        return response.data;
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        throw error;
+    }
+};
+
+export const contactClient = async (bookingId, subject, message) => {
+    try {
+        const response = await apiClient.post(`/bookings/${bookingId}/contact/`, {
+            subject,
+            message
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error contacting client:', error);
         throw error;
     }
 };

@@ -832,6 +832,103 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         self._ensure_site_access(instance.site)
         instance.delete()
 
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel a booking and send notification email"""
+        booking = self.get_object()
+        event = booking.event
+        
+        # Get recipient email
+        recipient_email = booking.client.email if booking.client else booking.guest_email
+        recipient_name = booking.client.name if booking.client else booking.guest_name
+        
+        # Prepare email data
+        context = {
+            'student_name': recipient_name,
+            'session_title': event.title,
+            'date': event.start_time.strftime('%Y-%m-%d'),
+            'start_time': event.start_time.strftime('%H:%M'),
+            'end_time': event.end_time.strftime('%H:%M'),
+            'cancellation_reason': request.data.get('reason', 'Brak podanego powodu'),
+        }
+        
+        # Send cancellation email
+        try:
+            html_message = render_to_string('emails/admin_session_cancellation_notification.html', context)
+            plain_message = strip_tags(html_message)
+            
+            from django.core.mail import send_mail
+            send_mail(
+                subject=f'Odwołanie: {event.title}',
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient_email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            logging.error(f"Failed to send cancellation email: {e}")
+            return Response(
+                {'error': 'Nie udało się wysłać powiadomienia email'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Delete the booking
+        booking.delete()
+        
+        return Response({'message': 'Spotkanie zostało odwołane, klient otrzymał powiadomienie email'})
+
+    @action(detail=True, methods=['post'])
+    def contact(self, request, pk=None):
+        """Send a custom message to the client"""
+        booking = self.get_object()
+        
+        # Get recipient email
+        recipient_email = booking.client.email if booking.client else booking.guest_email
+        recipient_name = booking.client.name if booking.client else booking.guest_name
+        
+        # Get message from request
+        message = request.data.get('message')
+        subject = request.data.get('subject', 'Wiadomość dotycząca Twojego spotkania')
+        
+        if not message:
+            return Response(
+                {'error': 'Pole "message" jest wymagane'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Send email
+        try:
+            context = {
+                'recipient_name': recipient_name,
+                'message': message,
+                'event_title': booking.event.title,
+                'event_date': booking.event.start_time.strftime('%Y-%m-%d'),
+                'event_time': f"{booking.event.start_time.strftime('%H:%M')} - {booking.event.end_time.strftime('%H:%M')}",
+                'site_name': booking.site.name,
+            }
+            
+            html_message = render_to_string('emails/creator_contact_client.html', context)
+            plain_message = strip_tags(html_message)
+            
+            from django.core.mail import send_mail
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient_email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            logging.error(f"Failed to send contact email: {e}")
+            return Response(
+                {'error': 'Nie udało się wysłać wiadomości email'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        return Response({'message': 'Wiadomość została wysłana'})
+
     def _sync_attendance(self, booking: Booking):
         if booking.client:
             booking.event.attendees.add(booking.client)

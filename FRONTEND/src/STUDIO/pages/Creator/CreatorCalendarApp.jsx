@@ -7,6 +7,7 @@ import { fetchEvents, createEvent, fetchAvailabilityBlocks, createAvailabilityBl
 import CalendarGridControlled from '../../components_STUDIO/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components_STUDIO/Dashboard/Templates/RealTemplateBrowser';
 import DayDetailsModal from '../../components_STUDIO/Dashboard/Calendar/DayDetailsModal';
+import BookingDetailsModal from '../../components_STUDIO/Dashboard/Calendar/BookingDetailsModal';
 import { getSiteColorHex } from '../../../theme/siteColors';
 import { usePreferences } from '../../../contexts/PreferencesContext';
 import { getCache, setCache, removeCache, CACHE_KEYS } from '../../../utils/cache';
@@ -25,6 +26,8 @@ const CreatorCalendarApp = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [draggingTemplate, setDraggingTemplate] = useState(null);
+    const [bookingModalOpen, setBookingModalOpen] = useState(false);
+    const [selectedBooking, setSelectedBooking] = useState(null);
     
     // Get operating hours directly from preferences
     const operatingStartHour = calendar?.operating_start_hour ?? '06:00';
@@ -423,6 +426,22 @@ const CreatorCalendarApp = () => {
                 operatingStartHour={operatingStartHour}
                 operatingEndHour={operatingEndHour}
             />
+            
+            {/* Booking Details Modal */}
+            {bookingModalOpen && selectedBooking && (
+                <BookingDetailsModal
+                    open={bookingModalOpen}
+                    onClose={() => {
+                        setBookingModalOpen(false);
+                        setSelectedBooking(null);
+                    }}
+                    booking={selectedBooking}
+                    onBookingUpdated={() => {
+                        // Refresh events after booking is cancelled
+                        window.location.reload();
+                    }}
+                />
+            )}
         </Box>
     );
 };

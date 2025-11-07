@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiadomość od {{ site_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #920015;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #920015;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .event-details {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .event-details p {
+            margin: 5px 0;
+        }
+        .message-box {
+            background-color: #fff;
+            border-left: 4px solid #920015;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ site_name }}</h1>
+            <p>Witaj {{ recipient_name }},</p>
+        </div>
+
+        <div class="event-details">
+            <p><strong>Twoje spotkanie:</strong></p>
+            <p>📅 <strong>Tytuł:</strong> {{ event_title }}</p>
+            <p>📆 <strong>Data:</strong> {{ event_date }}</p>
+            <p>🕐 <strong>Godzina:</strong> {{ event_time }}</p>
+        </div>
+
+        <div class="message-box">
+            <p><strong>Wiadomość:</strong></p>
+            <p>{{ message|linebreaks }}</p>
+        </div>
+
+        <p>Jeśli masz pytania, odpowiedz na tego e-maila.</p>
+
+        <div class="footer">
+            <p>To jest automatyczna wiadomość z {{ site_name }}.</p>
+            <p>Otrzymujesz ją, ponieważ masz zaplanowane spotkanie.</p>
+        </div>
+    </div>
+</body>
+</html>
