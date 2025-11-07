@@ -247,6 +247,7 @@ const DayDetailsModal = ({
     events, 
     availabilityBlocks, 
     sites, 
+    selectedSiteId,
     onClose, 
     onCreateEvent, 
     onCreateAvailability,
@@ -267,7 +268,8 @@ const DayDetailsModal = ({
         capacity: 1,
         meetingLengths: ['30', '60'],
         timeSnapping: '30',
-        bufferTime: '0'
+        bufferTime: '0',
+        siteId: selectedSiteId || null  // Add siteId to form data
     });
 
     const dateFormatted = useMemo(() => moment(date).format('dddd, D MMMM YYYY'), [date]);
@@ -342,7 +344,8 @@ const DayDetailsModal = ({
             capacity: 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
-            bufferTime: '0'
+            bufferTime: '0',
+            siteId: selectedSiteId || null
         });
         onClose();
     };
@@ -363,7 +366,8 @@ const DayDetailsModal = ({
             capacity: event.max_capacity || 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
-            bufferTime: '0'
+            bufferTime: '0',
+            siteId: event.site || selectedSiteId || null
         });
         setView('editEvent');
     };
@@ -380,7 +384,8 @@ const DayDetailsModal = ({
             capacity: 1,
             meetingLengths: block.meeting_lengths || ['30', '60'],
             timeSnapping: block.time_snapping || '30',
-            bufferTime: block.buffer_time || '0'
+            bufferTime: block.buffer_time || '0',
+            siteId: block.site || selectedSiteId || null
         });
         setView('editAvailability');
     };
@@ -409,7 +414,8 @@ const DayDetailsModal = ({
             capacity: 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
-            bufferTime: '0'
+            bufferTime: '0',
+            siteId: selectedSiteId || null
         });
         setView('timeline');
     };
@@ -517,6 +523,22 @@ const DayDetailsModal = ({
                         </>
                     )}
                 </Alert>
+
+                {/* Site selector */}
+                <FormControl fullWidth required>
+                    <InputLabel>Strona</InputLabel>
+                    <Select
+                        value={formData.siteId || ''}
+                        label="Strona"
+                        onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
+                    >
+                        {sites.map((site) => (
+                            <MenuItem key={site.id} value={site.id}>
+                                {site.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
 
                 <TextField
                     fullWidth
@@ -813,6 +835,7 @@ DayDetailsModal.propTypes = {
     events: PropTypes.arrayOf(PropTypes.object),
     availabilityBlocks: PropTypes.arrayOf(PropTypes.object),
     sites: PropTypes.arrayOf(PropTypes.object),
+    selectedSiteId: PropTypes.number,
     onClose: PropTypes.func.isRequired,
     onCreateEvent: PropTypes.func,
     onCreateAvailability: PropTypes.func,
@@ -825,6 +848,7 @@ DayDetailsModal.defaultProps = {
     events: [],
     availabilityBlocks: [],
     sites: [],
+    selectedSiteId: null,
     onCreateEvent: undefined,
     onCreateAvailability: undefined,
     operatingStartHour: 6,

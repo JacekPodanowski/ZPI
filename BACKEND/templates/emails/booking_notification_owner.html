@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nowa Rezerwacja</title>
+</head>
+<body>
+    <p>Cześć {{ owner_name }},</p>
+    <p>Masz nową rezerwację na swojej stronie!</p>
+    <ul>
+        <li><strong>Klient:</strong> {{ client_name }} ({{ client_email }})</li>
+        <li><strong>Wydarzenie:</strong> {{ event_title }}</li>
+        <li><strong>Termin:</strong> {{ start_time|date:"d M Y, H:i" }}</li>
+    </ul>
+    <p>Możesz zarządzać rezerwacją w swoim panelu.</p>
+</body>
+</html>

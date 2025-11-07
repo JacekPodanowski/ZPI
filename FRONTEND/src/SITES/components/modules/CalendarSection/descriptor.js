@@ -1,13 +1,14 @@
 // descriptor.js
 export const CALENDAR_DESCRIPTOR = {
   type: 'calendar',
-  desc: 'Booking interface section',
+  desc: 'Interactive booking calendar with availability display',
   fields: {
     title: { t: 'text', req: true, d: 'Section title', category: 'content' },
-    description: { t: 'text', d: 'Section description', category: 'content' },
-    showAvailability: { t: 'boolean', d: 'Display available slots', category: 'advanced' },
-    allowGroupBookings: { t: 'boolean', d: 'Allow group session bookings', category: 'advanced' },
-    bookingUrl: { t: 'text', d: 'External booking system URL', category: 'advanced' }
+    subtitle: { t: 'text', d: 'Section subtitle/description', category: 'content' },
+    bgColor: { t: 'color', d: 'Background color', category: 'content' },
+    textColor: { t: 'color', d: 'Text color', category: 'content' },
+    calendarAccentColor: { t: 'color', d: 'Calendar accent color', category: 'content' },
+    showCapacity: { t: 'boolean', d: 'Show available/total capacity', category: 'content', default: true }
   },
-  layouts: ['compact', 'detailed', 'list']
+  layouts: ['sidebar', 'inline', 'compact']
 };

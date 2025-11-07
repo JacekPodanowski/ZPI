@@ -45,8 +45,8 @@ export const MODULE_REGISTRY = {
   calendar: {
     component: CalendarSection,
     descriptor: CalendarSection.descriptor,
-    layouts: ['compact', 'detailed', 'list'],
-    defaultLayout: 'compact',
+    layouts: ['sidebar', 'inline', 'compact'],
+    defaultLayout: 'sidebar',
     category: 'interactive'
   },
   contact: {

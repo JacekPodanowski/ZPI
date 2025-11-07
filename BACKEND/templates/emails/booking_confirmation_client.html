@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Potwierdzenie Rezerwacji</title>
+</head>
+<body>
+    <p>Cześć {{ client_name }},</p>
+    <p>Twoja rezerwacja na wydarzenie "<strong>{{ event_title }}</strong>" została potwierdzona!</p>
+    <p>Termin: <strong>{{ start_time|date:"d M Y, H:i" }}</strong>.</p>
+    <p>Dziękujemy,</p>
+    <p>Zespół {{ site_name }}</p>
+</body>
+</html>

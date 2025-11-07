@@ -52,38 +52,46 @@ const componentMap = {
   reactComponent: ReactComponentModule,
 }
 
-const renderModule = (module) => {
-  // Modules are enabled by default (no 'enabled' field needed)
-  if (module?.enabled === false) return null
-
-  const Component = componentMap[module.type] || componentMap[module.id]
-
-  if (!Component) {
-    console.warn(`No component found for module: ${module?.type || module?.id}`)
-    return null
-  }
-
-  const children = module.children
-    ?.filter((child) => child?.enabled !== false)
-    ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0))
-
-  if (children?.length) {
-    return (
-      <Component key={module.id} config={module.content || {}}>
-        {children.map((child) => renderModule(child))}
-      </Component>
-    )
-  }
-
-  return <Component key={module.id} config={module.content || {}} />
-}
-
 const SiteRendererPage = () => {
   const [config, setConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activePageSlug, setActivePageSlug] = useState(null)
   const [currentJsonFile, setCurrentJsonFile] = useState(DEFAULT_JSON_FILE)
+
+  // Define renderModule inside component so it has access to config
+  const renderModule = (module) => {
+    // Modules are enabled by default (no 'enabled' field needed)
+    if (module?.enabled === false) return null
+
+    const Component = componentMap[module.type] || componentMap[module.id]
+
+    if (!Component) {
+      console.warn(`No component found for module: ${module?.type || module?.id}`)
+      return null
+    }
+
+    const children = module.children
+      ?.filter((child) => child?.enabled !== false)
+      ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0))
+
+    // Pass siteId to all components
+    const componentProps = {
+      key: module.id,
+      config: module.content || {},
+      siteId: config?.site?.id || config?.id,
+    }
+
+    if (children?.length) {
+      return (
+        <Component {...componentProps}>
+          {children.map((child) => renderModule(child))}
+        </Component>
+      )
+    }
+
+    return <Component {...componentProps} />
+  }
 
   useEffect(() => {
     const loadSite = async () => {

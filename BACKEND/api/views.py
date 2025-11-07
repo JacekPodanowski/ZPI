@@ -1671,3 +1671,192 @@ class AdminSitesListView(APIView):
         sites = Site.objects.select_related('owner').all().order_by('-created_at')
         serializer = SiteSerializer(sites, many=True)
         return Response(serializer.data)
+
+
+# ==================== PUBLIC CALENDAR ENDPOINTS ====================
+
+from datetime import datetime, time, timedelta
+
+
+@extend_schema(
+    tags=['Public Calendar'],
+    summary='Get available booking slots for a site',
+    parameters=[
+        OpenApiParameter('site_id', OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID of the site'),
+        OpenApiParameter('start_date', OpenApiTypes.DATE, location=OpenApiParameter.QUERY, description='Start date (YYYY-MM-DD)'),
+        OpenApiParameter('end_date', OpenApiTypes.DATE, location=OpenApiParameter.QUERY, description='End date (YYYY-MM-DD)'),
+    ],
+    responses={200: OpenApiResponse(description='List of available slots')}
+)
+class PublicAvailabilityView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, site_id, *args, **kwargs):
+        try:
+            site = Site.objects.get(pk=site_id)
+        except Site.DoesNotExist:
+            return Response({'error': 'Site not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        if not start_date_str or not end_date_str:
+            return Response({'error': 'start_date and end_date are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Pobierz wszystkie bloki dostępności i istniejące wydarzenia w zadanym zakresie
+        availability_blocks = AvailabilityBlock.objects.filter(
+            site=site,
+            date__gte=start_date,
+            date__lte=end_date
+        )
+        
+        existing_events = Event.objects.filter(
+            site=site,
+            start_time__date__gte=start_date,
+            end_time__date__lte=end_date
+        )
+
+        booked_slots = set()
+        for event in existing_events:
+            # Sprawdź, czy wydarzenie jest w pełni zarezerwowane
+            if event.bookings.count() >= event.capacity:
+                booked_slots.add(event.start_time)
+
+        available_slots = []
+        
+        # Generuj sloty na podstawie bloków dostępności
+        for block in availability_blocks:
+            for meeting_length in block.meeting_lengths:
+                tz = timezone.get_current_timezone()
+                current_time = timezone.make_aware(datetime.combine(block.date, block.start_time), tz)
+                end_time = timezone.make_aware(datetime.combine(block.date, block.end_time), tz)
+                
+                while current_time + timedelta(minutes=meeting_length) <= end_time:
+                    slot_start = current_time
+                    slot_end = slot_start + timedelta(minutes=meeting_length)
+                    
+                    # Znajdź istniejące wydarzenie dla tego slotu (jeśli istnieje)
+                    matching_event = next(
+                        (e for e in existing_events if e.start_time == slot_start and e.end_time == slot_end),
+                        None
+                    )
+                    
+                    # Sprawdź, czy slot nie jest już zajęty
+                    if slot_start not in booked_slots:
+                         # Dodatkowa, bardziej precyzyjna weryfikacja kolizji
+                        is_conflicting = any(
+                            (e.start_time < slot_end and e.end_time > slot_start)
+                            for e in existing_events if e.bookings.count() >= e.capacity
+                        )
+                        if not is_conflicting:
+                            # Oblicz capacity i available_spots
+                            if matching_event:
+                                capacity = matching_event.capacity
+                                booked_count = matching_event.bookings.count()
+                                available_spots = capacity - booked_count
+                                event_type = matching_event.event_type
+                            else:
+                                # Domyślne wartości dla nowych slotów (bez utworzonego eventu)
+                                capacity = 1
+                                available_spots = 1
+                                event_type = 'individual'
+                            
+                            available_slots.append({
+                                'start': slot_start.isoformat(),
+                                'end': slot_end.isoformat(),
+                                'duration': meeting_length,
+                                'capacity': capacity,
+                                'available_spots': available_spots,
+                                'event_type': event_type
+                            })
+
+                    # Przesuń czas o interwał "przyciągania" (time_snapping)
+                    current_time += timedelta(minutes=block.time_snapping)
+        
+        # Usuń duplikaty i posortuj
+        unique_slots = [dict(t) for t in {tuple(d.items()) for d in available_slots}]
+        sorted_slots = sorted(unique_slots, key=lambda x: x['start'])
+
+        return Response(sorted_slots)
+
+
+@extend_schema(
+    tags=['Public Calendar'],
+    summary='Create a new booking',
+    request=inline_serializer(
+        name='PublicBookingRequest',
+        fields={
+            'start_time': serializers.DateTimeField(),
+            'duration': serializers.IntegerField(),
+            'guest_name': serializers.CharField(),
+            'guest_email': serializers.EmailField(),
+        }
+    ),
+    responses={201: BookingSerializer}
+)
+class PublicBookingView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, site_id, *args, **kwargs):
+        try:
+            site = Site.objects.get(pk=site_id)
+        except Site.DoesNotExist:
+            return Response({'error': 'Site not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        start_time_str = request.data.get('start_time')
+        duration = request.data.get('duration')
+        guest_name = request.data.get('guest_name')
+        guest_email = request.data.get('guest_email')
+
+        if not all([start_time_str, duration, guest_name, guest_email]):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        start_time = timezone.make_aware(datetime.fromisoformat(start_time_str.replace('Z', '+00:00')))
+        end_time = start_time + timedelta(minutes=duration)
+
+        # Znajdź lub stwórz klienta
+        client, _ = Client.objects.get_or_create(
+            site=site,
+            email=guest_email,
+            defaults={'name': guest_name}
+        )
+
+        # Sprawdź, czy istnieje już wydarzenie grupowe na ten slot, które ma wolne miejsca
+        # Zgodnie z sugestią, traktujemy wszystkie wydarzenia jako grupowe. Indywidualne mają po prostu `capacity=1`.
+        event, created = Event.objects.get_or_create(
+            site=site,
+            start_time=start_time,
+            end_time=end_time,
+            defaults={
+                'creator': site.owner,
+                'title': f'Sesja z {guest_name}',
+                'capacity': 1, # Domyślnie sesja indywidualna. Można to pobrać z konfiguracji modułu w przyszłości.
+                'event_type': 'individual', # lub 'group'
+            }
+        )
+
+        # Sprawdź, czy są wolne miejsca
+        if event.bookings.count() >= event.capacity:
+            return Response({'error': 'This time slot is no longer available'}, status=status.HTTP_409_CONFLICT)
+
+        # Stwórz rezerwację
+        booking = Booking.objects.create(
+            site=site,
+            event=event,
+            client=client,
+            guest_name=guest_name,
+            guest_email=guest_email
+        )
+
+        # Uruchom zadanie wysyłania e-maili
+        from .tasks import send_booking_confirmation_emails
+        send_booking_confirmation_emails.delay(booking.id)
+
+        serializer = BookingSerializer(booking)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -143,10 +143,18 @@ const CreatorCalendarApp = () => {
     const handleCreateEvent = async (eventData) => {
         console.log('Create event:', eventData);
         try {
+            // Use siteId from form data, or fall back to selectedSiteId or first site
+            const siteId = eventData.siteId || selectedSiteId || sites[0]?.id;
+            
+            if (!siteId) {
+                setError('Wybierz stronę dla której chcesz utworzyć wydarzenie.');
+                return;
+            }
+            
             // Add site_id to event data
             const eventWithSite = {
                 ...eventData,
-                site_id: selectedSiteId || sites[0]?.id
+                site_id: siteId
             };
             
             const newEvent = await createEvent(eventWithSite);
@@ -180,10 +188,18 @@ const CreatorCalendarApp = () => {
     const handleCreateAvailability = async (availabilityData) => {
         console.log('Create availability:', availabilityData);
         try {
+            // Use siteId from form data, or fall back to selectedSiteId or first site
+            const siteId = availabilityData.siteId || selectedSiteId || sites[0]?.id;
+            
+            if (!siteId) {
+                setError('Wybierz stronę dla której chcesz utworzyć dostępność.');
+                return;
+            }
+            
             // Add site_id to availability data
             const availabilityWithSite = {
                 ...availabilityData,
-                site_id: selectedSiteId || sites[0]?.id
+                site_id: siteId
             };
             
             const newBlock = await createAvailabilityBlock(availabilityWithSite);
@@ -400,6 +416,7 @@ const CreatorCalendarApp = () => {
                 events={events}
                 availabilityBlocks={availabilityBlocks}
                 sites={sites}
+                selectedSiteId={selectedSiteId}
                 onClose={() => setModalOpen(false)}
                 onCreateEvent={handleCreateEvent}
                 onCreateAvailability={handleCreateAvailability}

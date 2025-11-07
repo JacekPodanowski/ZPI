@@ -28,13 +28,16 @@ export const fetchEventsBySite = async (siteId) => {
 export const createEvent = async (eventData) => {
     try {
         // Convert the form data to the expected API format
+        const meetingType = eventData.meetingType || 'individual';
+        const capacity = meetingType === 'group' ? (eventData.capacity || 1) : 1;
+        
         const apiEventData = {
             title: eventData.title,
             description: eventData.description || '',
             start_time: `${eventData.date}T${eventData.startTime}:00`,
             end_time: `${eventData.date}T${eventData.endTime}:00`,
-            capacity: eventData.meetingType === 'group' ? eventData.capacity : 1,
-            event_type: eventData.meetingType || 'individual',
+            capacity: capacity,
+            event_type: meetingType,
             site: eventData.site_id,
         };
         

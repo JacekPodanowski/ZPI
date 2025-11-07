@@ -33,6 +33,8 @@ from .views import (
     CreateTermsView,
     AdminUsersListView,
     AdminSitesListView,
+    PublicAvailabilityView,
+    PublicBookingView,
 )
 
 
@@ -72,4 +74,6 @@ urlpatterns = [
     path('terms/create/', CreateTermsView.as_view(), name='terms-create'),
     path('admin/users/', AdminUsersListView.as_view(), name='admin-users-list'),
     path('admin/sites/', AdminSitesListView.as_view(), name='admin-sites-list'),
+    path('public-sites/<int:site_id>/availability/', PublicAvailabilityView.as_view(), name='public_availability'),
+    path('public-sites/<int:site_id>/bookings/', PublicBookingView.as_view(), name='public_booking'),
 ]
