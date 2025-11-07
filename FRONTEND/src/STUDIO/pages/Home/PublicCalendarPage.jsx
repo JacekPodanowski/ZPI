@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import moment from 'moment';
 import 'moment/locale/pl';
 import { Box, Chip, CircularProgress, Container, Stack, Typography } from '@mui/material';
-import PublicCalendar from '../../../SITES/components/PublicCalendar/PublicCalendar';
+import PublicCalendar from '../../../SITES/components/modules/PublicCalendarBig/components/PublicCalendar';
 import useSiteCalendarData from '../../hooks/useSiteCalendarData';
 import { CALENDAR_DATA_SOURCES, toEventsByDateMap } from '../../services/siteCalendarService';
 import { MOCK_SITE_IDENTIFIER } from '../../data/mockSiteCalendar';

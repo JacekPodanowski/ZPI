@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sesja Anulowana przez Studenta</title>
+    <title>Potwierdzenie Rezerwacji</title>
     <style>
         * {
             margin: 0;
@@ -39,17 +39,29 @@
         .content {
             padding: 48px 40px;
         }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 32px;
+            color: rgb(30, 30, 30);
+        }
         .message {
             font-size: 15px;
             margin-bottom: 32px;
             color: rgb(30, 30, 30);
             line-height: 1.8;
         }
-        .cancellation-details {
+        .event-details {
             background-color: rgba(228, 229, 218, 0.3);
             padding: 32px;
             border-radius: 2px;
             margin: 32px 0;
+        }
+        .event-details h2 {
+            font-size: 20px;
+            font-weight: 400;
+            color: rgb(146, 0, 32);
+            margin-bottom: 16px;
+            letter-spacing: 0.3px;
         }
         .detail-row {
             display: flex;
@@ -62,20 +74,12 @@
         .detail-label {
             font-size: 14px;
             color: rgb(188, 186, 179);
-            min-width: 120px;
+            min-width: 100px;
         }
         .detail-value {
             font-size: 15px;
             color: rgb(30, 30, 30);
             font-weight: 400;
-        }
-        .info-box {
-            background-color: rgba(146, 0, 32, 0.04);
-            border-left: 2px solid rgb(146, 0, 32);
-            padding: 24px;
-            margin: 32px 0;
-            font-size: 14px;
-            line-height: 1.6;
         }
         .footer {
             padding: 32px 40px;
@@ -88,39 +92,42 @@
             margin: 8px 0;
             line-height: 1.6;
         }
+        .signature {
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 1px solid rgba(188, 186, 179, 0.3);
+            font-size: 14px;
+            color: rgb(30, 30, 30);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Sesja Anulowana</h1>
+            <h1>Rezerwacja Potwierdzona</h1>
         </div>
         
         <div class="content">
-            <p class="message">Student <strong>{{ student_name }}</strong> właśnie anulował swoją sesję.</p>
+            <p class="greeting">Cześć {{ client_name }},</p>
             
-            <div class="cancellation-details">
+            <p class="message">Twoja rezerwacja została pomyślnie potwierdzona. Cieszymy się na spotkanie!</p>
+            
+            <div class="event-details">
+                <h2>{{ event_title }}</h2>
                 <div class="detail-row">
-                    <span class="detail-label">Temat</span>
-                    <span class="detail-value">{{ subject }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Data</span>
-                    <span class="detail-value">{{ date }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Godziny</span>
-                    <span class="detail-value">{{ start_time }} - {{ end_time }}</span>
+                    <span class="detail-label">Data i godzina</span>
+                    <span class="detail-value">{{ start_time|date:"d M Y, H:i" }}</span>
                 </div>
             </div>
             
-            <div class="info-box">
-                Powiązane terminy zostały automatycznie zwolnione i są ponownie dostępne w kalendarzu.
-            </div>
+            <p class="signature">
+                Dziękujemy,<br>
+                Zespół {{ site_name }}
+            </p>
         </div>
         
         <div class="footer">
-            <p>To jest automatyczne powiadomienie o anulowaniu sesji.</p>
+            <p>To jest automatyczna wiadomość potwierdzająca Twoją rezerwację.</p>
         </div>
     </div>
 </body>

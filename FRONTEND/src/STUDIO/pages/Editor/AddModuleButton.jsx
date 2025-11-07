@@ -14,7 +14,8 @@ const QUICK_MODULES = [
   'gallery',
   'faq',
   'contact',
-  'calendar',
+  'publicCalendarBig',
+  'publicCalendarSmall',
   'text',
   'button',
   'spacer'

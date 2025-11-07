@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry.js';
+import useNewEditorStore from '../../store/newEditorStore';
 
 // Default vibe for STUDIO preview (same structure as SITES vibes)
 const DEFAULT_VIBE = {
@@ -46,13 +47,8 @@ const DEFAULT_THEME = {
  * This ensures STUDIO uses the same migrated components as SITES
  */
 const ModuleRenderer = ({ module, pageId, theme }) => {
-  console.log('🎬 ModuleRenderer - Render:', {
-    moduleId: module?.id,
-    moduleType: module?.type,
-    contentKeys: Object.keys(module?.content || {}),
-    hasBackgroundImage: !!module?.content?.backgroundImage,
-    backgroundImage: module?.content?.backgroundImage?.substring(0, 50)
-  });
+  // Get siteId from store - it's a top-level field, not site.id
+  const { siteId } = useNewEditorStore();
   
   if (!module) {
     return (
@@ -106,6 +102,7 @@ const ModuleRenderer = ({ module, pageId, theme }) => {
         content={module.content || {}}
         vibe={DEFAULT_VIBE} // Use default vibe for STUDIO preview
         theme={effectiveTheme}
+        siteId={siteId} // Pass siteId to all modules
         isEditing={true} // Flag to indicate this is editor mode
       />
       

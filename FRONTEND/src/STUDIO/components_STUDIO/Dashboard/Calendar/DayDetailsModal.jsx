@@ -20,7 +20,8 @@ import {
     ToggleButtonGroup,
     ToggleButton,
     Alert,
-    Divider
+    Divider,
+    Avatar
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -28,12 +29,18 @@ import {
     CalendarMonth as CalendarIcon,
     AccessTime as TimeIcon,
     EventNote as EventNoteIcon,
-    Schedule as ScheduleIcon
+    Schedule as ScheduleIcon,
+    Email as EmailIcon,
+    Delete as DeleteIcon,
+    Person as PersonIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 import PropTypes from 'prop-types';
 import useTheme from '../../../../theme/useTheme';
+import BookingDetailsModal from './BookingDetailsModal';
+import * as eventService from '../../../../services/eventService';
+import { useToast } from '../../../../contexts/ToastContext';
 
 const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
@@ -131,7 +138,7 @@ AvailabilityBlockDisplay.propTypes = {
 };
 
 
-const EventDisplay = ({ event, siteColor, onHover, onClick, dayStartMinutes, dayEndMinutes }) => {
+const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayStartMinutes, dayEndMinutes }) => {
     const metrics = computeBlockMetrics(event.start_time, event.end_time, dayStartMinutes, dayEndMinutes);
     const [isHovered, setIsHovered] = useState(false);
 
@@ -192,29 +199,41 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, dayStartMinutes, day
                 >
                     {event.start_time} - {event.end_time}
                 </Typography>
-                {event.event_type === 'individual' && (
+                {event.bookings && event.bookings.length > 0 ? (
+                    <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                        {event.bookings.map((booking, idx) => (
+                            <Chip
+                                key={idx}
+                                size="small"
+                                label={booking.client_name}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBookingClick?.(booking);
+                                }}
+                                sx={{
+                                    height: 18,
+                                    fontSize: '10px',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                                    }
+                                }}
+                            />
+                        ))}
+                    </Box>
+                ) : (
                     <Chip
                         size="small"
-                        label={event.client_name || 'Wolne'}
+                        label="Wolne"
                         sx={{
                             mt: 0.5,
                             height: 18,
                             fontSize: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                            color: '#fff'
-                        }}
-                    />
-                )}
-                {event.event_type === 'group' && (
-                    <Chip
-                        size="small"
-                        label={`${event.current_capacity || 0}/${event.max_capacity}`}
-                        sx={{
-                            mt: 0.5,
-                            height: 18,
-                            fontSize: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                            color: '#fff'
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            color: '#fff',
+                            opacity: 0.7
                         }}
                     />
                 )}
@@ -247,6 +266,7 @@ const DayDetailsModal = ({
     events, 
     availabilityBlocks, 
     sites, 
+    selectedSiteId,
     onClose, 
     onCreateEvent, 
     onCreateAvailability,
@@ -254,9 +274,18 @@ const DayDetailsModal = ({
     operatingEndHour = 22
 }) => {
     const theme = useTheme();
+    const { showToast } = useToast();
     const [view, setView] = useState('timeline'); // 'timeline' | 'chooser' | 'createEvent' | 'createAvailability' | 'editEvent' | 'editAvailability'
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [editingItem, setEditingItem] = useState(null); // Store the item being edited
+    const [selectedBooking, setSelectedBooking] = useState(null); // For BookingDetailsModal
+    const [bookingModalOpen, setBookingModalOpen] = useState(false);
+    const [contactFormOpen, setContactFormOpen] = useState(false);
+    const [contactingBooking, setContactingBooking] = useState(null);
+    const [contactMessage, setContactMessage] = useState({
+        subject: 'Zmiana w terminie spotkania',
+        message: 'Witam,\n\nNiestety muszę wprowadzić zmiany w harmonogramie. Proszę o kontakt w celu ustalenia nowego terminu.\n\nPrzepraszam za niedogodności.\nPozdrawiam'
+    });
     const [formData, setFormData] = useState({
         title: '',
         startTime: '10:00',
@@ -267,7 +296,8 @@ const DayDetailsModal = ({
         capacity: 1,
         meetingLengths: ['30', '60'],
         timeSnapping: '30',
-        bufferTime: '0'
+        bufferTime: '0',
+        siteId: selectedSiteId || null  // Add siteId to form data
     });
 
     const dateFormatted = useMemo(() => moment(date).format('dddd, D MMMM YYYY'), [date]);
@@ -342,7 +372,8 @@ const DayDetailsModal = ({
             capacity: 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
-            bufferTime: '0'
+            bufferTime: '0',
+            siteId: selectedSiteId || null
         });
         onClose();
     };
@@ -363,7 +394,8 @@ const DayDetailsModal = ({
             capacity: event.max_capacity || 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
-            bufferTime: '0'
+            bufferTime: '0',
+            siteId: event.site || selectedSiteId || null
         });
         setView('editEvent');
     };
@@ -380,9 +412,60 @@ const DayDetailsModal = ({
             capacity: 1,
             meetingLengths: block.meeting_lengths || ['30', '60'],
             timeSnapping: block.time_snapping || '30',
-            bufferTime: block.buffer_time || '0'
+            bufferTime: block.buffer_time || '0',
+            siteId: block.site || selectedSiteId || null
         });
         setView('editAvailability');
+    };
+
+    const handleContactBooking = (booking) => {
+        setContactingBooking(booking);
+        setContactFormOpen(true);
+    };
+
+    const handleSendContactMessage = async () => {
+        if (!contactingBooking) return;
+
+        try {
+            await eventService.contactClient(
+                contactingBooking.id,
+                contactMessage.subject,
+                contactMessage.message
+            );
+            showToast('Wiadomość została wysłana', 'success');
+            setContactFormOpen(false);
+            setContactingBooking(null);
+            setContactMessage({
+                subject: 'Zmiana w terminie spotkania',
+                message: 'Witam,\n\nNiestety muszę wprowadzić zmiany w harmonogramie. Proszę o kontakt w celu ustalenia nowego terminu.\n\nPrzepraszam za niedogodności.\nPozdrawiam'
+            });
+        } catch (error) {
+            console.error('Error sending message:', error);
+            showToast('Nie udało się wysłać wiadomości', 'error');
+        }
+    };
+
+    const handleRemoveBooking = async (booking) => {
+        if (!window.confirm(`Czy na pewno chcesz usunąć uczestnika ${booking.client_name}? Zostanie wysłany email z powiadomieniem.`)) {
+            return;
+        }
+
+        try {
+            await eventService.cancelBooking(booking.id);
+            showToast('Uczestnik został usunięty, wysłano powiadomienie email', 'success');
+            
+            // Refresh the event data
+            if (editingItem) {
+                const updatedBookings = editingItem.bookings.filter(b => b.id !== booking.id);
+                setEditingItem({ ...editingItem, bookings: updatedBookings });
+            }
+            
+            // Trigger parent refresh
+            window.location.reload();
+        } catch (error) {
+            console.error('Error removing booking:', error);
+            showToast('Nie udało się usunąć uczestnika', 'error');
+        }
     };
 
     const handleSubmit = () => {
@@ -409,7 +492,8 @@ const DayDetailsModal = ({
             capacity: 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
-            bufferTime: '0'
+            bufferTime: '0',
+            siteId: selectedSiteId || null
         });
         setView('timeline');
     };
@@ -490,6 +574,10 @@ const DayDetailsModal = ({
                     siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
                     onHover={setHoveredEventId}
                     onClick={handleEventClick}
+                    onBookingClick={(booking) => {
+                        setSelectedBooking(booking);
+                        setBookingModalOpen(true);
+                    }}
                     dayStartMinutes={dayStartMinutes}
                     dayEndMinutes={dayEndMinutes}
                 />
@@ -501,22 +589,41 @@ const DayDetailsModal = ({
     const renderCreationForm = () => {
         const isEvent = view === 'createEvent' || view === 'editEvent';
         const isEditing = view === 'editEvent' || view === 'editAvailability';
+        const hasBookings = isEditing && editingItem?.bookings && editingItem.bookings.length > 0;
 
         return (
             <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                <Alert severity="info" sx={{ mb: 1 }}>
-                    {isEvent ? (
-                        <>
-                            <EventNoteIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
-                            {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>konkretne spotkanie</strong> - zapisz datę i czas w kalendarzu
-                        </>
-                    ) : (
-                        <>
-                            <ScheduleIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
-                            {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>okno dostępności</strong> - klienci będą mogli zarezerwować w tym czasie
-                        </>
-                    )}
-                </Alert>
+                {/* Form fields */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                        {isEvent ? (
+                            <>
+                                <EventNoteIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
+                                {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>konkretne spotkanie</strong>
+                            </>
+                        ) : (
+                            <>
+                                <ScheduleIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
+                                {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>okno dostępności</strong> - klienci będą mogli zarezerwować w tym czasie
+                            </>
+                        )}
+                    </Alert>
+
+                {/* Site selector */}
+                <FormControl fullWidth required>
+                    <InputLabel>Strona</InputLabel>
+                    <Select
+                        value={formData.siteId || ''}
+                        label="Strona"
+                        onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
+                    >
+                        {sites.map((site) => (
+                            <MenuItem key={site.id} value={site.id}>
+                                {site.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
 
                 <TextField
                     fullWidth
@@ -629,11 +736,112 @@ const DayDetailsModal = ({
                         />
                     </>
                 )}
+                </Box>
+
+                {/* Participants list at the bottom */}
+                {hasBookings && (
+                    <>
+                        <Divider sx={{ my: 2 }} />
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: theme.palette.text.secondary }}>
+                                Uczestnicy ({editingItem.bookings.length})
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {editingItem.bookings.map((booking) => (
+                                    <Box
+                                        key={booking.id}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1.5,
+                                            p: 1.5,
+                                            backgroundColor: theme.palette.background.paper,
+                                            border: `1px solid ${theme.palette.divider}`,
+                                            borderRadius: 1.5,
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                borderColor: theme.palette.primary.main,
+                                                backgroundColor: theme.palette.action.hover
+                                            }
+                                        }}
+                                    >
+                                        {/* Avatar */}
+                                        <Box
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: '50%',
+                                                backgroundColor: theme.palette.primary.main,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'white',
+                                                fontWeight: 600,
+                                                fontSize: '16px',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            {booking.client_name?.charAt(0)?.toUpperCase() || <PersonIcon />}
+                                        </Box>
+
+                                        {/* Name */}
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography 
+                                                variant="body2" 
+                                                fontWeight={600} 
+                                                sx={{ 
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                {booking.client_name}
+                                            </Typography>
+                                        </Box>
+
+                                        {/* Action buttons */}
+                                        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                                            <Tooltip title="Wyślij wiadomość">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleContactBooking(booking)}
+                                                    sx={{
+                                                        color: theme.palette.primary.main,
+                                                        '&:hover': {
+                                                            backgroundColor: theme.palette.action.hover
+                                                        }
+                                                    }}
+                                                >
+                                                    <EmailIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Usuń uczestnika">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleRemoveBooking(booking)}
+                                                    sx={{
+                                                        color: theme.palette.error.main,
+                                                        '&:hover': {
+                                                            backgroundColor: theme.palette.error.light + '20'
+                                                        }
+                                                    }}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    </>
+                )}
             </Box>
         );
     };
 
     return (
+        <>
         <Dialog
             open={open}
             onClose={handleClose}
@@ -804,6 +1012,83 @@ const DayDetailsModal = ({
                 </DialogActions>
             )}
         </Dialog>
+        
+        {/* Contact Client Dialog */}
+        <Dialog
+            open={contactFormOpen}
+            onClose={() => {
+                setContactFormOpen(false);
+                setContactingBooking(null);
+            }}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    borderRadius: 2
+                }
+            }}
+        >
+            <DialogTitle>
+                Wyślij wiadomość do {contactingBooking?.client_name}
+            </DialogTitle>
+            <DialogContent>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                    <TextField
+                        fullWidth
+                        label="Temat"
+                        value={contactMessage.subject}
+                        onChange={(e) => setContactMessage({ ...contactMessage, subject: e.target.value })}
+                    />
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={6}
+                        label="Wiadomość"
+                        value={contactMessage.message}
+                        onChange={(e) => setContactMessage({ ...contactMessage, message: e.target.value })}
+                        placeholder="Napisz wiadomość do klienta..."
+                    />
+                    <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                        Wiadomość zostanie wysłana na adres email klienta wraz z Twoimi danymi kontaktowymi.
+                    </Alert>
+                </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+                <Button 
+                    onClick={() => {
+                        setContactFormOpen(false);
+                        setContactingBooking(null);
+                    }}
+                    variant="outlined"
+                >
+                    Anuluj
+                </Button>
+                <Button 
+                    onClick={handleSendContactMessage}
+                    variant="contained"
+                    disabled={!contactMessage.subject || !contactMessage.message}
+                >
+                    Wyślij
+                </Button>
+            </DialogActions>
+        </Dialog>
+        
+        {/* Booking Details Modal */}
+        {bookingModalOpen && (
+            <BookingDetailsModal
+                open={bookingModalOpen}
+                onClose={() => {
+                    setBookingModalOpen(false);
+                    setSelectedBooking(null);
+                }}
+                booking={selectedBooking}
+                onBookingUpdated={() => {
+                    // Refresh events after booking is cancelled
+                    window.location.reload(); // Simple refresh, can be improved
+                }}
+            />
+        )}
+        </>
     );
 };
 
@@ -813,6 +1098,7 @@ DayDetailsModal.propTypes = {
     events: PropTypes.arrayOf(PropTypes.object),
     availabilityBlocks: PropTypes.arrayOf(PropTypes.object),
     sites: PropTypes.arrayOf(PropTypes.object),
+    selectedSiteId: PropTypes.number,
     onClose: PropTypes.func.isRequired,
     onCreateEvent: PropTypes.func,
     onCreateAvailability: PropTypes.func,
@@ -825,6 +1111,7 @@ DayDetailsModal.defaultProps = {
     events: [],
     availabilityBlocks: [],
     sites: [],
+    selectedSiteId: null,
     onCreateEvent: undefined,
     onCreateAvailability: undefined,
     operatingStartHour: 6,

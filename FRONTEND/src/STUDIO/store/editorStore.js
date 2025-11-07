@@ -284,6 +284,9 @@ export const buildTemplateFromModules = (moduleIds, siteName = 'Moja Strona', ca
   // Mapping module IDs to page keys
   const moduleToPageMap = {
     'publicCalendar': 'calendar',
+    'publicCalendarBig': 'calendar',
+    'publicCalendarSmall': 'calendar',
+    'calendar': 'calendar',
     'about': 'about',
     'servicesAndPricing': 'servicesAndPricing',
     'events': 'events',

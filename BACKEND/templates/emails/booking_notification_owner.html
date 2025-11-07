@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sesja Anulowana przez Studenta</title>
+    <title>Nowa Rezerwacja</title>
     <style>
         * {
             margin: 0;
@@ -39,13 +39,18 @@
         .content {
             padding: 48px 40px;
         }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 32px;
+            color: rgb(30, 30, 30);
+        }
         .message {
             font-size: 15px;
             margin-bottom: 32px;
             color: rgb(30, 30, 30);
             line-height: 1.8;
         }
-        .cancellation-details {
+        .booking-details {
             background-color: rgba(228, 229, 218, 0.3);
             padding: 32px;
             border-radius: 2px;
@@ -62,20 +67,12 @@
         .detail-label {
             font-size: 14px;
             color: rgb(188, 186, 179);
-            min-width: 120px;
+            min-width: 100px;
         }
         .detail-value {
             font-size: 15px;
             color: rgb(30, 30, 30);
             font-weight: 400;
-        }
-        .info-box {
-            background-color: rgba(146, 0, 32, 0.04);
-            border-left: 2px solid rgb(146, 0, 32);
-            padding: 24px;
-            margin: 32px 0;
-            font-size: 14px;
-            line-height: 1.6;
         }
         .footer {
             padding: 32px 40px;
@@ -93,34 +90,38 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Sesja Anulowana</h1>
+            <h1>Nowa Rezerwacja</h1>
         </div>
         
         <div class="content">
-            <p class="message">Student <strong>{{ student_name }}</strong> właśnie anulował swoją sesję.</p>
+            <p class="greeting">Cześć {{ owner_name }},</p>
             
-            <div class="cancellation-details">
+            <p class="message">Masz nową rezerwację na swojej stronie!</p>
+            
+            <div class="booking-details">
                 <div class="detail-row">
-                    <span class="detail-label">Temat</span>
-                    <span class="detail-value">{{ subject }}</span>
+                    <span class="detail-label">Klient</span>
+                    <span class="detail-value">{{ client_name }}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Data</span>
-                    <span class="detail-value">{{ date }}</span>
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">{{ client_email }}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Godziny</span>
-                    <span class="detail-value">{{ start_time }} - {{ end_time }}</span>
+                    <span class="detail-label">Wydarzenie</span>
+                    <span class="detail-value">{{ event_title }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Termin</span>
+                    <span class="detail-value">{{ start_time|date:"d M Y, H:i" }}</span>
                 </div>
             </div>
             
-            <div class="info-box">
-                Powiązane terminy zostały automatycznie zwolnione i są ponownie dostępne w kalendarzu.
-            </div>
+            <p class="message">Możesz zarządzać rezerwacją w swoim panelu administracyjnym.</p>
         </div>
         
         <div class="footer">
-            <p>To jest automatyczne powiadomienie o anulowaniu sesji.</p>
+            <p>To jest automatyczne powiadomienie o nowej rezerwacji.</p>
         </div>
     </div>
 </body>

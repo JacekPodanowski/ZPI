@@ -15,6 +15,9 @@ const convertModuleNameToObject = (moduleName, index) => {
   // Map old module names to new types
   const typeMapping = {
     'publicCalendar': 'calendar',
+    'publicCalendarBig': 'publicCalendarBig',
+    'publicCalendarSmall': 'publicCalendarSmall',
+    'calendar': 'publicCalendarSmall',
     'about': 'about',
     'servicesAndPricing': 'services',
     'services': 'services',

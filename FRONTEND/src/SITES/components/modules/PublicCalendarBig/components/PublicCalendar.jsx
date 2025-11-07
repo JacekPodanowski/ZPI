@@ -4,7 +4,7 @@ import moment from 'moment';
 import 'moment/locale/pl';
 import { Box, Button, Fade, IconButton, Paper, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
-import useTheme from '../../../theme/useTheme';
+import useTheme from '../../../../../theme/useTheme';
 import styles from './PublicCalendar.module.css';
 
 moment.locale('pl');
@@ -73,7 +73,9 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                     style={{
                         background,
                         color,
-                        border: isToday ? `2px solid ${theme.palette.primary.main}` : '1px solid rgba(0,0,0,0.04)'
+                        border: isToday
+                            ? `2px solid ${theme.palette.primary.main}`
+                            : '1px solid rgba(0,0,0,0.04)'
                     }}
                 >
                     <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>

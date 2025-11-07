@@ -145,3 +145,58 @@ def send_custom_email_task_async(
             exc_info=True,
         )
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def send_booking_confirmation_emails(self, booking_id):
+    """Send booking confirmation emails to both client and site owner."""
+    from django.template.loader import render_to_string
+    from .models import Booking
+    
+    try:
+        booking = Booking.objects.select_related('site', 'event', 'client', 'site__owner').get(pk=booking_id)
+    except Booking.DoesNotExist:
+        logger.warning(f"[Celery] Booking with id={booking_id} not found. Cannot send emails.")
+        return
+
+    site = booking.site
+    event = booking.event
+    client = booking.client
+    owner = site.owner
+
+    # 1. Wyślij e-mail do klienta
+    client_subject = f'Potwierdzenie rezerwacji: {event.title}'
+    client_context = {
+        'client_name': client.name if client else booking.guest_name,
+        'event_title': event.title,
+        'start_time': event.start_time,
+        'site_name': site.name,
+    }
+    client_html = render_to_string('emails/booking_confirmation_client.html', client_context)
+    
+    send_custom_email_task_async.delay(
+        recipient_list=[booking.guest_email],
+        subject=client_subject,
+        html_content=client_html
+    )
+
+    # 2. Wyślij e-mail do właściciela witryny
+    owner_subject = f'Nowa rezerwacja na Twojej stronie: {site.name}'
+    owner_context = {
+        'owner_name': owner.first_name,
+        'client_name': client.name if client else booking.guest_name,
+        'client_email': booking.guest_email,
+        'event_title': event.title,
+        'start_time': event.start_time,
+    }
+    owner_html = render_to_string('emails/booking_notification_owner.html', owner_context)
+
+    send_custom_email_task_async.delay(
+        recipient_list=[owner.email],
+        subject=owner_subject,
+        html_content=owner_html
+    )
+    
+    logger.info(f"Queued confirmation emails for booking {booking_id}.")
+    return {"status": "success", "booking_id": booking_id}
+

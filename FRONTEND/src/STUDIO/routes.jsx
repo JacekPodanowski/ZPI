@@ -19,8 +19,8 @@ import AppearancePage from './pages/Settings/AppearancePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import NotificationsPage from './pages/Settings/NotificationsPage';
 import MailsPage from './pages/Settings/MailsPage';
+import ToastTestPage from './pages/Settings/ToastTestPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
-import ToastTestPage from './pages/Lab/ToastTestPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import EditorLabPage from './pages/Lab/EditorLabPage';
 import TeamPage from './pages/Team/TeamPage';
@@ -60,7 +60,6 @@ const StudioApp = () => (
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
 
       {/* Dev Lab */}
-      <Route path="lab/toast" element={<ToastTestPage />} />
       <Route path="lab/components" element={<ProtectedRoute><ComponentLabPage /></ProtectedRoute>} />
       <Route path="lab/editor" element={<EditorLabPage />} />
 
@@ -81,6 +80,7 @@ const StudioApp = () => (
       <Route path="billing" element={<BillingPage />} />
       <Route path="appearance" element={<AppearancePage />} />
       <Route path="settings" element={<SettingsPage />} />
+      <Route path="toast" element={<ToastTestPage />} />
     </Route>
 
     {/* Editor routes - New editor is now default */}

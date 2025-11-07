@@ -13,7 +13,7 @@ const fetchPublicSiteConfig = async (siteId) => {
 };
 
 // NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
-const renderModule = (module, vibe, theme) => {
+const renderModule = (module, vibe, theme, siteId) => {
   if (module?.enabled === false) return null;
   
   const moduleType = (module.type || module.id || '').toLowerCase();
@@ -29,6 +29,7 @@ const renderModule = (module, vibe, theme) => {
         content={module.content || {}}
         vibe={vibe}
         theme={theme}
+        siteId={siteId}
       />
     );
   } else {
@@ -197,7 +198,7 @@ const SiteApp = () => {
 
   return (
     <main>
-      {modulesToRender.map((module) => renderModule(module, vibe, theme))}
+      {modulesToRender.map((module) => renderModule(module, vibe, theme, siteId))}
     </main>
   );
 };
