@@ -183,15 +183,27 @@ class ClientSerializer(serializers.ModelSerializer):
 
 class EventSerializer(serializers.ModelSerializer):
     attendees = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-
+    bookings = serializers.SerializerMethodField()
+    
     class Meta:
         model = Event
         fields = [
             'id', 'site', 'creator', 'title', 'description',
             'start_time', 'end_time', 'capacity', 'event_type',
-            'attendees', 'created_at', 'updated_at'
+            'attendees', 'bookings', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'attendees', 'creator']
+        read_only_fields = ['created_at', 'updated_at', 'attendees', 'creator', 'bookings']
+
+    def get_bookings(self, obj):
+        """Return booking information including client/guest details"""
+        bookings = obj.bookings.all()
+        return [{
+            'id': booking.id,
+            'client_name': booking.client.name if booking.client else booking.guest_name,
+            'client_email': booking.client.email if booking.client else booking.guest_email,
+            'notes': booking.notes,
+            'created_at': booking.created_at
+        } for booking in bookings]
 
     def validate(self, attrs):
         site = attrs.get('site') or (self.instance.site if self.instance else None)

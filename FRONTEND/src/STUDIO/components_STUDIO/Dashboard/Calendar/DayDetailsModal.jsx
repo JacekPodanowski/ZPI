@@ -192,29 +192,33 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, dayStartMinutes, day
                 >
                     {event.start_time} - {event.end_time}
                 </Typography>
-                {event.event_type === 'individual' && (
+                {event.bookings && event.bookings.length > 0 ? (
+                    <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                        {event.bookings.map((booking, idx) => (
+                            <Chip
+                                key={idx}
+                                size="small"
+                                label={booking.client_name}
+                                sx={{
+                                    height: 18,
+                                    fontSize: '10px',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                                    color: '#fff'
+                                }}
+                            />
+                        ))}
+                    </Box>
+                ) : (
                     <Chip
                         size="small"
-                        label={event.client_name || 'Wolne'}
+                        label="Wolne"
                         sx={{
                             mt: 0.5,
                             height: 18,
                             fontSize: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                            color: '#fff'
-                        }}
-                    />
-                )}
-                {event.event_type === 'group' && (
-                    <Chip
-                        size="small"
-                        label={`${event.current_capacity || 0}/${event.max_capacity}`}
-                        sx={{
-                            mt: 0.5,
-                            height: 18,
-                            fontSize: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                            color: '#fff'
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            color: '#fff',
+                            opacity: 0.7
                         }}
                     />
                 )}

@@ -19,6 +19,7 @@ import ServicesAndPricingModule from './ServicesAndPricingModule';
 import TeamModule from './TeamModule';
 import ContainerModule from './ContainerModule';
 import ReactComponentModule from './ReactComponentModule';
+import PublicCalendarBigModule from './PublicCalendarBig';
 
 export const MODULE_REGISTRY = {
   hero: {
@@ -42,12 +43,67 @@ export const MODULE_REGISTRY = {
     defaultLayout: 'cards',
     category: 'content'
   },
-  calendar: {
+  publicCalendarSmall: {
     component: CalendarSection,
     descriptor: CalendarSection.descriptor,
     layouts: ['sidebar', 'inline', 'compact'],
     defaultLayout: 'sidebar',
     category: 'interactive'
+  },
+  publiccalendarsmall: {
+    component: CalendarSection,
+    descriptor: CalendarSection.descriptor,
+    layouts: ['sidebar', 'inline', 'compact'],
+    defaultLayout: 'sidebar',
+    category: 'interactive',
+    legacyAlias: true
+  },
+  calendar: {
+    component: CalendarSection,
+    descriptor: CalendarSection.descriptor,
+    layouts: ['sidebar', 'inline', 'compact'],
+    defaultLayout: 'sidebar',
+    category: 'interactive',
+    legacyAlias: true
+  },
+  publicCalendarBig: {
+    component: PublicCalendarBigModule,
+    descriptor: PublicCalendarBigModule.descriptor,
+    layouts: ['default'],
+    defaultLayout: 'default',
+    category: 'interactive'
+  },
+  publiccalendarbig: {
+    component: PublicCalendarBigModule,
+    descriptor: PublicCalendarBigModule.descriptor,
+    layouts: ['default'],
+    defaultLayout: 'default',
+    category: 'interactive',
+    legacyAlias: true
+  },
+  publicCalendar: {
+    component: PublicCalendarBigModule,
+    descriptor: PublicCalendarBigModule.descriptor,
+    layouts: ['default'],
+    defaultLayout: 'default',
+    category: 'interactive',
+    legacyAlias: true
+  },
+  publiccalendar: {
+    component: PublicCalendarBigModule,
+    descriptor: PublicCalendarBigModule.descriptor,
+    layouts: ['default'],
+    defaultLayout: 'default',
+    category: 'interactive',
+    legacyAlias: true
+  },
+  testimonials: {
+    component: TextModule,
+    descriptor: TextModule.descriptor,
+    layouts: ['block', 'inline', 'centered'],
+    defaultLayout: 'block',
+    category: 'content',
+    legacyAlias: true
   },
   contact: {
     component: ContactSection,

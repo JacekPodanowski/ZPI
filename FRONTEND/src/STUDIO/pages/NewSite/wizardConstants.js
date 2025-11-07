@@ -7,22 +7,31 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ArticleIcon from '@mui/icons-material/Article';
 import EmailIcon from '@mui/icons-material/Email';
 
+const BASE_PUBLIC_CALENDAR_MODULE = {
+    name: 'Spotkania',
+    icon: CalendarMonthIcon,
+    description: 'Kalendarz rezerwacji terminów',
+    enabled: true,
+    isAdditional: false,
+    disableWarning: {
+        enabled: true,
+        title: 'Wyłączyć rezerwacje?',
+        message: 'Jeśli wyłączysz ten moduł, Twoi klienci nie będą mogli zamawiać wizyt online. Czy na pewno?',
+        confirmText: 'Wyłącz',
+        cancelText: 'Zostaw włączone'
+    }
+};
+
 // Module definitions with icons, descriptions, and warnings
 export const MODULE_DEFINITIONS = {
+    publicCalendarBig: {
+        id: 'publicCalendarBig',
+        ...BASE_PUBLIC_CALENDAR_MODULE
+    },
     publicCalendar: {
         id: 'publicCalendar',
-        name: 'Spotkania',
-        icon: CalendarMonthIcon,
-        description: 'Kalendarz rezerwacji terminów',
-        enabled: true,
-        isAdditional: false,
-        disableWarning: {
-            enabled: true,
-            title: 'Wyłączyć rezerwacje?',
-            message: 'Jeśli wyłączysz ten moduł, Twoi klienci nie będą mogli zamawiać wizyt online. Czy na pewno?',
-            confirmText: 'Wyłącz',
-            cancelText: 'Zostaw włączone'
-        }
+        ...BASE_PUBLIC_CALENDAR_MODULE,
+        legacyAlias: true
     },
     about: {
         id: 'about',
@@ -84,20 +93,20 @@ export const MODULE_DEFINITIONS = {
 
 // Category to module mapping
 export const CATEGORY_MODULE_CONFIGS = {
-    wellness: ['publicCalendar', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    education: ['publicCalendar', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    creative: ['publicCalendar', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    health: ['publicCalendar', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    default: ['publicCalendar', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq']
+    wellness: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    education: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    creative: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    health: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    default: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq']
 };
 
 // Which modules should be ENABLED by default per category
 export const CATEGORY_DEFAULT_ENABLED = {
-    wellness: ['publicCalendar', 'about', 'servicesAndPricing', 'events', 'gallery'],
-    education: ['publicCalendar', 'about', 'servicesAndPricing'],
-    creative: ['publicCalendar', 'about', 'servicesAndPricing', 'gallery', 'blog'],
-    health: ['publicCalendar', 'about', 'servicesAndPricing'],
-    default: ['publicCalendar', 'about', 'servicesAndPricing']
+    wellness: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery'],
+    education: ['publicCalendarBig', 'about', 'servicesAndPricing'],
+    creative: ['publicCalendarBig', 'about', 'servicesAndPricing', 'gallery', 'blog'],
+    health: ['publicCalendarBig', 'about', 'servicesAndPricing'],
+    default: ['publicCalendarBig', 'about', 'servicesAndPricing']
 };
 
 // Site name validation

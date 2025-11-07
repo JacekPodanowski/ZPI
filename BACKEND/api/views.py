@@ -777,7 +777,7 @@ class EventViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Event.objects.select_related('site', 'site__owner', 'creator')
+        qs = Event.objects.select_related('site', 'site__owner', 'creator').prefetch_related('bookings', 'bookings__client')
         if not self.request.user.is_staff:
             qs = qs.filter(site__owner=self.request.user)
         return self._filter_by_site_param(qs)
@@ -1728,7 +1728,7 @@ class PublicAvailabilityView(APIView):
             if event.bookings.count() >= event.capacity:
                 booked_slots.add(event.start_time)
 
-        available_slots = []
+        slot_map = {}
         
         # Generuj sloty na podstawie bloków dostępności
         for block in availability_blocks:
@@ -1741,6 +1741,8 @@ class PublicAvailabilityView(APIView):
                     slot_start = current_time
                     slot_end = slot_start + timedelta(minutes=meeting_length)
                     
+                    slot_key = slot_start.isoformat()
+
                     # Znajdź istniejące wydarzenie dla tego slotu (jeśli istnieje)
                     matching_event = next(
                         (e for e in existing_events if e.start_time == slot_start and e.end_time == slot_end),
@@ -1759,29 +1761,58 @@ class PublicAvailabilityView(APIView):
                             if matching_event:
                                 capacity = matching_event.capacity
                                 booked_count = matching_event.bookings.count()
-                                available_spots = capacity - booked_count
+                                available_spots = max(capacity - booked_count, 0)
                                 event_type = matching_event.event_type
+                                event_id = matching_event.id
                             else:
                                 # Domyślne wartości dla nowych slotów (bez utworzonego eventu)
                                 capacity = 1
                                 available_spots = 1
                                 event_type = 'individual'
+                                event_id = None
                             
-                            available_slots.append({
-                                'start': slot_start.isoformat(),
+                            slot_map[slot_key] = {
+                                'start': slot_key,
                                 'end': slot_end.isoformat(),
                                 'duration': meeting_length,
                                 'capacity': capacity,
                                 'available_spots': available_spots,
-                                'event_type': event_type
-                            })
+                                'event_type': event_type,
+                                'event_id': event_id
+                            }
 
                     # Przesuń czas o interwał "przyciągania" (time_snapping)
                     current_time += timedelta(minutes=block.time_snapping)
-        
-        # Usuń duplikaty i posortuj
-        unique_slots = [dict(t) for t in {tuple(d.items()) for d in available_slots}]
-        sorted_slots = sorted(unique_slots, key=lambda x: x['start'])
+
+        # Dodaj istniejące wydarzenia, które nie były objęte blokami dostępności
+        for event in existing_events:
+            slot_key = event.start_time.isoformat()
+            booked_count = event.bookings.count()
+            capacity = event.capacity
+            available_spots = max(capacity - booked_count, 0)
+
+            if available_spots <= 0:
+                continue
+
+            if slot_key not in slot_map:
+                slot_map[slot_key] = {
+                    'start': slot_key,
+                    'end': event.end_time.isoformat(),
+                    'duration': int((event.end_time - event.start_time).total_seconds() // 60),
+                    'capacity': capacity,
+                    'available_spots': available_spots,
+                    'event_type': event.event_type,
+                    'event_id': event.id
+                }
+            else:
+                # Upewnij się, że dane eventu mają pierwszeństwo (np. większa pojemność)
+                existing_slot = slot_map[slot_key]
+                existing_slot['capacity'] = max(existing_slot['capacity'], event.capacity)
+                existing_slot['available_spots'] = available_spots
+                existing_slot['event_type'] = event.event_type
+                existing_slot['event_id'] = event.id
+
+        sorted_slots = sorted(slot_map.values(), key=lambda x: x['start'])
 
         return Response(sorted_slots)
 
@@ -1817,7 +1848,10 @@ class PublicBookingView(APIView):
         if not all([start_time_str, duration, guest_name, guest_email]):
             return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
 
-        start_time = timezone.make_aware(datetime.fromisoformat(start_time_str.replace('Z', '+00:00')))
+        # Parse datetime and ensure it's timezone-aware
+        start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+        if timezone.is_naive(start_time):
+            start_time = timezone.make_aware(start_time)
         end_time = start_time + timedelta(minutes=duration)
 
         # Znajdź lub stwórz klienta

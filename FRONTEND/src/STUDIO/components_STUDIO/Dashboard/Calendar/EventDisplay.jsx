@@ -142,8 +142,8 @@ export const EventBlock = ({
                 {displayMode === 'minimal' && event.title.split(' ')[0]}
             </Typography>
             
-            {/* Show capacity only in normal mode */}
-            {displayMode === 'normal' && event.event_type === 'group' && event.max_capacity && (
+            {/* Show capacity/bookings only in normal mode */}
+            {displayMode === 'normal' && (
                 <Typography
                     variant="caption"
                     sx={{
@@ -153,7 +153,7 @@ export const EventBlock = ({
                         flexShrink: 0
                     }}
                 >
-                    {event.current_capacity || 0}/{event.max_capacity}
+                    {event.bookings?.length || 0}/{event.capacity || 1}
                 </Typography>
             )}
         </Box>

@@ -143,7 +143,7 @@ const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) =>
           </div>
           {showCapacity && slot.capacity !== undefined && (
             <div className="text-sm mt-1" style={{ color: effectiveAccentColor }}>
-              Miejsca: {slot.available_spots || slot.capacity}/{slot.capacity}
+              Miejsca: {(slot.available_spots ?? slot.capacity)}/{slot.capacity}
             </div>
           )}
         </div>
