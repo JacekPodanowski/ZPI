@@ -500,24 +500,14 @@ class RequestMagicLinkView(APIView):
         })
         email_text = strip_tags(email_html)
         
-        # Send email
-        from django.core.mail import send_mail
-        try:
-            send_mail(
-                subject=email_subject,
-                message=email_text,
-                html_message=email_html,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            logger.info("Magic link sent to %s", email)
-        except Exception as e:
-            logger.error("Failed to send magic link email: %s", str(e))
-            return Response({
-                'detail': 'Failed to send magic link. Please try again later.',
-                'error': 'email_failed'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Send email asynchronously through Celery (like other emails)
+        logger.info("Queueing magic link email to %s", email)
+        send_custom_email_task_async.delay(
+            recipient_list=[email],
+            subject=email_subject,
+            message=email_text,
+            html_content=email_html,
+        )
         
         return Response({
             'detail': 'Magic link sent! Please check your email.',
@@ -852,26 +842,17 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             'cancellation_reason': request.data.get('reason', 'Brak podanego powodu'),
         }
         
-        # Send cancellation email
-        try:
-            html_message = render_to_string('emails/admin_session_cancellation_notification.html', context)
-            plain_message = strip_tags(html_message)
-            
-            from django.core.mail import send_mail
-            send_mail(
-                subject=f'Odwołanie: {event.title}',
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient_email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-        except Exception as e:
-            logging.error(f"Failed to send cancellation email: {e}")
-            return Response(
-                {'error': 'Nie udało się wysłać powiadomienia email'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Send cancellation email asynchronously through Celery
+        html_message = render_to_string('emails/admin_session_cancellation_notification.html', context)
+        plain_message = strip_tags(html_message)
+        
+        logger.info("Queueing cancellation email to %s for event: %s", recipient_email, event.title)
+        send_custom_email_task_async.delay(
+            recipient_list=[recipient_email],
+            subject=f'Odwołanie: {event.title}',
+            message=plain_message,
+            html_content=html_message,
+        )
         
         # Delete the booking
         booking.delete()
@@ -897,35 +878,26 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Send email
-        try:
-            context = {
-                'recipient_name': recipient_name,
-                'message': message,
-                'event_title': booking.event.title,
-                'event_date': booking.event.start_time.strftime('%Y-%m-%d'),
-                'event_time': f"{booking.event.start_time.strftime('%H:%M')} - {booking.event.end_time.strftime('%H:%M')}",
-                'site_name': booking.site.name,
-            }
-            
-            html_message = render_to_string('emails/creator_contact_client.html', context)
-            plain_message = strip_tags(html_message)
-            
-            from django.core.mail import send_mail
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient_email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-        except Exception as e:
-            logging.error(f"Failed to send contact email: {e}")
-            return Response(
-                {'error': 'Nie udało się wysłać wiadomości email'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Send email asynchronously through Celery
+        context = {
+            'recipient_name': recipient_name,
+            'message': message,
+            'event_title': booking.event.title,
+            'event_date': booking.event.start_time.strftime('%Y-%m-%d'),
+            'event_time': f"{booking.event.start_time.strftime('%H:%M')} - {booking.event.end_time.strftime('%H:%M')}",
+            'site_name': booking.site.name,
+        }
+        
+        html_message = render_to_string('emails/creator_contact_client.html', context)
+        plain_message = strip_tags(html_message)
+        
+        logger.info("Queueing contact email to %s", recipient_email)
+        send_custom_email_task_async.delay(
+            recipient_list=[recipient_email],
+            subject=subject,
+            message=plain_message,
+            html_content=html_message,
+        )
         
         return Response({'message': 'Wiadomość została wysłana'})
 
