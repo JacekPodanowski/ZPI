@@ -176,7 +176,7 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                     boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 6px rgba(0,0,0,0.1)',
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden'
+                    overflow: 'visible' // Zmienione z 'hidden' na 'visible' aby umożliwić przewijanie w dzieciach
                 }}
             >
                 <Typography
@@ -200,7 +200,36 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                     {event.start_time} - {event.end_time}
                 </Typography>
                 {event.bookings && event.bookings.length > 0 ? (
-                    <Box sx={{ mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                    <Box sx={{ 
+                        mt: 0.5, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 0.3,
+                        maxHeight: '120px',
+                        minHeight: 'auto',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        flexShrink: 0,
+                        pr: 0.5,
+                        // Dodatkowe właściwości dla lepszej kompatybilności
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1)',
+                        '&::-webkit-scrollbar': {
+                            width: '6px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '3px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                            background: 'rgba(255, 255, 255, 0.4)',
+                            borderRadius: '3px',
+                            '&:hover': {
+                                background: 'rgba(255, 255, 255, 0.6)',
+                            }
+                        }
+                    }}>
                         {event.bookings.map((booking, idx) => (
                             <Chip
                                 key={idx}
@@ -216,6 +245,7 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                                     backgroundColor: 'rgba(255, 255, 255, 0.3)',
                                     color: '#fff',
                                     cursor: 'pointer',
+                                    flexShrink: 0,
                                     '&:hover': {
                                         backgroundColor: 'rgba(255, 255, 255, 0.5)',
                                     }
@@ -746,7 +776,13 @@ const DayDetailsModal = ({
                             <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 2, color: theme.palette.text.secondary }}>
                                 Uczestnicy ({editingItem.bookings.length})
                             </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box 
+                                sx={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: 1
+                                }}
+                            >
                                 {editingItem.bookings.map((booking) => (
                                     <Box
                                         key={booking.id}
@@ -893,7 +929,7 @@ const DayDetailsModal = ({
 
             <Divider sx={{ mx: -1.5 }} />
 
-            <DialogContent sx={{ pb: 2, px: 2, pt: 2, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <DialogContent sx={{ pb: 2, px: 2, pt: 2, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                 <AnimatePresence mode="wait">
                     {view === 'timeline' && (
                         <motion.div

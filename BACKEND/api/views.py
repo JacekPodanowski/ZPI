@@ -862,6 +862,91 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         
         return Response({'message': 'Spotkanie zostało odwołane, klient otrzymał powiadomienie email'})
 
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='verify-cancellation')
+    def verify_cancellation(self, request, pk=None):
+        """Verify cancellation token and return booking details"""
+        token = request.query_params.get('token')
+        
+        if not token:
+            return Response({'error': 'Token jest wymagany'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            booking = Booking.objects.select_related('event', 'site').get(pk=pk)
+        except Booking.DoesNotExist:
+            return Response({'error': 'Rezerwacja nie została znaleziona'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Verify magic link token
+        guest_email = booking.client.email if booking.client else booking.guest_email
+        try:
+            magic_link = MagicLink.objects.get(token=token, email=guest_email)
+            if not magic_link.is_valid():
+                return Response({'error': 'Link wygasł lub został już użyty'}, status=status.HTTP_400_BAD_REQUEST)
+        except MagicLink.DoesNotExist:
+            return Response({'error': 'Nieprawidłowy token'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Return booking details
+        return Response({
+            'booking_id': booking.id,
+            'event_title': booking.event.title,
+            'event_date': booking.event.start_time.strftime('%d.%m.%Y'),
+            'event_time': f"{booking.event.start_time.strftime('%H:%M')} - {booking.event.end_time.strftime('%H:%M')}",
+            'guest_name': booking.guest_name,
+            'site_name': booking.site.name,
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny], url_path='cancel-public')
+    def cancel_public(self, request, pk=None):
+        """Cancel booking via magic link (public access)"""
+        token = request.data.get('token')
+        
+        if not token:
+            return Response({'error': 'Token jest wymagany'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            booking = Booking.objects.select_related('event', 'site', 'site__owner').get(pk=pk)
+        except Booking.DoesNotExist:
+            return Response({'error': 'Rezerwacja nie została znaleziona'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Verify magic link token
+        guest_email = booking.client.email if booking.client else booking.guest_email
+        try:
+            magic_link = MagicLink.objects.get(token=token, email=guest_email)
+            if not magic_link.is_valid():
+                return Response({'error': 'Link wygasł lub został już użyty'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Mark the token as used
+            magic_link.mark_as_used()
+        except MagicLink.DoesNotExist:
+            return Response({'error': 'Nieprawidłowy token'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        event = booking.event
+        recipient_name = booking.guest_name
+        
+        # Send cancellation notification to site owner
+        owner_context = {
+            'owner_name': booking.site.owner.first_name,
+            'guest_name': recipient_name,
+            'event_title': event.title,
+            'event_date': event.start_time.strftime('%d.%m.%Y'),
+            'event_time': f"{event.start_time.strftime('%H:%M')} - {event.end_time.strftime('%H:%M')}",
+        }
+        
+        owner_html = render_to_string('emails/booking_cancelled_by_guest.html', owner_context)
+        owner_plain = strip_tags(owner_html)
+        
+        logger.info("Queueing guest cancellation notification to owner: %s", booking.site.owner.email)
+        send_custom_email_task_async.delay(
+            recipient_list=[booking.site.owner.email],
+            subject=f'Odwołanie rezerwacji: {event.title}',
+            message=owner_plain,
+            html_content=owner_html,
+        )
+        
+        # Delete the booking
+        booking.delete()
+        
+        return Response({'message': 'Rezerwacja została odwołana'})
+
     @action(detail=True, methods=['post'])
     def contact(self, request, pk=None):
         """Send a custom message to the client"""
@@ -2060,6 +2145,18 @@ class PublicBookingView(APIView):
                 'event_type': 'individual', # lub 'group'
             }
         )
+
+        # Sprawdź, czy użytkownik już jest zapisany na to wydarzenie
+        existing_booking = Booking.objects.filter(
+            event=event,
+            guest_email=guest_email
+        ).first()
+        
+        if existing_booking:
+            return Response({
+                'error': 'You are already registered for this event',
+                'booking_id': existing_booking.id
+            }, status=status.HTTP_409_CONFLICT)
 
         # Sprawdź, czy są wolne miejsca
         if event.bookings.count() >= event.capacity:

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
 import PublicCalendar from '../components/PublicCalendar';
+import BookingModal from '../../../../../components/Calendar/BookingModal';
 
 const normalizeEvents = (events = []) => {
   const entries = Array.isArray(events) ? events : [];
@@ -61,6 +62,8 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'));
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
   // Fetch events from API
   useEffect(() => {
@@ -122,6 +125,52 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
   const handleDayClick = useCallback((dayMoment) => {
     setActiveDay(dayMoment);
   }, []);
+
+  const handleSlotClick = useCallback((event) => {
+    // Transform event to slot format expected by BookingModal
+    setSelectedSlot({
+      id: event.id,
+      start: event.start,
+      end: event.end,
+      duration: event.duration,
+      title: event.title,
+      event_type: event.event_type,
+      capacity: event.capacity,
+      available_spots: event.availableSpots
+    });
+    setIsModalOpen(true);
+  }, []);
+
+  const handleBookingSuccess = () => {
+    setIsModalOpen(false);
+    setSelectedSlot(null);
+    // Refresh events after successful booking
+    const start = currentMonth.clone().startOf('month').format('YYYY-MM-DD');
+    const end = currentMonth.clone().endOf('month').format('YYYY-MM-DD');
+    
+    if (siteId) {
+      fetch(`${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/availability/?start_date=${start}&end_date=${end}`)
+        .then(response => response.json())
+        .then(slots => {
+          const events = slots.map((slot, index) => ({
+            id: slot.id || `event-${index}`,
+            title: slot.title || 'Termin dostępny',
+            start: slot.start,
+            end: slot.end,
+            date: slot.start.split('T')[0],
+            description: slot.description || '',
+            location: slot.location || '',
+            category: slot.event_type === 'group' ? 'Grupowe' : 'Indywidualne',
+            capacity: slot.capacity,
+            availableSpots: slot.available_spots ?? slot.capacity,
+            duration: slot.duration,
+            event_type: slot.event_type
+          }));
+          setApiEvents(events);
+        })
+        .catch(error => console.error('Error refreshing events:', error));
+    }
+  };
 
   const activeDayKey = useMemo(() => {
     if (!activeDay) {
@@ -234,6 +283,17 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
                         Dostępne miejsca: {event.availableSpots ?? event.capacity}/{event.capacity}
                       </p>
                     )}
+
+                    <button
+                      onClick={() => handleSlotClick(event)}
+                      className="mt-4 w-full rounded-lg py-3 px-4 text-sm font-medium transition-all duration-200 hover:shadow-md"
+                      style={{
+                        backgroundColor: accent,
+                        color: '#ffffff'
+                      }}
+                    >
+                      Rezerwuj spotkanie
+                    </button>
                   </article>
                 );
               })}
@@ -241,6 +301,20 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
           )}
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {isModalOpen && selectedSlot && (
+        <BookingModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedSlot(null);
+          }}
+          slot={selectedSlot}
+          siteId={siteId}
+          onSuccess={handleBookingSuccess}
+        />
+      )}
     </section>
   );
 };

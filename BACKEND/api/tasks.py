@@ -151,7 +151,7 @@ def send_custom_email_task_async(
 def send_booking_confirmation_emails(self, booking_id):
     """Send booking confirmation emails to both client and site owner."""
     from django.template.loader import render_to_string
-    from .models import Booking
+    from .models import Booking, MagicLink
     
     try:
         booking = Booking.objects.select_related('site', 'event', 'client', 'site__owner').get(pk=booking_id)
@@ -163,19 +163,29 @@ def send_booking_confirmation_emails(self, booking_id):
     event = booking.event
     client = booking.client
     owner = site.owner
+    guest_name = client.name if client else booking.guest_name
+    guest_email = booking.guest_email
+
+    # Create magic link for cancellation - link expires in 7 days
+    magic_link = MagicLink.create_for_email(guest_email, expiry_minutes=60*24*7)  # 7 days
+    frontend_url = settings.FRONTEND_URL.rstrip('/')
+    # Link will redirect to cancellation page with booking_id
+    cancellation_url = f"{frontend_url}/cancel-booking/{booking.id}?token={magic_link.token}"
 
     # 1. Wyślij e-mail do klienta
     client_subject = f'Potwierdzenie rezerwacji: {event.title}'
     client_context = {
-        'client_name': client.name if client else booking.guest_name,
+        'guest_name': guest_name,
         'event_title': event.title,
         'start_time': event.start_time,
         'site_name': site.name,
+        'cancellation_url': cancellation_url,
+        'booking_id': booking.id,
     }
     client_html = render_to_string('emails/booking_confirmation_client.html', client_context)
     
     send_custom_email_task_async.delay(
-        recipient_list=[booking.guest_email],
+        recipient_list=[guest_email],
         subject=client_subject,
         html_content=client_html
     )
@@ -184,8 +194,8 @@ def send_booking_confirmation_emails(self, booking_id):
     owner_subject = f'Nowa rezerwacja na Twojej stronie: {site.name}'
     owner_context = {
         'owner_name': owner.first_name,
-        'client_name': client.name if client else booking.guest_name,
-        'client_email': booking.guest_email,
+        'guest_name': guest_name,
+        'guest_email': guest_email,
         'event_title': event.title,
         'start_time': event.start_time,
     }

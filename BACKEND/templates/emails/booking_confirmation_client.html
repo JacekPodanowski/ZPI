@@ -99,6 +99,35 @@
             font-size: 14px;
             color: rgb(30, 30, 30);
         }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 16px 48px;
+            background-color: rgb(146, 0, 32);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 2px;
+            font-weight: 400;
+            font-size: 15px;
+            letter-spacing: 0.3px;
+            transition: background-color 0.3s ease;
+        }
+        .info-box {
+            background-color: rgba(146, 0, 32, 0.04);
+            border-left: 2px solid rgb(146, 0, 32);
+            padding: 24px;
+            margin: 32px 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .info-box strong {
+            display: block;
+            margin-bottom: 8px;
+            color: rgb(146, 0, 32);
+        }
     </style>
 </head>
 <body>
@@ -108,7 +137,7 @@
         </div>
         
         <div class="content">
-            <p class="greeting">Cześć {{ client_name }},</p>
+            <p class="greeting">Cześć {{ guest_name }},</p>
             
             <p class="message">Twoja rezerwacja została pomyślnie potwierdzona. Cieszymy się na spotkanie!</p>
             
@@ -118,6 +147,15 @@
                     <span class="detail-label">Data i godzina</span>
                     <span class="detail-value">{{ start_time|date:"d M Y, H:i" }}</span>
                 </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>Potrzebujesz odwołać rezerwację?</strong>
+                Jeśli nie możesz się pojawić, kliknij poniżej, aby anulować swoją rezerwację. Link jest ważny przez 7 dni.
+            </div>
+            
+            <div class="button-container">
+                <a href="{{ cancellation_url }}" class="button">Odwołaj rezerwację</a>
             </div>
             
             <p class="signature">
