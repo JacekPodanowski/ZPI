@@ -18,6 +18,7 @@ import BillingPage from './pages/Settings/BillingPage';
 import AppearancePage from './pages/Settings/AppearancePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import NotificationsPage from './pages/Settings/NotificationsPage';
+import MailsPage from './pages/Settings/MailsPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
 import ToastTestPage from './pages/Lab/ToastTestPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
@@ -75,6 +76,7 @@ const StudioApp = () => (
     <Route path="account" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
       <Route index element={<Navigate to="notifications" replace />} />
       <Route path="notifications" element={<NotificationsPage />} />
+      <Route path="mails" element={<MailsPage />} />
       <Route path="profile" element={<ProfilePage />} />
       <Route path="billing" element={<BillingPage />} />
       <Route path="appearance" element={<AppearancePage />} />

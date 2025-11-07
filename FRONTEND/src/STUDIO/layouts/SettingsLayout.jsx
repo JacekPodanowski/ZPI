@@ -17,6 +17,7 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import useTheme from '../../theme/useTheme';
 import Navigation from '../../components/Navigation/Navigation';
 
@@ -25,6 +26,11 @@ const notificationsNavigation = [
     label: 'Notifications',
     path: '/studio/account/notifications',
     icon: <NotificationsNoneOutlinedIcon />
+  },
+  {
+    label: 'Mails',
+    path: '/studio/account/mails',
+    icon: <EmailOutlinedIcon />
   }
 ];
 

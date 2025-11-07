@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from .models import (
     PlatformUser, Site, Client, Event, Booking, Template, 
-    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink
+    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate
 )
 
 
@@ -102,3 +102,13 @@ class MagicLinkAdmin(admin.ModelAdmin):
 	def token_preview(self, obj):
 		return f"{obj.token[:12]}..." if len(obj.token) > 12 else obj.token
 	token_preview.short_description = 'Token'
+
+
+@admin.register(EmailTemplate)
+class EmailTemplateAdmin(admin.ModelAdmin):
+	list_display = ('name', 'category', 'is_default', 'owner', 'created_at')
+	search_fields = ('name', 'slug', 'subject_pl', 'subject_en')
+	list_filter = ('category', 'is_default', 'created_at')
+	ordering = ('category', '-is_default', 'name')
+	readonly_fields = ('created_at', 'updated_at')
+	prepopulated_fields = {'slug': ('name',)}

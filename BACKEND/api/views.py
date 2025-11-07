@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 import requests
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
@@ -41,6 +41,7 @@ from .models import (
     AvailabilityBlock,
     TermsOfService,
     MagicLink,
+    EmailTemplate,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -77,6 +78,8 @@ from .serializers import (
     SessionConfirmedDiscordEmailSerializer,
     SessionConfirmedGoogleMeetEmailSerializer,
     SessionNewReservationEmailSerializer,
+    EmailTemplateSerializer,
+    TestEmailSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -1217,8 +1220,122 @@ class NotificationViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+@extend_schema(tags=['Email Templates'])
+class EmailTemplateViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing email templates (default and custom)."""
+    serializer_class = EmailTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return default templates and templates owned by the current user."""
+        user = self.request.user
+        return EmailTemplate.objects.filter(
+            Q(is_default=True) | Q(owner=user)
+        )
+    
+    def perform_create(self, serializer):
+        """Save custom template with the current user as owner."""
+        serializer.save(owner=self.request.user, is_default=False)
+    
+    def perform_update(self, serializer):
+        """Only allow updating custom templates (owned by user)."""
+        if serializer.instance.is_default:
+            # If editing a default template, create a new custom template
+            serializer.save(
+                owner=self.request.user,
+                is_default=False,
+                pk=None,  # Force creation of new instance
+                slug=f"{serializer.instance.slug}-custom-{self.request.user.id}"
+            )
+        else:
+            serializer.save()
+    
+    def perform_destroy(self, instance):
+        """Only allow deleting custom templates."""
+        if instance.is_default:
+            raise PermissionDenied("Cannot delete default templates")
+        if instance.owner != self.request.user:
+            raise PermissionDenied("Can only delete your own templates")
+        instance.delete()
+
+
+@extend_schema(tags=['Email Templates'])
+class SendTestEmailView(APIView):
+    """Send a test email using a template."""
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(
+        summary="Send test email",
+        description="Send a test email using a specific template with test data",
+        request=TestEmailSerializer,
+        responses={
+            202: OpenApiResponse(description='Test email queued successfully'),
+            400: OpenApiResponse(description='Validation error'),
+            404: OpenApiResponse(description='Template not found'),
+        },
+    )
+    def post(self, request):
+        from .models import EmailTemplate
+        from .tasks import send_custom_email_task_async
+        from .serializers import TestEmailSerializer
+        
+        serializer = TestEmailSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+        template_id = data['template_id']
+        from_email = data['from_email']
+        to_email = data['to_email']
+        language = data.get('language', 'pl')
+        test_data = data.get('test_data', {})
+        
+        # Get template
+        try:
+            template = EmailTemplate.objects.get(
+                Q(id=template_id) &
+                (Q(is_default=True) | Q(owner=request.user))
+            )
+        except EmailTemplate.DoesNotExist:
+            return Response(
+                {'detail': 'Template not found or you do not have permission to use it'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get subject and content based on language
+        subject = template.subject_pl if language == 'pl' else template.subject_en
+        content = template.content_pl if language == 'pl' else template.content_en
+        
+        # Replace template variables with test data
+        try:
+            for key, value in test_data.items():
+                placeholder = f'{{{{{key}}}}}'
+                subject = subject.replace(placeholder, str(value))
+                content = content.replace(placeholder, str(value))
+        except Exception as e:
+            logger.warning(f"Error replacing template variables: {e}")
+        
+        # Queue email for sending
+        send_custom_email_task_async.delay(
+            recipient_list=[to_email],
+            subject=f"[TEST] {subject}",
+            html_content=content,
+        )
+        
+        return Response(
+            {
+                'status': 'success',
+                'detail': f'Test email queued for delivery to {to_email}',
+                'template': template.name,
+                'language': language
+            },
+            status=status.HTTP_202_ACCEPTED
+        )
+
+
 @extend_schema(tags=['Messaging'])
 class SendEmailView(APIView):
+
     """Queue a custom email for delivery, optionally including an attachment."""
 
     permission_classes = [IsAuthenticated]

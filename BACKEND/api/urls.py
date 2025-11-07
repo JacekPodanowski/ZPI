@@ -33,6 +33,8 @@ from .views import (
     CreateTermsView,
     AdminUsersListView,
     AdminSitesListView,
+    EmailTemplateViewSet,
+    SendTestEmailView,
 )
 
 
@@ -46,6 +48,7 @@ router.register(r'templates', TemplateViewSet, basename='template')
 router.register(r'custom-components', CustomReactComponentViewSet, basename='customcomponent')
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='availabilityblock')
+router.register(r'email-templates', EmailTemplateViewSet, basename='emailtemplate')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -60,6 +63,7 @@ urlpatterns = [
     path('sites/<int:site_id>/publish/', publish_site, name='publish-site'),
     path('upload/', FileUploadView.as_view(), name='file-upload'),
     path('send-custom-email/', SendEmailView.as_view(), name='send-custom-email'),
+    path('emails/test/', SendTestEmailView.as_view(), name='send-test-email'),
     path('emails/admin-session-cancellation/', AdminSessionCancellationEmailView.as_view(), name='email-admin-session-cancellation'),
     path('emails/admin-session-new-reservation/', AdminSessionNewReservationEmailView.as_view(), name='email-admin-session-new-reservation'),
     path('emails/session-canceled-by-admin/', SessionCanceledByAdminEmailView.as_view(), name='email-session-canceled-by-admin'),

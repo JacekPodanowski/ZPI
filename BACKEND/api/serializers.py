@@ -17,6 +17,7 @@ from .models import (
     Notification,
     AvailabilityBlock,
     TermsOfService,
+    EmailTemplate,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -262,7 +263,49 @@ class AvailabilityBlockSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class EmailTemplateSerializer(serializers.ModelSerializer):
+    """Serializer for EmailTemplate model supporting CRUD operations."""
+    is_custom = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = EmailTemplate
+        fields = [
+            'id', 'name', 'slug', 'category', 'subject_pl', 'subject_en',
+            'content_pl', 'content_en', 'is_default', 'is_custom', 'owner',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'is_default', 'created_at', 'updated_at', 'owner']
+    
+    def get_is_custom(self, obj):
+        """Mark templates as custom if they belong to a user."""
+        return not obj.is_default
+    
+    def create(self, validated_data):
+        """Automatically set the owner to the current user for custom templates."""
+        validated_data['owner'] = self.context['request'].user
+        validated_data['is_default'] = False
+        return super().create(validated_data)
+
+
+class TestEmailSerializer(serializers.Serializer):
+    """Serializer for sending test emails using a template."""
+    template_id = serializers.IntegerField(required=True, help_text='ID of the email template to use')
+    from_email = serializers.EmailField(required=True, help_text='Sender email address')
+    to_email = serializers.EmailField(required=True, help_text='Recipient email address')
+    language = serializers.ChoiceField(
+        choices=[('pl', 'Polish'), ('en', 'English')],
+        default='pl',
+        help_text='Language version to send (pl or en)'
+    )
+    test_data = serializers.JSONField(
+        required=False,
+        default=dict,
+        help_text='Optional test data for template variables (e.g., {"client_name": "Jan Kowalski"})'
+    )
+
+
 class SendEmailSerializer(serializers.Serializer):
+
     """Validate payload for sending custom emails with an optional attachment."""
 
     recipient = serializers.EmailField(required=True)

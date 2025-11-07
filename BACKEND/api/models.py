@@ -389,3 +389,45 @@ class MagicLink(models.Model):
         """Delete expired magic links."""
         cutoff = timezone.now()
         cls.objects.filter(expires_at__lt=cutoff).delete()
+
+
+class EmailTemplate(models.Model):
+    """Email template model supporting both default and custom user templates."""
+    
+    class Category(models.TextChoices):
+        BOOKING_CONFIRMATION = 'booking_confirmation', 'Booking Confirmation'
+        BOOKING_CANCELLATION = 'booking_cancellation', 'Booking Cancellation'
+        ACCOUNT_REGISTRATION = 'account_registration', 'Account Registration'
+        SITE_STATUS = 'site_status', 'Site Status'
+        PLAN_CHANGE = 'plan_change', 'Plan Change'
+        SUBSCRIPTION_REMINDER = 'subscription_reminder', 'Subscription Reminder'
+    
+    name = models.CharField(max_length=255, help_text='Template name for display')
+    slug = models.SlugField(max_length=255, unique=True, help_text='Unique identifier for the template')
+    category = models.CharField(max_length=50, choices=Category.choices, help_text='Template category')
+    subject_pl = models.CharField(max_length=255, help_text='Email subject in Polish')
+    subject_en = models.CharField(max_length=255, help_text='Email subject in English')
+    content_pl = models.TextField(help_text='HTML email content in Polish')
+    content_en = models.TextField(help_text='HTML email content in English')
+    is_default = models.BooleanField(default=False, help_text='Is this a default system template?')
+    owner = models.ForeignKey(
+        PlatformUser, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='email_templates',
+        help_text='Owner of custom template (null for default templates)'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['category', '-is_default', 'name']
+        indexes = [
+            models.Index(fields=['owner', 'category']),
+            models.Index(fields=['slug']),
+        ]
+    
+    def __str__(self):
+        prefix = '[DEFAULT]' if self.is_default else '[CUSTOM]'
+        return f'{prefix} {self.name} ({self.get_category_display()})'
