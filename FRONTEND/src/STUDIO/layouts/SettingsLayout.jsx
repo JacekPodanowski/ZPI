@@ -17,8 +17,17 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
 import useTheme from '../../theme/useTheme';
 import Navigation from '../../components/Navigation/Navigation';
+
+const devNavigation = [
+  {
+    label: 'Toast',
+    path: '/studio/account/toast',
+    icon: <BugReportOutlinedIcon />
+  }
+];
 
 const notificationsNavigation = [
   {
@@ -147,6 +156,24 @@ const SettingsLayout = () => {
               top: 100
             }}
           >
+            <Typography
+              variant="overline"
+              sx={{
+                px: 2,
+                py: 1,
+                color: subduedText,
+                fontWeight: 600,
+                letterSpacing: '0.5px'
+              }}
+            >
+              Dev
+            </Typography>
+            <List disablePadding sx={{ mt: 1 }}>
+              {renderNavItems(devNavigation)}
+            </List>
+
+            <Divider sx={{ my: 2 }} />
+
             <Typography
               variant="overline"
               sx={{

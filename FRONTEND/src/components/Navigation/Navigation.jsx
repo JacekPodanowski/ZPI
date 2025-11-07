@@ -97,11 +97,6 @@ const Navigation = () => {
             );
         }
 
-        const dev = [
-            { label: 'Publiczny kalendarz', to: '/studio/calendar/public' },
-            { label: 'Toasty', to: '/studio/lab/toast' }
-        ];
-
         // Admin-specific navigation items
         const admin = [];
         if (isAdminPage && user?.is_staff) {
@@ -113,8 +108,8 @@ const Navigation = () => {
 
         return {
             primary,
-            dev: dev.filter((item) => !item.requiresAuth || isAuthenticated),
-            admin
+            admin,
+            dev: [] // Keep for compatibility, but always empty
         };
     }, [isAuthenticated, user, isAdminPage]);
 
@@ -142,27 +137,6 @@ const Navigation = () => {
                     </ListItem>
                 ))}
             </List>
-            <Divider sx={{ my: 2 }} />
-            {navGroups.dev.length > 0 && (
-                <List
-                    subheader={(
-                        <ListSubheader component="div" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
-                            <Chip label="DEV" color="secondary" size="small" />
-                            <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: 2 }}>
-                                Podglądy kalendarza
-                            </Typography>
-                        </ListSubheader>
-                    )}
-                >
-                    {navGroups.dev.map((item) => (
-                        <ListItem key={item.label} disablePadding>
-                            <ListItemButton component={RouterLink} to={item.to} sx={{ textAlign: 'center' }}>
-                                <ListItemText primary={item.label} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-            )}
             <Divider sx={{ my: 2 }} />
             {isAuthenticated ? (
                 <Box sx={{ px: 2, pb: 3, textAlign: 'left' }}>
@@ -331,28 +305,6 @@ const Navigation = () => {
                             ))
                         )}
                     </Box>
-
-                    {navGroups.dev.length > 0 && (
-                        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                            <Chip label="DEV" color="secondary" size="small" sx={{ fontWeight: 600 }} />
-                            {navGroups.dev.map((item) => (
-                                <Button
-                                    key={item.label}
-                                    component={NavLink}
-                                    to={item.to}
-                                    sx={{
-                                        color: 'text.secondary',
-                                        '&.active': {
-                                            color: 'primary.main',
-                                            backgroundColor: 'rgba(160, 0, 22, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {item.label}
-                                </Button>
-                            ))}
-                        </Box>
-                    )}
 
                     <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
                         {/* Admin link button (only for staff users, only on non-admin pages) */}
