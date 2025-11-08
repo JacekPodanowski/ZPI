@@ -7,12 +7,12 @@ const GridBlog = ({ content, vibe, theme }) => {
   const { title, subtitle, posts = [], bgColor, textColor } = content;
 
   return (
-    <section className={`${vibe.spacing} px-4`} style={{ backgroundColor: bgColor || theme.background }}>
+    <section className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || theme.background }}>
       <div className="max-w-6xl mx-auto space-y-8">
         {(title || subtitle) && (
           <div className="text-center space-y-2">
             {title && (
-              <h2 className={`${vibe.headingSize} font-semibold`} style={{ color: textColor || theme.text }}>
+              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || theme.text }}>
                 {title}
               </h2>
             )}
@@ -24,7 +24,7 @@ const GridBlog = ({ content, vibe, theme }) => {
           </div>
         )}
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {posts.map((post) => {
             const resolvedImage = resolveMediaUrl(post.image);
             const hasValidImage = resolvedImage && resolvedImage.trim() !== '';

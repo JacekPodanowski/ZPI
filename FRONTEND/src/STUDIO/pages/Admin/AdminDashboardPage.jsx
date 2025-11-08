@@ -174,8 +174,9 @@ const AdminDashboardPage = () => {
 					<CardContent sx={{ p: 0 }}>
 						{/* Users Table */}
 						{activeTab === 0 && (
-							<TableContainer>
-								<Table>
+							<Box sx={{ overflowX: 'auto', width: '100%' }}>
+								<TableContainer>
+									<Table>
 									<TableHead>
 										<TableRow>
 											<TableCell><strong>ID</strong></TableCell>
@@ -227,11 +228,13 @@ const AdminDashboardPage = () => {
 									</TableBody>
 								</Table>
 							</TableContainer>
+							</Box>
 						)}
 
 						{/* Sites Table */}
 						{activeTab === 1 && (
-							<TableContainer>
+							<Box sx={{ overflowX: 'auto', width: '100%' }}>
+								<TableContainer>
 								<Table>
 									<TableHead>
 										<TableRow>
@@ -291,6 +294,7 @@ const AdminDashboardPage = () => {
 									</TableBody>
 								</Table>
 							</TableContainer>
+							</Box>
 						)}
 					</CardContent>
 				</Card>

@@ -6,7 +6,7 @@ const CenteredHero = ({ content, vibe, theme }) => {
 
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} text-center relative overflow-hidden py-24 md:py-32`}
+      className={`${vibe.spacing} ${vibe.rounded} text-center relative overflow-hidden py-16 px-4 md:py-24 md:px-6 lg:py-32`}
       style={{ 
         backgroundColor: content.bgColor || theme.background
       }}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase } from '@mui/material';
-import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search } from '@mui/icons-material';
+import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase, Drawer, useMediaQuery, useTheme as useMuiTheme } from '@mui/material';
+import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search, Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
@@ -26,30 +26,40 @@ const StructureMode = () => {
   
   const theme = useTheme();
   const editorColors = getEditorColorTokens(theme);
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+
   const toggleButtonStyles = {
+    bgcolor: editorColors.controls.groupBg,
+    borderRadius: '12px',
+    p: 0.5,
+    display: 'inline-flex',
+    gap: 0.5,
     '& .MuiToggleButton-root': {
-      px: 2,
-      py: 0.75,
-      fontSize: '12px',
-      fontWeight: 500,
       textTransform: 'none',
-      border: `1px solid ${editorColors.borders.subtle}`,
-      bgcolor: editorColors.surfaces.base,
-      color: editorColors.text.primary,
-      '&.Mui-selected': {
-        bgcolor: editorColors.interactive.main,
-        color: editorColors.text.inverse,
-        '&:hover': {
-          bgcolor: editorColors.interactive.hover
-        }
-      },
-      '&:hover': {
-        bgcolor: editorColors.surfaces.hover
-      }
+      fontSize: '13px',
+      fontWeight: 500,
+      border: 'none',
+      borderRadius: '8px !important',
+      color: editorColors.controls.iconInactive,
+      px: 1.25,
+      py: 0.75,
+      transition: 'all 0.2s ease'
+    },
+    '& .MuiToggleButton-root:hover': {
+      bgcolor: editorColors.controls.groupHoverBg
+    },
+    '& .MuiToggleButton-root.Mui-selected': {
+      color: editorColors.controls.iconActive,
+      bgcolor: editorColors.interactive.subtle
+    },
+    '& .MuiToggleButton-root.Mui-selected:hover': {
+      bgcolor: editorColors.interactive.subtle
     }
   };
   
   const [showModuleToolbar, setShowModuleToolbar] = useState(true);
+  const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
   const [renderMode, setRenderMode] = useState('icon'); // 'icon' | 'real'
   const [dropHandled, setDropHandled] = useState(false);
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
@@ -326,10 +336,79 @@ const StructureMode = () => {
         bgcolor: editorColors.backgrounds.page
       }}
     >
+      {/* Mobile Module Toolbar Toggle */}
+      {isMobile && (
+        <IconButton
+          onClick={() => setMobileToolbarOpen(true)}
+          sx={{
+            position: 'fixed',
+            top: 80,
+            left: 16,
+            zIndex: 1200,
+            bgcolor: 'white',
+            boxShadow: 3,
+            '&:hover': { bgcolor: 'grey.100' }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
+
+      {/* Desktop Module Toolbar Toggle - Show when toolbar is hidden */}
+      {!isMobile && !showModuleToolbar && (
+        <IconButton
+          onClick={() => setShowModuleToolbar(true)}
+          sx={{
+            position: 'fixed',
+            top: 80,
+            left: 16,
+            zIndex: 1200,
+            bgcolor: 'white',
+            boxShadow: 3,
+            '&:hover': { bgcolor: 'grey.100' },
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
+
       {/* Module Toolbar */}
       <AnimatePresence>
-        {showModuleToolbar && <ModuleToolbar isDraggingModule={isDraggingModule} />}
+        {!isMobile && showModuleToolbar && (
+          <ModuleToolbar 
+            isDraggingModule={isDraggingModule} 
+            onClose={() => setShowModuleToolbar(false)}
+          />
+        )}
       </AnimatePresence>
+
+      {/* Mobile Module Toolbar Drawer */}
+      {isMobile && (
+        <Drawer
+          anchor="left"
+          open={mobileToolbarOpen}
+          onClose={() => setMobileToolbarOpen(false)}
+          PaperProps={{
+            sx: {
+              width: '280px',
+              mt: '60px',
+              height: 'calc(100% - 60px)'
+            }
+          }}
+        >
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
+              <IconButton onClick={() => setMobileToolbarOpen(false)}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
+            <Box sx={{ flex: 1, overflow: 'auto' }}>
+              <ModuleToolbar isDraggingModule={isDraggingModule} />
+            </Box>
+          </Box>
+        </Drawer>
+      )}
 
       {/* EDITOR CANVAS - The Whole Background */}
       <Box
@@ -379,7 +458,7 @@ const StructureMode = () => {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          pl: showModuleToolbar ? '180px' : 0,
+          pl: !isMobile && showModuleToolbar ? '180px' : 0,
           transition: 'padding-left 0.4s ease',
           overflow: 'auto'
         }}
@@ -388,7 +467,7 @@ const StructureMode = () => {
         <Box
           sx={{
             width: '100%',
-            px: 4,
+            px: { xs: 2, sm: 3, md: 4 },
             pt: 1.5,
             mb: 2,
             pointerEvents: 'all',
@@ -607,10 +686,27 @@ const StructureMode = () => {
                 width: '100%',
                 display: 'flex',
                 flexWrap: 'nowrap', // Don't wrap to prevent third row
-                justifyContent: 'center',
+                justifyContent: 'flex-start', // Align to left for scrolling
                 gap: 2,
                 pointerEvents: 'all',
-                overflow: 'hidden' // Hide overflow if too many pages
+                overflow: 'auto', // Enable horizontal scroll
+                overflowY: 'hidden', // Prevent vertical scroll
+                px: 2, // Add padding for scroll area
+                pb: 2, // Add bottom padding for scrollbar
+                '&::-webkit-scrollbar': {
+                  height: '8px'
+                },
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                  borderRadius: '4px'
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: 'rgba(146, 0, 32, 0.3)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(146, 0, 32, 0.5)'
+                  }
+                }
               }}
             >
               {otherPages.map((page, relativeIndex) => {

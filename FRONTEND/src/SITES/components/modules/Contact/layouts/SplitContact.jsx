@@ -2,7 +2,7 @@
 const SplitContact = ({ content, vibe, theme }) => {
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded}`}
+      className={`${vibe.spacing} ${vibe.rounded} py-12 px-4 md:py-20 md:px-6`}
       style={{ backgroundColor: theme.background }}
     >
       <div className="max-w-6xl mx-auto">
@@ -22,11 +22,11 @@ const SplitContact = ({ content, vibe, theme }) => {
           </p>
         )}
         
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12 mt-10 md:mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mt-10 md:mt-12">
           {/* Contact Info Side */}
           <div className="space-y-6 md:space-y-8">
             <h3 
-              className="text-2xl md:text-3xl font-semibold mb-6"
+              className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6"
               style={{ color: theme.primary }}
             >
               Contact Information

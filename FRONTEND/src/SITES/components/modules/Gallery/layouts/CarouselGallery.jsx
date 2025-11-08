@@ -23,11 +23,11 @@ const CarouselGallery = ({ content, vibe, theme }) => {
   };
 
   return (
-    <div className={`${vibe.spacing} px-4`} style={{ backgroundColor: theme.background }}>
+    <div className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: theme.background }}>
       <div className="max-w-6xl mx-auto relative">
         <div 
           ref={scrollContainerRef}
-          className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+          className="flex gap-3 md:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
           style={{ scrollBehavior: 'smooth' }}
         >
           {images.map((item, idx) => {
@@ -38,7 +38,7 @@ const CarouselGallery = ({ content, vibe, theme }) => {
               <motion.div
                 key={idx}
                 whileHover={{ scale: 1.05 }}
-                className={`flex-shrink-0 w-80 ${vibe.rounded} overflow-hidden ${vibe.shadows} cursor-pointer snap-center bg-white`}
+                className={`flex-shrink-0 w-72 sm:w-80 ${vibe.rounded} overflow-hidden ${vibe.shadows} cursor-pointer snap-center bg-white`}
               >
                 {renderMedia(imgUrlRaw, caption || `Carousel ${idx + 1}`, 'w-full h-64 object-cover')}
                 {caption && (

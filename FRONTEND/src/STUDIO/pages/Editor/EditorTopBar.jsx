@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, IconButton, Stack, Typography, Tooltip, TextField } from '@mui/material';
-import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema } from '@mui/icons-material';
+import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, useTheme as useMuiTheme, Menu, MenuItem } from '@mui/material';
+import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import { renameSite, updateSiteTemplate } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
@@ -26,34 +26,34 @@ const EditorTopBar = () => {
   // Get theme context for dark/light mode
   const { mode, toggleMode } = useThemeContext();
   const theme = useTheme();
-  const editorColors = getEditorColorTokens(theme);
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+
+  // Extract editor color tokens
+  const colors = getEditorColorTokens(theme);
   const {
-    surfaces,
-    borders,
-    text,
-    interactive,
-    controls
-  } = editorColors;
-  const textPrimary = text.primary;
-  const textMuted = text.muted;
-  const textHint = text.hint;
-  const dividerColor = borders.subtle;
-  const topBarBg = surfaces.overlay;
-  const baseSurface = surfaces.base;
-  const hoverSurface = surfaces.hover;
-  const selectedToggleBg = surfaces.elevated;
-  const inactiveSaveBg = surfaces.muted;
-  const interactiveMain = interactive.main;
-  const interactiveHover = interactive.hover;
-  const inverseText = text.inverse;
-  const toggleGroupBg = controls.groupBg;
-  const toggleHoverBg = controls.groupHoverBg;
-  const accentMain = interactive.main;
-  const accentHover = interactive.hover;
+    topBarBg,
+    dividerColor,
+    baseSurface,
+    textPrimary,
+    hoverSurface,
+    selectedToggleBg,
+    interactiveMain,
+    interactiveHover,
+    inverseText,
+    textMuted,
+    textHint,
+    toggleGroupBg,
+    toggleHoverBg,
+    inactiveSaveBg,
+    accentMain,
+    accentHover
+  } = colors;
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(siteName);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState(null);
   const fileInputRef = useRef(null);
 
   const selectedPage = getSelectedPage();
@@ -285,8 +285,8 @@ const EditorTopBar = () => {
         borderBottom: `1px solid ${dividerColor}`,
         display: 'flex',
         alignItems: 'center',
-        pr: 2,
-        gap: 2,
+        pr: { xs: 1, md: 2 },
+        gap: { xs: 0.5, md: 2 },
         zIndex: 100
       }}
     >
@@ -300,14 +300,14 @@ const EditorTopBar = () => {
       />
 
       {/* Left Section */}
-      <Stack direction="row" spacing={1} alignItems="center" flex={1}>
+      <Stack direction="row" spacing={{ xs: 0.5, md: 1 }} alignItems="center" flex={1}>
         {/* Go Back Button - changes based on mode */}
         <Tooltip title={editorMode === 'detail' ? 'Back to Structure' : 'Back to Dashboard'}>
           <IconButton
             onClick={editorMode === 'detail' ? exitDetailMode : handleGoBack}
             sx={{
               height: '56px',
-              width: editorMode === 'detail' ? '72px' : '48px',
+              width: { xs: '48px', md: editorMode === 'detail' ? '72px' : '48px' },
               borderRadius: 0,
               bgcolor: baseSurface,
               color: textPrimary,
@@ -321,7 +321,7 @@ const EditorTopBar = () => {
             }}
           >
             <ArrowBack />
-            {editorMode === 'detail' && <Schema sx={{ fontSize: 20 }} />}
+            {editorMode === 'detail' && !isMobile && <Schema sx={{ fontSize: 20 }} />}
           </IconButton>
         </Tooltip>
 
@@ -333,11 +333,13 @@ const EditorTopBar = () => {
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              px: 1.5,
+              px: { xs: 1, md: 1.5 },
               py: 0.75,
               borderRadius: '8px',
               cursor: editorMode === 'structure' ? 'pointer' : 'default',
               transition: 'all 0.2s ease',
+              maxWidth: { xs: '120px', sm: '200px', md: '100%' },
+              overflow: 'hidden',
               ...(editorMode === 'structure' && {
                 '&:hover': {
                   bgcolor: hoverSurface,
@@ -352,12 +354,12 @@ const EditorTopBar = () => {
               variant="h6"
               sx={{
                 fontWeight: 600,
-                color: textPrimary,
+                color: 'rgb(30, 30, 30)',
                 fontSize: '16px'
               }}
             >
               {editorMode === 'detail' 
-                ? `${selectedPage?.name || 'Untitled'} Page`
+                ? `${selectedPage?.name || 'Untitled'}${isMobile ? '' : ' Page'}`
                 : (isSavingTitle ? 'Saving...' : siteName)
               }
             </Typography>
@@ -451,192 +453,265 @@ const EditorTopBar = () => {
       </Stack>
 
       {/* Right Section */}
-      <Stack direction="row" spacing={1} alignItems="center" flex={1} justifyContent="flex-end">
-        {/* Undo/Redo */}
-        <Tooltip title="Undo">
-          <IconButton 
-            size="small"
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <Undo fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        
-        <Tooltip title="Redo">
-          <IconButton 
-            size="small"
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <Redo fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      <Stack direction="row" spacing={{ xs: 0.5, md: 1 }} alignItems="center" flex={1} justifyContent="flex-end">
+        {/* Undo/Redo - Hidden on mobile */}
+        {!isMobile && (
+          <>
+            <Tooltip title="Undo">
+              <IconButton 
+                size="small"
+                sx={{ 
+                  color: 'rgb(30, 30, 30)',
+                  '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+                }}
+              >
+                <Undo fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="Redo">
+              <IconButton 
+                size="small"
+                sx={{ 
+                  color: 'rgb(30, 30, 30)',
+                  '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+                }}
+              >
+                <Redo fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
-
-        {/* Dark/Light Mode Toggle */}
-        <Tooltip title={mode === 'dark' ? "Light Mode" : "Dark Mode"}>
-          <IconButton 
-            size="small"
-            onClick={toggleMode}
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
-
-        {/* Download Config */}
-        <Tooltip title="Download Config">
-          <IconButton 
-            size="small"
-            onClick={handleDownload}
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <FileDownload fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Import Config */}
-        <Tooltip title="Import Config">
-          <IconButton 
-            size="small"
-            onClick={handleImport}
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <FileUpload fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
-
-        {/* Device Toggle */}
-        <Stack 
-          direction="row" 
-          spacing={0}
-          sx={{
-            bgcolor: toggleGroupBg,
-            borderRadius: '8px',
-            p: 0.5
-          }}
-        >
-          <Tooltip title="Desktop View">
-            <IconButton
-              size="small"
-              onClick={() => setDevicePreview('desktop')}
+            {/* Separator */}
+            <Box
               sx={{
-                color: devicePreview === 'desktop' ? interactiveMain : textHint,
-                bgcolor: devicePreview === 'desktop' ? selectedToggleBg : 'transparent',
-                '&:hover': { 
-                  bgcolor: devicePreview === 'desktop' ? selectedToggleBg : toggleHoverBg 
-                },
-                transition: 'all 0.2s ease'
+                width: '1px',
+                height: '24px',
+                bgcolor: 'rgba(30, 30, 30, 0.1)',
+                mx: 0.5
+              }}
+            />
+          </>
+        )}
+
+        {/* Dark/Light Mode Toggle - Hidden on mobile */}
+        {!isMobile && (
+          <>
+            <Tooltip title={mode === 'dark' ? "Light Mode" : "Dark Mode"}>
+              <IconButton 
+                size="small"
+                onClick={toggleMode}
+                sx={{ 
+                  color: textPrimary,
+                  '&:hover': { bgcolor: hoverSurface }
+                }}
+              >
+                {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+
+            {/* Separator */}
+            <Box
+              sx={{
+                width: '1px',
+                height: '24px',
+                bgcolor: 'rgba(30, 30, 30, 0.1)',
+                mx: 0.5
+              }}
+            />
+          </>
+        )}
+
+        {/* Download/Upload Config - Hidden on mobile */}
+        {!isMobile && (
+          <>
+            <Tooltip title="Download Config">
+              <IconButton 
+                size="small"
+                onClick={handleDownload}
+                sx={{ 
+                  color: 'rgb(30, 30, 30)',
+                  '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+                }}
+              >
+                <FileDownload fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Import Config">
+              <IconButton 
+                size="small"
+                onClick={handleImport}
+                sx={{ 
+                  color: 'rgb(30, 30, 30)',
+                  '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+                }}
+              >
+                <FileUpload fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            {/* Separator */}
+            <Box
+              sx={{
+                width: '1px',
+                height: '24px',
+                bgcolor: 'rgba(30, 30, 30, 0.1)',
+                mx: 0.5
+              }}
+            />
+          </>
+        )}
+
+        {/* Device Toggle - Hidden on mobile */}
+        {!isMobile && (
+          <Stack 
+            direction="row" 
+            spacing={0}
+            sx={{
+              bgcolor: toggleGroupBg,
+              borderRadius: '8px',
+              p: 0.5
+            }}
+          >
+            <Tooltip title="Desktop View">
+              <IconButton
+                size="small"
+                onClick={() => setDevicePreview('desktop')}
+                sx={{
+                  color: devicePreview === 'desktop' ? interactiveMain : textHint,
+                  bgcolor: devicePreview === 'desktop' ? selectedToggleBg : 'transparent',
+                  '&:hover': { 
+                    bgcolor: devicePreview === 'desktop' ? selectedToggleBg : toggleHoverBg 
+                  },
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Monitor fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Mobile View">
+              <IconButton
+                size="small"
+                onClick={() => setDevicePreview('mobile')}
+                sx={{
+                  color: devicePreview === 'mobile' ? interactiveMain : textHint,
+                  bgcolor: devicePreview === 'mobile' ? selectedToggleBg : 'transparent',
+                  '&:hover': { 
+                    bgcolor: devicePreview === 'mobile' ? selectedToggleBg : toggleHoverBg 
+                  },
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Smartphone fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )}
+
+        {/* Separator - Hidden on mobile */}
+        {!isMobile && (
+          <Box
+            sx={{
+              width: '1px',
+              height: '24px',
+              bgcolor: dividerColor,
+              mx: 0.5
+            }}
+          />
+        )}
+
+        {/* Mobile overflow menu */}
+        {isMobile && (
+          <>
+            <Tooltip title="More options">
+              <IconButton
+                size="small"
+                onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
+                sx={{
+                  color: textPrimary,
+                  '&:hover': { bgcolor: hoverSurface }
+                }}
+              >
+                <MoreVert fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={moreMenuAnchor}
+              open={Boolean(moreMenuAnchor)}
+              onClose={() => setMoreMenuAnchor(null)}
+              PaperProps={{
+                sx: {
+                  mt: 1,
+                  minWidth: 200,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                  borderRadius: '12px'
+                }
               }}
             >
-              <Monitor fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Mobile View">
-            <IconButton
-              size="small"
-              onClick={() => setDevicePreview('mobile')}
-              sx={{
-                color: devicePreview === 'mobile' ? interactiveMain : textHint,
-                bgcolor: devicePreview === 'mobile' ? selectedToggleBg : 'transparent',
-                '&:hover': { 
-                  bgcolor: devicePreview === 'mobile' ? selectedToggleBg : toggleHoverBg 
-                },
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Smartphone fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
+              <MenuItem onClick={() => { toggleMode(); setMoreMenuAnchor(null); }}>
+                {mode === 'dark' ? <LightMode sx={{ mr: 2, fontSize: 20 }} /> : <DarkMode sx={{ mr: 2, fontSize: 20 }} />}
+                {mode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              </MenuItem>
+              <MenuItem onClick={() => { setDevicePreview('desktop'); setMoreMenuAnchor(null); }}>
+                <Monitor sx={{ mr: 2, fontSize: 20 }} />
+                Desktop View
+              </MenuItem>
+              <MenuItem onClick={() => { setDevicePreview('mobile'); setMoreMenuAnchor(null); }}>
+                <Smartphone sx={{ mr: 2, fontSize: 20 }} />
+                Mobile View
+              </MenuItem>
+              <MenuItem onClick={() => { handleDownload(); setMoreMenuAnchor(null); }}>
+                <FileDownload sx={{ mr: 2, fontSize: 20 }} />
+                Download Config
+              </MenuItem>
+              <MenuItem onClick={() => { handleImport(); setMoreMenuAnchor(null); }}>
+                <FileUpload sx={{ mr: 2, fontSize: 20 }} />
+                Import Config
+              </MenuItem>
+            </Menu>
+          </>
+        )}
 
         {/* Save Button */}
-        <Box
-          onClick={handleSave}
-          sx={{
-            px: 2,
-            py: 1,
-            borderRadius: '6px',
-            bgcolor: hasUnsavedChanges ? interactiveMain : inactiveSaveBg,
-            color: hasUnsavedChanges ? inverseText : textHint,
-            cursor: hasUnsavedChanges ? 'pointer' : 'default',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            fontWeight: 500,
-            fontSize: '14px',
-            '&:hover': hasUnsavedChanges ? {
-              bgcolor: interactiveHover,
-              transform: 'translateY(-1px)',
-              boxShadow: '0 4px 12px rgba(146, 0, 32, 0.28)'
-            } : {}
-          }}
-        >
-          <Save sx={{ fontSize: 18 }} />
-          Save
-        </Box>
+        <Tooltip title={hasUnsavedChanges ? "Save Changes" : "No Changes"}>
+          <Box
+            onClick={handleSave}
+            sx={{
+              px: { xs: 1, sm: 1.5, md: 2 },
+              py: { xs: 0.75, md: 1 },
+              borderRadius: '6px',
+              bgcolor: hasUnsavedChanges ? interactiveMain : inactiveSaveBg,
+              color: hasUnsavedChanges ? inverseText : textHint,
+              cursor: hasUnsavedChanges ? 'pointer' : 'default',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: { xs: 0.5, md: 1 },
+              fontWeight: 500,
+              fontSize: { xs: '13px', md: '14px' },
+              minWidth: { xs: '40px', sm: 'auto' },
+              justifyContent: 'center',
+              '&:hover': hasUnsavedChanges ? {
+                bgcolor: interactiveHover,
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.28)'
+              } : {}
+            }}
+          >
+            <Save sx={{ fontSize: { xs: 16, md: 18 } }} />
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Save
+            </Box>
+          </Box>
+        </Tooltip>
 
         {/* Publish Button */}
         <Tooltip title="Publish Site">
           <Box
             onClick={handlePublish}
             sx={{
-              px: 2,
-              py: 1,
+              px: { xs: 1, sm: 1.5, md: 2 },
+              py: { xs: 0.75, md: 1 },
               borderRadius: '6px',
               bgcolor: accentMain,
               color: '#ffffff',
@@ -644,9 +719,11 @@ const EditorTopBar = () => {
               transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
+              gap: { xs: 0.5, md: 1 },
               fontWeight: 500,
-              fontSize: '14px',
+              fontSize: { xs: '13px', md: '14px' },
+              minWidth: { xs: '40px', sm: 'auto' },
+              justifyContent: 'center',
               '&:hover': {
                 bgcolor: accentHover,
                 transform: 'translateY(-1px)',
@@ -654,8 +731,10 @@ const EditorTopBar = () => {
               }
             }}
           >
-            <Publish sx={{ fontSize: 18 }} />
-            Publish
+            <Publish sx={{ fontSize: { xs: 16, md: 18 } }} />
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+              Publish
+            </Box>
           </Box>
         </Tooltip>
       </Stack>

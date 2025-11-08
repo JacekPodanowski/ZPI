@@ -47,7 +47,7 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
             ? '3px solid rgb(146, 0, 32)'
             : '2px solid rgba(146, 0, 32, 0.3)',
           '& .delete-button': {
-            opacity: 1
+            opacity: { xs: 1, md: 0.95 }
           }
         }
       }}
@@ -61,27 +61,35 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
       
       {/* Delete Button - appears when module is selected or on hover */}
       {isSelected && (
-        <Tooltip title="Delete Section">
+        <Tooltip title="Delete Section" placement="left">
           <IconButton
             className="delete-button"
             onClick={onDelete}
             sx={{
               position: 'absolute',
-              top: 8,
-              right: 8,
-              bgcolor: 'rgb(146, 0, 32)',
+              top: { xs: 8, md: 12 },
+              right: { xs: 8, md: 12 },
+              bgcolor: 'rgba(146, 0, 32, 0.95)',
               color: 'white',
-              opacity: 0,
-              transition: 'all 0.2s ease',
+              width: { xs: 36, md: 40 },
+              height: { xs: 36, md: 40 },
+              opacity: { xs: 0.9, md: 0 },
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              backdropFilter: 'blur(4px)',
               zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
               '&:hover': {
                 bgcolor: 'rgb(114, 0, 21)',
-                transform: 'scale(1.1)'
+                transform: 'scale(1.05)',
+                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.4)'
+              },
+              '&:active': {
+                transform: 'scale(0.95)'
               }
             }}
             size="small"
           >
-            <Delete fontSize="small" />
+            <Delete sx={{ fontSize: { xs: 18, md: 20 } }} />
           </IconButton>
         </Tooltip>
       )}

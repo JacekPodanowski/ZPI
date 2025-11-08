@@ -9,7 +9,7 @@ const SplitHero = ({ content, vibe, theme }) => {
   
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden py-24 md:py-32`}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden py-16 px-4 md:py-24 md:px-6 lg:py-32`}
       style={{
         backgroundColor: content.bgColor || theme.background
       }}
@@ -17,7 +17,7 @@ const SplitHero = ({ content, vibe, theme }) => {
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className={`
         max-w-7xl mx-auto 
-        grid md:grid-cols-2 gap-6 md:gap-8 
+        grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 
         items-center
         relative z-10
         ${imageOnLeft ? 'md:grid-flow-dense' : ''}

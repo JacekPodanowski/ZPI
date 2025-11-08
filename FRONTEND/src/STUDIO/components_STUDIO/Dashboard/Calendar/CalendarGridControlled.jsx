@@ -269,8 +269,9 @@ const CalendarGridControlled = ({
             <Box
                 sx={{
                     display: 'flex',
+                    flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on mobile
                     alignItems: 'center',
-                    gap: 2,
+                    gap: { xs: 1, md: 2 },
                     px: { xs: 1.5, md: 2 },
                     py: { xs: 1, md: 1.5 },
                     mb: 0,
@@ -291,12 +292,13 @@ const CalendarGridControlled = ({
 
                 <Box
                     sx={{
-                        flex: 1,
+                        flex: { xs: '0 0 100%', sm: '0 0 auto', lg: 1 }, // Full width on mobile, auto on tablet, flex on desktop
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'flex-start',
+                        justifyContent: { xs: 'flex-start', lg: 'flex-start' },
                         gap: 1,
-                        minHeight: 38
+                        minHeight: 38,
+                        order: { xs: 2, lg: 0 } // Move to second row on mobile
                     }}
                 >
                     <AnimatePresence mode="popLayout">
@@ -425,12 +427,15 @@ const CalendarGridControlled = ({
 
                 <Box
                     sx={{
-                        flex: 1,
+                        flex: { xs: '0 0 auto', lg: 1 },
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'flex-end',
-                        gap: 1.5,
-                        minHeight: 38
+                        justifyContent: { xs: 'flex-start', lg: 'flex-end' },
+                        gap: { xs: 1, md: 1.5 },
+                        minHeight: 38,
+                        order: { xs: 3, lg: 0 }, // Move to third row on mobile
+                        width: { xs: '100%', lg: 'auto' }, // Full width on mobile
+                        flexWrap: 'wrap' // Allow wrapping on very small screens
                     }}
                 >
                     {/* Now Button - Only visible when not on current month */}
@@ -507,10 +512,10 @@ const CalendarGridControlled = ({
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
-                    gap: { xs: 0.5, sm: 0.75 }, // Match calendar grid gap
-                    px: { xs: 0.5, sm: 1 }, // Match calendar grid padding
-                    pt: 0.75,
-                    pb: 1
+                    gap: { xs: 0.5, sm: 0.75, md: 1 }, // Match calendar grid gap
+                    px: { xs: 0.5, sm: 1, md: 1.5 }, // Match calendar grid padding
+                    pt: { xs: 0.5, sm: 0.75 },
+                    pb: { xs: 0.5, sm: 1 }
                 }}
             >
                 {['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nie'].map((day) => (
@@ -519,7 +524,7 @@ const CalendarGridControlled = ({
                         sx={{
                             textAlign: 'center',
                             fontWeight: 600,
-                            fontSize: { xs: '14px', sm: '16px' }, // Responsive font size
+                            fontSize: { xs: '12px', sm: '14px', md: '16px' }, // More responsive font size
                             color: 'text.secondary'
                         }}
                     >
@@ -547,13 +552,18 @@ const CalendarGridControlled = ({
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
-                    gridAutoRows: numberOfRows === 6 ? 'minmax(90px, 1fr)' : 'minmax(110px, 1fr)', // Scale down for 6 rows
-                    gap: { xs: 0.5, sm: 0.75 }, // Responsive gap
-                    px: { xs: 0.5, sm: 1 }, // Responsive padding
-                    pb: 1,
+                    gridAutoRows: { 
+                        xs: 'minmax(70px, 1fr)', // Mobile: smaller cells
+                        sm: 'minmax(85px, 1fr)', // Tablet: medium cells
+                        md: numberOfRows === 6 ? 'minmax(90px, 1fr)' : 'minmax(110px, 1fr)' // Desktop: full size
+                    },
+                    gap: { xs: 0.5, sm: 0.75, md: 1 }, // Responsive gap
+                    px: { xs: 0.5, sm: 1, md: 1.5 }, // Responsive padding
+                    pb: { xs: 0.5, sm: 1 },
                     flex: 1,
                     minHeight: 0,
-                    overflow: 'hidden'
+                    overflow: 'auto', // Allow scroll on mobile if needed
+                    overflowX: 'hidden' // Prevent horizontal scroll
                 }}
             >
                 {calendarDays.map((dayMoment) => {
@@ -713,6 +723,7 @@ const CalendarGridControlled = ({
                                     borderRadius: 2,
                                     p: isToday ? 0.75 : 0.85,
                                     height: '100%',
+                                    minHeight: { xs: '70px', sm: '85px' }, // Ensure minimum height on mobile
                                     display: 'flex',
                                     flexDirection: 'column',
                                     backgroundColor: isPast && !isCurrentMonth 
@@ -772,7 +783,7 @@ const CalendarGridControlled = ({
                                         variant="body2"
                                         sx={{
                                             fontWeight: isToday ? 700 : 600,
-                                            fontSize: '15px',
+                                            fontSize: { xs: '13px', sm: '14px', md: '15px' }, // Responsive font size
                                             color: isToday ? 'primary.main' : 'text.primary',
                                             flexShrink: 0,
                                             transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -785,7 +796,7 @@ const CalendarGridControlled = ({
                                             }),
                                             ...(isDayHovered && isClickable && {
                                                 color: 'primary.main',
-                                                fontSize: '16px', // Slightly bigger on hover
+                                                fontSize: { xs: '14px', sm: '15px', md: '16px' }, // Responsive hover size
                                             })
                                         }}
                                     >
@@ -796,8 +807,8 @@ const CalendarGridControlled = ({
                                     {hasAvailability && (
                                         <Box
                                             sx={{
-                                                width: 8,
-                                                height: 8,
+                                                width: { xs: 6, sm: 7, md: 8 }, // Responsive size
+                                                height: { xs: 6, sm: 7, md: 8 }, // Responsive size
                                                 borderRadius: '50%',
                                                 backgroundColor: 'rgba(76, 175, 80, 0.8)',
                                                 flexShrink: 0,
@@ -833,18 +844,77 @@ const CalendarGridControlled = ({
                                         />
                                     </Box>
                                 ) : (
-                                    // Smart scaling view for 1-7 events
-                                    <Box sx={{ 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        gap: eventCount <= 3 ? 0.5 : eventCount <= 5 ? 0.375 : 0.3,
-                                        flex: 1, 
-                                        overflow: 'visible', // Allow events to expand on hover
-                                        position: 'relative',
-                                        zIndex: 1,
-                                        // For 0-1 events, allow parent hover to work in empty areas
-                                        pointerEvents: eventCount <= 1 ? 'none' : 'auto'
-                                    }}>
+                                    <>
+                                        {/* Mobile: Simple badge for any events */}
+                                        <Box sx={{ 
+                                            display: { xs: eventCount > 0 ? 'flex' : 'none', md: 'none' }, // Show badge on mobile only if events exist
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flex: 1,
+                                            minHeight: '30px'
+                                        }}>
+                                            <Box
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDayClick?.(dayMoment.toDate());
+                                                }}
+                                                sx={{
+                                                    px: 1.5,
+                                                    py: 0.5,
+                                                    borderRadius: '12px',
+                                                    backgroundColor: 'rgba(146, 0, 32, 0.12)',
+                                                    border: '1.5px solid rgba(146, 0, 32, 0.3)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 0.5,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                                        borderColor: 'rgba(146, 0, 32, 0.5)',
+                                                        transform: 'scale(1.05)'
+                                                    }
+                                                }}
+                                            >
+                                                <Typography 
+                                                    sx={{ 
+                                                        fontSize: '11px', 
+                                                        fontWeight: 700,
+                                                        color: 'primary.main'
+                                                    }}
+                                                >
+                                                    {eventCount}
+                                                </Typography>
+                                                <Box
+                                                    sx={{
+                                                        width: 4,
+                                                        height: 4,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: 'primary.main'
+                                                    }}
+                                                />
+                                            </Box>
+                                        </Box>
+
+                                        {/* Mobile: Empty spacer for days without events to maintain uniform height */}
+                                        <Box sx={{ 
+                                            display: { xs: eventCount === 0 ? 'flex' : 'none', md: 'none' },
+                                            flex: 1,
+                                            minHeight: '30px' // Same as badge container
+                                        }} />
+
+                                        {/* Desktop: Smart scaling view for 1-7 events */}
+                                        <Box sx={{ 
+                                            display: { xs: 'none', md: 'flex' }, // Hide on mobile, show on desktop
+                                            flexDirection: 'column', 
+                                            gap: eventCount <= 3 ? 0.5 : eventCount <= 5 ? 0.375 : 0.3,
+                                            flex: 1, 
+                                            overflow: 'visible', // Allow events to expand on hover
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            // For 0-1 events, allow parent hover to work in empty areas
+                                            pointerEvents: eventCount <= 1 ? 'none' : 'auto'
+                                        }}>
                                         {dayEvents.map((event, index) => {
                                             const isHovered = hoveredEventId === event.id;
                                             // Only shrink events in the SAME day as the hovered event
@@ -890,7 +960,8 @@ const CalendarGridControlled = ({
                                                 </motion.div>
                                             );
                                         })}
-                                    </Box>
+                                        </Box>
+                                    </>
                                 )}
                             </Box>
                         </motion.div>

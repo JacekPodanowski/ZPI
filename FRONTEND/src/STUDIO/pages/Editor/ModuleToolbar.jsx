@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, Stack, Typography, IconButton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Delete } from '@mui/icons-material';
+import { Delete, Close } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
 
-const ModuleToolbar = ({ isDraggingModule = false }) => {
+const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
   const isDarkMode = theme.mode === 'dark';
@@ -26,7 +26,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
   const popupHeaderBg = isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)';
   const popupText = isDarkMode ? 'rgba(240, 240, 242, 0.95)' : 'rgb(30, 30, 30)';
   const popupMutedText = isDarkMode ? 'rgba(225, 225, 228, 0.75)' : 'rgba(30, 30, 30, 0.7)';
-  const { removeModule, addPage, setDragging } = useNewEditorStore();
+  const { removeModule, addPage, addModule, setDragging, currentPage } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
@@ -64,21 +64,14 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
   };
 
   const handleAddModule = (module) => {
-    const moduleTypeName = module.label;
-    const newPageId = `page-${Date.now()}`;
-    const newModuleId = `module-${Date.now()}`;
-    const defaultContent = getDefaultModuleContent(module.type);
-    
-    addPage({
-      id: newPageId,
-      name: `${moduleTypeName} Page`,
-      route: `/${module.type}`,
-      modules: [{
-        id: newModuleId,
+    // Add module to current page instead of creating a new page
+    if (currentPage) {
+      const defaultContent = getDefaultModuleContent(module.type);
+      addModule(currentPage.id, {
         type: module.type,
         content: defaultContent
-      }]
-    });
+      });
+    }
     
     setSelectedModule(null);
     setIsFirstRender(true);
@@ -186,19 +179,39 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
           position: 'relative'
         }}
       >
-        <Typography
-          sx={{
-            fontSize: '12px',
-            fontWeight: 600,
-            color: textMuted,
-            letterSpacing: '0.8px',
-            textTransform: 'uppercase',
-            mb: 1,
-            px: 1
-          }}
-        >
-          Modules
-        </Typography>
+        {/* Header with title and close button */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, px: 1 }}>
+          <Typography
+            sx={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: theme.colors?.text?.muted || 'rgba(30, 30, 30, 0.5)',
+              letterSpacing: '0.8px',
+              textTransform: 'uppercase'
+            }}
+          >
+            Modules
+          </Typography>
+          
+          {/* Close button - only visible when onClose prop is provided */}
+          {onClose && (
+            <IconButton
+              onClick={onClose}
+              size="small"
+              sx={{
+                width: 24,
+                height: 24,
+                color: 'rgba(30, 30, 30, 0.5)',
+                '&:hover': {
+                  color: 'rgb(146, 0, 32)',
+                  bgcolor: 'rgba(146, 0, 32, 0.08)'
+                }
+              }}
+            >
+              <Close fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
 
         <Stack spacing={0.5}>
           {modules.map((module, index) => {
@@ -294,10 +307,13 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                   bgcolor: popupBackground,
                   borderRadius: '10px',
                   boxShadow: isDarkMode ? '0 12px 32px rgba(0, 0, 0, 0.45)' : '0 4px 20px rgba(0, 0, 0, 0.12)',
-                  overflow: 'visible',
+                  overflow: 'hidden',
                   border: `1px solid ${popupBorder}`,
                   position: 'relative',
                   zIndex: 2,
+                  maxHeight: '50vh',
+                  display: 'flex',
+                  flexDirection: 'column',
                   '&::before': {
                     content: '""',
                     position: 'absolute',
@@ -375,7 +391,17 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                 </Box>
 
                 {/* Description */}
-                <Box sx={{ px: 1.25, py: 1, position: 'relative', zIndex: 3 }}>
+                <Box 
+                  sx={{ 
+                    px: 1.25, 
+                    py: 1, 
+                    position: 'relative', 
+                    zIndex: 3,
+                    overflowY: 'auto',
+                    flex: 1,
+                    maxHeight: 'calc(50vh - 50px)'
+                  }}
+                >
                   <Typography
                     sx={{
                       fontSize: '13px',

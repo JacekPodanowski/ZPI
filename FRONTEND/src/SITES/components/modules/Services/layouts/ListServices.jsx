@@ -6,13 +6,13 @@ const ListServices = ({ content, vibe, theme }) => {
 
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden py-12 px-4 md:py-20 md:px-6`}
       style={{ backgroundColor: content.bgColor || theme.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-4xl mx-auto">
         <h2 
-          className={`${vibe.headingSize} text-center`}
+          className={`text-3xl md:text-4xl lg:text-5xl text-center`}
           style={{ color: theme.primary }}
         >
           {content.title}

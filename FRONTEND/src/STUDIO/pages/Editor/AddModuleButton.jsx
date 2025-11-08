@@ -49,28 +49,31 @@ const AddModuleButton = ({ positioning = 'fixed' }) => {
 
   return (
     <>
-      <Tooltip title="Add Section">
+      <Tooltip title="Add Section" placement="right">
         <IconButton
           onClick={handleClick}
           sx={{
             position: positioning,
-            bottom: 32,
-            right: positioning === 'fixed' ? 380 : 32,
+            bottom: { xs: 24, md: 32 },
+            left: { xs: 16, md: 32 },
             bgcolor: 'rgb(146, 0, 32)',
             color: 'white',
-            width: 56,
-            height: 56,
-            boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
-            transition: 'all 0.3s ease',
+            width: { xs: 52, md: 56 },
+            height: { xs: 52, md: 56 },
+            boxShadow: '0 2px 12px rgba(146, 0, 32, 0.3)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             zIndex: 1000,
             '&:hover': {
               bgcolor: 'rgb(114, 0, 21)',
-              transform: 'scale(1.1)',
-              boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
+              transform: 'scale(1.08)',
+              boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)'
+            },
+            '&:active': {
+              transform: 'scale(0.95)'
             }
           }}
         >
-          <Add sx={{ fontSize: 28 }} />
+          <Add sx={{ fontSize: { xs: 26, md: 28 } }} />
         </IconButton>
       </Tooltip>
 
@@ -78,13 +81,21 @@ const AddModuleButton = ({ positioning = 'fixed' }) => {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right'
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left'
+        }}
         PaperProps={{
           sx: {
-            maxHeight: '500px',
+            maxHeight: '70vh',
             width: '280px',
             borderRadius: '12px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-            mt: -1
+            overflowY: 'auto'
           }
         }}
       >
