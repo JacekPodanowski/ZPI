@@ -12,64 +12,47 @@ import { getPreviewTheme } from './siteThemes';
 const RealModeModule = ({
   module,
   pageId,
-  moduleHeight,
-  unscaledHeight,
-  scaleFactor,
-  realSiteWidth,
   definition,
   showOverlay,
-  renderMode,
   previewTheme,
   devicePreview
 }) => {
   const moduleRef = useRef(null);
   const { recordModuleHeight } = useNewEditorStore();
-  
+
   useEffect(() => {
-    if (moduleRef.current && renderMode === 'real') {
-      // Measure the actual rendered height of the unscaled content
-      const contentWrapper = moduleRef.current.querySelector('.module-content-wrapper');
-      if (contentWrapper) {
-        // Get the height of the first child (the actual ModuleRenderer output)
-        const actualContent = contentWrapper.firstChild;
-        if (actualContent) {
-          const measuredHeight = actualContent.offsetHeight;
-          if (measuredHeight && measuredHeight > 0) {
-            recordModuleHeight(module.type, measuredHeight);
-            console.log(`[RealModeModule] Recorded height for ${module.type}: ${measuredHeight}px`);
-          }
+    if (!moduleRef.current) {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const measuredHeight = entry?.contentRect?.height;
+        if (measuredHeight && measuredHeight > 0) {
+          recordModuleHeight(module.type, measuredHeight);
         }
       }
-    }
-  }, [module.type, renderMode, recordModuleHeight]);
-  
+    });
+
+    observer.observe(moduleRef.current);
+    return () => observer.disconnect();
+  }, [module.type, recordModuleHeight]);
+
   return (
-    <Box 
+    <Box
       ref={moduleRef}
-      sx={{ 
+      sx={{
         position: 'relative',
         width: '100%',
-        height: `${moduleHeight}px`,
-        overflow: 'hidden'
+        overflow: 'visible'
       }}
     >
-      <Box
-        className="module-content-wrapper"
-        sx={{
-          transform: `scale(${scaleFactor})`,
-          transformOrigin: 'top left',
-          width: `${realSiteWidth}px`,
-          height: `${unscaledHeight}px`,
-          pointerEvents: 'none'
-        }}
-      >
-        <ModuleRenderer
-          module={module}
-          pageId={pageId}
-          theme={previewTheme}
-          devicePreview={devicePreview}
-        />
-      </Box>
+      <ModuleRenderer
+        module={module}
+        pageId={pageId}
+        theme={previewTheme}
+        devicePreview={devicePreview}
+      />
       {showOverlay && (
         <Box
           sx={{
@@ -181,12 +164,12 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     page?.id
   );
 
-  // Calculate scale factor based on device
+  // Calculate scale factor based on device (icon mode compression only)
   const CANVAS_WIDTH_DESKTOP = 700;
   const CANVAS_WIDTH_MOBILE = 375;
   const REAL_SITE_WIDTH = 1400;
   const REAL_SITE_WIDTH_MOBILE = 375;
-  
+
   const canvasWidth = devicePreview === 'mobile' ? CANVAS_WIDTH_MOBILE : CANVAS_WIDTH_DESKTOP;
   const realSiteWidth = devicePreview === 'mobile' ? REAL_SITE_WIDTH_MOBILE : REAL_SITE_WIDTH;
   const scaleFactor = canvasWidth / realSiteWidth;
@@ -209,8 +192,10 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   const NAVIGATION_HEIGHT_ICON = NAVIGATION_HEIGHT_REAL;
   const FOOTER_HEIGHT_ICON = NAVIGATION_HEIGHT_REAL / 2; // Footer only in icon mode
   
-  const CANVAS_HEIGHT = devicePreview === 'mobile' ? 667 : 394; // 16:9 aspect ratio height
-  const AVAILABLE_HEIGHT = CANVAS_HEIGHT - (renderMode === 'icon' ? NAVIGATION_HEIGHT_ICON + FOOTER_HEIGHT_ICON : NAVIGATION_HEIGHT_REAL + FOOTER_HEIGHT_REAL);
+  const CANVAS_HEIGHT_ICON = devicePreview === 'mobile' ? 667 : 394; // 16:9 aspect ratio height for icon mode
+  const CANVAS_HEIGHT_REAL = devicePreview === 'mobile' ? 667 : 900;
+  const canvasHeight = renderMode === 'icon' ? CANVAS_HEIGHT_ICON : CANVAS_HEIGHT_REAL;
+  const AVAILABLE_HEIGHT = CANVAS_HEIGHT_ICON - (renderMode === 'icon' ? NAVIGATION_HEIGHT_ICON + FOOTER_HEIGHT_ICON : NAVIGATION_HEIGHT_REAL + FOOTER_HEIGHT_REAL);
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
@@ -423,23 +408,14 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     );
   };
 
-  const renderRealMode = (module, moduleHeight) => {
+  const renderRealMode = (module) => {
     const definition = getModuleDefinition(module.type);
-    
-    // Calculate the unscaled height needed to fill the moduleHeight when scaled down
-    const unscaledHeight = moduleHeight / scaleFactor;
-    
     return (
       <RealModeModule
         module={module}
         pageId={page.id}
-        moduleHeight={moduleHeight}
-        unscaledHeight={unscaledHeight}
-        scaleFactor={scaleFactor}
-        realSiteWidth={realSiteWidth}
         definition={definition}
         showOverlay={showOverlay}
-        renderMode={renderMode}
         previewTheme={previewTheme}
         devicePreview={devicePreview}
       />
@@ -447,6 +423,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   };
 
   const canvasBackground = previewColors.canvas;
+  const isIconMode = renderMode === 'icon';
 
   return (
     <Box
@@ -454,7 +431,9 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
       sx={{
         width: '100%',
         maxWidth: `${canvasWidth}px`,
-        aspectRatio: devicePreview === 'mobile' ? '9/16' : '16/9',
+        ...(isIconMode
+          ? { aspectRatio: devicePreview === 'mobile' ? '9/16' : '16/9' }
+          : { height: `${canvasHeight}px` }),
         bgcolor: canvasBackground,
         borderRadius: '14px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
@@ -471,27 +450,17 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     >
       {/* Navigation - Always at top, non-draggable */}
       {renderMode === 'icon' ? renderNavigationIcon() : (
-        <Box sx={{ flexShrink: 0, height: `${NAVIGATION_HEIGHT_REAL}px`, overflow: 'hidden' }}>
-          <Box
-            sx={{
-              transform: `scale(${scaleFactor})`,
-              transformOrigin: 'top left',
-              width: `${realSiteWidth}px`,
-              height: `${NAVIGATION_HEIGHT_REAL / scaleFactor}px`,
-              pointerEvents: onNavigate ? 'auto' : 'none'
-            }}
-          >
-            <ModuleRenderer 
-              module={{ 
-                type: 'navigation', 
-                content: navigationPreviewContent 
-              }} 
-              pageId={page.id}
-              theme={previewTheme}
-              devicePreview={devicePreview}
-              onNavigate={onNavigate}
-            />
-          </Box>
+        <Box sx={{ flexShrink: 0 }}>
+          <ModuleRenderer 
+            module={{ 
+              type: 'navigation', 
+              content: navigationPreviewContent 
+            }} 
+            pageId={page.id}
+            theme={previewTheme}
+            devicePreview={devicePreview}
+            onNavigate={onNavigate}
+          />
         </Box>
       )}
 
@@ -559,8 +528,10 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, duration: 0.4 }}
-                  style={{ 
+                  style={renderMode === 'icon' ? {
                     height: `${moduleHeight}px`,
+                    flexShrink: 0
+                  } : {
                     flexShrink: 0
                   }}
                 >
@@ -647,14 +618,14 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                       handleDrop(e, dragOverIndex ?? index + 1);
                     }}
                     sx={{
-                      height: '100%',
+                      ...(renderMode === 'icon' ? { height: '100%' } : { width: '100%' }),
                       borderBottom: index < page.modules.length - 1 
                         ? `2px solid ${previewColors.divider}` 
                         : 'none',
                       position: 'relative',
                       cursor: 'grab',
                       transition: 'all 0.2s ease',
-                      overflow: 'hidden',
+                      overflow: renderMode === 'icon' ? 'hidden' : 'visible',
                       '&:hover': {
                         boxShadow: `inset 0 0 0 2px ${interactive.focus}`
                       },
@@ -683,7 +654,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
 
                     {renderMode === 'icon' 
                       ? renderIconMode(module, moduleHeight) 
-                      : renderRealMode(module, moduleHeight)
+                      : renderRealMode(module)
                     }
                   </Box>
                 </motion.div>

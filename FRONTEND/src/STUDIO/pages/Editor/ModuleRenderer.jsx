@@ -1,6 +1,7 @@
 ﻿import React, { useMemo, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry.js';
+import { VIBES } from '../../../SITES/vibes';
 import useNewEditorStore from '../../store/newEditorStore';
 import { buildNavigationContent } from './moduleDefinitions';
 
@@ -54,6 +55,38 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const entryPointPageId = useNewEditorStore(state => state.entryPointPageId);
   const selectedPageId = useNewEditorStore(state => state.selectedPageId);
   const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
+
+  const fallbackVibe = useMemo(() => VIBES?.vibe1 || DEFAULT_VIBE, []);
+
+  const resolvedVibe = useMemo(() => {
+    const candidateKeys = [site?.vibeId, site?.vibe, site?.style?.vibe];
+    const aliasMap = {
+      minimal: 'vibe1',
+      soft: 'vibe2',
+      bold: 'vibe3'
+    };
+
+    for (const rawKey of candidateKeys) {
+      if (!rawKey || typeof rawKey !== 'string') {
+        continue;
+      }
+      const normalizedKey = rawKey.trim();
+      if (!normalizedKey) {
+        continue;
+      }
+
+      if (VIBES?.[normalizedKey]) {
+        return VIBES[normalizedKey];
+      }
+
+      const aliasKey = aliasMap[normalizedKey.toLowerCase()];
+      if (aliasKey && VIBES?.[aliasKey]) {
+        return VIBES[aliasKey];
+      }
+    }
+
+    return fallbackVibe;
+  }, [fallbackVibe, site?.style?.vibe, site?.vibe, site?.vibeId]);
   
   if (!module) {
     return (
@@ -157,7 +190,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const componentProps = {
     layout,
     content: isNavigationModule ? (navigationContent || {}) : (module.content || {}),
-    vibe: DEFAULT_VIBE,
+    vibe: resolvedVibe || DEFAULT_VIBE,
     theme: effectiveTheme,
     siteId,
     isEditing: true,
