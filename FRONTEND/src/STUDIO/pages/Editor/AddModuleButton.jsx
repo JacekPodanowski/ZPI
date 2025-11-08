@@ -21,7 +21,7 @@ const QUICK_MODULES = [
   'spacer'
 ];
 
-const AddModuleButton = () => {
+const AddModuleButton = ({ positioning = 'fixed' }) => {
   const { getSelectedPage, addModule } = useNewEditorStore();
   const [anchorEl, setAnchorEl] = useState(null);
   const page = getSelectedPage();
@@ -53,9 +53,9 @@ const AddModuleButton = () => {
         <IconButton
           onClick={handleClick}
           sx={{
-            position: 'fixed',
+            position: positioning,
             bottom: 32,
-            right: 380, // Position to the left of properties panel (320px + 60px gap)
+            right: positioning === 'fixed' ? 380 : 32,
             bgcolor: 'rgb(146, 0, 32)',
             color: 'white',
             width: 56,

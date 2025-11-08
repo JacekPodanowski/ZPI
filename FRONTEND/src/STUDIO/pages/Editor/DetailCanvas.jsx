@@ -30,6 +30,7 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete }) => {
   
   return (
     <Box
+      id={`module-${module.id}`}
       ref={moduleRef}
       onClick={() => selectModule(module.id)}
       sx={{
@@ -87,6 +88,7 @@ const DetailCanvas = () => {
   
   // Subscribe to the pages array so component re-renders when it changes
   const pages = useNewEditorStore(state => state.site.pages);
+  const site = useNewEditorStore(state => state.site);
   const page = pages.find(p => p.id === selectedPageId);
   
   console.log('🖼️ DetailCanvas - Render:', {
@@ -128,6 +130,17 @@ const DetailCanvas = () => {
         minHeight: '100%'
       }}
     >
+      <Box sx={{ mb: 3 }}>
+        <ModuleRenderer
+          module={{
+            id: 'navigation-preview',
+            type: 'navigation',
+            content: site?.navigation?.content || {}
+          }}
+          pageId={page.id}
+        />
+      </Box>
+
       {page.modules.length === 0 ? (
         <Box
           sx={{

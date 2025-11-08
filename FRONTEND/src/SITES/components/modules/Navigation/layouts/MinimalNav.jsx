@@ -1,8 +1,16 @@
 // layouts/MinimalNav.jsx - Ultra minimal navigation
 import { useState } from 'react';
 
-const MinimalNav = ({ content, vibe, theme }) => {
+const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const activePageId = content.activePageId;
+
+  const handleLinkClick = (event, link) => {
+    if (onNavigate && link.pageId) {
+      event.preventDefault();
+      onNavigate(link.pageId, link.href);
+    }
+  };
   
   return (
     <nav 
@@ -30,8 +38,9 @@ const MinimalNav = ({ content, vibe, theme }) => {
               <a 
                 key={index}
                 href={link.href}
-                className={`text-sm md:text-base ${vibe.animations} hover:opacity-60 font-light tracking-wide`}
-                style={{ color: content.textColor || theme.text }}
+                onClick={(event) => handleLinkClick(event, link)}
+                className={`text-sm md:text-base ${vibe.animations} hover:opacity-60 tracking-wide ${link.pageId === activePageId ? 'font-semibold' : 'font-light'}`}
+                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
               >
                 {link.label}
               </a>
@@ -55,8 +64,9 @@ const MinimalNav = ({ content, vibe, theme }) => {
               <a 
                 key={index}
                 href={link.href}
+                onClick={(event) => handleLinkClick(event, link)}
                 className={`block text-sm ${vibe.animations} hover:opacity-60 font-light`}
-                style={{ color: content.textColor || theme.text }}
+                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
               >
                 {link.label}
               </a>

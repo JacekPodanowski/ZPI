@@ -16,6 +16,16 @@ import {
 } from '@mui/icons-material';
 import { PUBLIC_CALENDAR_BIG_DEFAULTS } from '../../../SITES/components/modules/Caldenar_Full/defaults';
 
+const slugify = (value = '') => {
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'page';
+};
+
 export const MODULE_DEFINITIONS = {
   navigation: {
     type: 'navigation',
@@ -253,4 +263,35 @@ export const getDefaultModuleContent = (moduleType) => {
   };
 
   return defaults[moduleType] || {};
+};
+
+export const buildNavigationContent = (site, overrides = {}, entryPointPageId = null, activePageId = null) => {
+  const pages = site?.pages || [];
+  const defaultContent = getDefaultModuleContent('navigation');
+  const merged = {
+    ...defaultContent,
+    ...overrides
+  };
+
+  const links = pages.map((page, index) => {
+    const label = page.name || `Page ${index + 1}`;
+    const baseRoute = page.route && page.route.startsWith('/') ? page.route : `/${page.route || ''}`;
+    const derivedRoute = page.id === entryPointPageId
+      ? '/'
+      : baseRoute === '/' || baseRoute === ''
+        ? `/${slugify(label)}`
+        : baseRoute;
+
+    return {
+      label,
+      href: derivedRoute,
+      pageId: page.id
+    };
+  });
+
+  return {
+    ...merged,
+    links,
+    activePageId: activePageId || null
+  };
 };

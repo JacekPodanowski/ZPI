@@ -1,8 +1,16 @@
 // layouts/HorizontalNav.jsx - Traditional horizontal navigation
 import { useState } from 'react';
 
-const HorizontalNav = ({ content, vibe, theme }) => {
+const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const activePageId = content.activePageId;
+
+  const handleLinkClick = (event, link) => {
+    if (onNavigate && link.pageId) {
+      event.preventDefault();
+      onNavigate(link.pageId, link.href);
+    }
+  };
   
   return (
     <nav 
@@ -39,8 +47,9 @@ const HorizontalNav = ({ content, vibe, theme }) => {
               <a 
                 key={index}
                 href={link.href}
-                className={`${vibe.textSize} ${vibe.animations} hover:opacity-70`}
-                style={{ color: content.textColor || theme.text }}
+                onClick={(event) => handleLinkClick(event, link)}
+                className={`${vibe.textSize} ${vibe.animations} hover:opacity-70 ${link.pageId === activePageId ? 'font-semibold' : ''}`}
+                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
               >
                 {link.label}
               </a>
@@ -64,8 +73,9 @@ const HorizontalNav = ({ content, vibe, theme }) => {
               <a 
                 key={index}
                 href={link.href}
+                onClick={(event) => handleLinkClick(event, link)}
                 className={`block ${vibe.textSize} ${vibe.animations} hover:opacity-70`}
-                style={{ color: content.textColor || theme.text }}
+                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
               >
                 {link.label}
               </a>

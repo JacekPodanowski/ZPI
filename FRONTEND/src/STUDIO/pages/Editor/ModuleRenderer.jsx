@@ -1,7 +1,8 @@
-﻿import React from 'react';
+﻿import React, { useMemo, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry.js';
 import useNewEditorStore from '../../store/newEditorStore';
+import { buildNavigationContent } from './moduleDefinitions';
 
 // Default vibe for STUDIO preview (same structure as SITES vibes)
 const DEFAULT_VIBE = {
@@ -48,7 +49,11 @@ const DEFAULT_THEME = {
  */
 const ModuleRenderer = ({ module, pageId, theme }) => {
   // Get siteId from store - it's a top-level field, not site.id
-  const { siteId } = useNewEditorStore();
+  const siteId = useNewEditorStore(state => state.siteId);
+  const site = useNewEditorStore(state => state.site);
+  const entryPointPageId = useNewEditorStore(state => state.entryPointPageId);
+  const selectedPageId = useNewEditorStore(state => state.selectedPageId);
+  const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
   
   if (!module) {
     return (
@@ -60,6 +65,28 @@ const ModuleRenderer = ({ module, pageId, theme }) => {
 
   const moduleType = (module.type || '').toLowerCase();
   const moduleDef = MODULE_REGISTRY[moduleType];
+  const isNavigationModule = moduleType === 'navigation';
+
+  const navigationContent = useMemo(() => {
+    if (!isNavigationModule) {
+      return null;
+    }
+    return buildNavigationContent(
+      site,
+      module.content || {},
+      entryPointPageId,
+      selectedPageId
+    );
+  }, [isNavigationModule, site, module.content, entryPointPageId, selectedPageId]);
+
+  const handleNavigation = useCallback((pageId) => {
+    if (!pageId) return;
+    enterDetailMode(pageId);
+    const scrollContainer = document.querySelector('[data-detail-canvas-scroll="true"]');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [enterDetailMode]);
 
   if (!moduleDef) {
     return (
@@ -104,16 +131,22 @@ const ModuleRenderer = ({ module, pageId, theme }) => {
   // Use provided theme or fall back to default
   const effectiveTheme = theme || DEFAULT_THEME;
 
+  const componentProps = {
+    layout,
+    content: isNavigationModule ? (navigationContent || {}) : (module.content || {}),
+    vibe: DEFAULT_VIBE,
+    theme: effectiveTheme,
+    siteId,
+    isEditing: true
+  };
+
+  if (isNavigationModule) {
+    componentProps.onNavigate = handleNavigation;
+  }
+
   return (
     <Box sx={{ position: 'relative', overflow: 'hidden' }}>
-      <Component
-        layout={layout}
-        content={module.content || {}}
-        vibe={DEFAULT_VIBE} // Use default vibe for STUDIO preview
-        theme={effectiveTheme}
-        siteId={siteId} // Pass siteId to all modules
-        isEditing={true} // Flag to indicate this is editor mode
-      />
+      <Component {...componentProps} />
       
       {/* Custom Elements Overlay */}
       {module.customElements && module.customElements.length > 0 && (

@@ -3,7 +3,7 @@ import { Box, Stack, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
-import { getModuleDefinition, getDefaultModuleContent } from './moduleDefinitions';
+import { getModuleDefinition, getDefaultModuleContent, buildNavigationContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 
 // Component to render module in real mode and measure its height
@@ -68,7 +68,7 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
 };
 
 const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandled, devicePreview = 'desktop' }) => {
-  const { addModule, moveModule, site, getModuleHeight, setDragging } = useNewEditorStore();
+  const { addModule, moveModule, site, getModuleHeight, setDragging, entryPointPageId } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const theme = useTheme();
 
@@ -80,10 +80,12 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   console.log('[SiteCanvas] Render - devicePreview:', devicePreview);
 
   // Get navigation config - merge site custom navigation with defaults
-  const navigationContent = {
-    ...getDefaultModuleContent('navigation'),
-    ...(site.navigation?.content || {})
-  };
+  const navigationPreviewContent = buildNavigationContent(
+    site,
+    site.navigation?.content || {},
+    entryPointPageId,
+    page?.id
+  );
 
   // Calculate scale factor based on device
   const CANVAS_WIDTH_DESKTOP = 700;
@@ -222,6 +224,11 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   };
 
   const renderNavigationIcon = () => {
+    const links = navigationPreviewContent.links || [];
+    const activePageId = navigationPreviewContent.activePageId;
+  const totalLabelLength = links.reduce((sum, link) => sum + (link.label?.length || 0), 0);
+  const showOverflowIndicator = links.length > 0 && totalLabelLength > 70;
+    const surfaceColor = theme.colors?.surface?.base || 'white';
     return (
       <Box
         sx={{
@@ -236,8 +243,65 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
           flexShrink: 0
         }}
       >
-        <Typography sx={{ fontSize: '11px', fontWeight: 600, opacity: 0.6 }}>Logo</Typography>
-        <Typography sx={{ fontSize: '10px', fontWeight: 500, opacity: 0.4 }}>Navigation Links</Typography>
+        <Typography sx={{ fontSize: '11px', fontWeight: 600, opacity: 0.6 }}>
+          {navigationPreviewContent.logo?.text || 'Logo'}
+        </Typography>
+        <Box
+          sx={{
+            position: 'relative',
+            flex: 1,
+            maxWidth: '70%',
+            overflow: 'hidden',
+            display: 'flex',
+            justifyContent: 'center'
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {links.map((link) => {
+              const isActive = link.pageId === activePageId;
+              return (
+                <Typography
+                  key={link.pageId || link.href}
+                  sx={{
+                    fontSize: '10px',
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? 'rgb(146, 0, 32)' : 'rgba(30, 30, 30, 0.6)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {link.label}
+                </Typography>
+              );
+            })}
+          </Stack>
+          {showOverflowIndicator && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: 28,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                background: `linear-gradient(90deg, rgba(255, 255, 255, 0), ${surfaceColor})`
+              }}
+            >
+              <Typography sx={{ fontSize: '10px', opacity: 0.5 }}>…</Typography>
+            </Box>
+          )}
+        </Box>
         <Box
           sx={{
             width: 10,
@@ -308,7 +372,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
             <ModuleRenderer 
               module={{ 
                 type: 'navigation', 
-                content: navigationContent 
+                content: site.navigation?.content || {} 
               }} 
               pageId={page.id} 
             />

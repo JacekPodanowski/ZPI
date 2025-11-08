@@ -632,7 +632,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
   );
 };
 
-const PropertiesPanel = () => {
+const PropertiesPanel = ({ placement = 'right' }) => {
   const { selectedModuleId, selectedPageId, updateModuleContent } = useNewEditorStore();
   
   // Subscribe to pages array so component re-renders when modules change
@@ -647,6 +647,33 @@ const PropertiesPanel = () => {
   // Get available layouts for this module
   const availableLayouts = moduleDef?.layouts || [];
   const currentLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+
+  const panelMotionProps = {
+    initial: { x: placement === 'right' ? 320 : -320 },
+    animate: { x: 0 },
+    transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+  };
+
+  const panelStyle = {
+    width: '100%',
+    height: '100%',
+    flexShrink: 0,
+    display: 'flex',
+    maxWidth: placement === 'right' ? 360 : '100%',
+    minWidth: placement === 'left' ? 220 : 260
+  };
+
+  const containerSx = {
+    width: '100%',
+    height: '100%',
+    bgcolor: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(20px)',
+    borderLeft: placement === 'right' ? '1px solid rgba(30, 30, 30, 0.06)' : 'none',
+    borderRight: placement === 'left' ? '1px solid rgba(30, 30, 30, 0.06)' : 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden'
+  };
 
   const handleContentChange = (field, value) => {
     if (module && page) {
@@ -669,23 +696,12 @@ const PropertiesPanel = () => {
   if (!selectedModuleId || !module) {
     return (
       <motion.div
-        initial={{ x: 320 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        style={{
-          width: '320px',
-          height: '100%',
-          flexShrink: 0
-        }}
+        {...panelMotionProps}
+        style={panelStyle}
       >
         <Box
           sx={{
-            width: '100%',
-            height: '100%',
-            bgcolor: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderLeft: '1px solid rgba(30, 30, 30, 0.06)',
-            display: 'flex',
+            ...containerSx,
             alignItems: 'center',
             justifyContent: 'center',
             p: 3
@@ -709,23 +725,12 @@ const PropertiesPanel = () => {
   if (!moduleDef) {
     return (
       <motion.div
-        initial={{ x: 320 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        style={{
-          width: '320px',
-          height: '100%',
-          flexShrink: 0
-        }}
+        {...panelMotionProps}
+        style={panelStyle}
       >
         <Box
           sx={{
-            width: '100%',
-            height: '100%',
-            bgcolor: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderLeft: '1px solid rgba(30, 30, 30, 0.06)',
-            display: 'flex',
+            ...containerSx,
             alignItems: 'center',
             justifyContent: 'center',
             p: 3
@@ -748,27 +753,10 @@ const PropertiesPanel = () => {
 
   return (
     <motion.div
-      initial={{ x: 320 }}
-      animate={{ x: 0 }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      style={{
-        width: '320px',
-        height: '100%',
-        flexShrink: 0
-      }}
+      {...panelMotionProps}
+      style={panelStyle}
     >
-      <Box
-        sx={{
-          width: '100%',
-          height: '100%',
-          bgcolor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(20px)',
-          borderLeft: '1px solid rgba(30, 30, 30, 0.06)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden'
-        }}
-      >
+      <Box sx={containerSx}>
         {/* Header */}
         <Box
           sx={{

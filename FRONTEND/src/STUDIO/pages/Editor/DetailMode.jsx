@@ -1,26 +1,82 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box } from '@mui/material';
 import useNewEditorStore from '../../store/newEditorStore';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
 import AddModuleButton from './AddModuleButton';
-import CanvasHeader from './CanvasHeader';
+import MockAIChatPanel from './MockAIChatPanel';
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const DetailMode = () => {
-  const { devicePreview, site, selectedPageId, enterDetailMode, setSelectedPage } = useNewEditorStore();
+  const { devicePreview, site, selectedPageId, setSelectedPage } = useNewEditorStore();
+  const layoutRef = useRef(null);
+  const dragSide = useRef(null);
+  const [leftWidth, setLeftWidth] = useState(0.15); // 15%
+  const [rightWidth, setRightWidth] = useState(0.15); // 15%
+  const MIN_PANEL = 0.1;
+  const MAX_PANEL = 0.35;
+  const MIN_CENTER = 0.4;
 
   const pages = site?.pages || [];
-  const activePageId = selectedPageId || pages[0]?.id || null;
 
-  const handleNavigate = useCallback((pageId) => {
-    if (!pageId) return;
-    setSelectedPage(pageId);
-    enterDetailMode(pageId);
-    const scrollContainer = document.querySelector('[data-detail-canvas-scroll="true"]');
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+  useEffect(() => {
+    if (!selectedPageId && pages.length) {
+      setSelectedPage(pages[0].id);
     }
-  }, [enterDetailMode, setSelectedPage]);
+  }, [selectedPageId, pages, setSelectedPage]);
+
+  const startDragging = useCallback((side) => (event) => {
+    event.preventDefault();
+    dragSide.current = side;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  }, []);
+
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      if (!dragSide.current || !layoutRef.current) return;
+
+      const rect = layoutRef.current.getBoundingClientRect();
+      const totalWidth = rect.width;
+      if (totalWidth === 0) return;
+
+      if (dragSide.current === 'left') {
+        const proposed = clamp((event.clientX - rect.left) / totalWidth, MIN_PANEL, MAX_PANEL);
+        const centerShare = 1 - proposed - rightWidth;
+        if (centerShare >= MIN_CENTER) {
+          setLeftWidth(proposed);
+        } else {
+          const adjusted = 1 - rightWidth - MIN_CENTER;
+          setLeftWidth(clamp(adjusted, MIN_PANEL, MAX_PANEL));
+        }
+      } else if (dragSide.current === 'right') {
+        const proposed = clamp((rect.right - event.clientX) / totalWidth, MIN_PANEL, MAX_PANEL);
+        const centerShare = 1 - leftWidth - proposed;
+        if (centerShare >= MIN_CENTER) {
+          setRightWidth(proposed);
+        } else {
+          const adjusted = 1 - leftWidth - MIN_CENTER;
+          setRightWidth(clamp(adjusted, MIN_PANEL, MAX_PANEL));
+        }
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (!dragSide.current) return;
+      dragSide.current = null;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [leftWidth, rightWidth]);
 
   return (
     <Box
@@ -33,10 +89,6 @@ const DetailMode = () => {
         overflow: 'hidden'
       }}
     >
-      {pages.length > 0 && (
-        <CanvasHeader activePageId={activePageId} onNavigate={handleNavigate} />
-      )}
-
       <Box
         sx={{
           flex: 1,
@@ -44,7 +96,41 @@ const DetailMode = () => {
           position: 'relative',
           overflow: 'hidden'
         }}
+        ref={layoutRef}
       >
+        {/* Properties Panel - Left */}
+        <Box
+          sx={{
+            flex: `0 0 ${leftWidth * 100}%`,
+            minWidth: '220px',
+            maxWidth: '35%',
+            height: '100%',
+            display: 'flex',
+            position: 'relative'
+          }}
+        >
+          <PropertiesPanel placement="left" />
+          <Box
+            onPointerDown={startDragging('left')}
+            sx={{
+              position: 'absolute',
+              top: 0,
+              right: -3,
+              width: '6px',
+              height: '100%',
+              cursor: 'col-resize',
+              zIndex: 20,
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: '0 1px',
+                borderRadius: '4px',
+                background: 'rgba(30, 30, 30, 0.12)'
+              }
+            }}
+          />
+        </Box>
+
         {/* Canvas - Center */}
         <Box
           sx={{
@@ -56,7 +142,8 @@ const DetailMode = () => {
             justifyContent: devicePreview === 'mobile' ? 'flex-start' : 'center',
             overflow: 'auto',
             bgcolor: 'rgb(228, 229, 218)',
-            p: 3
+            p: 3,
+            position: 'relative'
           }}
           data-detail-canvas-scroll="true"
         >
@@ -77,13 +164,41 @@ const DetailMode = () => {
           >
             <DetailCanvas />
           </Box>
+          <AddModuleButton positioning="absolute" />
         </Box>
 
-        {/* Properties Panel - Right */}
-        <PropertiesPanel />
-        
-        {/* Floating Add Module Button */}
-        <AddModuleButton />
+        {/* AI Chat - Right */}
+        <Box
+          sx={{
+            flex: `0 0 ${rightWidth * 100}%`,
+            minWidth: '240px',
+            maxWidth: '35%',
+            height: '100%',
+            display: 'flex',
+            position: 'relative'
+          }}
+        >
+          <Box
+            onPointerDown={startDragging('right')}
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: -3,
+              width: '6px',
+              height: '100%',
+              cursor: 'col-resize',
+              zIndex: 20,
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: '0 1px',
+                borderRadius: '4px',
+                background: 'rgba(30, 30, 30, 0.12)'
+              }
+            }}
+          />
+          <MockAIChatPanel />
+        </Box>
       </Box>
     </Box>
   );

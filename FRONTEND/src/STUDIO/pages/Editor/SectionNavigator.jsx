@@ -25,23 +25,21 @@ const SectionNavigator = () => {
       animate={{ x: 0 }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
       style={{
-        width: '220px',
+        width: '100%',
         height: '100%',
-        flexShrink: 0
+        flexShrink: 0,
+        display: 'flex'
       }}
     >
       <Box
         sx={{
           width: '100%',
           height: '100%',
-          bgcolor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(20px)',
-          borderRight: '1px solid rgba(30, 30, 30, 0.06)',
           display: 'flex',
           flexDirection: 'column',
           p: 2,
           gap: 1,
-          overflow: 'auto'
+          overflow: 'hidden'
         }}
       >
         <Typography
@@ -58,7 +56,7 @@ const SectionNavigator = () => {
           Sections
         </Typography>
 
-        <Stack spacing={0.5}>
+        <Stack spacing={0.5} sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
           {page.modules.length === 0 ? (
             <Box
               sx={{

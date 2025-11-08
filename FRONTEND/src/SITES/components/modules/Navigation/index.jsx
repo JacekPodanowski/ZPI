@@ -11,19 +11,20 @@ const LAYOUTS = {
   minimal: MinimalNav
 };
 
-const Navigation = ({ layout = 'horizontal', content = {}, vibe, theme }) => {
+const Navigation = ({ layout = 'horizontal', content = {}, vibe, theme, onNavigate }) => {
   const defaults = NAVIGATION_DEFAULTS[layout] || NAVIGATION_DEFAULTS.horizontal;
-  
-  // Merge: empty string or undefined = use default
-  const mergedContent = Object.keys(defaults).reduce((acc, key) => {
-    acc[key] = (content[key] !== undefined && content[key] !== '') 
-      ? content[key] 
-      : defaults[key];
-    return acc;
-  }, {});
-  
+
+  const mergedContent = {
+    ...defaults,
+    ...content
+  };
+
+  if (!Array.isArray(mergedContent.links) || mergedContent.links.length === 0) {
+    mergedContent.links = defaults.links || [];
+  }
+
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.horizontal;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} onNavigate={onNavigate} />;
 };
 
 Navigation.descriptor = NAVIGATION_DESCRIPTOR;
