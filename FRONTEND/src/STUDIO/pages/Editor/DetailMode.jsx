@@ -246,7 +246,10 @@ const DetailMode = () => {
           >
             <DetailCanvas />
           </Box>
-          <AddModuleButton positioning="absolute" />
+          <AddModuleButton
+            positioning="absolute"
+            buttonSx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+          />
         </Box>
 
         {/* AI Chat - Right (Desktop only in layout, Mobile as Drawer) */}
