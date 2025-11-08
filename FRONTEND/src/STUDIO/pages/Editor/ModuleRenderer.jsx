@@ -89,7 +89,16 @@ const ModuleRenderer = ({ module, pageId, theme }) => {
     );
   }
 
-  const Component = moduleDef.component;
+  // For calendar module, select component based on type
+  let Component = moduleDef.component;
+  if (moduleType === 'calendar' && module.content?.type) {
+    if (module.content.type === 'full' && moduleDef.componentFull) {
+      Component = moduleDef.componentFull;
+    } else if (module.content.type === 'compact' && moduleDef.componentCompact) {
+      Component = moduleDef.componentCompact;
+    }
+  }
+
   const layout = module.content?.layout || moduleDef.defaultLayout;
 
   // Use provided theme or fall back to default

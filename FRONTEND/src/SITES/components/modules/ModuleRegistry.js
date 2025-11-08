@@ -43,14 +43,17 @@ export const MODULE_REGISTRY = {
     defaultLayout: 'cards',
     category: 'content'
   },
-  publicCalendarSmall: {
-    component: CalendarSection,
+  calendar: {
+    component: CalendarSection, // Will be selected based on content.type
+    componentFull: PublicCalendarBigModule,
+    componentCompact: CalendarSection,
     descriptor: CalendarSection.descriptor,
     layouts: ['sidebar', 'inline', 'compact'],
     defaultLayout: 'sidebar',
     category: 'interactive'
   },
-  publiccalendarsmall: {
+  // Legacy aliases for backward compatibility
+  publicCalendarSmall: {
     component: CalendarSection,
     descriptor: CalendarSection.descriptor,
     layouts: ['sidebar', 'inline', 'compact'],
@@ -58,7 +61,7 @@ export const MODULE_REGISTRY = {
     category: 'interactive',
     legacyAlias: true
   },
-  calendar: {
+  publiccalendarsmall: {
     component: CalendarSection,
     descriptor: CalendarSection.descriptor,
     layouts: ['sidebar', 'inline', 'compact'],
@@ -71,7 +74,8 @@ export const MODULE_REGISTRY = {
     descriptor: PublicCalendarBigModule.descriptor,
     layouts: ['default'],
     defaultLayout: 'default',
-    category: 'interactive'
+    category: 'interactive',
+    legacyAlias: true
   },
   publiccalendarbig: {
     component: PublicCalendarBigModule,

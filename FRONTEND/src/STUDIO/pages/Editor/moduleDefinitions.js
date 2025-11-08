@@ -58,30 +58,13 @@ export const MODULE_DEFINITIONS = {
     description: 'Display your visual work in an elegant image gallery with multiple layout options including grid, masonry, and carousel.',
     defaultHeight: 900 // px - large gallery grid
   },
-  publicCalendarSmall: {
-    type: 'publicCalendarSmall',
-    label: 'Booking Calendar',
-    icon: CalendarMonth,
-    color: '#98D8C8',
-    description: 'Enable appointment booking with an integrated calendar showing your availability for individual or group sessions.',
-    defaultHeight: 750 // px - calendar widget height
-  },
-  publicCalendarBig: {
-    type: 'publicCalendarBig',
-    label: 'Full Calendar',
-    icon: CalendarMonth,
-    color: '#920020',
-    description: 'Show a full monthly calendar with highlighted availability and rich event details below.',
-    category: 'Interactive',
-    defaultHeight: 980 // px - calendar plus event list
-  },
   calendar: {
     type: 'calendar',
     label: 'Calendar',
     icon: CalendarMonth,
     color: '#98D8C8',
-    description: 'Enable appointment booking with an integrated calendar showing your availability for individual or group sessions.',
-    defaultHeight: 750 // px - calendar widget height
+    description: 'Enable appointment booking with an integrated calendar. Choose between compact view for quick booking or full calendar with detailed event information.',
+    defaultHeight: 750 // px - calendar widget height (can change based on type)
   },
   contact: {
     type: 'contact',
@@ -222,6 +205,7 @@ export const getDefaultModuleContent = (moduleType) => {
       bgColor: 'rgb(228, 229, 218)'
     },
     calendar: {
+      type: 'compact', // 'compact' or 'full'
       title: 'Book an Appointment',
       color: 'rgb(146, 0, 32)',
       allowIndividual: true,
@@ -229,15 +213,6 @@ export const getDefaultModuleContent = (moduleType) => {
       bgColor: 'white',
       events: []
     },
-    publicCalendarSmall: {
-      title: 'Book an Appointment',
-      color: 'rgb(146, 0, 32)',
-      allowIndividual: true,
-      allowGroup: true,
-      bgColor: 'white',
-      events: []
-    },
-    publicCalendarBig: JSON.parse(JSON.stringify(PUBLIC_CALENDAR_BIG_DEFAULTS.default)),
     contact: {
       title: 'Get in Touch',
       email: 'contact@example.com',

@@ -801,6 +801,41 @@ const PropertiesPanel = () => {
         {/* Content Sections */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
           <Stack spacing={3}>
+            {/* CALENDAR TYPE SELECTOR - Only show for calendar modules */}
+            {module.type === 'calendar' && (
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'rgba(30, 30, 30, 0.5)',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    mb: 2
+                  }}
+                >
+                  Calendar Type
+                </Typography>
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={module.content?.type || 'compact'}
+                    onChange={(e) => handleContentChange('type', e.target.value)}
+                    sx={{
+                      borderRadius: '8px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
+                    }}
+                  >
+                    <MenuItem value="compact">Compact</MenuItem>
+                    <MenuItem value="full">Full</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+
+            {/* Divider after calendar type if exists */}
+            {module.type === 'calendar' && (availableLayouts.length > 1 || contentFields.length > 0) && <Divider />}
+
             {/* LAYOUT SELECTOR - Only show if multiple layouts available */}
             {availableLayouts.length > 1 && (
               <Box>
