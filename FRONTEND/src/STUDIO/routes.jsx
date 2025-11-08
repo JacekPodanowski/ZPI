@@ -9,7 +9,6 @@ import EditorPage from './pages/Editor/EditorPage';
 import NewEditorPage from './pages/Editor/NewEditorPage';
 import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
-import PublicCalendarPage from './pages/Home/PublicCalendarPage';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import StudioLayout from './layouts/StudioLayout';
 import SettingsLayout from './layouts/SettingsLayout';
@@ -55,8 +54,7 @@ const StudioApp = () => (
       {/* Team management */}
       <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
 
-      {/* Calendar previews for development */}
-      <Route path="calendar/public" element={<PublicCalendarPage />} />
+  {/* Calendar previews for development */}
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
 
       {/* Dev Lab */}

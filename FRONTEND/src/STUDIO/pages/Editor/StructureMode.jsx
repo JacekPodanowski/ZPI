@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, Checkbox, FormControlLabel } from '@mui/material';
 import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,36 +14,19 @@ const StructureMode = () => {
     selectedPageId, 
     enterDetailMode, 
     addPage, 
-    devicePreview
+    devicePreview,
+    isDragging,
+    draggedItem,
+    setDragging
   } = useNewEditorStore();
   
   const theme = useTheme();
-  const pages = site?.pages || [];
   
   const [showModuleToolbar, setShowModuleToolbar] = useState(true);
   const [renderMode, setRenderMode] = useState('icon'); // 'icon' | 'real'
   const [showOverlay, setShowOverlay] = useState(true);
-  const [isDraggingModule, setIsDraggingModule] = useState(false);
   const [dropHandled, setDropHandled] = useState(false);
-
-  // Safety: Reset dragging state on any drag end or drop event
-  useEffect(() => {
-    const handleDragEnd = () => {
-      setIsDraggingModule(false);
-    };
-    
-    const handleDrop = () => {
-      setIsDraggingModule(false);
-    };
-
-    window.addEventListener('dragend', handleDragEnd);
-    window.addEventListener('drop', handleDrop);
-
-    return () => {
-      window.removeEventListener('dragend', handleDragEnd);
-      window.removeEventListener('drop', handleDrop);
-    };
-  }, []);
+  const isDraggingModule = isDragging && draggedItem?.type === 'module';
 
   // Get the current page directly from site.pages (reactive)
   const currentPage = site?.pages?.find(p => p.id === selectedPageId) || site?.pages?.[0] || null;
@@ -53,6 +36,16 @@ const StructureMode = () => {
   console.log('[StructureMode] Render - selectedPageId:', selectedPageId);
   console.log('[StructureMode] Render - currentPage:', currentPage);
   console.log('[StructureMode] Render - currentPage.modules:', currentPage?.modules);
+
+  const markDropHandled = () => {
+    setDropHandled(true);
+    const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : null;
+    if (raf) {
+      raf(() => setDropHandled(false));
+    } else {
+      setTimeout(() => setDropHandled(false), 0);
+    }
+  };
 
   // Safety check
   if (!site || !site.pages || site.pages.length === 0) {
@@ -100,6 +93,7 @@ const StructureMode = () => {
           // Only handle drop if no child handled it
           if (dropHandled) {
             setDropHandled(false);
+            setDragging(false);
             return;
           }
           
@@ -126,6 +120,8 @@ const StructureMode = () => {
               }]
             });
           }
+
+          setDragging(false);
         }}
         data-editor-canvas="true"
         sx={{
@@ -369,10 +365,7 @@ const StructureMode = () => {
                     page={site.pages[0]} 
                     renderMode={renderMode}
                     showOverlay={renderMode === 'icon' ? true : showOverlay}
-                    isLastPage={site.pages.length === 1}
-                    onModuleDragStart={() => setIsDraggingModule(true)}
-                    onModuleDragEnd={() => setIsDraggingModule(false)}
-                    onDropHandled={() => setDropHandled(true)}
+                    onDropHandled={markDropHandled}
                     devicePreview={devicePreview}
                   />
                 </motion.div>
@@ -507,10 +500,7 @@ const StructureMode = () => {
                           page={page} 
                           renderMode={renderMode}
                           showOverlay={renderMode === 'icon' ? true : showOverlay}
-                          isLastPage={pageIndex === site.pages.length - 1}
-                          onModuleDragStart={() => setIsDraggingModule(true)}
-                          onModuleDragEnd={() => setIsDraggingModule(false)}
-                          onDropHandled={() => setDropHandled(true)}
+                          onDropHandled={markDropHandled}
                           devicePreview={devicePreview}
                         />
                       </Box>

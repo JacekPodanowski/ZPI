@@ -3,7 +3,7 @@ import { Box, Stack, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
-import { getModuleDefinition, MODULE_COLORS, getDefaultModuleContent } from './moduleDefinitions';
+import { getModuleDefinition, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 
 // Component to render module in real mode and measure its height
@@ -67,8 +67,8 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
   );
 };
 
-const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage = false, onModuleDragStart, onModuleDragEnd, onDropHandled, devicePreview = 'desktop' }) => {
-  const { addModule, moveModule, site, getModuleHeight } = useNewEditorStore();
+const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandled, devicePreview = 'desktop' }) => {
+  const { addModule, moveModule, site, getModuleHeight, setDragging } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [canvasRef, setCanvasRef] = useState(null);
   const theme = useTheme();
@@ -136,10 +136,10 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
     console.log('[SiteCanvas] Drop at index:', index);
     
     // Signal that we handled this drop
-    if (onDropHandled) onDropHandled();
-    
-    // IMPORTANT: Signal drag end to reset trash zone
-    if (onModuleDragEnd) onModuleDragEnd();
+  if (onDropHandled) onDropHandled();
+
+  // Always end dragging on successful drop
+  setDragging(false);
     
     setDragOverIndex(null);
     
@@ -441,12 +441,16 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, isLastPage 
                       }, 0);
                       
                       e.stopPropagation();
-                      if (onModuleDragStart) onModuleDragStart();
+                        setDragging(true, {
+                          type: 'module',
+                          moduleId: module.id,
+                          pageId: page.id
+                        });
                     }}
                     onDragEnd={(e) => {
                       console.log('[SiteCanvas] Drag end');
                       e.stopPropagation();
-                      if (onModuleDragEnd) onModuleDragEnd();
+                        setDragging(false);
                     }}
                     onDragOver={(e) => {
                       e.preventDefault();

@@ -11,7 +11,7 @@ const EDITOR_TOP_BAR_HEIGHT = 56;
 const ModuleToolbar = ({ isDraggingModule = false }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
-  const { removeModule, addPage } = useNewEditorStore();
+  const { removeModule, addPage, setDragging } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
@@ -82,6 +82,17 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
       setIsOverTrash(false);
       // Store will automatically delete empty pages (except home)
       removeModule(sourcePageId, moduleId);
+      // Ensure global drag state is cleared once the module is removed
+      const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : null;
+      if (raf) {
+        raf(() => setDragging(false));
+      } else {
+        setTimeout(() => setDragging(false), 0);
+      }
+    } else {
+      // Fallback guard: clear drag state even if data is missing
+      setIsOverTrash(false);
+      setDragging(false);
     }
   };
 
@@ -131,10 +142,10 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
 
   return (
     <motion.div
-      initial={hasInitiallyAnimated.current ? false : { x: -280 }}
-      animate={{ x: 0 }}
-      exit={hasInitiallyAnimated.current ? false : { x: -280 }}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+  initial={hasInitiallyAnimated.current ? false : { x: -280 }}
+  animate={{ x: 0 }}
+  exit={hasInitiallyAnimated.current ? false : { x: -280 }}
+  transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
       style={{
         position: 'absolute',
         left: 0,
@@ -151,7 +162,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             style={{
               width: '100%',
               height: '100%'
@@ -164,15 +175,16 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
               sx={{
                 width: '100%',
                 height: '100%',
-                bgcolor: isOverTrash ? 'rgba(146, 0, 32, 0.95)' : 'rgba(146, 0, 32, 0.85)',
-                backdropFilter: 'blur(20px)',
+                bgcolor: isOverTrash ? 'rgba(146, 0, 32, 0.72)' : 'rgba(146, 0, 32, 0.58)',
+                backdropFilter: 'blur(22px)',
                 borderRight: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
                 display: 'flex',
                 flexDirection: 'column',
                 p: 2,
                 gap: 1,
-                transition: 'all 0.3s ease',
-                transform: isOverTrash ? 'scale(1.02)' : 'scale(1)'
+                transition: 'background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease',
+                transform: isOverTrash ? 'scale(1.03)' : 'scale(1)',
+                boxShadow: isOverTrash ? 'inset 0 0 0 1px rgba(255, 255, 255, 0.25)' : 'none'
               }}
             >
               <Box
@@ -187,10 +199,11 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
               >
                 <motion.div
                   animate={{ 
-                    y: isOverTrash ? [0, -8, 0] : 0
+                    y: isOverTrash ? [0, -10, 0] : 0,
+                    scale: isOverTrash ? [1, 1.05, 1] : 1
                   }}
                   transition={{ 
-                    duration: 1.5,
+                    duration: 1.1,
                     repeat: isOverTrash ? Infinity : 0,
                     repeatType: 'loop',
                     ease: 'easeInOut'
@@ -198,22 +211,22 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                 >
                   <Delete 
                     sx={{ 
-                      fontSize: 64, 
-                      color: 'white'
+                      fontSize: 56, 
+                      color: 'rgba(255, 255, 255, 0.92)'
                     }} 
                   />
                 </motion.div>
                 <Typography
                   sx={{
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    color: 'white',
-                    letterSpacing: '1px',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    color: 'rgba(255, 255, 255, 0.92)',
+                    letterSpacing: '0.6px',
                     textTransform: 'uppercase',
                     textAlign: 'center'
                   }}
                 >
-                  DROP TO DELETE
+                  Drop to delete
                 </Typography>
               </Box>
             </Box>
@@ -224,7 +237,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
             style={{
               width: '100%',
               height: '100%'

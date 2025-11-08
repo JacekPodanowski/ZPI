@@ -1,25 +1,25 @@
 // ModuleRegistry.js - Central registration of all modules
-import HeroSection from './HeroSection';
-import AboutSection from './AboutSection';
-import ServicesSection from './ServicesSection';
-import CalendarSection from './CalendarSection';
-import ContactSection from './ContactSection';
+import HeroSection from './Hero';
+import AboutSection from './About';
+import ServicesSection from './Services';
+import CalendarSection from './Calendar_Compact';
+import ContactSection from './Contact';
 import Navigation from './Navigation';
 
 // New modular imports
-import TextModule from './TextModule';
-import ButtonModule from './ButtonModule';
-import SpacerModule from './SpacerModule';
-import GalleryModule from './GalleryModule';
-import VideoModule from './VideoModule';
-import FAQModule from './FAQModule';
-import BlogModule from './BlogModule';
-import EventsModule from './EventsModule';
-import ServicesAndPricingModule from './ServicesAndPricingModule';
-import TeamModule from './TeamModule';
-import ContainerModule from './ContainerModule';
-import ReactComponentModule from './ReactComponentModule';
-import PublicCalendarBigModule from './PublicCalendarBig';
+import TextModule from './Text';
+import ButtonModule from './Button';
+import SpacerModule from './Spacer';
+import GalleryModule from './Gallery';
+import VideoModule from './Video';
+import FAQModule from './FAQ';
+import BlogModule from './Blog';
+import EventsModule from './Events';
+import ServicesAndPricingModule from './ServicesAndPricing';
+import TeamModule from './Team';
+import ContainerModule from './Container';
+import ReactComponentModule from './ReactComponent';
+import PublicCalendarBigModule from './Caldenar_Full';
 
 export const MODULE_REGISTRY = {
   hero: {

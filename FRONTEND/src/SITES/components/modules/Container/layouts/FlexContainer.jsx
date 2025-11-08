@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import TextModule from '../../TextModule';
-import ButtonModule from '../../ButtonModule';
-import GalleryModule from '../../GalleryModule';
-import SpacerModule from '../../SpacerModule';
+import TextModule from '../../Text';
+import ButtonModule from '../../Button';
+import GalleryModule from '../../Gallery';
+import SpacerModule from '../../Spacer';
 
 const FlexContainer = ({ content, vibe, theme, isEditing = false }) => {
   const { 

@@ -1,5 +1,5 @@
 import React from 'react'
-import GalleryModule from '../components/modules/GalleryModule'
+import GalleryModule from '../components/modules/Gallery'
 import { VIBES } from '../vibes'
 import { themeDefinitions } from '../../theme/themeDefinitions'
 import { createTheme } from '../../theme/colorSystem'

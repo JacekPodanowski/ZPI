@@ -14,7 +14,7 @@ import {
   Group,
   Menu
 } from '@mui/icons-material';
-import { PUBLIC_CALENDAR_BIG_DEFAULTS } from '../../../SITES/components/modules/PublicCalendarBig/defaults';
+import { PUBLIC_CALENDAR_BIG_DEFAULTS } from '../../../SITES/components/modules/Caldenar_Full/defaults';
 
 export const MODULE_DEFINITIONS = {
   navigation: {
