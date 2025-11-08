@@ -8,7 +8,7 @@ const GridAbout = ({ content, vibe, theme }) => {
 
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
+      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden py-12 px-4 md:py-20 md:px-6`}
       style={{ backgroundColor: content.bgColor || theme.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
@@ -21,7 +21,7 @@ const GridAbout = ({ content, vibe, theme }) => {
         </h2>
         
         {/* Image and Description Grid */}
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center mt-8 md:mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-8 md:mt-12">
           {imageUrl && (
             <img 
               src={imageUrl} 

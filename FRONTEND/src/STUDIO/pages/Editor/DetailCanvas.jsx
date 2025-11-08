@@ -4,6 +4,7 @@ import { Delete } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getPreviewTheme } from './siteThemes';
+import AddModuleButton from './AddModuleButton';
 
 // Wrapper component to measure module heights
 const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, devicePreview }) => {
@@ -47,7 +48,7 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
             ? '3px solid rgb(146, 0, 32)'
             : '2px solid rgba(146, 0, 32, 0.3)',
           '& .delete-button': {
-            opacity: 1
+            opacity: { xs: 1, md: 0.95 }
           }
         }
       }}
@@ -61,27 +62,35 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
       
       {/* Delete Button - appears when module is selected or on hover */}
       {isSelected && (
-        <Tooltip title="Delete Section">
+        <Tooltip title="Delete Section" placement="left">
           <IconButton
             className="delete-button"
             onClick={onDelete}
             sx={{
               position: 'absolute',
-              top: 8,
-              right: 8,
-              bgcolor: 'rgb(146, 0, 32)',
+              top: { xs: 8, md: 12 },
+              right: { xs: 8, md: 12 },
+              bgcolor: 'rgba(146, 0, 32, 0.95)',
               color: 'white',
-              opacity: 0,
-              transition: 'all 0.2s ease',
+              width: { xs: 36, md: 40 },
+              height: { xs: 36, md: 40 },
+              opacity: { xs: 0.9, md: 0 },
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              backdropFilter: 'blur(4px)',
               zIndex: 10,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
               '&:hover': {
                 bgcolor: 'rgb(114, 0, 21)',
-                transform: 'scale(1.1)'
+                transform: 'scale(1.05)',
+                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.4)'
+              },
+              '&:active': {
+                transform: 'scale(0.95)'
               }
             }}
             size="small"
           >
-            <Delete fontSize="small" />
+            <Delete sx={{ fontSize: { xs: 18, md: 20 } }} />
           </IconButton>
         </Tooltip>
       )}
@@ -155,32 +164,63 @@ const DetailCanvas = () => {
         />
       </Box>
 
+      {page.modules.length > 0 && (
+        <AddModuleButton
+          variant="inline"
+          insertIndex={0}
+          label="Add section above"
+          buttonSx={{
+            mt: { xs: 0.75, md: 1.5 },
+            mb: { xs: 1.25, md: 2 },
+            borderStyle: 'dashed'
+          }}
+        />
+      )}
+
       {page.modules.length === 0 ? (
         <Box
           sx={{
             width: '100%',
             height: '400px',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'rgba(30, 30, 30, 0.3)',
+            textAlign: 'center',
+            color: 'rgba(30, 30, 30, 0.35)',
             fontSize: '14px',
             fontWeight: 500
           }}
         >
-          Add modules from Structure Mode
+          Add your first section below to start designing this page.
+          <AddModuleButton
+            variant="inline"
+            insertIndex={0}
+            label="Add first section"
+            buttonSx={{ mt: { xs: 1.5, md: 2 } }}
+          />
         </Box>
       ) : (
-        page.modules.map((module) => (
-          <MeasuredModule
-            key={module.id}
-            module={module}
-            pageId={page.id}
-            isSelected={selectedModuleId === module.id}
-            onDelete={(e) => handleDeleteModule(module.id, e)}
-            previewTheme={previewTheme}
-            devicePreview={devicePreview}
-          />
+        page.modules.map((module, index) => (
+          <React.Fragment key={module.id}>
+            <MeasuredModule
+              module={module}
+              pageId={page.id}
+              isSelected={selectedModuleId === module.id}
+              onDelete={(e) => handleDeleteModule(module.id, e)}
+              previewTheme={previewTheme}
+              devicePreview={devicePreview}
+            />
+            <AddModuleButton
+              variant="inline"
+              insertIndex={index + 1}
+              label={index === page.modules.length - 1 ? 'Add section below' : 'Add section here'}
+              buttonSx={{
+                mt: { xs: 1.1, md: 1.75 },
+                mb: index === page.modules.length - 1 ? { xs: 2.5, md: 3 } : { xs: 1.1, md: 1.75 }
+              }}
+            />
+          </React.Fragment>
         ))
       )}
     </Box>

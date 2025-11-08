@@ -354,22 +354,30 @@ const CreatorCalendarApp = () => {
                     flex: 1,
                     display: 'flex',
                     minHeight: 0,
-                    overflow: 'hidden' // Prevent scroll from child elements
+                    overflow: 'hidden', // Prevent scroll from child elements
+                    position: 'relative' // For potential drawer positioning
                 }}
             >
-                <RealTemplateBrowser
-                    onCreateDayTemplate={handleCreateDayTemplate}
-                    onCreateWeekTemplate={handleCreateWeekTemplate}
-                    onTemplateDragStart={handleTemplateDragStart}
-                    onTemplateDragEnd={handleTemplateDragEnd}
-                />
+                {/* Template Browser - Hidden on mobile, visible on lg+ */}
+                <Box
+                    sx={{
+                        display: { xs: 'none', lg: 'block' } // Hide on mobile and tablet
+                    }}
+                >
+                    <RealTemplateBrowser
+                        onCreateDayTemplate={handleCreateDayTemplate}
+                        onCreateWeekTemplate={handleCreateWeekTemplate}
+                        onTemplateDragStart={handleTemplateDragStart}
+                        onTemplateDragEnd={handleTemplateDragEnd}
+                    />
+                </Box>
 
                 <Box
                     sx={{
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        px: { xs: 2, md: 3, lg: 4 },
+                        px: { xs: 1, sm: 2, md: 3, lg: 4 },
                         py: 0,
                         gap: 0,
                         minHeight: 0,

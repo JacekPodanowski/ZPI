@@ -21,12 +21,12 @@ const ListEvents = ({ content, vibe, theme }) => {
   const [activeEvent, setActiveEvent] = useState(null);
 
   return (
-    <section className={`${vibe.spacing} px-4`} style={{ backgroundColor: bgColor || theme.background }}>
+    <section className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || theme.background }}>
       <div className="max-w-5xl mx-auto space-y-10">
         {(title || subtitle) && (
           <div className="text-center space-y-3">
             {title && (
-              <h2 className={`${vibe.headingSize} font-semibold`} style={{ color: textColor || theme.text }}>
+              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || theme.text }}>
                 {title}
               </h2>
             )}
@@ -44,9 +44,9 @@ const ListEvents = ({ content, vibe, theme }) => {
               key={event.id}
               onClick={() => setActiveEvent(event)}
               whileHover={{ scale: 1.01 }}
-              className={`w-full text-left bg-white ${vibe.shadows} ${vibe.rounded} px-6 py-6 flex flex-col md:flex-row gap-6 items-start border border-black/5 hover:border-transparent hover:shadow-xl ${vibe.animations}`}
+              className={`w-full text-left bg-white ${vibe.shadows} ${vibe.rounded} px-4 py-4 sm:px-6 sm:py-6 flex flex-col md:flex-row gap-4 sm:gap-6 items-start border border-black/5 hover:border-transparent hover:shadow-xl ${vibe.animations}`}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 w-full md:w-auto">
                 <div className={`flex flex-col items-center justify-center ${vibe.rounded} px-5 py-3 text-white`} style={{ backgroundColor: accentColor || theme.primary }}>
                   <span className="text-xs uppercase tracking-[0.2em]">{event.tag || 'Data'}</span>
                   <span className="text-lg font-semibold">

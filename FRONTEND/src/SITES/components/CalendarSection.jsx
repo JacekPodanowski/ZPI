@@ -154,17 +154,17 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
   );
 
   return (
-    <section className="py-16 sm:py-20" style={{ backgroundColor: bgColor }}>
-      <div className="mx-auto max-w-6xl px-4">
+    <section className="py-12 px-4 sm:py-16 sm:px-6 md:py-20 lg:py-24" style={{ backgroundColor: bgColor }}>
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
             {title}
           </h2>
-          <p className="text-lg text-neutral-600 max-w-3xl mx-auto mb-2">
+          <p className="text-base md:text-lg text-neutral-600 max-w-3xl mx-auto mb-2">
             {subtitle}
           </p>
-          <p className="text-sm text-neutral-500">
+          <p className="text-xs md:text-sm text-neutral-500">
             Źródło danych: {siteId ? 'API Backend' : 'dane makietowe (mock)'}
           </p>
         </div>
@@ -177,10 +177,10 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
         )}
 
         {/* Calendar Container */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-neutral-200">
+        <div className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden border border-neutral-200">
           <div className="flex flex-col lg:flex-row">
             {/* Calendar */}
-            <div className="flex-1 p-8">
+            <div className="flex-1 p-4 sm:p-6 md:p-8">
               <style>{`
                 .rdp {
                   --rdp-accent-color: ${effectiveAccentColor};
@@ -250,8 +250,8 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
 
             {/* Slots Sidebar */}
             <div className="lg:w-96 border-t lg:border-t-0 lg:border-l border-neutral-200 bg-neutral-50">
-              <div className="p-8">
-                <h3 className="text-xl font-semibold mb-6" style={{ color: '#1a1a1a' }}>
+              <div className="p-4 sm:p-6 md:p-8">
+                <h3 className="text-lg md:text-xl font-semibold mb-4 md:mb-6" style={{ color: '#1a1a1a' }}>
                   {selectedDay 
                     ? `Terminy ${format(selectedDay, 'd MMMM yyyy', { locale: pl })}`
                     : 'Wybierz dzień z kalendarza'

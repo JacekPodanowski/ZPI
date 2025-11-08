@@ -21,15 +21,30 @@ const GridGallery = ({ content, vibe, theme }) => {
   }
 
   return (
-    <div className={`${vibe.spacing} px-4 relative overflow-hidden`} style={{ backgroundColor: content.bgColor || theme.background }}>
+    <div className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6 relative overflow-hidden`} style={{ backgroundColor: content.bgColor || theme.background }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div 
-        className="max-w-6xl mx-auto grid relative z-10"
+        className={`max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 relative z-10`}
         style={{
-          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gridTemplateColumns: {
+            1: '1fr',
+            2: 'repeat(1, 1fr)',
+            3: 'repeat(1, 1fr)'
+          }[columns] || `repeat(1, 1fr)`,
           gap: gap
         }}
+        // Responsive grid for desktop
+        data-columns={columns}
       >
+        <style>{`
+          @media (min-width: 640px) {
+            [data-columns="2"] { grid-template-columns: repeat(2, 1fr); }
+            [data-columns="3"] { grid-template-columns: repeat(2, 1fr); }
+          }
+          @media (min-width: 1024px) {
+            [data-columns="3"] { grid-template-columns: repeat(3, 1fr); }
+          }
+        `}</style>
         {images.map((item, idx) => {
           const imgUrlRaw = typeof item === 'string' ? item : item.url;
           const caption = typeof item === 'object' ? item.caption : '';

@@ -12,13 +12,13 @@ const AccordionFAQ = ({ content, vibe, theme }) => {
   };
 
   return (
-    <section className={`${vibe.spacing} px-4 relative overflow-hidden`} style={{ backgroundColor: bgColor || theme.background }}>
+    <section className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6 relative overflow-hidden`} style={{ backgroundColor: bgColor || theme.background }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-4xl mx-auto space-y-6 relative z-10">
         {(title || intro) && (
           <div className="text-center space-y-3">
             {title && (
-              <h2 className={`${vibe.headingSize} font-semibold`} style={{ color: textColor || theme.text }}>
+              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || theme.text }}>
                 {title}
               </h2>
             )}
@@ -42,10 +42,10 @@ const AccordionFAQ = ({ content, vibe, theme }) => {
             >
               <button
                 onClick={() => handleToggle(item.id)}
-                className="w-full text-left px-6 py-5 flex items-center justify-between gap-6"
+                className="w-full text-left px-4 py-4 sm:px-6 sm:py-5 flex items-center justify-between gap-4 sm:gap-6"
                 style={{ color: textColor || theme.text }}
               >
-                <span className="text-lg font-medium">{item.question}</span>
+                <span className="text-base sm:text-lg font-medium">{item.question}</span>
                 <motion.span
                   animate={{ rotate: openId === item.id ? 45 : 0 }}
                   className="text-2xl leading-none"

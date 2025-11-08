@@ -145,13 +145,13 @@ const SettingsLayout = () => {
           Manage your account preferences and settings
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 3 }}>
+        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
           {/* Sidebar Navigation */}
           <Paper
             elevation={0}
             sx={{
-              width: { xs: 200, md: '15%' },
-              minWidth: 180,
+              width: { xs: '100%', lg: 280 },
+              minWidth: { xs: '100%', lg: 180 },
               flexShrink: 0,
               backgroundColor: surfaceColor,
               borderRadius: '16px',

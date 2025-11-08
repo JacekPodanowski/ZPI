@@ -4,12 +4,12 @@ const ListFAQ = ({ content, vibe, theme }) => {
   const { title = 'FAQ', intro = '', items = [], bgColor, textColor } = content;
 
   return (
-    <section className={`${vibe.spacing} px-4`} style={{ backgroundColor: bgColor || theme.background }}>
+    <section className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || theme.background }}>
       <div className="max-w-4xl mx-auto space-y-6">
         {(title || intro) && (
           <div className="text-center space-y-3">
             {title && (
-              <h2 className={`${vibe.headingSize} font-semibold`} style={{ color: textColor || theme.text }}>
+              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || theme.text }}>
                 {title}
               </h2>
             )}

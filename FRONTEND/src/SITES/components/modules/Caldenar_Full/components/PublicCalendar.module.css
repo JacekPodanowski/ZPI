@@ -5,23 +5,32 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 100%;
 }
 
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
+    flex-wrap: nowrap;
 }
 
 .monthLabel {
     font-size: 1.6rem;
     font-weight: 600;
+    text-transform: capitalize;
+}
+
+.gridScrollArea {
+    display: grid;
+    gap: 12px;
 }
 
 .dayNamesRow,
 .daysGrid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 8px;
 }
 
@@ -40,17 +49,16 @@
     flex-direction: column;
     justify-content: space-between;
     transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.dayCell button {
-    margin-top: 8px;
+    cursor: pointer;
+    position: relative;
 }
 
 .dayCellAvailable {
     cursor: pointer;
 }
 
-.dayCellAvailable:hover {
+.dayCellAvailable:hover,
+.dayCell:focus-visible {
     transform: translateY(-2px);
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
 }
@@ -68,4 +76,168 @@
     border-radius: 999px;
     padding: 2px 8px;
     align-self: flex-start;
+}
+
+.dayNumber {
+    font-size: 1.05rem;
+}
+
+@media (max-width: 1024px) {
+    .calendarWrapper {
+        padding: 20px;
+        border-radius: 18px;
+    }
+
+    .monthLabel {
+        font-size: 1.45rem;
+    }
+
+    .dayCell {
+        min-height: 80px;
+        padding: 9px;
+    }
+
+    .dayNumber {
+        font-size: 0.98rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .calendarWrapper {
+        padding: 18px 16px 20px;
+        border-radius: 16px;
+        gap: 14px;
+    }
+
+    .header {
+        gap: 8px;
+    }
+
+    .monthLabel {
+        font-size: 1.25rem;
+    }
+
+    .gridScrollArea {
+        overflow-x: auto;
+        margin: 0 -12px;
+        padding-left: 12px;
+        padding-right: 8px;
+        padding-bottom: 12px;
+        scroll-behavior: smooth;
+        scrollbar-width: thin;
+    }
+
+    .gridScrollArea::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .gridScrollArea::-webkit-scrollbar-thumb {
+        background-color: rgba(30, 30, 30, 0.2);
+        border-radius: 999px;
+    }
+
+    .gridScrollArea > * {
+        min-width: 100%;
+    }
+
+    .dayNamesRow,
+    .daysGrid {
+        grid-template-columns: repeat(7, minmax(42px, 1fr));
+        gap: 5px;
+    }
+
+    .dayNameCell {
+        font-size: 0.68rem;
+        letter-spacing: 0.03em;
+    }
+
+    .dayCell {
+        min-height: 82px;
+        padding: 8px;
+        border-radius: 10px;
+    }
+
+    .dayNumber {
+        font-size: 0.9rem;
+    }
+
+    .dayChip {
+        font-size: 0.68rem;
+        padding: 2px 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendarWrapper {
+        padding: 16px 12px 18px;
+        border-radius: 14px;
+    }
+
+    .header {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .monthLabel {
+        font-size: 1.1rem;
+        width: 100%;
+        text-align: center;
+        order: 2;
+        margin-top: 4px;
+    }
+
+    .header button:first-of-type {
+        order: 1;
+    }
+
+    .header button:last-of-type {
+        order: 3;
+    }
+
+    .gridScrollArea {
+        margin: 0 -8px;
+        padding-left: 8px;
+        padding-right: 4px;
+    }
+
+    .dayNamesRow,
+    .daysGrid {
+        grid-template-columns: repeat(7, minmax(36px, 1fr));
+        gap: 4px;
+    }
+
+    .dayCell {
+        min-height: 80px;
+        padding: 7px 6px;
+    }
+
+    .dayNumber {
+        font-size: 0.82rem;
+    }
+
+    .dayChip {
+        font-size: 0.62rem;
+        padding: 1px 5px;
+    }
+}
+
+@media (max-width: 360px) {
+    .dayNamesRow,
+    .daysGrid {
+        grid-template-columns: repeat(7, minmax(32px, 1fr));
+        gap: 3px;
+    }
+
+    .dayCell {
+        min-height: 74px;
+        padding: 6px 5px;
+    }
+
+    .dayNumber {
+        font-size: 0.78rem;
+    }
+
+    .dayChip {
+        font-size: 0.58rem;
+    }
 }

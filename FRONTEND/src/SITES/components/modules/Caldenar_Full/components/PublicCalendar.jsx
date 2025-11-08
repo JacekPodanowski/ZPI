@@ -65,6 +65,7 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
             <Fade in key={formatted} timeout={220}>
                 <Paper
                     elevation={0}
+                    onClick={() => onDayClick?.(dayMoment.clone())}
                     className={[
                         styles.dayCell,
                         hasEvents ? styles.dayCellAvailable : '',
@@ -78,7 +79,12 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                             : '1px solid rgba(0,0,0,0.04)'
                     }}
                 >
-                    <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>
+                    <Typography
+                        variant="subtitle1"
+                        component="p"
+                        className={styles.dayNumber}
+                        sx={{ fontWeight: 600, color: color === '#fff' ? '#fff' : color }}
+                    >
                         {dayMoment.date()}
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -100,19 +106,6 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                             </Typography>
                         )}
                     </Box>
-                    <Button
-                        variant="text"
-                        size="small"
-                        onClick={() => onDayClick?.(dayMoment.clone())}
-                        sx={{
-                            alignSelf: 'flex-start',
-                            mt: 'auto',
-                            color: theme.palette.primary.main,
-                            fontSize: '0.75rem'
-                        }}
-                    >
-                        Zobacz dzień
-                    </Button>
                 </Paper>
             </Fade>
         );
@@ -140,20 +133,22 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                 </IconButton>
             </Box>
 
-            <Box className={styles.dayNamesRow}>
-                {DAY_NAMES.map((name) => (
-                    <Typography
-                        key={name}
-                        className={styles.dayNameCell}
-                        sx={{ color: theme.palette.text.secondary }}
-                    >
-                        {name}
-                    </Typography>
-                ))}
-            </Box>
+            <Box className={styles.gridScrollArea}>
+                <Box className={styles.dayNamesRow}>
+                    {DAY_NAMES.map((name) => (
+                        <Typography
+                            key={name}
+                            className={styles.dayNameCell}
+                            sx={{ color: theme.palette.text.secondary }}
+                        >
+                            {name}
+                        </Typography>
+                    ))}
+                </Box>
 
-            <Box className={styles.daysGrid}>
-                {days.map((day, index) => renderDayCell(day, index))}
+                <Box className={styles.daysGrid}>
+                    {days.map((day, index) => renderDayCell(day, index))}
+                </Box>
             </Box>
         </Paper>
     );

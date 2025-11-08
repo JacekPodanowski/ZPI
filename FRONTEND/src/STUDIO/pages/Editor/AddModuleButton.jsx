@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
+import { Box, Button, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import { getModuleDefinition, getDefaultModuleContent } from './moduleDefinitions';
@@ -21,7 +21,13 @@ const QUICK_MODULES = [
   'spacer'
 ];
 
-const AddModuleButton = ({ positioning = 'fixed' }) => {
+const AddModuleButton = ({
+  positioning = 'fixed',
+  variant = 'floating',
+  insertIndex = null,
+  buttonSx = {},
+  label = 'Add Section'
+}) => {
   const { getSelectedPage, addModule } = useNewEditorStore();
   const [anchorEl, setAnchorEl] = useState(null);
   const page = getSelectedPage();
@@ -40,51 +46,109 @@ const AddModuleButton = ({ positioning = 'fixed' }) => {
       addModule(page.id, {
         type: moduleType,
         content: defaultContent
-      });
+      }, insertIndex);
     }
     handleClose();
   };
 
   if (!page) return null;
 
+  const isFloating = variant === 'floating';
+
+  const menuAnchorOrigin = isFloating
+    ? { vertical: 'top', horizontal: 'right' }
+    : { vertical: 'bottom', horizontal: 'center' };
+
+  const menuTransformOrigin = isFloating
+    ? { vertical: 'bottom', horizontal: 'left' }
+    : { vertical: 'top', horizontal: 'center' };
+
   return (
     <>
-      <Tooltip title="Add Section">
-        <IconButton
-          onClick={handleClick}
-          sx={{
-            position: positioning,
-            bottom: 32,
-            right: positioning === 'fixed' ? 380 : 32,
-            bgcolor: 'rgb(146, 0, 32)',
-            color: 'white',
-            width: 56,
-            height: 56,
-            boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
-            transition: 'all 0.3s ease',
-            zIndex: 1000,
-            '&:hover': {
-              bgcolor: 'rgb(114, 0, 21)',
-              transform: 'scale(1.1)',
-              boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
-            }
-          }}
-        >
-          <Add sx={{ fontSize: 28 }} />
-        </IconButton>
-      </Tooltip>
+      {isFloating ? (
+        <Tooltip title="Add Section" placement="right">
+          <IconButton
+            onClick={handleClick}
+            sx={[
+              {
+                position: positioning,
+                bottom: { xs: 24, md: 32 },
+                left: { xs: 16, md: 32 },
+                bgcolor: 'rgb(146, 0, 32)',
+                color: 'white',
+                width: { xs: 52, md: 56 },
+                height: { xs: 52, md: 56 },
+                boxShadow: '0 2px 12px rgba(146, 0, 32, 0.3)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                zIndex: 1000,
+                '&:hover': {
+                  bgcolor: 'rgb(114, 0, 21)',
+                  transform: 'scale(1.08)',
+                  boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)'
+                },
+                '&:active': {
+                  transform: 'scale(0.95)'
+                }
+              },
+              buttonSx
+            ]}
+          >
+            <Add sx={{ fontSize: { xs: 26, md: 28 } }} />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Box sx={{ width: '100%', px: { xs: 1.25, sm: 1.75, md: 2 } }}>
+          <Button
+            onClick={handleClick}
+            startIcon={<Add sx={{ fontSize: { xs: 18, md: 20 } }} />}
+            fullWidth
+            sx={[
+              {
+                mt: { xs: 1.1, md: 1.75 },
+                mb: { xs: 1.1, md: 1.75 },
+                py: { xs: 1, md: 1.35 },
+                borderRadius: { xs: '12px', md: '14px' },
+                border: '1px dashed rgba(146, 0, 32, 0.35)',
+                bgcolor: 'rgba(146, 0, 32, 0.06)',
+                color: 'rgb(146, 0, 32)',
+                fontWeight: 600,
+                textTransform: 'none',
+                fontSize: { xs: '13px', md: '14px' },
+                letterSpacing: '0.02em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: { xs: 0.75, md: 1 },
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  bgcolor: 'rgba(146, 0, 32, 0.12)',
+                  borderColor: 'rgba(146, 0, 32, 0.5)'
+                },
+                '&:active': {
+                  transform: 'scale(0.98)'
+                }
+              },
+              buttonSx
+            ]}
+          >
+            {label}
+          </Button>
+        </Box>
+      )}
 
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleClose}
+        anchorOrigin={menuAnchorOrigin}
+        transformOrigin={menuTransformOrigin}
         PaperProps={{
           sx: {
-            maxHeight: '500px',
-            width: '280px',
+            maxHeight: '70vh',
+            width: isFloating ? '280px' : 'min(320px, 92vw)',
             borderRadius: '12px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-            mt: -1
+            overflowY: 'auto'
           }
         }}
       >

@@ -10,14 +10,26 @@ const MasonryGallery = ({ content, vibe, theme }) => {
   }
 
   return (
-    <div className={`${vibe.spacing} px-4`} style={{ backgroundColor: theme.background }}>
+    <div className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: theme.background }}>
       <div 
         className="max-w-6xl mx-auto"
         style={{
-          columnCount: columns,
+          columnCount: 1,
           columnGap: gap
         }}
       >
+        <style>{`
+          @media (min-width: 640px) {
+            .max-w-6xl.mx-auto {
+              column-count: ${Math.min(columns, 2)} !important;
+            }
+          }
+          @media (min-width: 1024px) {
+            .max-w-6xl.mx-auto {
+              column-count: ${columns} !important;
+            }
+          }
+        `}</style>
         {images.map((item, idx) => {
           const imgUrlRaw = typeof item === 'string' ? item : item.url;
           const caption = typeof item === 'object' ? item.caption : '';

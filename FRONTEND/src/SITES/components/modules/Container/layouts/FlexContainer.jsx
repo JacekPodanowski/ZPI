@@ -37,20 +37,19 @@ const FlexContainer = ({ content, vibe, theme, isEditing = false }) => {
   };
 
   return (
-    <div className="py-8 px-4 relative">
+    <div className="py-8 px-4 md:py-12 md:px-6 relative">
       {/* Label kontenera w trybie edycji */}
       {isEditing && (
-        <div className="absolute -top-2 left-8 px-2 py-1 rounded text-xs font-medium z-10"
+        <div className="absolute -top-2 left-4 md:left-8 px-2 py-1 rounded text-xs font-medium z-10"
              style={{ backgroundColor: 'rgb(146, 0, 32)', color: 'rgb(228, 229, 218)' }}>
           📦 Kontener ({direction === 'horizontal' ? '↔️' : '↕️'})
         </div>
       )}
       
       <div 
-        className="max-w-6xl mx-auto relative"
+        className="max-w-6xl mx-auto relative flex flex-col md:flex-row"
         style={{
-          display: 'flex',
-          flexDirection: direction === 'horizontal' ? 'row' : 'column',
+          flexDirection: direction === 'horizontal' ? 'column' : 'column',
           gap: gap,
           alignItems: alignMap[align],
           justifyContent: justifyMap[justify],
@@ -61,6 +60,13 @@ const FlexContainer = ({ content, vibe, theme, isEditing = false }) => {
           minHeight: children.length === 0 && isEditing ? '100px' : 'auto'
         }}
       >
+        <style>{`
+          @media (min-width: 768px) {
+            .max-w-6xl.mx-auto.relative.flex {
+              flex-direction: ${direction === 'horizontal' ? 'row' : 'column'} !important;
+            }
+          }
+        `}</style>
         {children.length === 0 && isEditing && (
           <div className="flex items-center justify-center w-full h-full text-center opacity-50">
             <div>

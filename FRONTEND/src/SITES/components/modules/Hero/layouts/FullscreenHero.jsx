@@ -8,7 +8,7 @@ const FullscreenHero = ({ content, vibe, theme }) => {
 
   return (
     <section 
-      className={`relative min-h-[80vh] md:min-h-[100vh] flex items-center justify-center ${vibe.rounded} py-24 md:py-32`}
+      className={`relative min-h-[70vh] md:min-h-[80vh] lg:min-h-[100vh] flex items-center justify-center ${vibe.rounded} py-16 px-4 md:py-24 md:px-6 lg:py-32`}
       style={{
         backgroundColor: content.bgColor || theme.background
       }}
