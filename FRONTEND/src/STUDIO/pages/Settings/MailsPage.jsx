@@ -128,7 +128,7 @@ const MailsPage = () => {
       const response = await apiClient.get('/email-templates/');
       setTemplates(response.data || []);
     } catch (err) {
-      addToast?.('Nie udało się pobrać szablonów email', 'error');
+      addToast?.('Nie udało się pobrać szablonów email', {variant: 'error'});
       console.error('Error fetching templates:', err);
     } finally {
       setLoading(false);
@@ -158,14 +158,14 @@ const MailsPage = () => {
   const handleSaveTemplate = async () => {
     try {
       if (!editedTemplate.name || !editedTemplate.slug) {
-        addToast?.('Proszę wypełnić nazwę i slug szablonu', 'error');
+        addToast?.('Proszę wypełnić nazwę i slug szablonu', {variant: 'error'});
         return;
       }
 
       if (selectedTemplate && !selectedTemplate.is_default) {
         // Update existing custom template
         await apiClient.patch(`/email-templates/${selectedTemplate.id}/`, editedTemplate);
-        addToast?.('Szablon zaktualizowany', 'success');
+        addToast?.('Szablon zaktualizowany', {variant: 'success'});
       } else {
         // Create new template (or copy of default)
         const payload = { ...editedTemplate };
@@ -173,20 +173,20 @@ const MailsPage = () => {
           payload.slug = payload.name.toLowerCase().replace(/\s+/g, '-');
         }
         await apiClient.post('/email-templates/', payload);
-        addToast?.('Nowy szablon utworzony', 'success');
+        addToast?.('Nowy szablon utworzony', {variant: 'success'});
       }
 
       setEditorOpen(false);
       fetchTemplates();
     } catch (err) {
-      addToast?.('Błąd podczas zapisywania szablonu', 'error');
+      addToast?.('Błąd podczas zapisywania szablonu', {variant: 'error'});
       console.error('Error saving template:', err);
     }
   };
 
   const handleDeleteTemplate = async (template) => {
     if (template.is_default) {
-      addToast?.('Nie można usunąć domyślnego szablonu', 'error');
+      addToast?.('Nie można usunąć domyślnego szablonu', {variant: 'error'});
       return;
     }
 
@@ -196,10 +196,10 @@ const MailsPage = () => {
 
     try {
       await apiClient.delete(`/email-templates/${template.id}/`);
-      addToast?.('Szablon usunięty', 'success');
+      addToast?.('Szablon usunięty', {variant: 'success'});
       fetchTemplates();
     } catch (err) {
-      addToast?.('Błąd podczas usuwania szablonu', 'error');
+      addToast?.('Błąd podczas usuwania szablonu', {variant: 'error'});
       console.error('Error deleting template:', err);
     }
   };
@@ -207,12 +207,12 @@ const MailsPage = () => {
   const handleSendTest = async () => {
     try {
       if (!selectedTemplate) {
-        addToast?.('Wybierz szablon', 'error');
+        addToast?.('Wybierz szablon', {variant: 'error'});
         return;
       }
 
       if (!testEmail.from_email || !testEmail.to_email) {
-        addToast?.('Wypełnij adresy email', 'error');
+        addToast?.('Wypełnij adresy email', {variant: 'error'});
         return;
       }
 
@@ -224,10 +224,10 @@ const MailsPage = () => {
         test_data: testEmail.test_data
       });
 
-      addToast?.(`Testowy email wysłany na ${testEmail.to_email}`, 'success');
+      addToast?.(`Testowy email wysłany na ${testEmail.to_email}`, {variant: 'success'});
       setTestEmailOpen(false);
     } catch (err) {
-      addToast?.('Błąd podczas wysyłania testowego maila', 'error');
+      addToast?.('Błąd podczas wysyłania testowego maila', {variant: 'error'});
       console.error('Error sending test email:', err);
     }
   };
