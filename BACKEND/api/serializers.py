@@ -5,9 +5,12 @@ from django.utils.text import slugify
 from django.utils import timezone
 from rest_framework import serializers
 
+from django.db import ProgrammingError, OperationalError
+
 from .models import (
     PlatformUser,
     Site,
+    SiteVersion,
     Client,
     Event,
     Booking,
@@ -143,18 +146,57 @@ class PlatformUserSerializer(serializers.ModelSerializer):
 
 class SiteSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    latest_version = serializers.SerializerMethodField()
 
     class Meta:
         model = Site
         fields = [
             'id', 'owner', 'name', 'identifier', 'color_index',
-            'template_config', 'version_history',
-            'created_at', 'updated_at'
+            'template_config', 'created_at', 'updated_at', 'latest_version'
         ]
         read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner']
         extra_kwargs = {
             'color_index': {'required': False}
         }
+
+    def get_latest_version(self, obj):
+        try:
+            latest = obj.versions.order_by('-version_number').first()
+        except (ProgrammingError, OperationalError):
+            logger.warning(
+                "SiteVersion table unavailable while fetching latest version for site %s", obj.pk,
+                exc_info=True,
+            )
+            return None
+
+        if not latest:
+            return None
+        return {
+            'id': str(latest.id),
+            'version_number': latest.version_number,
+            'created_at': latest.created_at,
+            'created_by': latest.created_by_id,
+            'notes': latest.notes,
+            'change_summary': latest.change_summary
+        }
+
+
+class SiteVersionSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SiteVersion
+        fields = [
+            'id', 'site', 'version_number', 'template_config', 'created_at',
+            'created_by', 'created_by_name', 'notes', 'change_summary'
+        ]
+        read_only_fields = ['id', 'site', 'version_number', 'created_at', 'created_by', 'created_by_name']
+
+    def get_created_by_name(self, obj):
+        if not obj.created_by:
+            return None
+        full_name = obj.created_by.get_full_name()
+        return full_name or obj.created_by.email
 
 
 class PublicSiteSerializer(serializers.ModelSerializer):

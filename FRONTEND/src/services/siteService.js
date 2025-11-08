@@ -49,3 +49,13 @@ export const updateSite = async (siteId, payload) => {
     const response = await apiClient.patch(`/sites/${siteId}/`, payload);
     return response.data;
 };
+
+export const createSiteVersion = async (siteId, payload) => {
+    const response = await apiClient.post(`/sites/${siteId}/versions/`, payload);
+    return response.data;
+};
+
+export const fetchSiteVersions = async (siteId) => {
+    const response = await apiClient.get(`/sites/${siteId}/versions/`);
+    return response.data;
+};

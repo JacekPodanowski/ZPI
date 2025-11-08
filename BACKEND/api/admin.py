@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import (
-    PlatformUser, Site, Client, Event, Booking, Template, 
+	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, 
     MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate
 )
 
@@ -18,6 +18,14 @@ class SiteAdmin(admin.ModelAdmin):
 	list_display = ('name', 'identifier', 'owner', 'created_at')
 	search_fields = ('name', 'identifier')
 	autocomplete_fields = ('owner',)
+
+
+@admin.register(SiteVersion)
+class SiteVersionAdmin(admin.ModelAdmin):
+	list_display = ('site', 'version_number', 'created_at', 'created_by')
+	search_fields = ('site__name', 'site__identifier')
+	list_filter = ('site',)
+	autocomplete_fields = ('site', 'created_by')
 
 
 @admin.register(Client)

@@ -1,544 +1,1273 @@
 import { create } from 'zustand';
 import { getDefaultModuleContent } from '../pages/Editor/moduleDefinitions';
 
-// Initial state structure following EDITOR_PLAN.md
+const MAX_STRUCTURE_HISTORY = 10;
+const MAX_DETAIL_HISTORY = 20;
+
+const deepClone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+
+const createHistoryStack = () => ({
+  past: [],
+  future: []
+});
+
+const createTransactionState = () => ({
+  active: false,
+  mode: null,
+  conversationId: null,
+  description: '',
+  startSnapshot: null,
+  affectedModules: [],
+  changesCount: 0,
+  lastActionType: null
+});
+
+const createSnapshot = (state) => ({
+  site: deepClone(state.site),
+  entryPointPageId: state.entryPointPageId,
+  selectedPageId: state.selectedPageId,
+  selectedModuleId: state.selectedModuleId
+});
+
+const cloneSnapshot = (snapshot) => ({
+  site: deepClone(snapshot.site),
+  entryPointPageId: snapshot.entryPointPageId,
+  selectedPageId: snapshot.selectedPageId,
+  selectedModuleId: snapshot.selectedModuleId
+});
+
+const deriveSelectionFromSnapshot = (snapshot) => {
+  const pages = snapshot.site?.pages || [];
+  let selectedPageId = snapshot.selectedPageId ?? (pages[0]?.id || null);
+  if (selectedPageId && !pages.some((page) => page.id === selectedPageId)) {
+    selectedPageId = pages[0]?.id || null;
+  }
+
+  let selectedModuleId = snapshot.selectedModuleId ?? null;
+  if (selectedModuleId) {
+    const exists = pages.some(
+      (page) => Array.isArray(page.modules) && page.modules.some((module) => module.id === selectedModuleId)
+    );
+    if (!exists) {
+      selectedModuleId = null;
+    }
+  }
+
+  return { selectedPageId, selectedModuleId };
+};
+
+const getHistoryConfig = (mode) =>
+  mode === 'structure'
+    ? { key: 'structureHistory', limit: MAX_STRUCTURE_HISTORY }
+    : { key: 'detailHistory', limit: MAX_DETAIL_HISTORY };
+
+const buildMeta = (metadata = {}) => ({
+  timestamp: metadata.timestamp || Date.now(),
+  source: metadata.source || 'user',
+  actionType: metadata.actionType || 'unknown',
+  description: metadata.description || '',
+  conversationId: metadata.conversationId || null,
+  affectedModules: Array.isArray(metadata.affectedModules) ? metadata.affectedModules : [],
+  changesCount:
+    typeof metadata.changesCount === 'number' && metadata.changesCount >= 0 ? metadata.changesCount : 1
+});
+
+const pushHistoryEntry = (state, mode, metadata, snapshotOverride = null) => {
+  const { key, limit } = getHistoryConfig(mode);
+  const snapshot = snapshotOverride ? cloneSnapshot(snapshotOverride) : createSnapshot(state);
+  const entry = {
+    state: snapshot,
+    meta: buildMeta(metadata)
+  };
+  const past = [...state[key].past, entry];
+  if (past.length > limit) {
+    past.shift();
+  }
+  return {
+    [key]: {
+      past,
+      future: []
+    }
+  };
+};
+
+const accumulateTransactionMeta = (transaction, metadata = {}) => {
+  const modules = new Set(transaction.affectedModules || []);
+  (metadata.affectedModules || []).forEach((id) => {
+    if (id) {
+      modules.add(id);
+    }
+  });
+
+  const description = metadata.description || transaction.description || '';
+  return {
+    ...transaction,
+    description,
+    lastActionType: metadata.actionType || transaction.lastActionType,
+    affectedModules: Array.from(modules),
+    changesCount: (transaction.changesCount || 0) + (metadata.changesCount || 1)
+  };
+};
+
+const applyChangeWithHistory = (state, mode, metadata, updates, snapshotOverride = null) => {
+  if (state.aiTransaction.active && (state.aiTransaction.mode || 'detail') === mode) {
+    return {
+      ...updates,
+      aiTransaction: accumulateTransactionMeta(state.aiTransaction, metadata)
+    };
+  }
+  return {
+    ...updates,
+    ...pushHistoryEntry(state, mode, metadata, snapshotOverride)
+  };
+};
+
+const createInitialSite = () => ({
+  vibe: 'minimal',
+  theme: {
+    primary: '#920020',
+    secondary: '#2D5A7B',
+    neutral: '#E4E5DA'
+  },
+  navigation: {},
+  pages: [
+    {
+      id: 'home',
+      name: 'Home',
+      route: '/',
+      modules: [
+        {
+          id: 'module-hero-default',
+          type: 'hero',
+          content: getDefaultModuleContent('hero'),
+          enabled: true
+        }
+      ]
+    }
+  ]
+});
+
 const createInitialState = () => ({
-  // Site metadata
   siteId: null,
   siteName: 'Untitled Site',
-  
-  site: {
-    vibe: 'minimal',
-    theme: {
-      primary: '#920020',
-      secondary: '#2D5A7B',
-      neutral: '#E4E5DA'
-    },
-    navigation: {
-      // Only store customizations, defaults applied from moduleDefinitions
-      // content: { } - only include if different from default
-    },
-    pages: [
-      {
-        id: 'home',
-        name: 'Home',
-        route: '/',
-        modules: [
-          {
-            id: 'module-hero-default',
-            type: 'hero',
-            content: getDefaultModuleContent('hero'),
-            enabled: true
-          }
-        ]
-      }
-    ]
-  },
+  site: createInitialSite(),
   userLibrary: {
     customAssets: []
   },
-  // Editor state
-  editorMode: 'structure', // 'structure' | 'detail'
+  editorMode: 'structure',
   selectedPageId: null,
   selectedModuleId: null,
-  devicePreview: 'desktop', // 'desktop' | 'mobile'
+  devicePreview: 'desktop',
   isDragging: false,
   draggedItem: null,
   hasUnsavedChanges: false,
   entryPointPageId: 'home',
-  // Module heights storage (persisted across all renders)
-  moduleHeights: {} // { [moduleType]: height }
+  moduleHeights: {},
+  structureHistory: createHistoryStack(),
+  detailHistory: createHistoryStack(),
+  aiTransaction: createTransactionState(),
+  currentVersionNumber: 0,
+  lastSavedAt: null
 });
 
-export const useNewEditorStore = create((set, get) => ({
+const useNewEditorStore = create((set, get) => ({
   ...createInitialState(),
 
-  // === Mode Management ===
   setEditorMode: (mode) => set({ editorMode: mode }),
-  
-  enterDetailMode: (pageId) => set({ 
-    editorMode: 'detail', 
-    selectedPageId: pageId,
-    selectedModuleId: null 
-  }),
-  
-  exitDetailMode: () => set({ 
-    editorMode: 'structure',
-    selectedModuleId: null
-  }),
+  enterDetailMode: (pageId) =>
+    set({
+      editorMode: 'detail',
+      selectedPageId: pageId,
+      selectedModuleId: null
+    }),
+  exitDetailMode: () =>
+    set({
+      editorMode: 'structure',
+      selectedModuleId: null
+    }),
 
-  // === Page Management ===
-  addPage: (page) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: [...state.site.pages, {
-        id: page.id || `page-${Date.now()}`,
-        name: page.name || 'New Page',
-        route: page.route || `/${page.name?.toLowerCase().replace(/\s+/g, '-')}`,
-        modules: page.modules || []
-      }]
-    },
-    hasUnsavedChanges: true
-  })),
-
-  removePage: (pageId) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.filter(p => p.id !== pageId)
-    },
-    selectedPageId: state.selectedPageId === pageId ? null : state.selectedPageId,
-    hasUnsavedChanges: true
-  })),
-
-  renamePage: (pageId, newName) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(p => 
-        p.id === pageId ? { ...p, name: newName } : p
-      )
-    },
-    hasUnsavedChanges: true
-  })),
-
-  setEntryPoint: (pageId) => set({ 
-    entryPointPageId: pageId,
-    hasUnsavedChanges: true 
-  }),
-
-  // === Module Management ===
-  addModule: (pageId, module, insertIndex = null) => set((state) => {
-    console.log('[newEditorStore] addModule called:', { pageId, module, insertIndex });
-    console.log('[newEditorStore] Current pages:', state.site.pages);
-    
-    const result = {
-      site: {
-        ...state.site,
-        pages: state.site.pages.map(page => {
-          if (page.id !== pageId) return page;
-          
-          console.log('[newEditorStore] Found matching page:', page.id);
-          
-          const newModule = {
-            id: module.id || `module-${Date.now()}`,
+  addPage: (page = {}) =>
+    set((state) => {
+      const trimmedName = (page.name || 'New Page').trim() || 'New Page';
+      const pageId = page.id || `page-${Date.now()}`;
+      const route =
+        page.route || `/${trimmedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/gi, '')}`;
+      const modules = Array.isArray(page.modules)
+        ? page.modules.map((module, index) => ({
+            id: module.id || `module-${Date.now()}-${index}`,
             type: module.type,
-            content: module.content || {},
+            content: deepClone(module.content || {}),
             enabled: module.enabled !== undefined ? module.enabled : true
-          };
-          
-          console.log('[newEditorStore] Created new module:', newModule);
+          }))
+        : [];
 
-          // Insert at specific index or append at end
-          const newModules = [...page.modules];
-          if (insertIndex !== null && insertIndex >= 0 && insertIndex <= newModules.length) {
-            console.log('[newEditorStore] Inserting at index:', insertIndex);
-            newModules.splice(insertIndex, 0, newModule);
-          } else {
-            console.log('[newEditorStore] Appending at end');
-            newModules.push(newModule);
-          }
-          
-          console.log('[newEditorStore] New modules array:', newModules);
-
-          return {
-            ...page,
-            modules: newModules
-          };
-        })
-      },
-      hasUnsavedChanges: true
-    };
-    
-    console.log('[newEditorStore] Returning new state with pages:', result.site.pages);
-    return result;
-  }),
-
-  removeModule: (pageId, moduleId) => set((state) => {
-    const updatedPages = state.site.pages.map(page => {
-      if (page.id !== pageId) return page;
-      return {
-        ...page,
-        modules: page.modules.filter(m => m.id !== moduleId)
-      };
-    });
-
-    // Auto-delete pages that become empty (except home page - first page)
-    const homePageId = state.site.pages[0]?.id;
-    const filteredPages = updatedPages.filter(page => {
-      // Always keep home page even if empty
-      if (page.id === homePageId) return true;
-      // Keep pages with modules
-      return page.modules.length > 0;
-    });
-
-    return {
-      site: {
+      const updatedSite = {
         ...state.site,
-        pages: filteredPages
-      },
-      selectedModuleId: state.selectedModuleId === moduleId ? null : state.selectedModuleId,
-      hasUnsavedChanges: true
-    };
-  }),
+        pages: [...state.site.pages, { id: pageId, name: trimmedName, route, modules }]
+      };
 
-  reorderModules: (pageId, moduleIds) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(page => {
-        if (page.id !== pageId) return page;
-        
-        const modulesMap = new Map(page.modules.map(m => [m.id, m]));
-        return {
-          ...page,
-          modules: moduleIds.map(id => modulesMap.get(id))
-        };
-      })
-    },
-    hasUnsavedChanges: true
-  })),
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'add_page',
+        description: `Added page "${trimmedName}"`,
+        changesCount: 1
+      };
 
-  moveModule: (fromPageId, toPageId, moduleId, toIndex) => set((state) => {
-    console.log('[newEditorStore] moveModule called:', { fromPageId, toPageId, moduleId, toIndex });
-    
-    // Find the module to move
-    const fromPage = state.site.pages.find(p => p.id === fromPageId);
-    const moduleToMove = fromPage?.modules.find(m => m.id === moduleId);
-    
-    if (!moduleToMove) {
-      console.error('[newEditorStore] Module not found:', moduleId);
-      return state;
-    }
-
-    // Special case: moving within the same page
-    if (fromPageId === toPageId) {
-      return {
-        site: {
-          ...state.site,
-          pages: state.site.pages.map(page => {
-            if (page.id !== fromPageId) return page;
-            
-            const newModules = [...page.modules];
-            const currentIndex = newModules.findIndex(m => m.id === moduleId);
-            
-            if (currentIndex === -1) return page;
-            
-            // Remove from current position
-            newModules.splice(currentIndex, 1);
-            
-            // Calculate insert position (adjust if moving forward)
-            let insertIndex = toIndex;
-            if (toIndex > currentIndex) {
-              insertIndex = toIndex - 1;
-            }
-            
-            // Insert at new position
-            newModules.splice(insertIndex, 0, moduleToMove);
-            
-            return {
-              ...page,
-              modules: newModules
-            };
-          })
-        },
+      const updates = {
+        site: updatedSite,
+        selectedPageId: pageId,
         hasUnsavedChanges: true
       };
-    }
 
-    // Moving between different pages
-    return {
-      site: {
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  removePage: (pageId) =>
+    set((state) => {
+      if (!pageId) {
+        return {};
+      }
+      const pages = state.site.pages;
+      if (pages.length <= 1 || pageId === 'home') {
+        return {};
+      }
+
+      const pageIndex = pages.findIndex((page) => page.id === pageId);
+      if (pageIndex === -1) {
+        return {};
+      }
+
+      const pageToRemove = pages[pageIndex];
+      const remainingPages = pages.filter((page) => page.id !== pageId);
+      const fallbackPageId = remainingPages[0]?.id || null;
+
+      const updatedSite = {
         ...state.site,
-        pages: state.site.pages.map(page => {
-          // Remove from source page
-          if (page.id === fromPageId) {
+        pages: remainingPages
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'remove_page',
+        description: `Removed page "${pageToRemove.name || pageId}"`,
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        selectedPageId: state.selectedPageId === pageId ? fallbackPageId : state.selectedPageId,
+        entryPointPageId: state.entryPointPageId === pageId ? fallbackPageId : state.entryPointPageId,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  renamePage: (pageId, newName) =>
+    set((state) => {
+      const trimmed = (newName || '').trim();
+      if (!trimmed) {
+        return {};
+      }
+
+      const pageIndex = state.site.pages.findIndex((page) => page.id === pageId);
+      if (pageIndex === -1) {
+        return {};
+      }
+
+      const targetPage = state.site.pages[pageIndex];
+      if (targetPage.name === trimmed) {
+        return {};
+      }
+
+      const updatedPages = state.site.pages.map((page) =>
+        page.id === pageId ? { ...page, name: trimmed } : page
+      );
+
+      const updatedSite = {
+        ...state.site,
+        pages: updatedPages
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'rename_page',
+        description: `Renamed page to "${trimmed}"`,
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  setEntryPoint: (pageId) =>
+    set((state) => {
+      if (!pageId || state.entryPointPageId === pageId) {
+        return {};
+      }
+
+      const targetPage = state.site.pages.find((page) => page.id === pageId);
+      if (!targetPage) {
+        return {};
+      }
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'set_entry_point',
+        description: `Set entry point to "${targetPage.name || pageId}"`,
+        changesCount: 1
+      };
+
+      const updates = {
+        entryPointPageId: pageId,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  addModule: (pageId, module, insertIndex = null) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      if (!page || !module?.type) {
+        return {};
+      }
+
+      const newModule = {
+        id: module.id || `module-${Date.now()}`,
+        type: module.type,
+        content: deepClone(module.content || {}),
+        enabled: module.enabled !== undefined ? module.enabled : true
+      };
+
+      const modules = Array.isArray(page.modules) ? [...page.modules] : [];
+      const targetIndex =
+        typeof insertIndex === 'number' && insertIndex >= 0 && insertIndex <= modules.length
+          ? insertIndex
+          : modules.length;
+
+      modules.splice(targetIndex, 0, newModule);
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) => (p.id === pageId ? { ...p, modules } : p))
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'add_module',
+        description: `Added ${module.type} module`,
+        affectedModules: [newModule.id],
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        selectedPageId: pageId,
+        selectedModuleId: newModule.id,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  removeModule: (pageId, moduleId) =>
+    set((state) => {
+      const pages = state.site.pages;
+      const pageIndex = pages.findIndex((page) => page.id === pageId);
+      if (pageIndex === -1) {
+        return {};
+      }
+
+      const page = pages[pageIndex];
+      const modules = Array.isArray(page.modules) ? page.modules : [];
+      const moduleIndex = modules.findIndex((module) => module.id === moduleId);
+      if (moduleIndex === -1) {
+        return {};
+      }
+
+      const removedModule = modules[moduleIndex];
+      const remainingModules = modules.filter((module) => module.id !== moduleId);
+      const homePageId = pages[0]?.id;
+
+      const updatedPages = pages
+        .map((p) => {
+          if (p.id === pageId) {
             return {
-              ...page,
-              modules: page.modules.filter(m => m.id !== moduleId)
+              ...p,
+              modules: remainingModules
             };
           }
-          
-          // Add to target page
-          if (page.id === toPageId) {
-            const newModules = [...page.modules];
-            const insertIndex = toIndex !== null && toIndex >= 0 && toIndex <= newModules.length 
-              ? toIndex 
-              : newModules.length;
-            newModules.splice(insertIndex, 0, moduleToMove);
-            
-            return {
-              ...page,
-              modules: newModules
-            };
+          return p;
+        })
+        .filter((p) => {
+          if (p.id === pageId && p.id !== homePageId) {
+            return p.modules.length > 0;
           }
-          
-          return page;
-        })
-      },
-      hasUnsavedChanges: true
-    };
-  }),
+          return true;
+        });
 
-  updateModuleContent: (pageId, moduleId, content) => set((state) => {
-    console.log('🏪 Store - updateModuleContent called:', { pageId, moduleId, content });
-    
-    const newState = {
-      site: {
+      let selectedPageId = state.selectedPageId;
+      if (!updatedPages.some((p) => p.id === selectedPageId)) {
+        selectedPageId = updatedPages[0]?.id || null;
+      }
+
+      const entryPointPageId = updatedPages.some((p) => p.id === state.entryPointPageId)
+        ? state.entryPointPageId
+        : updatedPages[0]?.id || null;
+
+      const updatedSite = {
         ...state.site,
-        pages: state.site.pages.map(page => {
-          if (page.id !== pageId) return page;
-          return {
-            ...page,
-            modules: page.modules.map(m => {
-              if (m.id === moduleId) {
-                const updatedModule = { ...m, content: { ...m.content, ...content } };
-                console.log('🏪 Store - Updated module:', updatedModule);
-                return updatedModule;
-              }
-              return m;
-            })
-          };
-        })
-      },
-      hasUnsavedChanges: true
-    };
-    
-    console.log('🏪 Store - New state pages:', newState.site.pages);
-    return newState;
-  }),
+        pages: updatedPages
+      };
 
-  // === Navigation Management ===
-  updateNavigationContent: (content) => set((state) => ({
-    site: {
-      ...state.site,
-      navigation: {
-        ...state.site.navigation,
-        content: {
-          ...(state.site.navigation?.content || {}),
-          ...content
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'remove_module',
+        description: `Removed ${removedModule.type || 'module'}`,
+        affectedModules: [moduleId],
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        selectedPageId,
+        selectedModuleId: state.selectedModuleId === moduleId ? null : state.selectedModuleId,
+        entryPointPageId,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  reorderModules: (pageId, moduleIds) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      if (!page) {
+        return {};
+      }
+
+      const currentOrder = (page.modules || []).map((module) => module.id);
+      if (
+        currentOrder.length !== moduleIds.length ||
+        currentOrder.every((id, index) => id === moduleIds[index])
+      ) {
+        return {};
+      }
+
+      const modulesMap = new Map((page.modules || []).map((module) => [module.id, module]));
+      const reordered = moduleIds.map((id) => modulesMap.get(id)).filter(Boolean);
+      if (reordered.length !== currentOrder.length) {
+        return {};
+      }
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) => (p.id === pageId ? { ...p, modules: reordered } : p))
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'reorder_module',
+        description: `Reordered modules on "${page.name}"`,
+        affectedModules: moduleIds,
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  moveModule: (fromPageId, toPageId, moduleId, toIndex) =>
+    set((state) => {
+      const fromPage = state.site.pages.find((p) => p.id === fromPageId);
+      const toPage = state.site.pages.find((p) => p.id === toPageId);
+      if (!fromPage || !toPage) {
+        return {};
+      }
+
+      const moduleToMove = (fromPage.modules || []).find((module) => module.id === moduleId);
+      if (!moduleToMove) {
+        return {};
+      }
+
+      if (fromPageId === toPageId) {
+        const currentModules = [...(fromPage.modules || [])];
+        const currentIndex = currentModules.findIndex((module) => module.id === moduleId);
+        if (currentIndex === -1 || currentModules.length <= 1) {
+          return {};
         }
+
+        currentModules.splice(currentIndex, 1);
+
+        let insertAt = typeof toIndex === 'number' ? toIndex : currentModules.length;
+        if (insertAt > currentIndex) {
+          insertAt -= 1;
+        }
+        insertAt = Math.max(0, Math.min(currentModules.length, insertAt));
+        currentModules.splice(insertAt, 0, moduleToMove);
+
+        const updatedSite = {
+          ...state.site,
+          pages: state.site.pages.map((p) =>
+            p.id === fromPageId ? { ...p, modules: currentModules } : p
+          )
+        };
+
+        const metadata = {
+          source: state.aiTransaction.active ? 'ai' : 'user',
+          actionType: 'reorder_module',
+          description: `Reordered modules on "${fromPage.name}"`,
+          affectedModules: [moduleId],
+          changesCount: 1
+        };
+
+        const updates = {
+          site: updatedSite,
+          hasUnsavedChanges: true
+        };
+
+        return applyChangeWithHistory(state, 'detail', metadata, updates);
       }
-    },
-    hasUnsavedChanges: true
-  })),
 
-  // === Collection Item Management (from old editor) ===
-  addCollectionItem: (pageId, moduleId, collectionKey, newItem) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(page => {
-        if (page.id !== pageId) return page;
-        return {
-          ...page,
-          modules: page.modules.map(m => {
-            if (m.id !== moduleId) return m;
+      const fromModules = (fromPage.modules || []).filter((module) => module.id !== moduleId);
+      const toModules = [...(toPage.modules || [])];
+      const insertAt =
+        typeof toIndex === 'number' && toIndex >= 0 && toIndex <= toModules.length
+          ? toIndex
+          : toModules.length;
+      toModules.splice(insertAt, 0, moduleToMove);
+
+      const homePageId = state.site.pages[0]?.id;
+      const updatedPages = state.site.pages
+        .map((p) => {
+          if (p.id === fromPageId) {
             return {
-              ...m,
-              content: {
-                ...m.content,
-                [collectionKey]: [...(m.content[collectionKey] || []), newItem]
-              }
+              ...p,
+              modules: fromModules
             };
-          })
-        };
-      })
-    },
-    hasUnsavedChanges: true
-  })),
-
-  removeCollectionItem: (pageId, moduleId, collectionKey, index) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(page => {
-        if (page.id !== pageId) return page;
-        return {
-          ...page,
-          modules: page.modules.map(m => {
-            if (m.id !== moduleId) return m;
+          }
+          if (p.id === toPageId) {
             return {
-              ...m,
-              content: {
-                ...m.content,
-                [collectionKey]: m.content[collectionKey].filter((_, i) => i !== index)
-              }
+              ...p,
+              modules: toModules
             };
-          })
-        };
-      })
-    },
-    hasUnsavedChanges: true
-  })),
+          }
+          return p;
+        })
+        .filter((p) => {
+          if (p.id === fromPageId && p.id !== homePageId) {
+            return p.modules.length > 0;
+          }
+          return true;
+        });
 
-  updateCollectionItem: (pageId, moduleId, collectionKey, index, updates) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(page => {
-        if (page.id !== pageId) return page;
-        return {
-          ...page,
-          modules: page.modules.map(m => {
-            if (m.id !== moduleId) return m;
-            const items = [...m.content[collectionKey]];
-            items[index] = { ...items[index], ...updates };
-            return {
-              ...m,
-              content: {
-                ...m.content,
-                [collectionKey]: items
-              }
-            };
-          })
-        };
-      })
-    },
-    hasUnsavedChanges: true
-  })),
-
-  reorderCollectionItem: (pageId, moduleId, collectionKey, fromIndex, toIndex) => set((state) => ({
-    site: {
-      ...state.site,
-      pages: state.site.pages.map(page => {
-        if (page.id !== pageId) return page;
-        return {
-          ...page,
-          modules: page.modules.map(m => {
-            if (m.id !== moduleId) return m;
-            const items = [...m.content[collectionKey]];
-            const [movedItem] = items.splice(fromIndex, 1);
-            items.splice(toIndex, 0, movedItem);
-            return {
-              ...m,
-              content: {
-                ...m.content,
-                [collectionKey]: items
-              }
-            };
-          })
-        };
-      })
-    },
-    hasUnsavedChanges: true
-  })),
-
-  // === Theme Management ===
-  updateTheme: (colorUpdates) => set((state) => ({
-    site: {
-      ...state.site,
-      theme: {
-        ...state.site.theme,
-        ...colorUpdates
+      let selectedPageId = state.selectedPageId;
+      if (!updatedPages.some((p) => p.id === selectedPageId)) {
+        selectedPageId = updatedPages[0]?.id || null;
       }
-    },
-    hasUnsavedChanges: true
-  })),
 
-  setVibe: (vibe) => set((state) => ({
-    site: {
-      ...state.site,
-      vibe
-    },
-    hasUnsavedChanges: true
-  })),
+      const entryPointPageId = updatedPages.some((p) => p.id === state.entryPointPageId)
+        ? state.entryPointPageId
+        : updatedPages[0]?.id || null;
 
-  // === Site Metadata ===
-  setSiteName: (name) => set({ 
-    siteName: name,
-    hasUnsavedChanges: true 
-  }),
+      const updatedSite = {
+        ...state.site,
+        pages: updatedPages
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'move_module',
+        description: `Moved module to "${toPage.name}"`,
+        affectedModules: [moduleId],
+        changesCount: 2
+      };
+
+      const updates = {
+        site: updatedSite,
+        selectedPageId: toPageId,
+        selectedModuleId: moduleId,
+        entryPointPageId,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'structure', metadata, updates);
+    }),
+
+  updateModuleContent: (pageId, moduleId, content = {}) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      if (!page) {
+        return {};
+      }
+
+      const modules = page.modules || [];
+      const module = modules.find((m) => m.id === moduleId);
+      if (!module) {
+        return {};
+      }
+
+      const incomingKeys = Object.keys(content);
+      if (incomingKeys.length === 0) {
+        return {};
+      }
+
+      const changedKeys = incomingKeys.filter((key) => {
+        const previousValue = module.content?.[key];
+        const nextValue = content[key];
+        return JSON.stringify(previousValue) !== JSON.stringify(nextValue);
+      });
+
+      if (changedKeys.length === 0) {
+        return {};
+      }
+
+      const updatedModule = {
+        ...module,
+        content: {
+          ...deepClone(module.content || {}),
+          ...deepClone(content)
+        }
+      };
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === pageId
+            ? {
+                ...p,
+                modules: (p.modules || []).map((m) => (m.id === moduleId ? updatedModule : m))
+              }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'edit_content',
+        description: `Edited ${module.type || 'module'} content`,
+        affectedModules: [moduleId],
+        changesCount: changedKeys.length
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  updateNavigationContent: (content = {}) =>
+    set((state) => {
+      const currentNavigation = state.site.navigation?.content || {};
+      const incomingKeys = Object.keys(content);
+      if (incomingKeys.length === 0) {
+        return {};
+      }
+
+      const changedKeys = incomingKeys.filter((key) => {
+        const previousValue = currentNavigation[key];
+        const nextValue = content[key];
+        return JSON.stringify(previousValue) !== JSON.stringify(nextValue);
+      });
+
+      if (changedKeys.length === 0) {
+        return {};
+      }
+
+      const updatedSite = {
+        ...state.site,
+        navigation: {
+          ...(state.site.navigation || {}),
+          content: {
+            ...deepClone(currentNavigation),
+            ...deepClone(content)
+          }
+        }
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'edit_navigation',
+        description: 'Updated navigation content',
+        changesCount: changedKeys.length
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  addCollectionItem: (pageId, moduleId, collectionKey, newItem) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      const module = page?.modules?.find((m) => m.id === moduleId);
+      if (!module || !collectionKey) {
+        return {};
+      }
+
+      const collection = Array.isArray(module.content?.[collectionKey])
+        ? module.content[collectionKey]
+        : [];
+
+      const updatedCollection = [...collection, deepClone(newItem)];
+      const updatedModule = {
+        ...module,
+        content: {
+          ...module.content,
+          [collectionKey]: updatedCollection
+        }
+      };
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === pageId
+            ? {
+                ...p,
+                modules: p.modules.map((m) => (m.id === moduleId ? updatedModule : m))
+              }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'add_collection_item',
+        description: `Added item to ${module.type || 'module'} collection`,
+        affectedModules: [moduleId],
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  removeCollectionItem: (pageId, moduleId, collectionKey, index) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      const module = page?.modules?.find((m) => m.id === moduleId);
+      const collection = Array.isArray(module?.content?.[collectionKey])
+        ? module.content[collectionKey]
+        : [];
+      if (!module || index < 0 || index >= collection.length) {
+        return {};
+      }
+
+      const updatedCollection = collection.filter((_, idx) => idx !== index);
+      const updatedModule = {
+        ...module,
+        content: {
+          ...module.content,
+          [collectionKey]: updatedCollection
+        }
+      };
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === pageId
+            ? {
+                ...p,
+                modules: p.modules.map((m) => (m.id === moduleId ? updatedModule : m))
+              }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'remove_collection_item',
+        description: `Removed item from ${module.type || 'module'} collection`,
+        affectedModules: [moduleId],
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  updateCollectionItem: (pageId, moduleId, collectionKey, index, updates = {}) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      const module = page?.modules?.find((m) => m.id === moduleId);
+      const collection = Array.isArray(module?.content?.[collectionKey])
+        ? module.content[collectionKey]
+        : [];
+      if (!module || index < 0 || index >= collection.length) {
+        return {};
+      }
+
+      const existingItem = collection[index];
+      const changedKeys = Object.keys(updates).filter((key) => {
+        const prevValue = existingItem?.[key];
+        const nextValue = updates[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(nextValue);
+      });
+
+      if (changedKeys.length === 0) {
+        return {};
+      }
+
+      const newItems = [...collection];
+      newItems[index] = {
+        ...deepClone(existingItem),
+        ...deepClone(updates)
+      };
+
+      const updatedModule = {
+        ...module,
+        content: {
+          ...module.content,
+          [collectionKey]: newItems
+        }
+      };
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === pageId
+            ? {
+                ...p,
+                modules: p.modules.map((m) => (m.id === moduleId ? updatedModule : m))
+              }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'edit_collection_item',
+        description: `Updated ${module.type || 'module'} collection item`,
+        affectedModules: [moduleId],
+        changesCount: changedKeys.length
+      };
+
+      const stateUpdates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, stateUpdates);
+    }),
+
+  reorderCollectionItem: (pageId, moduleId, collectionKey, fromIndex, toIndex) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      const module = page?.modules?.find((m) => m.id === moduleId);
+      const collection = Array.isArray(module?.content?.[collectionKey])
+        ? [...module.content[collectionKey]]
+        : [];
+      if (!module || fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+        return {};
+      }
+      if (fromIndex >= collection.length || toIndex >= collection.length) {
+        return {};
+      }
+
+      const [movedItem] = collection.splice(fromIndex, 1);
+      collection.splice(toIndex, 0, movedItem);
+
+      const updatedModule = {
+        ...module,
+        content: {
+          ...module.content,
+          [collectionKey]: collection
+        }
+      };
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === pageId
+            ? {
+                ...p,
+                modules: p.modules.map((m) => (m.id === moduleId ? updatedModule : m))
+              }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'reorder_collection_item',
+        description: `Reordered ${module.type || 'module'} collection`,
+        affectedModules: [moduleId],
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  updateTheme: (colorUpdates = {}) =>
+    set((state) => {
+      const keys = Object.keys(colorUpdates);
+      if (keys.length === 0) {
+        return {};
+      }
+
+      const changedKeys = keys.filter((key) => state.site.theme?.[key] !== colorUpdates[key]);
+      if (changedKeys.length === 0) {
+        return {};
+      }
+
+      const updatedSite = {
+        ...state.site,
+        theme: {
+          ...state.site.theme,
+          ...colorUpdates
+        }
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'edit_theme',
+        description: 'Updated theme settings',
+        changesCount: changedKeys.length
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  setVibe: (vibe) =>
+    set((state) => {
+      if (!vibe || state.site.vibe === vibe) {
+        return {};
+      }
+
+      const updatedSite = {
+        ...state.site,
+        vibe
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'edit_vibe',
+        description: `Changed site vibe to "${vibe}"`,
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
+  setSiteName: (name) =>
+    set({
+      siteName: name,
+      hasUnsavedChanges: true
+    }),
 
   setSiteId: (id) => set({ siteId: id }),
 
-  // === User Library ===
-  addToLibrary: (asset) => set((state) => ({
-    userLibrary: {
-      customAssets: [...state.userLibrary.customAssets, {
-        id: asset.id || `asset-${Date.now()}`,
-        type: asset.type,
-        name: asset.name,
-        ...asset,
-        createdAt: new Date().toISOString()
-      }]
-    },
-    hasUnsavedChanges: true
-  })),
+  addToLibrary: (asset) =>
+    set((state) => ({
+      userLibrary: {
+        customAssets: [
+          ...state.userLibrary.customAssets,
+          {
+            id: asset.id || `asset-${Date.now()}`,
+            type: asset.type,
+            name: asset.name,
+            ...asset,
+            createdAt: new Date().toISOString()
+          }
+        ]
+      },
+      hasUnsavedChanges: true
+    })),
 
-  removeFromLibrary: (assetId) => set((state) => ({
-    userLibrary: {
-      customAssets: state.userLibrary.customAssets.filter(a => a.id !== assetId)
-    },
-    hasUnsavedChanges: true
-  })),
+  removeFromLibrary: (assetId) =>
+    set((state) => ({
+      userLibrary: {
+        customAssets: state.userLibrary.customAssets.filter((asset) => asset.id !== assetId)
+      },
+      hasUnsavedChanges: true
+    })),
 
-  // === Selection ===
   setSelectedPage: (pageId) => set({ selectedPageId: pageId }),
   selectModule: (moduleId) => set({ selectedModuleId: moduleId }),
   deselectModule: () => set({ selectedModuleId: null }),
 
-  // === Drag & Drop ===
-  setDragging: (isDragging, draggedItem = null) => set({ 
-    isDragging, 
-    draggedItem 
-  }),
+  setDragging: (isDragging, draggedItem = null) =>
+    set({
+      isDragging,
+      draggedItem
+    }),
 
-  // === Device Preview ===
   setDevicePreview: (device) => set({ devicePreview: device }),
 
-  // === Save/Load ===
   loadSite: (siteData) => {
-    console.log('[newEditorStore] loadSite called with:', siteData);
-    const newState = {
+    const nextSite = deepClone(siteData.site || createInitialSite());
+    const entryPoint = siteData.entryPointPageId || nextSite.pages?.[0]?.id || 'home';
+
+    set({
       siteId: siteData.id || siteData.siteId || null,
       siteName: siteData.name || siteData.siteName || 'Untitled Site',
-      site: siteData.site || createInitialState().site,
-      userLibrary: siteData.userLibrary || createInitialState().userLibrary,
-      entryPointPageId: siteData.entryPointPageId || (siteData.site?.pages?.[0]?.id || 'home'),
-      hasUnsavedChanges: false
-    };
-    console.log('[newEditorStore] Setting new state:', newState);
-    console.log('[newEditorStore] Pages in new state:', newState.site.pages);
-    set(newState);
+      site: nextSite,
+      userLibrary: deepClone(siteData.userLibrary || { customAssets: [] }),
+      entryPointPageId: entryPoint,
+      selectedPageId: entryPoint,
+      selectedModuleId: null,
+      hasUnsavedChanges: false,
+      structureHistory: createHistoryStack(),
+      detailHistory: createHistoryStack(),
+      aiTransaction: createTransactionState(),
+      currentVersionNumber:
+        siteData.currentVersionNumber || siteData.currentVersion || siteData.latestVersionNumber || 0,
+      lastSavedAt: siteData.lastSavedAt || siteData.updated_at || null
+    });
   },
 
-  markAsSaved: () => set({ hasUnsavedChanges: false }),
+  markAsSaved: (payload = {}) =>
+    set((state) => {
+      const version = payload.version || null;
+      const lastSavedAt = version?.created_at || payload.lastSavedAt || new Date().toISOString();
+      const versionNumber = version?.version_number ?? state.currentVersionNumber;
 
-  // === Reset ===
+      return {
+        hasUnsavedChanges: false,
+        currentVersionNumber: versionNumber,
+        lastSavedAt
+      };
+    }),
+
   reset: () => set(createInitialState()),
 
-  // === Getters ===
   getSelectedPage: () => {
     const state = get();
-    if (!state.site || !state.site.pages) return null;
-    return state.site.pages.find(p => p.id === state.selectedPageId);
+    return state.site.pages.find((page) => page.id === state.selectedPageId) || null;
   },
 
   getSelectedModule: () => {
     const state = get();
-    if (!state.site || !state.site.pages) return null;
-    const page = state.site.pages.find(p => p.id === state.selectedPageId);
-    if (!page) return null;
-    return page.modules.find(m => m.id === state.selectedModuleId);
+    const page = state.site.pages.find((p) => p.id === state.selectedPageId);
+    return page?.modules?.find((module) => module.id === state.selectedModuleId) || null;
   },
 
   getPageModules: (pageId) => {
     const state = get();
-    if (!state.site || !state.site.pages) return [];
-    const page = state.site.pages.find(p => p.id === pageId);
-    return page?.modules || [];
+    return state.site.pages.find((page) => page.id === pageId)?.modules || [];
   },
 
-  // === Module Heights Management ===
-  // Records measured heights from real renders (optional - enhances accuracy)
-  recordModuleHeight: (moduleType, height) => set((state) => ({
-    moduleHeights: {
-      ...state.moduleHeights,
-      [moduleType]: height
-    }
-  })),
+  recordModuleHeight: (moduleType, height) =>
+    set((state) => ({
+      moduleHeights: {
+        ...state.moduleHeights,
+        [moduleType]: height
+      }
+    })),
 
-  // Gets module height: measured height if available, otherwise uses provided default
-  // Primary source should be module definition's defaultHeight
   getModuleHeight: (moduleType, defaultHeight = 600) => {
     const state = get();
     return state.moduleHeights[moduleType] || defaultHeight;
-  }
+  },
+
+  undo: (mode) =>
+    set((state) => {
+      const chosenMode = mode || state.editorMode;
+      const { key } = getHistoryConfig(chosenMode);
+      const history = state[key];
+      if (!history || history.past.length === 0) {
+        return {};
+      }
+
+      const entry = history.past[history.past.length - 1];
+      const newPast = history.past.slice(0, -1);
+      const currentSnapshot = createSnapshot(state);
+      const newFuture = [...history.future, { state: currentSnapshot, meta: entry.meta }];
+
+      const snapshot = cloneSnapshot(entry.state);
+      const selection = deriveSelectionFromSnapshot(snapshot);
+
+      return {
+        site: snapshot.site,
+        entryPointPageId: snapshot.entryPointPageId,
+        selectedPageId: selection.selectedPageId,
+        selectedModuleId: selection.selectedModuleId,
+        [key]: {
+          past: newPast,
+          future: newFuture
+        },
+        hasUnsavedChanges: true,
+        aiTransaction: createTransactionState()
+      };
+    }),
+
+  redo: (mode) =>
+    set((state) => {
+      const chosenMode = mode || state.editorMode;
+      const { key } = getHistoryConfig(chosenMode);
+      const history = state[key];
+      if (!history || history.future.length === 0) {
+        return {};
+      }
+
+      const entry = history.future[history.future.length - 1];
+      const newFuture = history.future.slice(0, -1);
+      const currentSnapshot = createSnapshot(state);
+      const newPast = [...history.past, { state: currentSnapshot, meta: entry.meta }];
+
+      const snapshot = cloneSnapshot(entry.state);
+      const selection = deriveSelectionFromSnapshot(snapshot);
+
+      return {
+        site: snapshot.site,
+        entryPointPageId: snapshot.entryPointPageId,
+        selectedPageId: selection.selectedPageId,
+        selectedModuleId: selection.selectedModuleId,
+        [key]: {
+          past: newPast,
+          future: newFuture
+        },
+        hasUnsavedChanges: true,
+        aiTransaction: createTransactionState()
+      };
+    }),
+
+  clearHistories: () =>
+    set({
+      structureHistory: createHistoryStack(),
+      detailHistory: createHistoryStack()
+    }),
+
+  startAITransaction: ({ mode = 'detail', conversationId = null, description = '' } = {}) =>
+    set((state) => {
+      if (state.aiTransaction.active) {
+        return {};
+      }
+
+      return {
+        aiTransaction: {
+          active: true,
+          mode,
+          conversationId,
+          description,
+          startSnapshot: createSnapshot(state),
+          affectedModules: [],
+          changesCount: 0,
+          lastActionType: null
+        }
+      };
+    }),
+
+  registerAIChange: (metadata = {}) =>
+    set((state) => {
+      if (!state.aiTransaction.active) {
+        return {};
+      }
+
+      return {
+        aiTransaction: accumulateTransactionMeta(state.aiTransaction, metadata)
+      };
+    }),
+
+  endAITransaction: ({ description, affectedModules = [], changesCount = 0, actionType } = {}) =>
+    set((state) => {
+      if (!state.aiTransaction.active || !state.aiTransaction.startSnapshot) {
+        return {};
+      }
+
+      const transaction = state.aiTransaction;
+      const combinedModules = new Set([
+        ...(transaction.affectedModules || []),
+        ...affectedModules.filter(Boolean)
+      ]);
+
+      const meta = {
+        source: 'ai',
+        actionType: actionType || transaction.lastActionType || 'ai_batch',
+        description: description || transaction.description || 'AI changes',
+        conversationId: transaction.conversationId,
+        affectedModules: Array.from(combinedModules),
+        changesCount: (transaction.changesCount || 0) + (changesCount || 0)
+      };
+
+      let hasChanges = meta.changesCount > 0;
+      if (!hasChanges) {
+        const currentSnapshot = createSnapshot(state);
+        hasChanges = JSON.stringify(currentSnapshot.site) !== JSON.stringify(transaction.startSnapshot.site);
+        if (hasChanges) {
+          meta.changesCount = Math.max(meta.changesCount, 1);
+        }
+      }
+
+      const resetTransaction = createTransactionState();
+
+      if (!hasChanges) {
+        return {
+          aiTransaction: resetTransaction
+        };
+      }
+
+      const historyUpdate = pushHistoryEntry(
+        state,
+        transaction.mode || 'detail',
+        meta,
+        transaction.startSnapshot
+      );
+
+      return {
+        ...historyUpdate,
+        hasUnsavedChanges: true,
+        aiTransaction: resetTransaction
+      };
+    }),
+
+  cancelAITransaction: () =>
+    set((state) => {
+      if (!state.aiTransaction.active || !state.aiTransaction.startSnapshot) {
+        return {
+          aiTransaction: createTransactionState()
+        };
+      }
+
+      const snapshot = cloneSnapshot(state.aiTransaction.startSnapshot);
+      const selection = deriveSelectionFromSnapshot(snapshot);
+
+      return {
+        site: snapshot.site,
+        entryPointPageId: snapshot.entryPointPageId,
+        selectedPageId: selection.selectedPageId,
+        selectedModuleId: selection.selectedModuleId,
+        hasUnsavedChanges: true,
+        aiTransaction: createTransactionState()
+      };
+    })
 }));
 
 export default useNewEditorStore;

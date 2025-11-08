@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase } from '@mui/material';
-import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search } from '@mui/icons-material';
+import { GridView, Visibility, RemoveRedEye, Search } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
@@ -58,6 +58,15 @@ const StructureMode = () => {
   const [draftPageTitle, setDraftPageTitle] = useState('');
   const titleInputRef = useRef(null);
   const pages = useMemo(() => site?.pages ?? [], [site?.pages]);
+
+  const BASE_TITLE_PADDING_LEFT = 12;
+  const BASE_TITLE_PADDING_RIGHT = 6;
+  const BASE_SECTION_GAP = 12;
+  const BASE_TITLE_CANVAS_GAP = 10;
+  const BASE_ACTION_SPACING = 4;
+
+  const toPx = (value) => `${value}px`;
+  const clampSpacing = (value, minimum = 2) => Math.max(value, minimum);
 
   useEffect(() => {
     if (editingPageId && titleInputRef.current) {
@@ -384,118 +393,6 @@ const StructureMode = () => {
           overflow: 'auto'
         }}
       >
-        {/* Canvas Settings */}
-        <Box
-          sx={{
-            width: '100%',
-            px: 4,
-            pt: 1.5,
-            mb: 2,
-            pointerEvents: 'all',
-            position: 'relative'
-          }}
-        >
-          {/* Entry Point Indicator - Centered at Same Height as Settings */}
-          {focusedPage?.id === entryPointPageId && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 0.25,
-                zIndex: 10,
-                pt: 7,
-                pointerEvents: 'none'
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ 
-                  duration: 0.6,
-                  ease: [0.4, 0, 0.2, 1]
-                }}
-              >
-                <RemoveRedEye
-                  sx={{
-                    fontSize: 30,
-                    color: editorColors.interactive.main
-                  }}
-                />
-              </motion.div>
-              <Typography
-                sx={{
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  color: editorColors.interactive.main,
-                  letterSpacing: '0.5px',
-                  textTransform: 'uppercase',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Entry Point
-              </Typography>
-              
-              {/* Animated Arrow pointing down to Home Page */}
-              <motion.div
-                initial={{ y: -5, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{
-                  duration: 1.2,
-                  repeat: Infinity,
-                  repeatType: 'reverse',
-                  ease: 'easeInOut'
-                }}
-                style={{
-                  marginTop: '8px'
-                }}
-              >
-                <South
-                  sx={{
-                    fontSize: 20,
-                    color: editorColors.interactive.main
-                  }}
-                />
-              </motion.div>
-            </Box>
-          )}
-
-          {/* Settings Controls */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 2,
-              flexWrap: 'wrap'
-            }}
-          >
-            <Stack direction="row" spacing={3} alignItems="center">
-              <ToggleButtonGroup
-                value={renderMode}
-                exclusive
-                onChange={(e, newMode) => newMode && setRenderMode(newMode)}
-                size="small"
-                sx={toggleButtonStyles}
-              >
-                <ToggleButton value="icon">
-                  <GridView sx={{ fontSize: 16, mr: 0.5 }} />
-                  Icon Render
-                </ToggleButton>
-                <ToggleButton value="real">
-                  <Visibility sx={{ fontSize: 16, mr: 0.5 }} />
-                  Real Render
-                </ToggleButton>
-              </ToggleButtonGroup>
-            </Stack>
-          </Box>
-        </Box>
-
-        {/* PAGES CONTAINER - Two Row Layout */}
         <Box
           sx={{
             flex: 1,
@@ -505,9 +402,38 @@ const StructureMode = () => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 3
+            gap: 2,
+            position: 'relative',
+            pt: 4
           }}
         >
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              left: 32,
+              zIndex: 5,
+              pointerEvents: 'all'
+            }}
+          >
+            <ToggleButtonGroup
+              value={renderMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setRenderMode(newMode)}
+              size="small"
+              sx={toggleButtonStyles}
+            >
+              <ToggleButton value="icon">
+                <GridView sx={{ fontSize: 16, mr: 0.5 }} />
+                Icon Render
+              </ToggleButton>
+              <ToggleButton value="real">
+                <Visibility sx={{ fontSize: 16, mr: 0.5 }} />
+                Real Render
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
           {/* Focused Page Preview */}
           {focusedPage && (
             <Box
@@ -516,7 +442,7 @@ const StructureMode = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 1,
+                gap: toPx(BASE_SECTION_GAP),
                 pointerEvents: 'all'
               }}
             >
@@ -526,7 +452,7 @@ const StructureMode = () => {
                   maxWidth: devicePreview === 'mobile' ? '375px' : '700px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 2,
+                  gap: toPx(BASE_TITLE_CANVAS_GAP),
                   mx: 'auto'
                 }}
               >
@@ -535,7 +461,8 @@ const StructureMode = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    pl: 1
+                    pl: toPx(BASE_TITLE_PADDING_LEFT),
+                    pr: toPx(BASE_TITLE_PADDING_RIGHT)
                   }}
                   data-page-id={focusedPage.id}
                 >
@@ -575,28 +502,6 @@ const StructureMode = () => {
                 </AnimatePresence>
               </Box>
 
-              {/* Arrows Pointing Down to Other Pages */}
-              {otherPagesCount > 0 && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: 4,
-                    mt: 2
-                  }}
-                >
-                  {otherPages.map((page, idx) => (
-                    <ArrowDownward
-                      key={page.id}
-                      sx={{
-                        fontSize: 32,
-                        color: editorColors.interactive.main,
-                        opacity: 0.6
-                      }}
-                    />
-                  ))}
-                </Box>
-              )}
             </Box>
           )}
 
@@ -623,6 +528,11 @@ const StructureMode = () => {
                 const baseWidth = devicePreview === 'mobile' ? 375 : 700;
                 const calculatedWidth = Math.min(450, Math.floor(availableWidth / effectiveCount));
                 const scale = calculatedWidth / baseWidth;
+                const scaledSectionGap = clampSpacing(BASE_SECTION_GAP * scale);
+                const scaledTitleCanvasGap = clampSpacing(BASE_TITLE_CANVAS_GAP * scale);
+                const scaledTitlePaddingLeft = BASE_TITLE_PADDING_LEFT * scale;
+                const scaledTitlePaddingRight = BASE_TITLE_PADDING_RIGHT * scale;
+                const actionSpacing = Math.max(0.25, (BASE_ACTION_SPACING * scale) / 8);
                 
                 return (
                   <Box
@@ -632,7 +542,7 @@ const StructureMode = () => {
                       flexShrink: 0, // Prevent shrinking
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 1,
+                      gap: toPx(scaledSectionGap),
                       mx: 'auto',
                       position: 'relative'
                     }}
@@ -642,12 +552,13 @@ const StructureMode = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        pl: 0.5
+                        pl: toPx(scaledTitlePaddingLeft),
+                        pr: toPx(scaledTitlePaddingRight)
                       }}
                       data-page-id={page.id}
                     >
                       <EditablePageTitle page={page} variant="compact" />
-                      <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Stack direction="row" spacing={actionSpacing} alignItems="center">
                         <IconButton
                           size="small"
                           onClick={() => handleFocusChange(page.id)}
@@ -681,7 +592,10 @@ const StructureMode = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: relativeIndex * 0.05 }}
                       onClick={() => handleFocusChange(page.id)}
-                      style={{ cursor: 'pointer' }}
+                      style={{
+                        cursor: 'pointer',
+                        marginTop: 0
+                      }}
                     >
                       <Box
                         sx={{

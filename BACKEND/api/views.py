@@ -9,6 +9,7 @@ from typing import Any, Dict
 
 import requests
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Sum, Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -30,6 +31,7 @@ from dj_rest_auth.registration.views import SocialLoginView
 from .models import (
     PlatformUser,
     Site,
+    SiteVersion,
     Client,
     Event,
     Booking,
@@ -62,6 +64,7 @@ from drf_spectacular.utils import (
 from .serializers import (
     PlatformUserSerializer,
     SiteSerializer,
+    SiteVersionSerializer,
     ClientSerializer,
     EventSerializer,
     BookingSerializer,
@@ -721,6 +724,47 @@ class SiteViewSet(viewsets.ModelViewSet):
         site.save(update_fields=['color_index'])
         serializer = self.get_serializer(site)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsOwnerOrStaff], url_path='versions')
+    def versions(self, request, pk=None):
+        """Return the list of saved versions for the site."""
+        site = self.get_object()
+        versions = site.versions.order_by('-version_number')
+        serializer = SiteVersionSerializer(versions, many=True)
+        return Response(serializer.data)
+
+    @versions.mapping.post
+    def create_version(self, request, pk=None):
+        """Persist a new version snapshot for the site."""
+        site = self.get_object()
+        template_config = request.data.get('template_config')
+        if template_config is None:
+            return Response({'error': 'template_config is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        notes = request.data.get('notes', '')
+        change_summary = request.data.get('change_summary', '')
+
+        with transaction.atomic():
+            last_version = site.versions.order_by('-version_number').first()
+            next_number = (last_version.version_number + 1) if last_version else 1
+            created_by = request.user if isinstance(request.user, PlatformUser) else None
+
+            version = SiteVersion.objects.create(
+                site=site,
+                version_number=next_number,
+                template_config=template_config,
+                notes=notes,
+                change_summary=change_summary,
+                created_by=created_by,
+            )
+
+            # enforce retention: keep latest 10 versions
+            version_ids = list(site.versions.order_by('-version_number').values_list('id', flat=True))
+            if len(version_ids) > 10:
+                site.versions.filter(id__in=version_ids[10:]).delete()
+
+        serializer = SiteVersionSerializer(version)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class SiteScopedMixin:

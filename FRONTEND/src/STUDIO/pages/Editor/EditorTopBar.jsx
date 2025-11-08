@@ -2,25 +2,73 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, IconButton, Stack, Typography, Tooltip, TextField } from '@mui/material';
 import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import { renameSite, updateSiteTemplate } from '../../../services/siteService';
+import { renameSite, updateSiteTemplate, createSiteVersion } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
 import apiClient from '../../../services/apiClient';
 import { retrieveTempImage, isTempBlobUrl } from '../../../services/tempMediaCache';
 
+const formatRelativeTime = (timestamp) => {
+  if (!timestamp) {
+    return '';
+  }
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) {
+    return 'just now';
+  }
+  if (diffMs < hour) {
+    const mins = Math.floor(diffMs / minute);
+    return `${mins} min ago`;
+  }
+  if (diffMs < day) {
+    const hours = Math.floor(diffMs / hour);
+    return `${hours} hr${hours > 1 ? 's' : ''} ago`;
+  }
+  return date.toLocaleString();
+};
+
+const formatHistoryDescription = (meta) => {
+  if (!meta) {
+    return '';
+  }
+  if (typeof meta.description === 'string' && meta.description.trim()) {
+    return meta.description.trim();
+  }
+  if (typeof meta.actionType === 'string' && meta.actionType.trim()) {
+    return meta.actionType.replace(/_/g, ' ').trim();
+  }
+  return '';
+};
+
 const EditorTopBar = () => {
-  const { 
-    editorMode, 
-    exitDetailMode, 
-    devicePreview, 
+  const {
+    editorMode,
+    exitDetailMode,
+    devicePreview,
     setDevicePreview,
     hasUnsavedChanges,
     getSelectedPage,
     siteId,
     siteName,
     setSiteName,
-    site
+    site,
+    undo,
+    redo,
+    structureHistory,
+    detailHistory,
+    lastSavedAt,
+    currentVersionNumber,
+    markAsSaved
   } = useNewEditorStore();
 
   // Get theme context for dark/light mode
@@ -54,9 +102,53 @@ const EditorTopBar = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(siteName);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
 
   const selectedPage = getSelectedPage();
+  const activeHistory = editorMode === 'structure' ? structureHistory : detailHistory;
+  const modeLabel = editorMode === 'structure' ? 'Structure' : 'Detail';
+  const pastEntries = activeHistory?.past || [];
+  const futureEntries = activeHistory?.future || [];
+  const canUndo = pastEntries.length > 0;
+  const canRedo = futureEntries.length > 0;
+  const undoMeta = canUndo ? pastEntries[pastEntries.length - 1]?.meta : null;
+  const redoMeta = canRedo ? futureEntries[futureEntries.length - 1]?.meta : null;
+  const undoDescription = formatHistoryDescription(undoMeta);
+  const redoDescription = formatHistoryDescription(redoMeta);
+  const undoTooltip = canUndo
+    ? `Undo ${modeLabel}${undoDescription ? ` • ${undoDescription}` : ''} (Ctrl+Z)`
+    : `Nothing to undo (${modeLabel})`;
+  const redoTooltip = canRedo
+    ? `Redo ${modeLabel}${redoDescription ? ` • ${redoDescription}` : ''} (Ctrl+Shift+Z)`
+    : `Nothing to redo (${modeLabel})`;
+  const versionLabel = currentVersionNumber ? `Version ${currentVersionNumber}` : 'Draft';
+  const savedStatusText = isSaving
+    ? 'Saving...'
+    : hasUnsavedChanges
+      ? 'Unsaved changes'
+      : lastSavedAt
+        ? `Saved ${formatRelativeTime(lastSavedAt)}`
+        : 'Never saved';
+
+  const getMostRecentHistoryMeta = () => {
+    const candidates = [];
+    if (structureHistory?.past?.length) {
+      candidates.push(structureHistory.past[structureHistory.past.length - 1]);
+    }
+    if (detailHistory?.past?.length) {
+      candidates.push(detailHistory.past[detailHistory.past.length - 1]);
+    }
+    if (!candidates.length) {
+      return null;
+    }
+
+    return candidates.reduce((latest, entry) => {
+      const entryTs = entry?.meta?.timestamp || 0;
+      const latestTs = latest?.meta?.timestamp || 0;
+      return entryTs >= latestTs ? entry : latest;
+    }, null);
+  };
 
   // Update titleValue when siteName changes (after loading from API)
   useEffect(() => {
@@ -64,17 +156,30 @@ const EditorTopBar = () => {
   }, [siteName]);
 
   const handleSave = async () => {
-    if (!siteName.trim()) {
+    if (isSaving || !hasUnsavedChanges) {
+      return;
+    }
+
+    const trimmedName = siteName.trim();
+    if (!trimmedName) {
       console.error('Site name is required');
       return;
     }
 
+    if (!siteId) {
+      console.warn('[Save] No siteId - cannot save');
+      alert('Cannot save yet. Please create the site first.');
+      return;
+    }
+
+    setIsSaving(true);
+
     try {
       console.log('[Save] Starting save process...');
-      
+
       // Deep clone the config
       let finalConfig = JSON.parse(JSON.stringify(site));
-      
+
       // Find all blob URLs in the configuration
       const allBlobUrls = new Set();
       JSON.stringify(finalConfig, (key, value) => {
@@ -140,7 +245,7 @@ const EditorTopBar = () => {
       // Wait for all uploads to complete
       const results = await Promise.all(uploadPromises);
       const failedUploads = results.filter((result) => result.failed);
-      
+
       if (failedUploads.length > 0) {
         console.error('[Save] Failed uploads:', failedUploads);
         alert('Failed to upload some images. Please try again.');
@@ -158,7 +263,7 @@ const EditorTopBar = () => {
           configString = configString.replace(regex, finalUrl);
         });
         finalConfig = JSON.parse(configString);
-        
+
         // Verify no blob URLs remain
         const remainingBlobs = JSON.stringify(finalConfig).match(/blob:http[^\s"']*/g);
         if (remainingBlobs) {
@@ -168,26 +273,40 @@ const EditorTopBar = () => {
         }
       }
 
-      // Save to backend
-      if (siteId) {
-        await updateSiteTemplate(siteId, { site: finalConfig }, siteName);
-        console.log('[Save] Site updated successfully');
-      } else {
-        console.warn('[Save] No siteId - cannot save');
-        return;
+  await updateSiteTemplate(siteId, finalConfig, trimmedName);
+      console.log('[Save] Site updated successfully');
+
+      const latestMetaEntry = getMostRecentHistoryMeta();
+      const changeSummary = formatHistoryDescription(latestMetaEntry?.meta) || '';
+
+      let versionResponse = null;
+      try {
+        versionResponse = await createSiteVersion(siteId, {
+          template_config: finalConfig,
+          change_summary: changeSummary
+        });
+        console.log('[Save] Version snapshot stored');
+      } catch (versionError) {
+        console.error('[Save] Failed to create site version:', versionError);
       }
 
-      // Update store with final URLs and mark as saved
-      useNewEditorStore.getState().loadSite({
-        id: siteId,
-        name: siteName,
-        site: finalConfig
-      });
-      
-      alert('Site saved successfully!');
+      useNewEditorStore.setState(() => ({ site: finalConfig }));
+
+      if (versionResponse) {
+        markAsSaved({ version: versionResponse });
+      } else {
+        markAsSaved({ lastSavedAt: new Date().toISOString() });
+      }
+
+      const successMessage = versionResponse
+        ? `Site saved successfully (v${versionResponse.version_number}).`
+        : 'Site saved, but version history could not be recorded.';
+      alert(successMessage);
     } catch (error) {
       console.error('[Save] Save failed:', error);
       alert('Failed to save site. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -453,28 +572,42 @@ const EditorTopBar = () => {
       {/* Right Section */}
       <Stack direction="row" spacing={1} alignItems="center" flex={1} justifyContent="flex-end">
         {/* Undo/Redo */}
-        <Tooltip title="Undo">
-          <IconButton 
-            size="small"
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <Undo fontSize="small" />
-          </IconButton>
+        <Tooltip title={undoTooltip}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => canUndo && undo(editorMode)}
+              disabled={!canUndo}
+              sx={{
+                color: textPrimary,
+                '&:hover': { bgcolor: hoverSurface },
+                '&.Mui-disabled': {
+                  color: textMuted
+                }
+              }}
+            >
+              <Undo fontSize="small" />
+            </IconButton>
+          </span>
         </Tooltip>
         
-        <Tooltip title="Redo">
-          <IconButton 
-            size="small"
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <Redo fontSize="small" />
-          </IconButton>
+        <Tooltip title={redoTooltip}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => canRedo && redo(editorMode)}
+              disabled={!canRedo}
+              sx={{
+                color: textPrimary,
+                '&:hover': { bgcolor: hoverSurface },
+                '&.Mui-disabled': {
+                  color: textMuted
+                }
+              }}
+            >
+              <Redo fontSize="small" />
+            </IconButton>
+          </span>
         </Tooltip>
 
         {/* Separator */}
@@ -603,23 +736,51 @@ const EditorTopBar = () => {
           }}
         />
 
+        <Stack spacing={0.25} alignItems="flex-end" sx={{ mr: 0.5 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 600,
+              color: textHint,
+              letterSpacing: '0.02em'
+            }}
+          >
+            {versionLabel}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 500,
+              color: (isSaving || hasUnsavedChanges) ? interactiveMain : textHint
+            }}
+          >
+            {savedStatusText}
+          </Typography>
+        </Stack>
+
         {/* Save Button */}
-        <Box
-          onClick={handleSave}
-          sx={{
+        <Tooltip title={hasUnsavedChanges ? 'Save changes (Ctrl+S)' : 'No changes to save'}>
+          <Box
+            onClick={() => {
+              if (!isSaving && hasUnsavedChanges) {
+                handleSave();
+              }
+            }}
+            sx={{
             px: 2,
             py: 1,
             borderRadius: '6px',
             bgcolor: hasUnsavedChanges ? interactiveMain : inactiveSaveBg,
             color: hasUnsavedChanges ? inverseText : textHint,
-            cursor: hasUnsavedChanges ? 'pointer' : 'default',
+            cursor: hasUnsavedChanges && !isSaving ? 'pointer' : 'default',
             transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
             gap: 1,
             fontWeight: 500,
             fontSize: '14px',
-            '&:hover': hasUnsavedChanges ? {
+            opacity: isSaving ? 0.7 : 1,
+            '&:hover': hasUnsavedChanges && !isSaving ? {
               bgcolor: interactiveHover,
               transform: 'translateY(-1px)',
               boxShadow: '0 4px 12px rgba(146, 0, 32, 0.28)'
@@ -627,8 +788,9 @@ const EditorTopBar = () => {
           }}
         >
           <Save sx={{ fontSize: 18 }} />
-          Save
+          {isSaving ? 'Saving...' : 'Save'}
         </Box>
+        </Tooltip>
 
         {/* Publish Button */}
         <Tooltip title="Publish Site">

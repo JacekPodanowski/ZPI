@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
@@ -108,7 +110,6 @@ class Site(models.Model):
     identifier = models.SlugField(max_length=255, unique=True, editable=False, blank=True, null=True)
     color_index = models.IntegerField(default=0, help_text='Index of the site color in the palette (0-11)')
     template_config = models.JSONField(default=dict, blank=True)
-    version_history = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -124,6 +125,32 @@ class Site(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.identifier})"
+
+
+class SiteVersion(models.Model):
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='versions')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    version_number = models.PositiveIntegerField()
+    template_config = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    created_by = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.SET_NULL,
+        related_name='created_site_versions',
+        blank=True,
+        null=True
+    )
+    notes = models.CharField(max_length=500, blank=True)
+    change_summary = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=('site', 'version_number'), name='unique_site_version_per_site')
+        ]
+
+    def __str__(self):
+        return f"{self.site.identifier} v{self.version_number}"
 
 
 class Template(models.Model):
