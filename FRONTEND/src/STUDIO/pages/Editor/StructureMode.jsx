@@ -144,8 +144,6 @@ const StructureMode = () => {
             pointerEvents: 'all',
             position: 'relative'
           }}
-          onDragOver={(e) => e.stopPropagation()}
-          onDrop={(e) => e.stopPropagation()}
         >
           {/* Entry Point Indicator - Centered at Same Height as Settings */}
           {site.pages.length > 0 && (
@@ -160,7 +158,8 @@ const StructureMode = () => {
                 alignItems: 'center',
                 gap: 0.25,
                 zIndex: 10,
-                pt: 7
+                pt: 7,
+                pointerEvents: 'none'
               }}
             >
               <motion.div
@@ -292,11 +291,8 @@ const StructureMode = () => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 3,
-            pointerEvents: 'none'
+            gap: 3
           }}
-          onDragOver={(e) => e.stopPropagation()}
-          onDrop={(e) => e.stopPropagation()}
         >
           {/* First Row - Home Page (Entry Point) */}
           {site.pages.length > 0 && (

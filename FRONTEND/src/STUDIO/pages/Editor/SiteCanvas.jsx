@@ -70,7 +70,6 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
 const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandled, devicePreview = 'desktop' }) => {
   const { addModule, moveModule, site, getModuleHeight, setDragging } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [canvasRef, setCanvasRef] = useState(null);
   const theme = useTheme();
 
   console.log('[SiteCanvas] Render - page:', page);
@@ -130,48 +129,41 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     setDragOverIndex(null);
   };
 
-  const handleDrop = (e, index) => {
+  const handleDrop = (e, fallbackIndex = page.modules.length) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent event from bubbling to editor canvas
-    console.log('[SiteCanvas] Drop at index:', index);
-    
-    // Signal that we handled this drop
-  if (onDropHandled) onDropHandled();
+    e.stopPropagation();
+    console.log('[SiteCanvas] Drop attempt. Fallback index:', fallbackIndex, 'dragOverIndex:', dragOverIndex);
 
-  // Always end dragging on successful drop
-  setDragging(false);
-    
-    setDragOverIndex(null);
-    
+    if (onDropHandled) onDropHandled();
+
     const moduleType = e.dataTransfer.getData('moduleType');
     const draggedModuleId = e.dataTransfer.getData('moduleId');
     const sourcePageId = e.dataTransfer.getData('sourcePageId');
-    
-    console.log('[SiteCanvas] Drop data:', { moduleType, draggedModuleId, sourcePageId });
-    
-    // Check if we're moving an existing module
+
+    const resolvedIndex = (() => {
+      if (dragOverIndex !== null && !Number.isNaN(dragOverIndex)) {
+        return Math.max(0, Math.min(dragOverIndex, page.modules.length));
+      }
+      const boundedFallback = Math.max(0, Math.min(fallbackIndex ?? page.modules.length, page.modules.length));
+      return boundedFallback;
+    })();
+
+    console.log('[SiteCanvas] Drop data:', { moduleType, draggedModuleId, sourcePageId, resolvedIndex });
+
+    setDragging(false);
+    setDragOverIndex(null);
+
     if (draggedModuleId && sourcePageId) {
-      console.log('[SiteCanvas] Moving module from page:', sourcePageId, 'to page:', page.id, 'at index:', index);
-      moveModule(sourcePageId, page.id, draggedModuleId, index);
+      moveModule(sourcePageId, page.id, draggedModuleId, resolvedIndex);
       return;
     }
-    
-    // Otherwise, we're adding a new module from the toolbar
+
     if (moduleType) {
-      console.log('[SiteCanvas] Adding new module:', moduleType, 'to page:', page.id, 'at index:', index);
-      
       const defaultContent = getDefaultModuleContent(moduleType);
-      console.log('[SiteCanvas] Default content:', defaultContent);
-      
-      // Insert module at specific position
       addModule(page.id, {
         type: moduleType,
         content: defaultContent
-      }, index);
-      
-      console.log('[SiteCanvas] Module added successfully');
-    } else {
-      console.log('[SiteCanvas] No moduleType or moduleId found in dataTransfer');
+      }, resolvedIndex);
     }
   };
 
@@ -282,6 +274,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
 
   return (
     <Box
+      data-site-canvas="true"
       sx={{
         width: '100%',
         maxWidth: `${canvasWidth}px`,
@@ -333,8 +326,9 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (dragOverIndex === null && page.modules.length > 0) {
-            setDragOverIndex(page.modules.length);
+          if (dragOverIndex === null) {
+            const defaultIndex = page.modules.length === 0 ? 0 : page.modules.length;
+            setDragOverIndex(defaultIndex);
           }
         }}
         onDragLeave={(e) => {
@@ -376,6 +370,9 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
               const moduleHeight = totalHeight > 0 
                 ? (moduleDefaultHeight / totalHeight) * AVAILABLE_HEIGHT 
                 : AVAILABLE_HEIGHT / page.modules.length;
+              const isLastModule = index === page.modules.length - 1;
+              const showTopIndicator = dragOverIndex === index;
+              const showBottomIndicator = isLastModule && dragOverIndex === page.modules.length;
 
               return (
                 <motion.div
@@ -467,6 +464,9 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                         setDragOverIndex(index + 1);
                       }
                     }}
+                    onDrop={(e) => {
+                      handleDrop(e, dragOverIndex ?? index + 1);
+                    }}
                     sx={{
                       height: '100%',
                       borderBottom: index < page.modules.length - 1 
@@ -485,38 +485,27 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                       }
                     }}
                   >
-                    {dragOverIndex === index && (
+                    {(showTopIndicator || showBottomIndicator) && (
                       <Box
                         sx={{
                           position: 'absolute',
-                          top: 0,
+                          top: showTopIndicator ? 0 : 'auto',
                           left: 0,
                           right: 0,
+                          bottom: showBottomIndicator ? 0 : 'auto',
                           height: '3px',
+                          borderRadius: '999px',
                           bgcolor: 'rgb(146, 0, 32)',
+                          boxShadow: '0 0 8px rgba(146, 0, 32, 0.4)',
                           zIndex: 10
                         }}
                       />
                     )}
-                    
+
                     {renderMode === 'icon' 
                       ? renderIconMode(module, moduleHeight) 
                       : renderRealMode(module, moduleHeight)
                     }
-                    
-                    {dragOverIndex === index + 1 && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          height: '3px',
-                          bgcolor: 'rgb(146, 0, 32)',
-                          zIndex: 10
-                        }}
-                      />
-                    )}
                   </Box>
                 </motion.div>
               );
