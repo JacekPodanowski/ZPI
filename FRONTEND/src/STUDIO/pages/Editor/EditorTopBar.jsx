@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, IconButton, Stack, Typography, Tooltip, TextField } from '@mui/material';
-import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema } from '@mui/icons-material';
+import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import { renameSite, updateSiteTemplate, createSiteVersion } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
@@ -103,7 +103,9 @@ const EditorTopBar = () => {
   const [titleValue, setTitleValue] = useState(siteName);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
   const fileInputRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width:900px)');
 
   const selectedPage = getSelectedPage();
   const activeHistory = editorMode === 'structure' ? structureHistory : detailHistory;
@@ -571,118 +573,122 @@ const EditorTopBar = () => {
 
       {/* Right Section */}
       <Stack direction="row" spacing={1} alignItems="center" flex={1} justifyContent="flex-end">
-        {/* Undo/Redo */}
-        <Tooltip title={undoTooltip}>
-          <span>
-            <IconButton
-              size="small"
-              onClick={() => canUndo && undo(editorMode)}
-              disabled={!canUndo}
+        {!isMobile ? (
+          <>
+            {/* Undo/Redo */}
+            <Tooltip title={undoTooltip}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => canUndo && undo(editorMode)}
+                  disabled={!canUndo}
+                  sx={{
+                    color: textPrimary,
+                    '&:hover': { bgcolor: hoverSurface },
+                    '&.Mui-disabled': {
+                      color: textMuted
+                    }
+                  }}
+                >
+                  <Undo fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            
+            <Tooltip title={redoTooltip}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => canRedo && redo(editorMode)}
+                  disabled={!canRedo}
+                  sx={{
+                    color: textPrimary,
+                    '&:hover': { bgcolor: hoverSurface },
+                    '&.Mui-disabled': {
+                      color: textMuted
+                    }
+                  }}
+                >
+                  <Redo fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* Separator */}
+            <Box
               sx={{
-                color: textPrimary,
-                '&:hover': { bgcolor: hoverSurface },
-                '&.Mui-disabled': {
-                  color: textMuted
-                }
+                width: '1px',
+                height: '24px',
+                bgcolor: dividerColor,
+                mx: 0.5
               }}
-            >
-              <Undo fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        
-        <Tooltip title={redoTooltip}>
-          <span>
-            <IconButton
-              size="small"
-              onClick={() => canRedo && redo(editorMode)}
-              disabled={!canRedo}
+            />
+
+            {/* Dark/Light Mode Toggle */}
+            <Tooltip title={mode === 'dark' ? "Light Mode" : "Dark Mode"}>
+              <IconButton 
+                size="small"
+                onClick={toggleMode}
+                sx={{ 
+                  color: textPrimary,
+                  '&:hover': { bgcolor: hoverSurface }
+                }}
+              >
+                {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+
+            {/* Separator */}
+            <Box
               sx={{
-                color: textPrimary,
-                '&:hover': { bgcolor: hoverSurface },
-                '&.Mui-disabled': {
-                  color: textMuted
-                }
+                width: '1px',
+                height: '24px',
+                bgcolor: dividerColor,
+                mx: 0.5
               }}
-            >
-              <Redo fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
+            />
 
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
+            {/* Download Config */}
+            <Tooltip title="Download Config">
+              <IconButton 
+                size="small"
+                onClick={handleDownload}
+                sx={{ 
+                  color: textPrimary,
+                  '&:hover': { bgcolor: hoverSurface }
+                }}
+              >
+                <FileDownload fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        {/* Dark/Light Mode Toggle */}
-        <Tooltip title={mode === 'dark' ? "Light Mode" : "Dark Mode"}>
-          <IconButton 
-            size="small"
-            onClick={toggleMode}
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
-          </IconButton>
-        </Tooltip>
+            {/* Import Config */}
+            <Tooltip title="Import Config">
+              <IconButton 
+                size="small"
+                onClick={handleImport}
+                sx={{ 
+                  color: textPrimary,
+                  '&:hover': { bgcolor: hoverSurface }
+                }}
+              >
+                <FileUpload fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
+            {/* Separator */}
+            <Box
+              sx={{
+                width: '1px',
+                height: '24px',
+                bgcolor: dividerColor,
+                mx: 0.5
+              }}
+            />
+          </>
+        ) : null}
 
-        {/* Download Config */}
-        <Tooltip title="Download Config">
-          <IconButton 
-            size="small"
-            onClick={handleDownload}
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <FileDownload fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Import Config */}
-        <Tooltip title="Import Config">
-          <IconButton 
-            size="small"
-            onClick={handleImport}
-            sx={{ 
-              color: textPrimary,
-              '&:hover': { bgcolor: hoverSurface }
-            }}
-          >
-            <FileUpload fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        {/* Separator */}
-        <Box
-          sx={{
-            width: '1px',
-            height: '24px',
-            bgcolor: dividerColor,
-            mx: 0.5
-          }}
-        />
-
-        {/* Device Toggle */}
+        {/* Device Toggle - Always visible */}
         <Stack 
           direction="row" 
           spacing={0}
@@ -736,6 +742,77 @@ const EditorTopBar = () => {
           }}
         />
 
+        {/* Mobile Menu Button */}
+        {isMobile && (
+          <>
+            <Tooltip title="More Options">
+              <IconButton 
+                size="small"
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+                sx={{ 
+                  color: textPrimary,
+                  '&:hover': { bgcolor: hoverSurface }
+                }}
+              >
+                <MoreVert fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={() => setAnchorEl(null)}
+              PaperProps={{
+                sx: {
+                  bgcolor: topBarBg,
+                  border: `1px solid ${dividerColor}`,
+                  borderRadius: '8px',
+                  mt: 1
+                }
+              }}
+            >
+              <MenuItem 
+                onClick={() => { canUndo && undo(editorMode); setAnchorEl(null); }}
+                disabled={!canUndo}
+                sx={{ color: textPrimary }}
+              >
+                <ListItemIcon><Undo fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
+                <ListItemText>Undo</ListItemText>
+              </MenuItem>
+              <MenuItem 
+                onClick={() => { canRedo && redo(editorMode); setAnchorEl(null); }}
+                disabled={!canRedo}
+                sx={{ color: textPrimary }}
+              >
+                <ListItemIcon><Redo fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
+                <ListItemText>Redo</ListItemText>
+              </MenuItem>
+              <MenuItem 
+                onClick={() => { toggleMode(); setAnchorEl(null); }}
+                sx={{ color: textPrimary }}
+              >
+                <ListItemIcon>
+                  {mode === 'dark' ? <LightMode fontSize="small" sx={{ color: textPrimary }} /> : <DarkMode fontSize="small" sx={{ color: textPrimary }} />}
+                </ListItemIcon>
+                <ListItemText>{mode === 'dark' ? 'Light Mode' : 'Dark Mode'}</ListItemText>
+              </MenuItem>
+              <MenuItem 
+                onClick={() => { handleDownload(); setAnchorEl(null); }}
+                sx={{ color: textPrimary }}
+              >
+                <ListItemIcon><FileDownload fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
+                <ListItemText>Download Config</ListItemText>
+              </MenuItem>
+              <MenuItem 
+                onClick={() => { handleImport(); setAnchorEl(null); }}
+                sx={{ color: textPrimary }}
+              >
+                <ListItemIcon><FileUpload fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
+                <ListItemText>Import Config</ListItemText>
+              </MenuItem>
+            </Menu>
+          </>
+        )}
+
         <Stack spacing={0.25} alignItems="flex-end" sx={{ mr: 0.5 }}>
           <Typography
             variant="caption"
@@ -767,7 +844,7 @@ const EditorTopBar = () => {
               }
             }}
             sx={{
-            px: 2,
+            px: isMobile ? 1 : 2,
             py: 1,
             borderRadius: '6px',
             bgcolor: hasUnsavedChanges ? interactiveMain : inactiveSaveBg,
@@ -776,7 +853,7 @@ const EditorTopBar = () => {
             transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: isMobile ? 0 : 1,
             fontWeight: 500,
             fontSize: '14px',
             opacity: isSaving ? 0.7 : 1,
@@ -788,7 +865,7 @@ const EditorTopBar = () => {
           }}
         >
           <Save sx={{ fontSize: 18 }} />
-          {isSaving ? 'Saving...' : 'Save'}
+          {!isMobile && (isSaving ? 'Saving...' : 'Save')}
         </Box>
         </Tooltip>
 
@@ -797,7 +874,7 @@ const EditorTopBar = () => {
           <Box
             onClick={handlePublish}
             sx={{
-              px: 2,
+              px: isMobile ? 1 : 2,
               py: 1,
               borderRadius: '6px',
               bgcolor: accentMain,
@@ -806,7 +883,7 @@ const EditorTopBar = () => {
               transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
+              gap: isMobile ? 0 : 1,
               fontWeight: 500,
               fontSize: '14px',
               '&:hover': {
@@ -817,7 +894,7 @@ const EditorTopBar = () => {
             }}
           >
             <Publish sx={{ fontSize: 18 }} />
-            Publish
+            {!isMobile && 'Publish'}
           </Box>
         </Tooltip>
       </Stack>

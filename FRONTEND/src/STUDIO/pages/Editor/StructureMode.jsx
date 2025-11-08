@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase } from '@mui/material';
+import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase, useMediaQuery } from '@mui/material';
 import { GridView, Visibility, RemoveRedEye, Search } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
@@ -25,6 +25,7 @@ const StructureMode = () => {
   } = useNewEditorStore();
   
   const theme = useTheme();
+  const isMobile = useMediaQuery('(max-width:900px)');
   const editorColors = getEditorColorTokens(theme);
   const toggleButtonStyles = {
     '& .MuiToggleButton-root': {
@@ -337,7 +338,8 @@ const StructureMode = () => {
     >
       {/* Module Toolbar */}
       <AnimatePresence>
-        {showModuleToolbar && <ModuleToolbar isDraggingModule={isDraggingModule} />}
+        {showModuleToolbar && !isMobile && <ModuleToolbar isDraggingModule={isDraggingModule} />}
+        {isMobile && <ModuleToolbar isDraggingModule={isDraggingModule} />}
       </AnimatePresence>
 
       {/* EDITOR CANVAS - The Whole Background */}
@@ -388,7 +390,7 @@ const StructureMode = () => {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          pl: showModuleToolbar ? '180px' : 0,
+          pl: (showModuleToolbar && !isMobile) ? '180px' : 0,
           transition: 'padding-left 0.4s ease',
           overflow: 'auto'
         }}
@@ -512,10 +514,27 @@ const StructureMode = () => {
                 width: '100%',
                 display: 'flex',
                 flexWrap: 'nowrap', // Don't wrap to prevent third row
-                justifyContent: 'center',
+                justifyContent: 'flex-start', // Align to left for scrolling
                 gap: 2,
                 pointerEvents: 'all',
-                overflow: 'hidden' // Hide overflow if too many pages
+                overflow: 'auto', // Enable horizontal scroll
+                overflowY: 'hidden', // Prevent vertical scroll
+                px: 2, // Add padding for scroll area
+                pb: 2, // Add bottom padding for scrollbar
+                '&::-webkit-scrollbar': {
+                  height: '8px'
+                },
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                  borderRadius: '4px'
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: 'rgba(146, 0, 32, 0.3)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(146, 0, 32, 0.5)'
+                  }
+                }
               }}
             >
               {otherPages.map((page, relativeIndex) => {

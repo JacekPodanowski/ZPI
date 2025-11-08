@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Stack, Typography, IconButton } from '@mui/material';
+import { Box, Stack, Typography, IconButton, useMediaQuery, Drawer } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Delete, Close } from '@mui/icons-material';
+import { Delete, Close, ViewModule } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
@@ -11,6 +11,8 @@ const EDITOR_TOP_BAR_HEIGHT = 56;
 const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
+  const isMobile = useMediaQuery('(max-width:900px)');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const isDarkMode = theme.mode === 'dark';
   const accentColor = theme.colors?.interactive?.default || 'rgb(146, 0, 32)';
   const accentHoverColor = theme.colors?.interactive?.hover || 'rgb(114, 0, 21)';
@@ -148,6 +150,152 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedModule]);
 
+  // Mobile FAB button
+  if (isMobile) {
+    return (
+      <>
+        {/* Floating Action Button */}
+        <IconButton
+          onClick={() => setMobileDrawerOpen(true)}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 16,
+            bgcolor: accentColor,
+            color: 'white',
+            width: 56,
+            height: 56,
+            boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
+            zIndex: 1100,
+            '&:hover': {
+              bgcolor: accentHoverColor,
+              transform: 'scale(1.08)',
+              boxShadow: '0 6px 24px rgba(146, 0, 32, 0.5)'
+            },
+            '&:active': {
+              transform: 'scale(0.95)'
+            },
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <ViewModule sx={{ fontSize: 28 }} />
+        </IconButton>
+
+        {/* Mobile Drawer */}
+        <Drawer
+          anchor="bottom"
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          PaperProps={{
+            sx: {
+              maxHeight: '80vh',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+              bgcolor: moduleListBg,
+              backdropFilter: 'blur(20px)'
+            }
+          }}
+        >
+          <Box sx={{ p: 2 }}>
+            {/* Header */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Typography
+                sx={{
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: textPrimary,
+                  letterSpacing: '0.02em'
+                }}
+              >
+                Add Module
+              </Typography>
+              <IconButton
+                onClick={() => setMobileDrawerOpen(false)}
+                size="small"
+                sx={{
+                  color: textMuted,
+                  '&:hover': {
+                    color: accentColor,
+                    bgcolor: 'rgba(146, 0, 32, 0.08)'
+                  }
+                }}
+              >
+                <Close />
+              </IconButton>
+            </Box>
+
+            {/* Module Grid */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                gap: 2,
+                maxHeight: 'calc(80vh - 100px)',
+                overflowY: 'auto'
+              }}
+            >
+              {modules.map((module) => {
+                const Icon = module.icon;
+                return (
+                  <Box
+                    key={module.type}
+                    onClick={() => {
+                      handleAddModule(module);
+                      setMobileDrawerOpen(false);
+                    }}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 1,
+                      p: 2,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      bgcolor: 'transparent',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        bgcolor: moduleListHover
+                      },
+                      '&:active': {
+                        transform: 'scale(0.95)'
+                      }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '10px',
+                        bgcolor: module.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Icon sx={{ fontSize: 24, color: 'white' }} />
+                    </Box>
+                    <Typography
+                      sx={{
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: textPrimary,
+                        textAlign: 'center',
+                        lineHeight: 1.2
+                      }}
+                    >
+                      {module.label}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        </Drawer>
+      </>
+    );
+  }
+
+  // Desktop version
   return (
     <motion.div
       initial={hasInitiallyAnimated.current ? false : { x: -280 }}

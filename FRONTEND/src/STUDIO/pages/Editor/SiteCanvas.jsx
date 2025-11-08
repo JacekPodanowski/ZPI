@@ -193,7 +193,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   const FOOTER_HEIGHT_ICON = NAVIGATION_HEIGHT_REAL / 2; // Footer only in icon mode
   
   const CANVAS_HEIGHT_ICON = devicePreview === 'mobile' ? 667 : 394; // 16:9 aspect ratio height for icon mode
-  const CANVAS_HEIGHT_REAL = devicePreview === 'mobile' ? 667 : 900;
+  const CANVAS_HEIGHT_REAL = 'auto'; // Auto height for real mode
   const canvasHeight = renderMode === 'icon' ? CANVAS_HEIGHT_ICON : CANVAS_HEIGHT_REAL;
   const AVAILABLE_HEIGHT = CANVAS_HEIGHT_ICON - (renderMode === 'icon' ? NAVIGATION_HEIGHT_ICON + FOOTER_HEIGHT_ICON : NAVIGATION_HEIGHT_REAL + FOOTER_HEIGHT_REAL);
 
@@ -433,7 +433,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
         maxWidth: `${canvasWidth}px`,
         ...(isIconMode
           ? { aspectRatio: devicePreview === 'mobile' ? '9/16' : '16/9' }
-          : { height: `${canvasHeight}px` }),
+          : { height: 'auto' }),
         bgcolor: canvasBackground,
         borderRadius: '14px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
@@ -467,8 +467,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
       {/* Main Content Area - Scrollable */}
       <Box 
         sx={{ 
-          flex: 1,
-          overflow: 'auto',
+          flex: '0 1 auto',
+          overflow: 'visible',
           position: 'relative'
         }}
         onDragOver={(e) => {
@@ -532,7 +532,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                     height: `${moduleHeight}px`,
                     flexShrink: 0
                   } : {
-                    flexShrink: 0
+                    width: '100%'
                   }}
                 >
                   <Box
