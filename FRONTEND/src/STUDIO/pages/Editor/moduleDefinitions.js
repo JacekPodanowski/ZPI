@@ -170,7 +170,7 @@ export const getDefaultModuleContent = (moduleType) => {
         { label: 'About', route: '/about' },
         { label: 'Contact', route: '/contact' }
       ],
-      bgColor: 'transparent',
+      bgColor: '#ffffff',
       textColor: 'rgb(30, 30, 30)'
     },
     hero: {

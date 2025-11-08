@@ -1,4 +1,4 @@
-const LIGHT_THEMES = {
+const BASE_THEME = {
   background: 'rgb(228, 229, 218)',
   text: 'rgb(30, 30, 30)',
   primary: 'rgb(146, 0, 32)',
@@ -18,31 +18,6 @@ const LIGHT_THEMES = {
   success: '#2e7d32'
 };
 
-const DARK_THEMES = {
-  background: 'rgb(12, 12, 12)',
-  text: 'rgb(220, 220, 220)',
-  primary: 'rgb(114, 0, 21)',
-  secondary: 'rgb(70, 70, 68)',
-  grey: 'rgb(70, 70, 68)',
-  page: 'rgb(12, 12, 12)',
-  surface: 'rgb(24, 24, 24)',
-  elevated: 'rgb(36, 36, 36)',
-  border: 'rgba(220, 220, 220, 0.16)',
-  divider: 'rgba(220, 220, 220, 0.12)',
-  hover: 'rgba(114, 0, 21, 0.35)',
-  focus: 'rgba(114, 0, 21, 0.45)',
-  disabled: 'rgba(220, 220, 220, 0.38)',
-  error: '#ef9a9a',
-  warning: '#ffb74d',
-  info: '#4fc3f7',
-  success: '#81c784'
-};
-
-const BASE_THEMES = {
-  light: LIGHT_THEMES,
-  dark: DARK_THEMES
-};
-
 const applyOverrides = (baseTheme, overrides) => {
   if (!overrides) {
     return { ...baseTheme };
@@ -50,12 +25,33 @@ const applyOverrides = (baseTheme, overrides) => {
 
   const next = { ...baseTheme };
 
-  if (overrides.primary) {
-    next.primary = overrides.primary;
-  }
+  const directKeys = [
+    'background',
+    'text',
+    'primary',
+    'secondary',
+    'grey',
+    'page',
+    'surface',
+    'elevated',
+    'border',
+    'divider',
+    'hover',
+    'focus',
+    'disabled',
+    'error',
+    'warning',
+    'info',
+    'success'
+  ];
+
+  directKeys.forEach((key) => {
+    if (overrides[key]) {
+      next[key] = overrides[key];
+    }
+  });
 
   if (overrides.secondary) {
-    next.secondary = overrides.secondary;
     next.grey = overrides.secondary;
   }
 
@@ -68,8 +64,4 @@ const applyOverrides = (baseTheme, overrides) => {
   return next;
 };
 
-export const getPreviewTheme = (mode = 'light', overrides) => {
-  const safeMode = mode === 'dark' ? 'dark' : 'light';
-  const base = BASE_THEMES[safeMode];
-  return applyOverrides(base, overrides);
-};
+export const getPreviewTheme = (overrides) => applyOverrides(BASE_THEME, overrides);

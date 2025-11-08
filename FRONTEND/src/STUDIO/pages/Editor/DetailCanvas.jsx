@@ -95,13 +95,12 @@ const DetailCanvas = () => {
   // Subscribe to the pages array so component re-renders when it changes
   const pages = useNewEditorStore(state => state.site.pages);
   const site = useNewEditorStore(state => state.site);
-  const pageThemeMode = useNewEditorStore(state => state.pageThemeMode);
   const devicePreview = useNewEditorStore(state => state.devicePreview);
   const page = pages.find(p => p.id === selectedPageId);
 
   const previewTheme = useMemo(
-    () => getPreviewTheme(pageThemeMode, site?.theme),
-    [pageThemeMode, site?.theme]
+    () => getPreviewTheme(site?.theme),
+    [site?.theme]
   );
   
   console.log('🖼️ DetailCanvas - Render:', {

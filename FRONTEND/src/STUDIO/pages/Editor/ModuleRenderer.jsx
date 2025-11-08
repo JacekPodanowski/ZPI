@@ -54,7 +54,6 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const entryPointPageId = useNewEditorStore(state => state.entryPointPageId);
   const selectedPageId = useNewEditorStore(state => state.selectedPageId);
   const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
-  const pageThemeMode = useNewEditorStore(state => state.pageThemeMode);
   
   if (!module) {
     return (
@@ -79,9 +78,8 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
       selectedPageId
     );
 
-    const navIsDark = pageThemeMode === 'dark';
-    const navBgFallback = navIsDark ? '#000000' : '#ffffff';
-    const navTextFallback = navIsDark ? '#ffffff' : '#101010';
+  const navBgFallback = '#ffffff';
+  const navTextFallback = theme?.text || DEFAULT_THEME.text;
 
     return {
       ...baseContent,
@@ -95,7 +93,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
         ? navTextFallback
         : baseContent.activeColor
     };
-  }, [isNavigationModule, site, module.content, entryPointPageId, selectedPageId, pageThemeMode]);
+  }, [isNavigationModule, site, module.content, entryPointPageId, selectedPageId, theme]);
 
   const handleNavigation = useCallback((targetPageId) => {
     if (!targetPageId) return;

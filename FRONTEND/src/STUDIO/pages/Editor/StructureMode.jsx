@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material';
-import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search, LightMode, DarkMode } from '@mui/icons-material';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase } from '@mui/material';
+import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
@@ -21,8 +21,7 @@ const StructureMode = () => {
     setDragging,
     entryPointPageId,
     setSelectedPage,
-    pageThemeMode,
-    setPageThemeMode
+    renamePage
   } = useNewEditorStore();
   
   const theme = useTheme();
@@ -55,8 +54,52 @@ const StructureMode = () => {
   const [dropHandled, setDropHandled] = useState(false);
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
   const [focusedPageId, setFocusedPageId] = useState(() => selectedPageId || entryPointPageId || site?.pages?.[0]?.id || null);
-
+  const [editingPageId, setEditingPageId] = useState(null);
+  const [draftPageTitle, setDraftPageTitle] = useState('');
+  const titleInputRef = useRef(null);
   const pages = useMemo(() => site?.pages ?? [], [site?.pages]);
+
+  useEffect(() => {
+    if (editingPageId && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [editingPageId]);
+
+  const assignTitleInputRef = useCallback((node) => {
+    titleInputRef.current = node;
+    if (!node || !editingPageId) {
+      return;
+    }
+    const caretPosition = typeof node.value === 'string' ? node.value.length : 0;
+    // Use requestAnimationFrame to align with paint cycle and avoid jitter
+    const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : null;
+    if (raf) {
+      raf(() => {
+        node.focus();
+        try {
+          node.setSelectionRange(caretPosition, caretPosition);
+        } catch (err) {
+          // Ignore setSelectionRange errors on inputs that don't support it
+        }
+      });
+    } else {
+      node.focus();
+      try {
+        node.setSelectionRange(caretPosition, caretPosition);
+      } catch (err) {
+        // Ignore setSelectionRange errors on inputs that don't support it
+      }
+    }
+  }, [editingPageId]);
+
+  useEffect(() => {
+    if (!editingPageId) return;
+    if (!pages.some((page) => page.id === editingPageId)) {
+      setEditingPageId(null);
+      setDraftPageTitle('');
+    }
+  }, [editingPageId, pages]);
   const focusedPage = useMemo(() => {
     if (!pages.length) return null;
     const directMatch = pages.find((page) => page.id === focusedPageId);
@@ -142,6 +185,106 @@ const StructureMode = () => {
     const capitalizedType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
     return `${capitalizedType} Page`;
   }, []);
+
+  const handleStartEditingTitle = useCallback((event, page) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (!page) return;
+    const initialTitle = page.name && page.name.trim().length > 0
+      ? page.name
+      : getPageTitle(page);
+    setEditingPageId(page.id);
+    setDraftPageTitle(initialTitle);
+  }, [getPageTitle]);
+
+  const commitTitleEdit = useCallback(() => {
+    if (!editingPageId) {
+      return;
+    }
+    const targetPage = pages.find((page) => page.id === editingPageId);
+    if (targetPage) {
+      const trimmed = draftPageTitle.trim();
+      if (trimmed && trimmed !== targetPage.name) {
+        renamePage(targetPage.id, trimmed);
+      }
+    }
+    setEditingPageId(null);
+    setDraftPageTitle('');
+  }, [editingPageId, draftPageTitle, pages, renamePage]);
+
+  const handleTitleKeyDown = useCallback((event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitTitleEdit();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setEditingPageId(null);
+      setDraftPageTitle('');
+    }
+  }, [commitTitleEdit]);
+
+  const EditablePageTitle = ({ page, variant = 'focused' }) => {
+    if (!page) return null;
+    const isEditing = editingPageId === page.id;
+    const typographyBase = variant === 'focused'
+      ? { fontSize: '18px', fontWeight: 600 }
+      : { fontSize: '13px', fontWeight: 600 };
+    const hoverLift = variant === 'focused' ? '-3px' : '-2px';
+
+    const content = (
+      <Typography
+        sx={{
+          ...typographyBase,
+          color: editorColors.text.primary,
+          textAlign: 'left',
+          cursor: 'text',
+          transition: 'transform 0.2s ease, color 0.2s ease',
+          display: 'inline-flex',
+          alignItems: 'center',
+          minWidth: 0,
+          lineHeight: 1.3,
+          userSelect: 'text',
+          '&:hover': {
+            transform: `translateY(${hoverLift})`,
+            color: editorColors.interactive.main
+          }
+        }}
+        onClick={(event) => handleStartEditingTitle(event, page)}
+      >
+        {getPageTitle(page)}
+      </Typography>
+    );
+
+    return (
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {isEditing ? (
+          <InputBase
+            fullWidth
+            inputRef={editingPageId === page.id ? assignTitleInputRef : undefined}
+            value={draftPageTitle}
+            onChange={(event) => setDraftPageTitle(event.target.value)}
+            onBlur={commitTitleEdit}
+            onKeyDown={handleTitleKeyDown}
+            sx={{
+              ...typographyBase,
+              width: '100%',
+              color: editorColors.text.primary,
+              cursor: 'text',
+              '& .MuiInputBase-input': {
+                padding: 0,
+                lineHeight: 1.3,
+                minWidth: 0
+              }
+            }}
+          />
+        ) : (
+          content
+        )}
+      </Box>
+    );
+  };
 
   const markDropHandled = () => {
     setDropHandled(true);
@@ -349,23 +492,6 @@ const StructureMode = () => {
                 </ToggleButton>
               </ToggleButtonGroup>
             </Stack>
-
-            <ToggleButtonGroup
-              value={pageThemeMode}
-              exclusive
-              onChange={(e, nextMode) => nextMode && setPageThemeMode(nextMode)}
-              size="small"
-              sx={{ ...toggleButtonStyles, ml: 'auto' }}
-            >
-              <ToggleButton value="light">
-                <LightMode sx={{ fontSize: 16, mr: 0.5 }} />
-                Light Page
-              </ToggleButton>
-              <ToggleButton value="dark">
-                <DarkMode sx={{ fontSize: 16, mr: 0.5 }} />
-                Dark Page
-              </ToggleButton>
-            </ToggleButtonGroup>
           </Box>
         </Box>
 
@@ -413,16 +539,7 @@ const StructureMode = () => {
                   }}
                   data-page-id={focusedPage.id}
                 >
-                  <Typography
-                    sx={{
-                      fontSize: '18px',
-                      fontWeight: 600,
-                      color: editorColors.text.primary,
-                      textAlign: 'left'
-                    }}
-                  >
-                    {getPageTitle(focusedPage)}
-                  </Typography>
+                  <EditablePageTitle page={focusedPage} variant="focused" />
                   <IconButton
                     size="small"
                     onClick={() => enterDetailMode(focusedPage.id)}
@@ -507,8 +624,6 @@ const StructureMode = () => {
                 const calculatedWidth = Math.min(450, Math.floor(availableWidth / effectiveCount));
                 const scale = calculatedWidth / baseWidth;
                 
-                const pageTitle = getPageTitle(page);
-
                 return (
                   <Box
                     key={page.id}
@@ -531,16 +646,7 @@ const StructureMode = () => {
                       }}
                       data-page-id={page.id}
                     >
-                      <Typography
-                        sx={{
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          color: editorColors.text.primary,
-                          textAlign: 'left'
-                        }}
-                      >
-                        {pageTitle}
-                      </Typography>
+                      <EditablePageTitle page={page} variant="compact" />
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <IconButton
                           size="small"

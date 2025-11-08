@@ -93,8 +93,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     site,
     getModuleHeight,
     setDragging,
-    entryPointPageId,
-    pageThemeMode
+    entryPointPageId
   } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const theme = useTheme();
@@ -113,20 +112,17 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   console.log('[SiteCanvas] Render - devicePreview:', devicePreview);
 
   const previewTheme = useMemo(
-    () => getPreviewTheme(pageThemeMode, site?.theme),
-    [pageThemeMode, site?.theme]
+    () => getPreviewTheme(site?.theme),
+    [site?.theme]
   );
-
-  const isPreviewDark = pageThemeMode === 'dark';
   const previewColors = useMemo(() => {
-    const fallbackDarkCanvas = 'rgba(34, 34, 38, 1)';
-    const baseCanvas = previewTheme?.page || previewTheme?.background || (isPreviewDark ? fallbackDarkCanvas : '#f8f8f4');
-    const surface = previewTheme?.surface || (isPreviewDark ? 'rgba(42, 42, 46, 0.95)' : baseCanvas);
-    const elevated = previewTheme?.elevated || (isPreviewDark ? 'rgba(52, 52, 58, 0.98)' : surface);
-    const border = previewTheme?.border || (isPreviewDark ? 'rgba(220, 220, 220, 0.2)' : 'rgba(30, 30, 30, 0.12)');
-    const divider = previewTheme?.divider || (isPreviewDark ? 'rgba(220, 220, 220, 0.18)' : 'rgba(30, 30, 30, 0.08)');
-    const textPrimary = previewTheme?.text || (isPreviewDark ? 'rgba(240, 240, 244, 0.96)' : 'rgba(30, 30, 30, 0.92)');
-    const textMuted = isPreviewDark ? 'rgba(220, 220, 220, 0.65)' : 'rgba(30, 30, 30, 0.6)';
+    const baseCanvas = previewTheme?.page || previewTheme?.background || '#f8f8f4';
+    const surface = previewTheme?.surface || baseCanvas;
+    const elevated = previewTheme?.elevated || surface;
+    const border = previewTheme?.border || 'rgba(30, 30, 30, 0.12)';
+    const divider = previewTheme?.divider || 'rgba(30, 30, 30, 0.08)';
+    const textPrimary = previewTheme?.text || 'rgba(30, 30, 30, 0.92)';
+    const textMuted = previewTheme?.textMuted || 'rgba(30, 30, 30, 0.6)';
     return {
       canvas: baseCanvas,
       surface,
@@ -136,12 +132,12 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
       textPrimary,
       textMuted
     };
-  }, [previewTheme, isPreviewDark]);
+  }, [previewTheme]);
 
   const dropZoneIdleBg = renderMode === 'icon' ? '#ffffff' : previewColors.canvas;
   const dropZoneHoverBg = renderMode === 'icon'
     ? interactive.subtle
-    : (isPreviewDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(30, 30, 30, 0.08)');
+    : 'rgba(146, 0, 32, 0.08)';
   const dropZoneBorder = `2px dotted ${previewColors.border}`;
   const dropZoneActiveBorder = `2px dashed ${previewColors.border}`;
 
@@ -164,8 +160,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
 
   // Get navigation config - merge site custom navigation with defaults
   const userNavigationContent = site.navigation?.content || {};
-  const navTextFallback = pageThemeMode === 'dark' ? '#ffffff' : '#101010';
-  const navBackgroundFallback = pageThemeMode === 'dark' ? '#000000' : '#ffffff';
+  const navTextFallback = previewTheme?.text || '#101010';
+  const navBackgroundFallback = '#ffffff';
   const navigationOverrides = {
     ...userNavigationContent,
     bgColor: userNavigationContent.bgColor && userNavigationContent.bgColor !== 'transparent'

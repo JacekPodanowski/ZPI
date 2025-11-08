@@ -48,8 +48,11 @@ const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
                 key={index}
                 href={link.href}
                 onClick={(event) => handleLinkClick(event, link)}
-                className={`${vibe.textSize} ${vibe.animations} hover:opacity-70 ${link.pageId === activePageId ? 'font-semibold' : ''}`}
-                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
+                className={`inline-flex items-center h-full ${vibe.textSize} ${vibe.animations} hover:opacity-70 ${link.pageId === activePageId ? 'font-semibold' : ''}`}
+                style={{
+                  color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text),
+                  lineHeight: 1.2
+                }}
               >
                 {link.label}
               </a>
