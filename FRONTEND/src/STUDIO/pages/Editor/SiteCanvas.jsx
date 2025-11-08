@@ -1,13 +1,27 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getModuleDefinition, getDefaultModuleContent, buildNavigationContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
+import getEditorColorTokens from '../../../theme/editorColorTokens';
+import { getPreviewTheme } from './siteThemes';
 
 // Component to render module in real mode and measure its height
-const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFactor, realSiteWidth, definition, showOverlay, renderMode }) => {
+const RealModeModule = ({
+  module,
+  pageId,
+  moduleHeight,
+  unscaledHeight,
+  scaleFactor,
+  realSiteWidth,
+  definition,
+  showOverlay,
+  renderMode,
+  previewTheme,
+  devicePreview
+}) => {
   const moduleRef = useRef(null);
   const { recordModuleHeight } = useNewEditorStore();
   
@@ -49,7 +63,12 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
           pointerEvents: 'none'
         }}
       >
-        <ModuleRenderer module={module} pageId={pageId} />
+        <ModuleRenderer
+          module={module}
+          pageId={pageId}
+          theme={previewTheme}
+          devicePreview={devicePreview}
+        />
       </Box>
       {showOverlay && (
         <Box
@@ -68,9 +87,23 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
 };
 
 const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandled, devicePreview = 'desktop', onNavigate }) => {
-  const { addModule, moveModule, site, getModuleHeight, setDragging, entryPointPageId } = useNewEditorStore();
+  const {
+    addModule,
+    moveModule,
+    site,
+    getModuleHeight,
+    setDragging,
+    entryPointPageId,
+    pageThemeMode
+  } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const theme = useTheme();
+  const editorColors = getEditorColorTokens(theme);
+  const {
+    text: editorText,
+    borders: editorBorders,
+    interactive
+  } = editorColors;
 
   console.log('[SiteCanvas] Render - page:', page);
   console.log('[SiteCanvas] Render - page.id:', page?.id);
@@ -79,10 +112,75 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   console.log('[SiteCanvas] Render - renderMode:', renderMode);
   console.log('[SiteCanvas] Render - devicePreview:', devicePreview);
 
+  const previewTheme = useMemo(
+    () => getPreviewTheme(pageThemeMode, site?.theme),
+    [pageThemeMode, site?.theme]
+  );
+
+  const isPreviewDark = pageThemeMode === 'dark';
+  const previewColors = useMemo(() => {
+    const fallbackDarkCanvas = 'rgba(34, 34, 38, 1)';
+    const baseCanvas = previewTheme?.page || previewTheme?.background || (isPreviewDark ? fallbackDarkCanvas : '#f8f8f4');
+    const surface = previewTheme?.surface || (isPreviewDark ? 'rgba(42, 42, 46, 0.95)' : baseCanvas);
+    const elevated = previewTheme?.elevated || (isPreviewDark ? 'rgba(52, 52, 58, 0.98)' : surface);
+    const border = previewTheme?.border || (isPreviewDark ? 'rgba(220, 220, 220, 0.2)' : 'rgba(30, 30, 30, 0.12)');
+    const divider = previewTheme?.divider || (isPreviewDark ? 'rgba(220, 220, 220, 0.18)' : 'rgba(30, 30, 30, 0.08)');
+    const textPrimary = previewTheme?.text || (isPreviewDark ? 'rgba(240, 240, 244, 0.96)' : 'rgba(30, 30, 30, 0.92)');
+    const textMuted = isPreviewDark ? 'rgba(220, 220, 220, 0.65)' : 'rgba(30, 30, 30, 0.6)';
+    return {
+      canvas: baseCanvas,
+      surface,
+      elevated,
+      border,
+      divider,
+      textPrimary,
+      textMuted
+    };
+  }, [previewTheme, isPreviewDark]);
+
+  const dropZoneIdleBg = renderMode === 'icon' ? '#ffffff' : previewColors.canvas;
+  const dropZoneHoverBg = renderMode === 'icon'
+    ? interactive.subtle
+    : (isPreviewDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(30, 30, 30, 0.08)');
+  const dropZoneBorder = `2px dotted ${previewColors.border}`;
+  const dropZoneActiveBorder = `2px dashed ${previewColors.border}`;
+
+  if (!page) {
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: editorText.muted
+        }}
+      >
+        Select a page to preview
+      </Box>
+    );
+  }
+
   // Get navigation config - merge site custom navigation with defaults
+  const userNavigationContent = site.navigation?.content || {};
+  const navTextFallback = pageThemeMode === 'dark' ? '#ffffff' : '#101010';
+  const navBackgroundFallback = pageThemeMode === 'dark' ? '#000000' : '#ffffff';
+  const navigationOverrides = {
+    ...userNavigationContent,
+    bgColor: userNavigationContent.bgColor && userNavigationContent.bgColor !== 'transparent'
+      ? userNavigationContent.bgColor
+      : navBackgroundFallback,
+    textColor: userNavigationContent.textColor && userNavigationContent.textColor !== 'transparent'
+      ? userNavigationContent.textColor
+      : navTextFallback,
+    activeColor: userNavigationContent.activeColor && userNavigationContent.activeColor !== 'transparent'
+      ? userNavigationContent.activeColor
+      : navTextFallback
+  };
   const navigationPreviewContent = buildNavigationContent(
     site,
-    site.navigation?.content || {},
+    navigationOverrides,
     entryPointPageId,
     page?.id
   );
@@ -181,7 +279,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
           alignItems: 'center',
           justifyContent: 'center',
           gap: 2,
-          bgcolor: theme.colors?.surface?.base || 'white',
+          bgcolor: previewColors.surface,
           position: 'relative',
           overflow: 'hidden'
         }}
@@ -214,7 +312,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
           sx={{
             fontSize: '16px',
             fontWeight: 600,
-            color: theme.colors?.text?.base || 'rgb(30, 30, 30)'
+            color: previewColors.textPrimary
           }}
         >
           {definition.label}
@@ -228,7 +326,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     const activePageId = navigationPreviewContent.activePageId;
     const totalLabelLength = links.reduce((sum, link) => sum + (link.label?.length || 0), 0);
     const showOverflowIndicator = links.length > 0 && totalLabelLength > 70;
-    const surfaceColor = theme.colors?.surface?.base || 'white';
+    const navSurface = navigationPreviewContent.bgColor || previewColors.elevated;
+    const surfaceColor = navSurface;
     return (
       <Box
         sx={{
@@ -237,13 +336,19 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
           alignItems: 'center',
           justifyContent: 'space-between',
           px: 2,
-          bgcolor: theme.colors?.surface?.base || 'white',
-          borderBottom: `1px solid ${theme.colors?.border?.subtle || 'rgba(0, 0, 0, 0.08)'}`,
+          bgcolor: navSurface,
+          borderBottom: `1px solid ${previewColors.divider}`,
           position: 'relative',
           flexShrink: 0
         }}
       >
-        <Typography sx={{ fontSize: '11px', fontWeight: 600, opacity: 0.6 }}>
+        <Typography
+          sx={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: previewColors.textMuted
+          }}
+        >
           {navigationPreviewContent.logo?.text || 'Logo'}
         </Typography>
         <Box
@@ -279,7 +384,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                   sx={{
                     fontSize: '10px',
                     fontWeight: isActive ? 700 : 500,
-                    color: isActive ? 'rgb(146, 0, 32)' : 'rgba(30, 30, 30, 0.6)',
+                    color: isActive ? previewColors.textPrimary : previewColors.textMuted,
                     textTransform: 'uppercase',
                     letterSpacing: '0.4px',
                     whiteSpace: 'nowrap',
@@ -302,10 +407,10 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-end',
-                background: `linear-gradient(90deg, rgba(255, 255, 255, 0), ${surfaceColor})`
+                background: `linear-gradient(90deg, transparent, ${surfaceColor})`
               }}
             >
-              <Typography sx={{ fontSize: '10px', opacity: 0.5 }}>…</Typography>
+              <Typography sx={{ fontSize: '10px', color: previewColors.textMuted }}>…</Typography>
             </Box>
           )}
         </Box>
@@ -314,7 +419,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
             width: 10,
             height: 10,
             borderRadius: '50%',
-            bgcolor: 'rgb(146, 0, 32)',
+            bgcolor: interactive.focus,
             opacity: 0.4
           }}
         />
@@ -339,9 +444,13 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
         definition={definition}
         showOverlay={showOverlay}
         renderMode={renderMode}
+        previewTheme={previewTheme}
+        devicePreview={devicePreview}
       />
     );
   };
+
+  const canvasBackground = previewColors.canvas;
 
   return (
     <Box
@@ -350,7 +459,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
         width: '100%',
         maxWidth: `${canvasWidth}px`,
         aspectRatio: devicePreview === 'mobile' ? '9/16' : '16/9',
-        bgcolor: theme.colors?.surface?.base || 'white',
+        bgcolor: canvasBackground,
         borderRadius: '14px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
         overflow: 'hidden',
@@ -379,9 +488,11 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
             <ModuleRenderer 
               module={{ 
                 type: 'navigation', 
-                content: site.navigation?.content || {} 
+                content: navigationPreviewContent 
               }} 
               pageId={page.id}
+              theme={previewTheme}
+              devicePreview={devicePreview}
               onNavigate={onNavigate}
             />
           </Box>
@@ -420,11 +531,11 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: theme.colors?.text?.muted || 'rgba(30, 30, 30, 0.3)',
+              color: editorText.muted,
               fontSize: '14px',
               fontWeight: 500,
-              border: `2px dashed ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.1)'}`,
-              bgcolor: dragOverIndex === 0 ? 'rgba(146, 0, 32, 0.05)' : 'transparent',
+              border: `2px dashed ${editorBorders.subtle}`,
+              bgcolor: dragOverIndex === 0 ? interactive.subtle : 'transparent',
               transition: 'all 0.2s ease',
               cursor: dragOverIndex === 0 ? 'copy' : 'default',
               m: 2
@@ -542,14 +653,14 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                     sx={{
                       height: '100%',
                       borderBottom: index < page.modules.length - 1 
-                        ? `2px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.08)'}` 
+                        ? `2px solid ${previewColors.divider}` 
                         : 'none',
                       position: 'relative',
                       cursor: 'grab',
                       transition: 'all 0.2s ease',
                       overflow: 'hidden',
                       '&:hover': {
-                        boxShadow: `inset 0 0 0 2px ${theme.colors?.primary?.base || 'rgb(146, 0, 32)'}`
+                        boxShadow: `inset 0 0 0 2px ${interactive.focus}`
                       },
                       '&:active': {
                         cursor: 'grabbing',
@@ -567,8 +678,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                           bottom: showBottomIndicator ? 0 : 'auto',
                           height: '3px',
                           borderRadius: '999px',
-                          bgcolor: 'rgb(146, 0, 32)',
-                          boxShadow: '0 0 8px rgba(146, 0, 32, 0.4)',
+                          bgcolor: interactive.focus,
+                          boxShadow: `0 0 8px ${interactive.subtle}`,
                           zIndex: 10
                         }}
                       />
@@ -606,20 +717,19 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
           sx={{
             height: `${FOOTER_HEIGHT_ICON}px`,
             flexShrink: 0,
-            bgcolor: 'rgba(0, 0, 0, 0.02)',
-            borderTop: '2px dotted rgba(0, 0, 0, 0.15)',
+            bgcolor: dragOverIndex === page.modules.length ? dropZoneHoverBg : dropZoneIdleBg,
+            borderTop: dropZoneBorder,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'rgba(30, 30, 30, 0.3)',
+            color: editorText.muted,
             fontSize: '10px',
             fontWeight: 500,
             transition: 'all 0.2s ease',
             cursor: dragOverIndex === page.modules.length ? 'copy' : 'default',
             ...(dragOverIndex === page.modules.length && {
-              bgcolor: 'rgba(146, 0, 32, 0.08)',
-              borderTop: '2px dashed rgb(146, 0, 32)',
-              color: 'rgb(146, 0, 32)'
+              borderTop: dropZoneActiveBorder,
+              color: previewColors.textPrimary
             })
           }}
         >

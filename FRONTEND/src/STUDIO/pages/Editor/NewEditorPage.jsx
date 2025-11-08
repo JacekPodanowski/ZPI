@@ -8,6 +8,7 @@ import EditorTopBar from './EditorTopBar';
 import EditorErrorBoundary from './EditorErrorBoundary';
 import { fetchSiteById } from '../../../services/siteService';
 import useTheme from '../../../theme/useTheme';
+import getEditorColorTokens from '../../../theme/editorColorTokens';
 import { getDefaultModuleContent } from './moduleDefinitions';
 
 // Helper function to convert old module format to new format
@@ -49,6 +50,7 @@ const NewEditorPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const theme = useTheme();
+  const editorColors = getEditorColorTokens(theme);
 
   useEffect(() => {
     const loadSiteData = async () => {
@@ -201,10 +203,10 @@ const NewEditorPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: theme.colors?.background?.base || 'rgb(228, 229, 218)'
+          bgcolor: editorColors.backgrounds.page
         }}
       >
-        <CircularProgress sx={{ color: theme.colors?.primary?.base || 'rgb(146, 0, 32)' }} />
+        <CircularProgress sx={{ color: editorColors.interactive.main }} />
       </Box>
     );
   }
@@ -218,10 +220,10 @@ const NewEditorPage = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bgcolor: theme.colors?.background?.base || 'rgb(228, 229, 218)'
+          bgcolor: editorColors.backgrounds.page
         }}
       >
-        <Typography sx={{ color: theme.colors?.primary?.base || 'rgb(146, 0, 32)' }}>{error}</Typography>
+        <Typography sx={{ color: editorColors.interactive.main }}>{error}</Typography>
       </Box>
     );
   }
@@ -232,7 +234,7 @@ const NewEditorPage = () => {
         sx={{
           width: '100vw',
           height: '100vh',
-          bgcolor: theme.colors?.background?.base || 'rgb(228, 229, 218)',
+          bgcolor: editorColors.backgrounds.page,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',

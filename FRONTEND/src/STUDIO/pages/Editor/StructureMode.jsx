@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, Checkbox, FormControlLabel } from '@mui/material';
-import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search } from '@mui/icons-material';
+import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search, LightMode, DarkMode } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
 import SiteCanvas from './SiteCanvas';
 import { getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
+import getEditorColorTokens from '../../../theme/editorColorTokens';
 
 const StructureMode = () => {
   const { 
@@ -19,14 +20,38 @@ const StructureMode = () => {
     draggedItem,
     setDragging,
     entryPointPageId,
-    setSelectedPage
+    setSelectedPage,
+    pageThemeMode,
+    setPageThemeMode
   } = useNewEditorStore();
   
   const theme = useTheme();
+  const editorColors = getEditorColorTokens(theme);
+  const toggleButtonStyles = {
+    '& .MuiToggleButton-root': {
+      px: 2,
+      py: 0.75,
+      fontSize: '12px',
+      fontWeight: 500,
+      textTransform: 'none',
+      border: `1px solid ${editorColors.borders.subtle}`,
+      bgcolor: editorColors.surfaces.base,
+      color: editorColors.text.primary,
+      '&.Mui-selected': {
+        bgcolor: editorColors.interactive.main,
+        color: editorColors.text.inverse,
+        '&:hover': {
+          bgcolor: editorColors.interactive.hover
+        }
+      },
+      '&:hover': {
+        bgcolor: editorColors.surfaces.hover
+      }
+    }
+  };
   
   const [showModuleToolbar, setShowModuleToolbar] = useState(true);
   const [renderMode, setRenderMode] = useState('icon'); // 'icon' | 'real'
-  const [showOverlay, setShowOverlay] = useState(true);
   const [dropHandled, setDropHandled] = useState(false);
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
   const [focusedPageId, setFocusedPageId] = useState(() => selectedPageId || entryPointPageId || site?.pages?.[0]?.id || null);
@@ -103,6 +128,7 @@ const StructureMode = () => {
   }, [pages, handleFocusChange]);
 
   const otherPagesCount = otherPages.length;
+  const overlayEnabled = renderMode === 'icon';
 
   const getPageTitle = useCallback((page) => {
     if (!page) return 'New Page';
@@ -138,7 +164,8 @@ const StructureMode = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'rgba(30, 30, 30, 0.4)'
+          color: editorColors.text.hint,
+          bgcolor: editorColors.backgrounds.canvas
         }}
       >
         <Typography>No pages available. Add a page to get started.</Typography>
@@ -153,7 +180,7 @@ const StructureMode = () => {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
-        bgcolor: theme.colors?.background?.base || 'rgb(228, 229, 218)'
+        bgcolor: editorColors.backgrounds.page
       }}
     >
       {/* Module Toolbar */}
@@ -253,7 +280,7 @@ const StructureMode = () => {
                 <RemoveRedEye
                   sx={{
                     fontSize: 30,
-                    color: 'rgb(146, 0, 32)'
+                    color: editorColors.interactive.main
                   }}
                 />
               </motion.div>
@@ -261,7 +288,7 @@ const StructureMode = () => {
                 sx={{
                   fontSize: '10px',
                   fontWeight: 700,
-                  color: 'rgb(146, 0, 32)',
+                  color: editorColors.interactive.main,
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
                   whiteSpace: 'nowrap'
@@ -287,7 +314,7 @@ const StructureMode = () => {
                 <South
                   sx={{
                     fontSize: 20,
-                    color: 'rgb(146, 0, 32)'
+                    color: editorColors.interactive.main
                   }}
                 />
               </motion.div>
@@ -295,70 +322,51 @@ const StructureMode = () => {
           )}
 
           {/* Settings Controls */}
-          <Stack direction="row" spacing={3} alignItems="center">
-            {/* Render Mode Toggle */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+              flexWrap: 'wrap'
+            }}
+          >
+            <Stack direction="row" spacing={3} alignItems="center">
+              <ToggleButtonGroup
+                value={renderMode}
+                exclusive
+                onChange={(e, newMode) => newMode && setRenderMode(newMode)}
+                size="small"
+                sx={toggleButtonStyles}
+              >
+                <ToggleButton value="icon">
+                  <GridView sx={{ fontSize: 16, mr: 0.5 }} />
+                  Icon Render
+                </ToggleButton>
+                <ToggleButton value="real">
+                  <Visibility sx={{ fontSize: 16, mr: 0.5 }} />
+                  Real Render
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+
             <ToggleButtonGroup
-              value={renderMode}
+              value={pageThemeMode}
               exclusive
-              onChange={(e, newMode) => newMode && setRenderMode(newMode)}
+              onChange={(e, nextMode) => nextMode && setPageThemeMode(nextMode)}
               size="small"
-              sx={{
-                '& .MuiToggleButton-root': {
-                  px: 2,
-                  py: 0.75,
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  border: '1px solid rgba(30, 30, 30, 0.15)',
-                  bgcolor: 'rgba(255, 255, 255, 0.95)',
-                  '&.Mui-selected': {
-                    bgcolor: 'rgb(146, 0, 32)',
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: 'rgb(114, 0, 21)'
-                    }
-                  },
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 1)'
-                  }
-                }
-              }}
+              sx={{ ...toggleButtonStyles, ml: 'auto' }}
             >
-              <ToggleButton value="icon">
-                <GridView sx={{ fontSize: 16, mr: 0.5 }} />
-                Icon Render
+              <ToggleButton value="light">
+                <LightMode sx={{ fontSize: 16, mr: 0.5 }} />
+                Light Page
               </ToggleButton>
-              <ToggleButton value="real">
-                <Visibility sx={{ fontSize: 16, mr: 0.5 }} />
-                Real Render
+              <ToggleButton value="dark">
+                <DarkMode sx={{ fontSize: 16, mr: 0.5 }} />
+                Dark Page
               </ToggleButton>
             </ToggleButtonGroup>
-
-            {/* Color Overlay Checkbox - Only visible in Real Render mode */}
-            {renderMode === 'real' && (
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={showOverlay}
-                    onChange={(e) => setShowOverlay(e.target.checked)}
-                    size="small"
-                    sx={{
-                      color: 'rgb(146, 0, 32)',
-                      '&.Mui-checked': {
-                        color: 'rgb(146, 0, 32)'
-                      }
-                    }}
-                  />
-                }
-                label={
-                  <Typography sx={{ fontSize: '13px', fontWeight: 500, color: 'rgb(30, 30, 30)' }}>
-                    Color Overlay
-                  </Typography>
-                }
-                sx={{ m: 0 }}
-              />
-            )}
-          </Stack>
+          </Box>
         </Box>
 
         {/* PAGES CONTAINER - Two Row Layout */}
@@ -409,7 +417,7 @@ const StructureMode = () => {
                     sx={{
                       fontSize: '18px',
                       fontWeight: 600,
-                      color: theme.colors?.text?.base || 'rgb(30, 30, 30)',
+                      color: editorColors.text.primary,
                       textAlign: 'left'
                     }}
                   >
@@ -419,9 +427,9 @@ const StructureMode = () => {
                     size="small"
                     onClick={() => enterDetailMode(focusedPage.id)}
                     sx={{
-                      color: 'rgb(146, 0, 32)',
+                      color: editorColors.interactive.main,
                       '&:hover': {
-                        bgcolor: 'rgba(146, 0, 32, 0.08)'
+                        bgcolor: editorColors.interactive.subtle
                       }
                     }}
                   >
@@ -441,7 +449,7 @@ const StructureMode = () => {
                     <SiteCanvas 
                       page={focusedPage} 
                       renderMode={renderMode}
-                      showOverlay={renderMode === 'icon' ? true : showOverlay}
+                      showOverlay={overlayEnabled}
                       onDropHandled={markDropHandled}
                       devicePreview={devicePreview}
                       onNavigate={handleNavigate}
@@ -465,7 +473,7 @@ const StructureMode = () => {
                       key={page.id}
                       sx={{
                         fontSize: 32,
-                        color: 'rgb(146, 0, 32)',
+                        color: editorColors.interactive.main,
                         opacity: 0.6
                       }}
                     />
@@ -527,7 +535,7 @@ const StructureMode = () => {
                         sx={{
                           fontSize: '13px',
                           fontWeight: 600,
-                          color: theme.colors?.text?.base || 'rgb(30, 30, 30)',
+                          color: editorColors.text.primary,
                           textAlign: 'left'
                         }}
                       >
@@ -538,9 +546,9 @@ const StructureMode = () => {
                           size="small"
                           onClick={() => handleFocusChange(page.id)}
                           sx={{
-                            color: 'rgb(146, 0, 32)',
+                            color: editorColors.interactive.main,
                             '&:hover': {
-                              bgcolor: 'rgba(146, 0, 32, 0.08)'
+                              bgcolor: editorColors.interactive.subtle
                             }
                           }}
                         >
@@ -550,9 +558,9 @@ const StructureMode = () => {
                           size="small"
                           onClick={() => enterDetailMode(page.id)}
                           sx={{
-                            color: 'rgb(146, 0, 32)',
+                            color: editorColors.interactive.main,
                             '&:hover': {
-                              bgcolor: 'rgba(146, 0, 32, 0.08)'
+                              bgcolor: editorColors.interactive.subtle
                             }
                           }}
                         >
@@ -581,7 +589,7 @@ const StructureMode = () => {
                         <SiteCanvas 
                           page={page} 
                           renderMode={renderMode}
-                          showOverlay={renderMode === 'icon' ? true : showOverlay}
+                          showOverlay={overlayEnabled}
                           onDropHandled={markDropHandled}
                           devicePreview={devicePreview}
                           onNavigate={handleNavigate}

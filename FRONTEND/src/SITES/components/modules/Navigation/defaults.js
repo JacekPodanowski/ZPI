@@ -32,5 +32,17 @@ export const NAVIGATION_DEFAULTS = {
       { label: "Contact", href: "/contact" }
     ],
     sticky: true
+  },
+  mobile: {
+    logo: {
+      text: "Your Brand"
+    },
+    links: [
+      { label: "Home", href: "/" },
+      { label: "About", href: "/about" },
+      { label: "Services", href: "/services" },
+      { label: "Contact", href: "/contact" }
+    ],
+    sticky: true
   }
 };

@@ -9,6 +9,6 @@ export const NAVIGATION_DESCRIPTOR = {
     textColor: { t: 'text', d: 'Text color override', category: 'appearance' },
     sticky: { t: 'boolean', d: 'Sticky navigation on scroll', category: 'advanced' }
   },
-  layouts: ['horizontal', 'centered', 'minimal'],
+  layouts: ['horizontal', 'centered', 'minimal', 'mobile'],
   siteLevel: true
 };

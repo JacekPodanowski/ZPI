@@ -119,7 +119,7 @@ export const MODULE_REGISTRY = {
   navigation: {
     component: Navigation,
     descriptor: Navigation.descriptor,
-    layouts: ['horizontal', 'centered', 'minimal'],
+    layouts: ['horizontal', 'centered', 'minimal', 'mobile'],
     defaultLayout: 'horizontal',
     category: 'structure',
     siteLevel: true

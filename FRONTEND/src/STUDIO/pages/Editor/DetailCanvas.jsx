@@ -1,11 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Box, IconButton, Tooltip } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
+import { getPreviewTheme } from './siteThemes';
 
 // Wrapper component to measure module heights
-const MeasuredModule = ({ module, pageId, isSelected, onDelete }) => {
+const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, devicePreview }) => {
   const moduleRef = useRef(null);
   const { recordModuleHeight, selectModule } = useNewEditorStore();
   
@@ -51,7 +52,12 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete }) => {
         }
       }}
     >
-      <ModuleRenderer module={module} pageId={pageId} />
+      <ModuleRenderer
+        module={module}
+        pageId={pageId}
+        theme={previewTheme}
+        devicePreview={devicePreview}
+      />
       
       {/* Delete Button - appears when module is selected or on hover */}
       {isSelected && (
@@ -89,7 +95,14 @@ const DetailCanvas = () => {
   // Subscribe to the pages array so component re-renders when it changes
   const pages = useNewEditorStore(state => state.site.pages);
   const site = useNewEditorStore(state => state.site);
+  const pageThemeMode = useNewEditorStore(state => state.pageThemeMode);
+  const devicePreview = useNewEditorStore(state => state.devicePreview);
   const page = pages.find(p => p.id === selectedPageId);
+
+  const previewTheme = useMemo(
+    () => getPreviewTheme(pageThemeMode, site?.theme),
+    [pageThemeMode, site?.theme]
+  );
   
   console.log('🖼️ DetailCanvas - Render:', {
     selectedPageId,
@@ -138,6 +151,8 @@ const DetailCanvas = () => {
             content: site?.navigation?.content || {}
           }}
           pageId={page.id}
+          theme={previewTheme}
+          devicePreview={devicePreview}
         />
       </Box>
 
@@ -164,6 +179,8 @@ const DetailCanvas = () => {
             pageId={page.id}
             isSelected={selectedModuleId === module.id}
             onDelete={(e) => handleDeleteModule(module.id, e)}
+            previewTheme={previewTheme}
+            devicePreview={devicePreview}
           />
         ))
       )}

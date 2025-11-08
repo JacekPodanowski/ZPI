@@ -5,6 +5,7 @@ import useNewEditorStore from '../../store/newEditorStore';
 import { renameSite, updateSiteTemplate } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
+import getEditorColorTokens from '../../../theme/editorColorTokens';
 import apiClient from '../../../services/apiClient';
 import { retrieveTempImage, isTempBlobUrl } from '../../../services/tempMediaCache';
 
@@ -25,6 +26,30 @@ const EditorTopBar = () => {
   // Get theme context for dark/light mode
   const { mode, toggleMode } = useThemeContext();
   const theme = useTheme();
+  const editorColors = getEditorColorTokens(theme);
+  const {
+    surfaces,
+    borders,
+    text,
+    interactive,
+    controls
+  } = editorColors;
+  const textPrimary = text.primary;
+  const textMuted = text.muted;
+  const textHint = text.hint;
+  const dividerColor = borders.subtle;
+  const topBarBg = surfaces.overlay;
+  const baseSurface = surfaces.base;
+  const hoverSurface = surfaces.hover;
+  const selectedToggleBg = surfaces.elevated;
+  const inactiveSaveBg = surfaces.muted;
+  const interactiveMain = interactive.main;
+  const interactiveHover = interactive.hover;
+  const inverseText = text.inverse;
+  const toggleGroupBg = controls.groupBg;
+  const toggleHoverBg = controls.groupHoverBg;
+  const accentMain = interactive.main;
+  const accentHover = interactive.hover;
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(siteName);
@@ -255,9 +280,9 @@ const EditorTopBar = () => {
     <Box
       sx={{
         height: '56px',
-        bgcolor: theme.colors?.surface?.overlay || 'rgba(255, 255, 255, 0.8)',
+        bgcolor: topBarBg,
         backdropFilter: 'blur(20px)',
-        borderBottom: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
+        borderBottom: `1px solid ${dividerColor}`,
         display: 'flex',
         alignItems: 'center',
         pr: 2,
@@ -284,14 +309,14 @@ const EditorTopBar = () => {
               height: '56px',
               width: editorMode === 'detail' ? '72px' : '48px',
               borderRadius: 0,
-              bgcolor: theme.colors?.surface?.base || 'rgba(30, 30, 30, 0.02)',
-              color: theme.colors?.text?.base || 'rgb(30, 30, 30)',
-              borderRight: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
+              bgcolor: baseSurface,
+              color: textPrimary,
+              borderRight: `1px solid ${dividerColor}`,
               display: 'flex',
               gap: 1,
               transition: 'width 0.2s ease',
               '&:hover': {
-                bgcolor: theme.colors?.surface?.hover || 'rgba(30, 30, 30, 0.06)'
+                bgcolor: hoverSurface
               }
             }}
           >
@@ -315,7 +340,7 @@ const EditorTopBar = () => {
               transition: 'all 0.2s ease',
               ...(editorMode === 'structure' && {
                 '&:hover': {
-                  bgcolor: 'rgba(30, 30, 30, 0.04)',
+                  bgcolor: hoverSurface,
                   '& .edit-icon': {
                     opacity: 1
                   }
@@ -327,7 +352,7 @@ const EditorTopBar = () => {
               variant="h6"
               sx={{
                 fontWeight: 600,
-                color: 'rgb(30, 30, 30)',
+                color: textPrimary,
                 fontSize: '16px'
               }}
             >
@@ -341,7 +366,7 @@ const EditorTopBar = () => {
                 className="edit-icon"
                 sx={{ 
                   fontSize: 16, 
-                  color: 'rgba(30, 30, 30, 0.4)',
+                  color: textHint,
                   opacity: 0,
                   transition: 'opacity 0.2s ease'
                 }} 
@@ -362,15 +387,15 @@ const EditorTopBar = () => {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '8px',
-                  bgcolor: 'white',
+                  bgcolor: selectedToggleBg,
                   '& fieldset': {
-                    borderColor: 'rgb(146, 0, 32)'
+                    borderColor: interactiveMain
                   },
                   '&:hover fieldset': {
-                    borderColor: 'rgb(146, 0, 32)'
+                    borderColor: interactiveHover
                   },
                   '&.Mui-focused fieldset': {
-                    borderColor: 'rgb(146, 0, 32)'
+                    borderColor: interactiveMain
                   }
                 },
                 '& .MuiInputBase-input': {
@@ -387,16 +412,16 @@ const EditorTopBar = () => {
                 onClick={handleTitleSave}
                 disabled={isSavingTitle}
                 sx={{
-                  bgcolor: 'rgb(146, 0, 32)',
-                  color: 'white',
+                  bgcolor: interactiveMain,
+                  color: inverseText,
                   width: 32,
                   height: 32,
                   '&:hover': {
-                    bgcolor: 'rgb(114, 0, 21)'
+                    bgcolor: interactiveHover
                   },
                   '&.Mui-disabled': {
-                    bgcolor: 'rgba(146, 0, 32, 0.5)',
-                    color: 'rgba(255, 255, 255, 0.5)'
+                    bgcolor: interactive.subtle,
+                    color: textMuted
                   }
                 }}
               >
@@ -409,12 +434,12 @@ const EditorTopBar = () => {
                 onClick={handleTitleCancel}
                 disabled={isSavingTitle}
                 sx={{
-                  bgcolor: 'rgba(30, 30, 30, 0.08)',
-                  color: 'rgb(30, 30, 30)',
+                  bgcolor: baseSurface,
+                  color: textPrimary,
                   width: 32,
                   height: 32,
                   '&:hover': {
-                    bgcolor: 'rgba(30, 30, 30, 0.15)'
+                    bgcolor: hoverSurface
                   }
                 }}
               >
@@ -432,8 +457,8 @@ const EditorTopBar = () => {
           <IconButton 
             size="small"
             sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+              color: textPrimary,
+              '&:hover': { bgcolor: hoverSurface }
             }}
           >
             <Undo fontSize="small" />
@@ -444,8 +469,8 @@ const EditorTopBar = () => {
           <IconButton 
             size="small"
             sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+              color: textPrimary,
+              '&:hover': { bgcolor: hoverSurface }
             }}
           >
             <Redo fontSize="small" />
@@ -457,7 +482,7 @@ const EditorTopBar = () => {
           sx={{
             width: '1px',
             height: '24px',
-            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            bgcolor: dividerColor,
             mx: 0.5
           }}
         />
@@ -468,8 +493,8 @@ const EditorTopBar = () => {
             size="small"
             onClick={toggleMode}
             sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+              color: textPrimary,
+              '&:hover': { bgcolor: hoverSurface }
             }}
           >
             {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
@@ -481,7 +506,7 @@ const EditorTopBar = () => {
           sx={{
             width: '1px',
             height: '24px',
-            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            bgcolor: dividerColor,
             mx: 0.5
           }}
         />
@@ -492,8 +517,8 @@ const EditorTopBar = () => {
             size="small"
             onClick={handleDownload}
             sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+              color: textPrimary,
+              '&:hover': { bgcolor: hoverSurface }
             }}
           >
             <FileDownload fontSize="small" />
@@ -506,8 +531,8 @@ const EditorTopBar = () => {
             size="small"
             onClick={handleImport}
             sx={{ 
-              color: 'rgb(30, 30, 30)',
-              '&:hover': { bgcolor: 'rgba(30, 30, 30, 0.04)' }
+              color: textPrimary,
+              '&:hover': { bgcolor: hoverSurface }
             }}
           >
             <FileUpload fontSize="small" />
@@ -519,7 +544,7 @@ const EditorTopBar = () => {
           sx={{
             width: '1px',
             height: '24px',
-            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            bgcolor: dividerColor,
             mx: 0.5
           }}
         />
@@ -529,7 +554,7 @@ const EditorTopBar = () => {
           direction="row" 
           spacing={0}
           sx={{
-            bgcolor: 'rgba(30, 30, 30, 0.04)',
+            bgcolor: toggleGroupBg,
             borderRadius: '8px',
             p: 0.5
           }}
@@ -539,10 +564,10 @@ const EditorTopBar = () => {
               size="small"
               onClick={() => setDevicePreview('desktop')}
               sx={{
-                color: devicePreview === 'desktop' ? 'rgb(146, 0, 32)' : 'rgb(30, 30, 30)',
-                bgcolor: devicePreview === 'desktop' ? 'white' : 'transparent',
+                color: devicePreview === 'desktop' ? interactiveMain : textHint,
+                bgcolor: devicePreview === 'desktop' ? selectedToggleBg : 'transparent',
                 '&:hover': { 
-                  bgcolor: devicePreview === 'desktop' ? 'white' : 'rgba(30, 30, 30, 0.04)' 
+                  bgcolor: devicePreview === 'desktop' ? selectedToggleBg : toggleHoverBg 
                 },
                 transition: 'all 0.2s ease'
               }}
@@ -555,10 +580,10 @@ const EditorTopBar = () => {
               size="small"
               onClick={() => setDevicePreview('mobile')}
               sx={{
-                color: devicePreview === 'mobile' ? 'rgb(146, 0, 32)' : 'rgb(30, 30, 30)',
-                bgcolor: devicePreview === 'mobile' ? 'white' : 'transparent',
+                color: devicePreview === 'mobile' ? interactiveMain : textHint,
+                bgcolor: devicePreview === 'mobile' ? selectedToggleBg : 'transparent',
                 '&:hover': { 
-                  bgcolor: devicePreview === 'mobile' ? 'white' : 'rgba(30, 30, 30, 0.04)' 
+                  bgcolor: devicePreview === 'mobile' ? selectedToggleBg : toggleHoverBg 
                 },
                 transition: 'all 0.2s ease'
               }}
@@ -573,7 +598,7 @@ const EditorTopBar = () => {
           sx={{
             width: '1px',
             height: '24px',
-            bgcolor: 'rgba(30, 30, 30, 0.1)',
+            bgcolor: dividerColor,
             mx: 0.5
           }}
         />
@@ -585,8 +610,8 @@ const EditorTopBar = () => {
             px: 2,
             py: 1,
             borderRadius: '6px',
-            bgcolor: hasUnsavedChanges ? 'rgb(146, 0, 32)' : 'rgba(30, 30, 30, 0.06)',
-            color: hasUnsavedChanges ? 'white' : 'rgba(30, 30, 30, 0.4)',
+            bgcolor: hasUnsavedChanges ? interactiveMain : inactiveSaveBg,
+            color: hasUnsavedChanges ? inverseText : textHint,
             cursor: hasUnsavedChanges ? 'pointer' : 'default',
             transition: 'all 0.2s ease',
             display: 'flex',
@@ -595,9 +620,9 @@ const EditorTopBar = () => {
             fontWeight: 500,
             fontSize: '14px',
             '&:hover': hasUnsavedChanges ? {
-              bgcolor: 'rgb(114, 0, 21)',
+              bgcolor: interactiveHover,
               transform: 'translateY(-1px)',
-              boxShadow: '0 4px 12px rgba(146, 0, 32, 0.3)'
+              boxShadow: '0 4px 12px rgba(146, 0, 32, 0.28)'
             } : {}
           }}
         >
@@ -613,8 +638,8 @@ const EditorTopBar = () => {
               px: 2,
               py: 1,
               borderRadius: '6px',
-              bgcolor: 'rgb(146, 0, 32)',
-              color: 'white',
+              bgcolor: accentMain,
+              color: '#ffffff',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -623,9 +648,9 @@ const EditorTopBar = () => {
               fontWeight: 500,
               fontSize: '14px',
               '&:hover': {
-                bgcolor: 'rgb(114, 0, 21)',
+                bgcolor: accentHover,
                 transform: 'translateY(-1px)',
-                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.3)'
+                boxShadow: '0 4px 12px rgba(146, 0, 32, 0.28)'
               }
             }}
           >

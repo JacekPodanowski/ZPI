@@ -4,11 +4,13 @@ import { NAVIGATION_DESCRIPTOR } from './descriptor';
 import HorizontalNav from './layouts/HorizontalNav';
 import CenteredNav from './layouts/CenteredNav';
 import MinimalNav from './layouts/MinimalNav';
+import MobileNav from './layouts/MobileNav';
 
 const LAYOUTS = {
   horizontal: HorizontalNav,
   centered: CenteredNav,
-  minimal: MinimalNav
+  minimal: MinimalNav,
+  mobile: MobileNav
 };
 
 const Navigation = ({ layout = 'horizontal', content = {}, vibe, theme, onNavigate }) => {

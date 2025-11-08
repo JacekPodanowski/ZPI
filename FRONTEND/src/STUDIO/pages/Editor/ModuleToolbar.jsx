@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Stack, Typography, IconButton } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Delete, Close } from '@mui/icons-material';
+import { Delete } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
@@ -11,6 +11,21 @@ const EDITOR_TOP_BAR_HEIGHT = 56;
 const ModuleToolbar = ({ isDraggingModule = false }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
+  const isDarkMode = theme.mode === 'dark';
+  const accentColor = theme.colors?.interactive?.default || 'rgb(146, 0, 32)';
+  const accentHoverColor = theme.colors?.interactive?.hover || 'rgb(114, 0, 21)';
+  const moduleListBg = isDarkMode ? 'rgba(20, 20, 24, 0.94)' : 'rgba(255, 255, 255, 0.9)';
+  const moduleListBorder = theme.colors?.border?.subtle || (isDarkMode ? 'rgba(220, 220, 220, 0.08)' : 'rgba(30, 30, 30, 0.06)');
+  const moduleListHover = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(30, 30, 30, 0.04)';
+  const selectedBg = isDarkMode ? 'rgba(146, 0, 32, 0.24)' : 'rgba(146, 0, 32, 0.08)';
+  const selectedHoverBg = isDarkMode ? 'rgba(146, 0, 32, 0.32)' : 'rgba(146, 0, 32, 0.12)';
+  const textPrimary = theme.colors?.text?.base || (isDarkMode ? 'rgba(235, 235, 235, 0.94)' : 'rgb(30, 30, 30)');
+  const textMuted = theme.colors?.text?.muted || (isDarkMode ? 'rgba(210, 210, 210, 0.65)' : 'rgba(30, 30, 30, 0.5)');
+  const popupBackground = isDarkMode ? 'rgba(28, 28, 32, 0.96)' : 'white';
+  const popupBorder = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(30, 30, 30, 0.08)';
+  const popupHeaderBg = isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)';
+  const popupText = isDarkMode ? 'rgba(240, 240, 242, 0.95)' : 'rgb(30, 30, 30)';
+  const popupMutedText = isDarkMode ? 'rgba(225, 225, 228, 0.75)' : 'rgba(30, 30, 30, 0.7)';
   const { removeModule, addPage, setDragging } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
@@ -161,9 +176,9 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
         sx={{
           width: '100%',
           height: '100%',
-          bgcolor: theme.colors?.surface?.overlay || 'rgba(255, 255, 255, 0.9)',
+          bgcolor: moduleListBg,
           backdropFilter: 'blur(20px)',
-          borderRight: `1px solid ${theme.colors?.border?.subtle || 'rgba(30, 30, 30, 0.06)'}`,
+          borderRight: `1px solid ${moduleListBorder}`,
           display: 'flex',
           flexDirection: 'column',
           p: 2,
@@ -175,7 +190,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
           sx={{
             fontSize: '12px',
             fontWeight: 600,
-            color: theme.colors?.text?.muted || 'rgba(30, 30, 30, 0.5)',
+            color: textMuted,
             letterSpacing: '0.8px',
             textTransform: 'uppercase',
             mb: 1,
@@ -210,9 +225,9 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                     borderRadius: '8px',
                     cursor: 'grab',
                     transition: 'all 0.2s ease',
-                    bgcolor: selectedModule?.type === module.type ? 'rgba(146, 0, 32, 0.08)' : 'transparent',
+                    bgcolor: selectedModule?.type === module.type ? selectedBg : 'transparent',
                     '&:hover': {
-                      bgcolor: selectedModule?.type === module.type ? 'rgba(146, 0, 32, 0.12)' : theme.colors?.surface?.hover || 'rgba(30, 30, 30, 0.04)',
+                      bgcolor: selectedModule?.type === module.type ? selectedHoverBg : moduleListHover,
                       transform: 'translateX(4px)'
                     },
                     '&:active': {
@@ -239,7 +254,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                     sx={{
                       fontSize: '14px',
                       fontWeight: 500,
-                      color: theme.colors?.text?.base || 'rgb(30, 30, 30)'
+                      color: textPrimary
                     }}
                   >
                     {module.label}
@@ -276,11 +291,11 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
               {/* Main bubble with integrated arrow shape */}
               <Box
                 sx={{
-                  bgcolor: 'white',
+                  bgcolor: popupBackground,
                   borderRadius: '10px',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.12)',
+                  boxShadow: isDarkMode ? '0 12px 32px rgba(0, 0, 0, 0.45)' : '0 4px 20px rgba(0, 0, 0, 0.12)',
                   overflow: 'visible',
-                  border: '1px solid rgba(30, 30, 30, 0.08)',
+                  border: `1px solid ${popupBorder}`,
                   position: 'relative',
                   zIndex: 2,
                   '&::before': {
@@ -291,8 +306,8 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                     transform: 'translateY(-50%)',
                     width: '20px',
                     height: '20px',
-                    bgcolor: 'white',
-                    border: '1px solid rgba(30, 30, 30, 0.08)',
+                    bgcolor: popupBackground,
+                    border: `1px solid ${popupBorder}`,
                     borderRight: 'none',
                     borderBottom: 'none',
                     borderRadius: '3px 0 0 0',
@@ -310,7 +325,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 0.75,
-                    bgcolor: 'rgba(0, 0, 0, 0.02)',
+                    bgcolor: popupHeaderBg,
                     borderRadius: '10px 10px 0 0',
                     position: 'relative',
                     zIndex: 3
@@ -330,30 +345,31 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                   >
                     <selectedModule.icon sx={{ fontSize: 16, color: 'white' }} />
                   </Box>
-                  <Typography
-                    sx={{
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      color: 'rgb(30, 30, 30)',
-                      flex: 1
-                    }}
-                  >
+                    <Typography
+                      sx={{
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        color: popupText,
+                        flex: 1
+                      }}
+                    >
                     {selectedModule.label}
                   </Typography>
                   
-                  <Typography
-                    onClick={() => handleAddModule(selectedModule)}
-                    sx={{
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      color: 'rgb(146, 0, 32)',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      '&:hover': {
-                        textDecoration: 'underline'
-                      }
-                    }}
-                  >
+                    <Typography
+                      onClick={() => handleAddModule(selectedModule)}
+                      sx={{
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        color: accentColor,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        '&:hover': {
+                          textDecoration: 'underline',
+                          color: accentHoverColor
+                        }
+                      }}
+                    >
                     Add
                   </Typography>
                 </Box>
@@ -364,7 +380,7 @@ const ModuleToolbar = ({ isDraggingModule = false }) => {
                     sx={{
                       fontSize: '13px',
                       lineHeight: 1.4,
-                      color: 'rgba(30, 30, 30, 0.7)',
+                      color: popupMutedText,
                       textAlign: 'justify',
                       textJustify: 'inter-word',
                       hyphens: 'auto'

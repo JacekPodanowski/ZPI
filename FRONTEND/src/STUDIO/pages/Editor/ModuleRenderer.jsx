@@ -47,13 +47,14 @@ const DEFAULT_THEME = {
  * ModuleRenderer - dynamically renders modules using MODULE_REGISTRY
  * This ensures STUDIO uses the same migrated components as SITES
  */
-const ModuleRenderer = ({ module, pageId, theme, onNavigate }) => {
+const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'desktop' }) => {
   // Get siteId from store - it's a top-level field, not site.id
   const siteId = useNewEditorStore(state => state.siteId);
   const site = useNewEditorStore(state => state.site);
   const entryPointPageId = useNewEditorStore(state => state.entryPointPageId);
   const selectedPageId = useNewEditorStore(state => state.selectedPageId);
   const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
+  const pageThemeMode = useNewEditorStore(state => state.pageThemeMode);
   
   if (!module) {
     return (
@@ -71,13 +72,30 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate }) => {
     if (!isNavigationModule) {
       return null;
     }
-    return buildNavigationContent(
+    const baseContent = buildNavigationContent(
       site,
       module.content || {},
       entryPointPageId,
       selectedPageId
     );
-  }, [isNavigationModule, site, module.content, entryPointPageId, selectedPageId]);
+
+    const navIsDark = pageThemeMode === 'dark';
+    const navBgFallback = navIsDark ? '#000000' : '#ffffff';
+    const navTextFallback = navIsDark ? '#ffffff' : '#101010';
+
+    return {
+      ...baseContent,
+      bgColor: !baseContent.bgColor || baseContent.bgColor === 'transparent'
+        ? navBgFallback
+        : baseContent.bgColor,
+      textColor: !baseContent.textColor || baseContent.textColor === 'transparent'
+        ? navTextFallback
+        : baseContent.textColor,
+      activeColor: !baseContent.activeColor || baseContent.activeColor === 'transparent'
+        ? navTextFallback
+        : baseContent.activeColor
+    };
+  }, [isNavigationModule, site, module.content, entryPointPageId, selectedPageId, pageThemeMode]);
 
   const handleNavigation = useCallback((targetPageId) => {
     if (!targetPageId) return;
@@ -130,7 +148,10 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate }) => {
     }
   }
 
-  const layout = module.content?.layout || moduleDef.defaultLayout;
+  const baseLayout = module.content?.layout || moduleDef.defaultLayout;
+  const layout = isNavigationModule && devicePreview === 'mobile'
+    ? 'mobile'
+    : baseLayout;
 
   // Use provided theme or fall back to default
   const effectiveTheme = theme || DEFAULT_THEME;
@@ -141,7 +162,8 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate }) => {
     vibe: DEFAULT_VIBE,
     theme: effectiveTheme,
     siteId,
-    isEditing: true
+    isEditing: true,
+    devicePreview
   };
 
   if (isNavigationModule) {

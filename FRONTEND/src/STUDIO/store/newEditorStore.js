@@ -42,6 +42,7 @@ const createInitialState = () => ({
   selectedPageId: null,
   selectedModuleId: null,
   devicePreview: 'desktop', // 'desktop' | 'mobile'
+  pageThemeMode: 'light', // 'light' | 'dark'
   isDragging: false,
   draggedItem: null,
   hasUnsavedChanges: false,
@@ -480,6 +481,15 @@ export const useNewEditorStore = create((set, get) => ({
 
   // === Device Preview ===
   setDevicePreview: (device) => set({ devicePreview: device }),
+  setPageThemeMode: (mode) => {
+    if (mode !== 'light' && mode !== 'dark') {
+      return;
+    }
+    set({ pageThemeMode: mode });
+  },
+  togglePageThemeMode: () => set((state) => ({
+    pageThemeMode: state.pageThemeMode === 'light' ? 'dark' : 'light'
+  })),
 
   // === Save/Load ===
   loadSite: (siteData) => {
