@@ -4,7 +4,6 @@ import { Menu as MenuIcon, Tune as TuneIcon, Chat as ChatIcon, Close as CloseIco
 import useNewEditorStore from '../../store/newEditorStore';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
-import AddModuleButton from './AddModuleButton';
 import MockAIChatPanel from './MockAIChatPanel';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -246,10 +245,6 @@ const DetailMode = () => {
           >
             <DetailCanvas />
           </Box>
-          <AddModuleButton
-            positioning="absolute"
-            buttonSx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-          />
         </Box>
 
         {/* AI Chat - Right (Desktop only in layout, Mobile as Drawer) */}

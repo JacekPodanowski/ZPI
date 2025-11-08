@@ -97,28 +97,28 @@ const AddModuleButton = ({
           </IconButton>
         </Tooltip>
       ) : (
-        <Box sx={{ width: '100%', px: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ width: '100%', px: { xs: 1.25, sm: 1.75, md: 2 } }}>
           <Button
             onClick={handleClick}
-            startIcon={<Add sx={{ fontSize: 20 }} />}
+            startIcon={<Add sx={{ fontSize: { xs: 18, md: 20 } }} />}
             fullWidth
             sx={[
               {
-                mt: 1.5,
-                mb: 1.5,
-                py: 1.25,
-                borderRadius: '14px',
+                mt: { xs: 1.1, md: 1.75 },
+                mb: { xs: 1.1, md: 1.75 },
+                py: { xs: 1, md: 1.35 },
+                borderRadius: { xs: '12px', md: '14px' },
                 border: '1px dashed rgba(146, 0, 32, 0.35)',
                 bgcolor: 'rgba(146, 0, 32, 0.06)',
                 color: 'rgb(146, 0, 32)',
                 fontWeight: 600,
                 textTransform: 'none',
-                fontSize: '13px',
+                fontSize: { xs: '13px', md: '14px' },
                 letterSpacing: '0.02em',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 1,
+                gap: { xs: 0.75, md: 1 },
                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
                   bgcolor: 'rgba(146, 0, 32, 0.12)',

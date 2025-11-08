@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { Box, IconButton, Tooltip, useMediaQuery, useTheme as useMuiTheme } from '@mui/material';
+import { Box, IconButton, Tooltip } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
@@ -106,8 +106,6 @@ const DetailCanvas = () => {
   const site = useNewEditorStore(state => state.site);
   const devicePreview = useNewEditorStore(state => state.devicePreview);
   const page = pages.find(p => p.id === selectedPageId);
-  const muiTheme = useMuiTheme();
-  const isPhoneViewport = useMediaQuery(muiTheme.breakpoints.down('sm'));
 
   const previewTheme = useMemo(
     () => getPreviewTheme(site?.theme),
@@ -166,12 +164,16 @@ const DetailCanvas = () => {
         />
       </Box>
 
-      {isPhoneViewport && page.modules.length > 0 && (
+      {page.modules.length > 0 && (
         <AddModuleButton
           variant="inline"
           insertIndex={0}
-          label="Add section at top"
-          buttonSx={{ mt: 1, mb: 1.5 }}
+          label="Add section above"
+          buttonSx={{
+            mt: { xs: 0.75, md: 1.5 },
+            mb: { xs: 1.25, md: 2 },
+            borderStyle: 'dashed'
+          }}
         />
       )}
 
@@ -190,41 +192,18 @@ const DetailCanvas = () => {
             fontWeight: 500
           }}
         >
-          Add modules from Structure Mode
-          {isPhoneViewport && (
-            <AddModuleButton
-              variant="inline"
-              insertIndex={0}
-              label="Add first section"
-              buttonSx={{ mt: 2 }}
-            />
-          )}
+          Add your first section below to start designing this page.
+          <AddModuleButton
+            variant="inline"
+            insertIndex={0}
+            label="Add first section"
+            buttonSx={{ mt: { xs: 1.5, md: 2 } }}
+          />
         </Box>
       ) : (
         page.modules.map((module, index) => (
-          isPhoneViewport ? (
-            <React.Fragment key={module.id}>
-              <MeasuredModule
-                module={module}
-                pageId={page.id}
-                isSelected={selectedModuleId === module.id}
-                onDelete={(e) => handleDeleteModule(module.id, e)}
-                previewTheme={previewTheme}
-                devicePreview={devicePreview}
-              />
-              <AddModuleButton
-                variant="inline"
-                insertIndex={index + 1}
-                label="Add section here"
-                buttonSx={{
-                  mt: 1.25,
-                  mb: index === page.modules.length - 1 ? 2.5 : 1.25
-                }}
-              />
-            </React.Fragment>
-          ) : (
+          <React.Fragment key={module.id}>
             <MeasuredModule
-              key={module.id}
               module={module}
               pageId={page.id}
               isSelected={selectedModuleId === module.id}
@@ -232,7 +211,16 @@ const DetailCanvas = () => {
               previewTheme={previewTheme}
               devicePreview={devicePreview}
             />
-          )
+            <AddModuleButton
+              variant="inline"
+              insertIndex={index + 1}
+              label={index === page.modules.length - 1 ? 'Add section below' : 'Add section here'}
+              buttonSx={{
+                mt: { xs: 1.1, md: 1.75 },
+                mb: index === page.modules.length - 1 ? { xs: 2.5, md: 3 } : { xs: 1.1, md: 1.75 }
+              }}
+            />
+          </React.Fragment>
         ))
       )}
     </Box>
