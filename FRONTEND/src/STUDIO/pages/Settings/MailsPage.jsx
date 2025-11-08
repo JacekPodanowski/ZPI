@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Paper,
   Typography,
@@ -34,6 +34,57 @@ import { alpha } from '@mui/material/styles';
 import useTheme from '../../../theme/useTheme';
 import apiClient from '../../../services/apiClient';
 import { useToast } from '../../../contexts/ToastContext';
+
+// Component to render email HTML in an isolated iframe
+const EmailPreviewFrame = ({ html }) => {
+  const iframeRef = useRef(null);
+
+  useEffect(() => {
+    if (iframeRef.current && html) {
+      const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+      
+      // Auto-resize iframe to content height
+      const resizeIframe = () => {
+        if (iframeRef.current) {
+          const iframeBody = iframeDoc.body;
+          const iframeHtml = iframeDoc.documentElement;
+          const height = Math.max(
+            iframeBody.scrollHeight,
+            iframeBody.offsetHeight,
+            iframeHtml.clientHeight,
+            iframeHtml.scrollHeight,
+            iframeHtml.offsetHeight
+          );
+          iframeRef.current.style.height = height + 'px';
+        }
+      };
+
+      // Resize after content loads
+      setTimeout(resizeIframe, 100);
+      // Also resize on window resize
+      window.addEventListener('resize', resizeIframe);
+      
+      return () => window.removeEventListener('resize', resizeIframe);
+    }
+  }, [html]);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      style={{
+        width: '100%',
+        border: 'none',
+        minHeight: '500px',
+        backgroundColor: 'white'
+      }}
+      title="Email Preview"
+      sandbox="allow-same-origin"
+    />
+  );
+};
 
 const MailsPage = () => {
   const theme = useTheme();
@@ -397,31 +448,24 @@ const MailsPage = () => {
               }}
             >
               {/* Wewnętrzny box z zawartością */}
-              <Box
-                sx={{
-                  width: '100%',
-                  minWidth: '100%'
-                }}
-              >
-                {viewMode === 'rendered' ? (
-                  <Box dangerouslySetInnerHTML={{ __html: getCurrentContent() }} />
-                ) : (
-                  <Box
-                    component="pre"
-                    sx={{
-                      m: 0,
-                      fontFamily: 'monospace',
-                      fontSize: '0.875rem',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      color: theme.colors?.text?.primary,
-                      textAlign: 'left'
-                    }}
-                  >
-                    {getCurrentContent()}
-                  </Box>
-                )}
-              </Box>
+              {viewMode === 'rendered' ? (
+                <EmailPreviewFrame html={getCurrentContent()} />
+              ) : (
+                <Box
+                  component="pre"
+                  sx={{
+                    m: 0,
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    color: theme.colors?.text?.primary,
+                    textAlign: 'left'
+                  }}
+                >
+                  {getCurrentContent()}
+                </Box>
+              )}
             </Paper>
 
             {/* Template Info */}
