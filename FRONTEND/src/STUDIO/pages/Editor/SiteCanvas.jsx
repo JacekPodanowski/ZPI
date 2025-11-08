@@ -67,7 +67,7 @@ const RealModeModule = ({ module, pageId, moduleHeight, unscaledHeight, scaleFac
   );
 };
 
-const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandled, devicePreview = 'desktop' }) => {
+const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandled, devicePreview = 'desktop', onNavigate }) => {
   const { addModule, moveModule, site, getModuleHeight, setDragging, entryPointPageId } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const theme = useTheme();
@@ -226,8 +226,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   const renderNavigationIcon = () => {
     const links = navigationPreviewContent.links || [];
     const activePageId = navigationPreviewContent.activePageId;
-  const totalLabelLength = links.reduce((sum, link) => sum + (link.label?.length || 0), 0);
-  const showOverflowIndicator = links.length > 0 && totalLabelLength > 70;
+    const totalLabelLength = links.reduce((sum, link) => sum + (link.label?.length || 0), 0);
+    const showOverflowIndicator = links.length > 0 && totalLabelLength > 70;
     const surfaceColor = theme.colors?.surface?.base || 'white';
     return (
       <Box
@@ -270,13 +270,20 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
               return (
                 <Typography
                   key={link.pageId || link.href}
+                  onClick={(event) => {
+                    if (!onNavigate) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onNavigate(link.pageId);
+                  }}
                   sx={{
                     fontSize: '10px',
                     fontWeight: isActive ? 700 : 500,
                     color: isActive ? 'rgb(146, 0, 32)' : 'rgba(30, 30, 30, 0.6)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.4px',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    cursor: onNavigate ? 'pointer' : 'default'
                   }}
                 >
                   {link.label}
@@ -366,7 +373,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
               transformOrigin: 'top left',
               width: `${realSiteWidth}px`,
               height: `${NAVIGATION_HEIGHT_REAL / scaleFactor}px`,
-              pointerEvents: 'none'
+              pointerEvents: onNavigate ? 'auto' : 'none'
             }}
           >
             <ModuleRenderer 
@@ -374,7 +381,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                 type: 'navigation', 
                 content: site.navigation?.content || {} 
               }} 
-              pageId={page.id} 
+              pageId={page.id}
+              onNavigate={onNavigate}
             />
           </Box>
         </Box>

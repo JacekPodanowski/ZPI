@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, Checkbox, FormControlLabel } from '@mui/material';
 import { GridView, Visibility, RemoveRedEye, ArrowDownward, South, Search } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,7 +17,9 @@ const StructureMode = () => {
     devicePreview,
     isDragging,
     draggedItem,
-    setDragging
+    setDragging,
+    entryPointPageId,
+    setSelectedPage
   } = useNewEditorStore();
   
   const theme = useTheme();
@@ -27,15 +29,93 @@ const StructureMode = () => {
   const [showOverlay, setShowOverlay] = useState(true);
   const [dropHandled, setDropHandled] = useState(false);
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
+  const [focusedPageId, setFocusedPageId] = useState(() => selectedPageId || entryPointPageId || site?.pages?.[0]?.id || null);
 
-  // Get the current page directly from site.pages (reactive)
-  const currentPage = site?.pages?.find(p => p.id === selectedPageId) || site?.pages?.[0] || null;
+  const pages = useMemo(() => site?.pages ?? [], [site?.pages]);
+  const focusedPage = useMemo(() => {
+    if (!pages.length) return null;
+    const directMatch = pages.find((page) => page.id === focusedPageId);
+    return directMatch || pages[0];
+  }, [pages, focusedPageId]);
+  const focusedId = focusedPage?.id ?? null;
+
+  const otherPages = useMemo(() => {
+    if (!pages.length) return [];
+    return pages.filter((page) => page.id !== focusedId);
+  }, [pages, focusedId]);
 
   console.log('[StructureMode] Render - site:', site);
-  console.log('[StructureMode] Render - site.pages:', site?.pages);
+  console.log('[StructureMode] Render - pages:', pages);
   console.log('[StructureMode] Render - selectedPageId:', selectedPageId);
-  console.log('[StructureMode] Render - currentPage:', currentPage);
-  console.log('[StructureMode] Render - currentPage.modules:', currentPage?.modules);
+  console.log('[StructureMode] Render - focusedPageId:', focusedPageId);
+  console.log('[StructureMode] Render - focusedPage:', focusedPage);
+
+  useEffect(() => {
+    if (!pages.length) {
+      if (focusedPageId !== null) {
+        setFocusedPageId(null);
+      }
+      return;
+    }
+
+    if (focusedPageId && pages.some((page) => page.id === focusedPageId)) {
+      return;
+    }
+
+    const fallbackOrder = [selectedPageId, entryPointPageId, pages[0]?.id];
+    const nextId = fallbackOrder.find((candidate) => candidate && pages.some((page) => page.id === candidate));
+
+    if (nextId && nextId !== focusedPageId) {
+      setFocusedPageId(nextId);
+      return;
+    }
+
+    if (!focusedPageId && pages[0]?.id) {
+      setFocusedPageId(pages[0].id);
+    }
+  }, [pages, focusedPageId, selectedPageId, entryPointPageId]);
+
+  useEffect(() => {
+    if (!selectedPageId || selectedPageId === focusedPageId) return;
+    if (!pages.some((page) => page.id === selectedPageId)) return;
+    setFocusedPageId(selectedPageId);
+  }, [selectedPageId, focusedPageId, pages]);
+
+  useEffect(() => {
+    if (!focusedId || selectedPageId === focusedId) return;
+    setSelectedPage(focusedId);
+  }, [focusedId, selectedPageId, setSelectedPage]);
+
+  const handleFocusChange = useCallback((pageId) => {
+    if (!pageId || pageId === focusedPageId) return;
+    if (!pages.some((page) => page.id === pageId)) return;
+
+    setFocusedPageId(pageId);
+    if (selectedPageId !== pageId) {
+      setSelectedPage(pageId);
+    }
+  }, [pages, focusedPageId, selectedPageId, setSelectedPage]);
+
+  const handleNavigate = useCallback((targetPageId) => {
+    if (!targetPageId) return;
+    if (!pages.some((page) => page.id === targetPageId)) return;
+    handleFocusChange(targetPageId);
+  }, [pages, handleFocusChange]);
+
+  const otherPagesCount = otherPages.length;
+
+  const getPageTitle = useCallback((page) => {
+    if (!page) return 'New Page';
+    if (page.name) return page.name;
+    if (!page.modules || page.modules.length === 0) return 'New Page';
+
+    const firstModule = page.modules[0];
+    if (!firstModule?.type) return 'New Page';
+
+    const moduleType = firstModule.type;
+    const capitalizedType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
+    return `${capitalizedType} Page`;
+  }, []);
 
   const markDropHandled = () => {
     setDropHandled(true);
@@ -48,7 +128,7 @@ const StructureMode = () => {
   };
 
   // Safety check
-  if (!site || !site.pages || site.pages.length === 0) {
+  if (!site || !pages.length) {
     console.log('[StructureMode] No pages available');
     return (
       <Box
@@ -146,7 +226,7 @@ const StructureMode = () => {
           }}
         >
           {/* Entry Point Indicator - Centered at Same Height as Settings */}
-          {site.pages.length > 0 && (
+          {focusedPage?.id === entryPointPageId && (
             <Box
               sx={{
                 position: 'absolute',
@@ -294,8 +374,8 @@ const StructureMode = () => {
             gap: 3
           }}
         >
-          {/* First Row - Home Page (Entry Point) */}
-          {site.pages.length > 0 && (
+          {/* Focused Page Preview */}
+          {focusedPage && (
             <Box
               sx={{
                 width: '100%',
@@ -306,7 +386,6 @@ const StructureMode = () => {
                 pointerEvents: 'all'
               }}
             >
-              {/* Home Page Canvas */}
               <Box
                 sx={{
                   width: '100%',
@@ -324,7 +403,7 @@ const StructureMode = () => {
                     justifyContent: 'space-between',
                     pl: 1
                   }}
-                  data-page-id={site.pages[0]?.id}
+                  data-page-id={focusedPage.id}
                 >
                   <Typography
                     sx={{
@@ -334,12 +413,11 @@ const StructureMode = () => {
                       textAlign: 'left'
                     }}
                   >
-                    Home Page
+                    {getPageTitle(focusedPage)}
                   </Typography>
-                  
                   <IconButton
                     size="small"
-                    onClick={() => enterDetailMode(site.pages[0].id)}
+                    onClick={() => enterDetailMode(focusedPage.id)}
                     sx={{
                       color: 'rgb(146, 0, 32)',
                       '&:hover': {
@@ -351,24 +429,29 @@ const StructureMode = () => {
                   </IconButton>
                 </Box>
 
-                <motion.div
-                  data-page-id={site.pages[0]?.id}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                >
-                  <SiteCanvas 
-                    page={site.pages[0]} 
-                    renderMode={renderMode}
-                    showOverlay={renderMode === 'icon' ? true : showOverlay}
-                    onDropHandled={markDropHandled}
-                    devicePreview={devicePreview}
-                  />
-                </motion.div>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={focusedPage.id}
+                    data-page-id={focusedPage.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+                  >
+                    <SiteCanvas 
+                      page={focusedPage} 
+                      renderMode={renderMode}
+                      showOverlay={renderMode === 'icon' ? true : showOverlay}
+                      onDropHandled={markDropHandled}
+                      devicePreview={devicePreview}
+                      onNavigate={handleNavigate}
+                    />
+                  </motion.div>
+                </AnimatePresence>
               </Box>
 
               {/* Arrows Pointing Down to Other Pages */}
-              {site.pages.length > 1 && (
+              {otherPagesCount > 0 && (
                 <Box
                   sx={{
                     display: 'flex',
@@ -377,9 +460,9 @@ const StructureMode = () => {
                     mt: 2
                   }}
                 >
-                  {site.pages.slice(1).map((_, idx) => (
+                  {otherPages.map((page, idx) => (
                     <ArrowDownward
-                      key={idx}
+                      key={page.id}
                       sx={{
                         fontSize: 32,
                         color: 'rgb(146, 0, 32)',
@@ -393,7 +476,7 @@ const StructureMode = () => {
           )}
 
           {/* Second Row - Other Pages (Dynamically scaled to fit in one row) */}
-          {site.pages.length > 1 && (
+          {otherPagesCount > 0 && (
             <Box
               sx={{
                 width: '100%',
@@ -405,29 +488,17 @@ const StructureMode = () => {
                 overflow: 'hidden' // Hide overflow if too many pages
               }}
             >
-              {site.pages.slice(1).map((page, relativeIndex) => {
-                const pageIndex = relativeIndex + 1;
-                const otherPagesCount = site.pages.length - 1;
-                
+              {otherPages.map((page, relativeIndex) => {
                 // Dynamic width calculation to fit all pages in one row
                 // Max container width ~1400px (allowing for padding), leave gaps
                 const maxContainerWidth = 1200;
-                const gapSpace = (otherPagesCount - 1) * 16; // 2 * 8px gaps
+                const effectiveCount = Math.max(otherPagesCount, 1);
+                const gapSpace = (effectiveCount - 1) * 16; // 2 * 8px gaps
                 const availableWidth = maxContainerWidth - gapSpace;
                 const baseWidth = devicePreview === 'mobile' ? 375 : 700;
-                const calculatedWidth = Math.min(450, Math.floor(availableWidth / otherPagesCount));
+                const calculatedWidth = Math.min(450, Math.floor(availableWidth / effectiveCount));
                 const scale = calculatedWidth / baseWidth;
                 
-                // Generate page title based on content
-                const getPageTitle = (page) => {
-                  if (page.modules.length === 0) return 'New Page';
-                  
-                  const firstModule = page.modules[0];
-                  const moduleType = firstModule.type;
-                  const capitalizedType = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
-                  return `${capitalizedType} Page`;
-                };
-
                 const pageTitle = getPageTitle(page);
 
                 return (
@@ -462,19 +533,32 @@ const StructureMode = () => {
                       >
                         {pageTitle}
                       </Typography>
-                      
-                      <IconButton
-                        size="small"
-                        onClick={() => enterDetailMode(page.id)}
-                        sx={{
-                          color: 'rgb(146, 0, 32)',
-                          '&:hover': {
-                            bgcolor: 'rgba(146, 0, 32, 0.08)'
-                          }
-                        }}
-                      >
-                        <Search sx={{ fontSize: 18 }} />
-                      </IconButton>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleFocusChange(page.id)}
+                          sx={{
+                            color: 'rgb(146, 0, 32)',
+                            '&:hover': {
+                              bgcolor: 'rgba(146, 0, 32, 0.08)'
+                            }
+                          }}
+                        >
+                          <RemoveRedEye sx={{ fontSize: 18 }} />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => enterDetailMode(page.id)}
+                          sx={{
+                            color: 'rgb(146, 0, 32)',
+                            '&:hover': {
+                              bgcolor: 'rgba(146, 0, 32, 0.08)'
+                            }
+                          }}
+                        >
+                          <Search sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Stack>
                     </Box>
 
                     <motion.div
@@ -482,6 +566,8 @@ const StructureMode = () => {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: relativeIndex * 0.05 }}
+                      onClick={() => handleFocusChange(page.id)}
+                      style={{ cursor: 'pointer' }}
                     >
                       <Box
                         sx={{
@@ -498,6 +584,7 @@ const StructureMode = () => {
                           showOverlay={renderMode === 'icon' ? true : showOverlay}
                           onDropHandled={markDropHandled}
                           devicePreview={devicePreview}
+                          onNavigate={handleNavigate}
                         />
                       </Box>
                     </motion.div>

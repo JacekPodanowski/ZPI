@@ -47,7 +47,7 @@ const DEFAULT_THEME = {
  * ModuleRenderer - dynamically renders modules using MODULE_REGISTRY
  * This ensures STUDIO uses the same migrated components as SITES
  */
-const ModuleRenderer = ({ module, pageId, theme }) => {
+const ModuleRenderer = ({ module, pageId, theme, onNavigate }) => {
   // Get siteId from store - it's a top-level field, not site.id
   const siteId = useNewEditorStore(state => state.siteId);
   const site = useNewEditorStore(state => state.site);
@@ -79,14 +79,18 @@ const ModuleRenderer = ({ module, pageId, theme }) => {
     );
   }, [isNavigationModule, site, module.content, entryPointPageId, selectedPageId]);
 
-  const handleNavigation = useCallback((pageId) => {
-    if (!pageId) return;
-    enterDetailMode(pageId);
+  const handleNavigation = useCallback((targetPageId) => {
+    if (!targetPageId) return;
+    if (onNavigate) {
+      onNavigate(targetPageId);
+      return;
+    }
+    enterDetailMode(targetPageId);
     const scrollContainer = document.querySelector('[data-detail-canvas-scroll="true"]');
     if (scrollContainer) {
       scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [enterDetailMode]);
+  }, [enterDetailMode, onNavigate]);
 
   if (!moduleDef) {
     return (
