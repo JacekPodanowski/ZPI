@@ -184,6 +184,18 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
       defaultItem = { ...defaultItem, question: 'New Question', answer: '<p>New Answer</p>' };
     } else if (fieldKey === 'images') {
       defaultItem = { url: '', caption: '' };
+    } else if (fieldKey === 'events') {
+      const today = new Date().toISOString().split('T')[0];
+      defaultItem = {
+        ...defaultItem,
+        title: 'Nowe wydarzenie',
+        date: today,
+        tag: 'Nowe',
+        location: '',
+        summary: '<p>Dodaj krótki opis wydarzenia.</p>',
+        fullDescription: '<p>Pełny opis wydarzenia.</p>',
+        images: []
+      };
     }
     
     newItems.push(defaultItem);
@@ -420,6 +432,243 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     );
   }
   
+  if (fieldKey === 'events') {
+    const eventItems = items || [];
+
+    return (
+      <Box key={fieldKey}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography sx={{ fontWeight: 600, fontSize: '14px' }}>
+            {fieldDef.d || 'Wydarzenia'} ({eventItems.length})
+          </Typography>
+          <Button
+            startIcon={<Add />}
+            size="small"
+            onClick={handleAddItem}
+            sx={{
+              color: 'rgb(146, 0, 32)',
+              textTransform: 'none',
+              '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.06)' }
+            }}
+          >
+            Dodaj wydarzenie
+          </Button>
+        </Stack>
+
+        {eventItems.length === 0 && (
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: '10px',
+              border: '1px dashed rgba(146, 0, 32, 0.3)',
+              bgcolor: 'rgba(146, 0, 32, 0.04)',
+              color: 'rgba(30, 30, 30, 0.6)',
+              textAlign: 'center',
+              fontSize: '13px'
+            }}
+          >
+            Brak wydarzeń. Użyj przycisku powyżej, aby dodać pierwsze wydarzenie.
+          </Box>
+        )}
+
+        <Stack spacing={2} sx={{ mt: eventItems.length ? 1 : 2 }}>
+          {eventItems.map((eventItem, index) => (
+            <Box
+              key={eventItem.id || index}
+              sx={{
+                p: 2.25,
+                borderRadius: '12px',
+                border: '1px solid rgba(30, 30, 30, 0.08)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+                position: 'relative',
+                background: '#fff'
+              }}
+            >
+              <Stack direction="row" spacing={1} sx={{ position: 'absolute', top: 12, right: 12 }}>
+                <IconButton
+                  size="small"
+                  disabled={index === 0}
+                  onClick={() => {
+                    const newItems = [...eventItems];
+                    [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowUpward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  disabled={index === eventItems.length - 1}
+                  onClick={() => {
+                    const newItems = [...eventItems];
+                    [newItems[index + 1], newItems[index]] = [newItems[index], newItems[index + 1]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowDownward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const newItems = eventItems.filter((_, i) => i !== index);
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Stack>
+
+              <Stack spacing={2}>
+                <TextField
+                  label="Tytuł wydarzenia"
+                  fullWidth
+                  size="small"
+                  value={eventItem.title || ''}
+                  onChange={(e) => {
+                    const newItems = [...eventItems];
+                    newItems[index] = { ...eventItem, title: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                />
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <TextField
+                    label="Data"
+                    type="date"
+                    size="small"
+                    fullWidth
+                    value={eventItem.date || ''}
+                    InputLabelProps={{ shrink: true }}
+                    onChange={(e) => {
+                      const newItems = [...eventItems];
+                      newItems[index] = { ...eventItem, date: e.target.value };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                  />
+                  <TextField
+                    label="Tag / kategoria"
+                    size="small"
+                    fullWidth
+                    value={eventItem.tag || ''}
+                    onChange={(e) => {
+                      const newItems = [...eventItems];
+                      newItems[index] = { ...eventItem, tag: e.target.value };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                  />
+                  <TextField
+                    label="Lokalizacja"
+                    size="small"
+                    fullWidth
+                    value={eventItem.location || ''}
+                    onChange={(e) => {
+                      const newItems = [...eventItems];
+                      newItems[index] = { ...eventItem, location: e.target.value };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                  />
+                </Stack>
+
+                <TextField
+                  label="Krótki opis (HTML)"
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={4}
+                  value={eventItem.summary || ''}
+                  onChange={(e) => {
+                    const newItems = [...eventItems];
+                    newItems[index] = { ...eventItem, summary: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                />
+
+                <TextField
+                  label="Pełny opis (HTML)"
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={6}
+                  value={eventItem.fullDescription || ''}
+                  onChange={(e) => {
+                    const newItems = [...eventItems];
+                    newItems[index] = { ...eventItem, fullDescription: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                />
+
+                <Box>
+                  <Typography sx={{ fontSize: '13px', fontWeight: 600, mb: 1 }}>
+                    Zdjęcia wydarzenia ({(eventItem.images || []).length})
+                  </Typography>
+
+                  {(eventItem.images || []).length > 0 && (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1.5 }}>
+                      {(eventItem.images || []).map((imageUrl, imageIndex) => (
+                        <Box
+                          key={`${eventItem.id || index}-image-${imageIndex}`}
+                          sx={{
+                            position: 'relative',
+                            width: 72,
+                            height: 72,
+                            borderRadius: '10px',
+                            overflow: 'hidden',
+                            border: '1px solid rgba(30,30,30,0.08)'
+                          }}
+                        >
+                          <Box
+                            component="img"
+                            src={imageUrl}
+                            alt={`Event image ${imageIndex + 1}`}
+                            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              const newItems = [...eventItems];
+                              const updatedImages = [...(eventItem.images || [])];
+                              updatedImages.splice(imageIndex, 1);
+                              newItems[index] = { ...eventItem, images: updatedImages };
+                              onContentChange(fieldKey, newItems);
+                            }}
+                            sx={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 2,
+                              bgcolor: 'rgba(0,0,0,0.45)',
+                              color: '#fff',
+                              '&:hover': { bgcolor: 'rgba(0,0,0,0.65)' }
+                            }}
+                          >
+                            <Delete fontSize="inherit" />
+                          </IconButton>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+
+                  <ImageUploader
+                    label="Dodaj zdjęcie"
+                    value=""
+                    onChange={(url) => {
+                      if (!url) return;
+                      const newItems = [...eventItems];
+                      const updatedImages = [...(eventItem.images || []), url];
+                      newItems[index] = { ...eventItem, images: updatedImages };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                    siteId={pageId}
+                  />
+                </Box>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+      </Box>
+    );
+  }
+
   // Pricing offers
   if (fieldKey === 'offers') {
     return (
