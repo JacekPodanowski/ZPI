@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 import useEditorStore from '../store/editorStore';
+import { useToast } from '../../contexts/ToastContext';
 
 const ModuleSelector = () => {
   const {
@@ -20,11 +22,15 @@ const ModuleSelector = () => {
     reorderModuleChildren // Assuming this new function is added to your store
   } = useEditorStore();
 
+  const addToast = useToast();
+
   const currentPageData = templateConfig.pages[currentPage];
   const modules = currentPageData?.modules || [];
 
   const [expandedContainers, setExpandedContainers] = useState({});
   const [showAddMenu, setShowAddMenu] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState(null);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
@@ -172,9 +178,8 @@ const ModuleSelector = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (window.confirm('Czy na pewno chcesz usunąć ten element?')) {
-                          removeModule(module.id);
-                        }
+                        setModuleToDelete(module.id);
+                        setDeleteDialogOpen(true);
                       }}
                       className="p-1 hover:bg-red-500 hover:bg-opacity-20 rounded transition-all"
                       title="Usuń"
@@ -351,6 +356,42 @@ const ModuleSelector = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="delete-module-dialog-title"
+      >
+        <DialogTitle id="delete-module-dialog-title">
+          Delete Module
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this module? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (moduleToDelete) {
+                removeModule(moduleToDelete);
+                addToast('Module deleted successfully', { variant: 'success' });
+              }
+              setDeleteDialogOpen(false);
+              setModuleToDelete(null);
+            }}
+            color="error"
+            variant="contained"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

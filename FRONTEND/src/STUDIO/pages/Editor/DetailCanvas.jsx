@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { Box, IconButton, Tooltip } from '@mui/material';
+import { Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 import { Delete } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getPreviewTheme } from './siteThemes';
 import AddModuleButton from './AddModuleButton';
+import { useToast } from '../../../contexts/ToastContext';
 
 // Wrapper component to measure module heights
 const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, devicePreview }) => {
@@ -100,6 +101,9 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
 
 const DetailCanvas = () => {
   const { selectedModuleId, selectedPageId, removeModule } = useNewEditorStore();
+  const addToast = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [moduleToDelete, setModuleToDelete] = React.useState(null);
   
   // Subscribe to the pages array so component re-renders when it changes
   const pages = useNewEditorStore(state => state.site.pages);
@@ -121,9 +125,22 @@ const DetailCanvas = () => {
 
   const handleDeleteModule = (moduleId, e) => {
     e.stopPropagation(); // Prevent triggering module selection
-    if (window.confirm('Are you sure you want to delete this module?')) {
-      removeModule(page.id, moduleId);
+    setModuleToDelete(moduleId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (moduleToDelete && page) {
+      removeModule(page.id, moduleToDelete);
+      addToast('Module deleted', { variant: 'success' });
     }
+    setDeleteDialogOpen(false);
+    setModuleToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setModuleToDelete(null);
   };
 
   if (!page) {
@@ -223,6 +240,31 @@ const DetailCanvas = () => {
           </React.Fragment>
         ))
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={cancelDelete}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Delete Module
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete this module? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete} color="inherit">
+            Cancel
+          </Button>
+          <Button onClick={confirmDelete} color="error" variant="contained" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

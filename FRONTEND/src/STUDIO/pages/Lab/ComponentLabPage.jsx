@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../../services/apiClient';
 import compileReactSnippet from '../../../utils/compileReactSnippet';
+import { useToast } from '../../../contexts/ToastContext';
 
 const resolveBabel = () => {
     if (typeof window === 'undefined') {
@@ -15,6 +16,7 @@ const ComponentLabPage = () => {
     const [jsxCode, setJsxCode] = useState('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const addToast = useToast();
 
     useEffect(() => {
         apiClient.get('/custom-components/').then(res => setComponents(res.data));
@@ -36,7 +38,7 @@ const ComponentLabPage = () => {
 
     const handleSave = async () => {
         if (!name.trim()) {
-            alert('Nazwa komponentu jest wymagana.');
+            addToast('Nazwa komponentu jest wymagana.', { variant: 'warning' });
             return;
         }
 
@@ -44,12 +46,12 @@ const ComponentLabPage = () => {
         try {
             const babel = resolveBabel();
             if (!babel) {
-                alert('Biblioteka Babel nie została załadowana. Odśwież stronę i spróbuj ponownie.');
+                addToast('Biblioteka Babel nie została załadowana. Odśwież stronę i spróbuj ponownie.', { variant: 'error' });
                 return;
             }
             compiledCode = compileReactSnippet(babel, jsxCode);
         } catch (error) {
-            alert(`Błąd kompilacji JSX: ${error.message}`);
+            addToast(`Błąd kompilacji JSX: ${error.message}`, { variant: 'error' });
             return;
         }
 
@@ -89,11 +91,11 @@ const ComponentLabPage = () => {
                 setComponents([...components, componentData]);
             }
             handleSelectComponent(componentData);
-            alert('Komponent zapisany!');
+            addToast('Komponent zapisany!', { variant: 'success' });
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Błąd zapisu komponentu', error.response?.data || error);
-            alert('Nie udało się zapisać komponentu.');
+            addToast('Nie udało się zapisać komponentu.', { variant: 'error' });
         }
     };
 

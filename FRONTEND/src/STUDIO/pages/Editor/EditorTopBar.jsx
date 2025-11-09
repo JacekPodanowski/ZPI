@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import { renameSite, updateSiteTemplate, createSiteVersion } from '../../../services/siteService';
+import { renameSite, updateSiteTemplate, createSiteVersion, fetchSiteVersions } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
 import apiClient from '../../../services/apiClient';
 import { retrieveTempImage, isTempBlobUrl } from '../../../services/tempMediaCache';
+import { useToast } from '../../../contexts/ToastContext';
 
 const formatRelativeTime = (timestamp) => {
   if (!timestamp) {
@@ -37,39 +38,23 @@ const formatRelativeTime = (timestamp) => {
   return date.toLocaleString();
 };
 
-const formatHistoryDescription = (meta) => {
-  if (!meta) {
-    return '';
-  }
-  if (typeof meta.description === 'string' && meta.description.trim()) {
-    return meta.description.trim();
-  }
-  if (typeof meta.actionType === 'string' && meta.actionType.trim()) {
-    return meta.actionType.replace(/_/g, ' ').trim();
-  }
-  return '';
-};
-
 const EditorTopBar = () => {
-  const {
-    editorMode,
-    exitDetailMode,
-    devicePreview,
-    setDevicePreview,
-    hasUnsavedChanges,
-    getSelectedPage,
-    siteId,
-    siteName,
-    setSiteName,
-    site,
-    undo,
-    redo,
-    structureHistory,
-    detailHistory,
-    lastSavedAt,
-    currentVersionNumber,
-    markAsSaved
-  } = useNewEditorStore();
+  const editorMode = useNewEditorStore((state) => state.editorMode);
+  const exitDetailMode = useNewEditorStore((state) => state.exitDetailMode);
+  const devicePreview = useNewEditorStore((state) => state.devicePreview);
+  const setDevicePreview = useNewEditorStore((state) => state.setDevicePreview);
+  const hasUnsavedChanges = useNewEditorStore((state) => state.hasUnsavedChanges);
+  const getSelectedPage = useNewEditorStore((state) => state.getSelectedPage);
+  const siteId = useNewEditorStore((state) => state.siteId);
+  const siteName = useNewEditorStore((state) => state.siteName);
+  const setSiteName = useNewEditorStore((state) => state.setSiteName);
+  const site = useNewEditorStore((state) => state.site);
+  const lastSavedAt = useNewEditorStore((state) => state.lastSavedAt);
+  const currentVersionNumber = useNewEditorStore((state) => state.currentVersionNumber);
+  const markAsSaved = useNewEditorStore((state) => state.markAsSaved);
+  const loadSite = useNewEditorStore((state) => state.loadSite);
+
+  const addToast = useToast();
 
   // Get theme context for dark/light mode
   const { mode, toggleMode } = useThemeContext();
@@ -104,27 +89,73 @@ const EditorTopBar = () => {
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [versions, setVersions] = useState([]);
+  const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const fileInputRef = useRef(null);
   const isMobile = useMediaQuery('(max-width:900px)');
 
+  // Load entire version history once per site / after new save
+  useEffect(() => {
+    const loadVersions = async () => {
+      if (!siteId) {
+        setVersions([]);
+        return;
+      }
+      try {
+        const versionsData = await fetchSiteVersions(siteId);
+        setVersions(Array.isArray(versionsData) ? versionsData : []);
+      } catch (error) {
+        console.error('Failed to load versions:', error);
+        setVersions([]);
+      }
+    };
+    loadVersions();
+  }, [siteId]);
+
+  const sortedVersions = useMemo(() => {
+    if (!versions?.length) {
+      return [];
+    }
+    return [...versions].sort((a, b) => a.version_number - b.version_number);
+  }, [versions]);
+
+  const totalVersions = sortedVersions.length;
+  const rawVersionIndex = sortedVersions.findIndex((version) => version.version_number === currentVersionNumber);
+  const effectiveVersionIndex = rawVersionIndex === -1 ? totalVersions : rawVersionIndex;
+  const previousVersion = effectiveVersionIndex > 0 ? sortedVersions[effectiveVersionIndex - 1] : null;
+  const nextVersion =
+    effectiveVersionIndex >= 0 && effectiveVersionIndex < totalVersions - 1
+      ? sortedVersions[effectiveVersionIndex + 1]
+      : null;
+
+  const canUndoVersion = Boolean(previousVersion);
+  const canRedoVersion = Boolean(nextVersion);
+
+  const describeVersion = (version) => {
+    if (!version) {
+      return '';
+    }
+    const baseLabel = `v${version.version_number}`;
+    if (version.change_summary && version.change_summary.trim()) {
+      return `${baseLabel} • ${version.change_summary.trim()}`;
+    }
+    return baseLabel;
+  };
+
+  const undoTooltip = canUndoVersion
+    ? `Undo to ${describeVersion(previousVersion)}`
+    : 'No earlier version available';
+  const redoTooltip = canRedoVersion
+    ? `Redo to ${describeVersion(nextVersion)}`
+    : 'No later version available';
+
   const selectedPage = getSelectedPage();
-  const activeHistory = editorMode === 'structure' ? structureHistory : detailHistory;
-  const modeLabel = editorMode === 'structure' ? 'Structure' : 'Detail';
-  const pastEntries = activeHistory?.past || [];
-  const futureEntries = activeHistory?.future || [];
-  const canUndo = pastEntries.length > 0;
-  const canRedo = futureEntries.length > 0;
-  const undoMeta = canUndo ? pastEntries[pastEntries.length - 1]?.meta : null;
-  const redoMeta = canRedo ? futureEntries[futureEntries.length - 1]?.meta : null;
-  const undoDescription = formatHistoryDescription(undoMeta);
-  const redoDescription = formatHistoryDescription(redoMeta);
-  const undoTooltip = canUndo
-    ? `Undo ${modeLabel}${undoDescription ? ` • ${undoDescription}` : ''} (Ctrl+Z)`
-    : `Nothing to undo (${modeLabel})`;
-  const redoTooltip = canRedo
-    ? `Redo ${modeLabel}${redoDescription ? ` • ${redoDescription}` : ''} (Ctrl+Shift+Z)`
-    : `Nothing to redo (${modeLabel})`;
   const versionLabel = currentVersionNumber ? `Version ${currentVersionNumber}` : 'Draft';
+  const versionPositionLabel = totalVersions > 0
+    ? rawVersionIndex >= 0
+      ? ` (${rawVersionIndex + 1}/${totalVersions})`
+      : ` (${totalVersions} saved)`
+    : '';
   const savedStatusText = isSaving
     ? 'Saving...'
     : hasUnsavedChanges
@@ -132,24 +163,57 @@ const EditorTopBar = () => {
       : lastSavedAt
         ? `Saved ${formatRelativeTime(lastSavedAt)}`
         : 'Never saved';
+  const undoLabel = canUndoVersion ? `Undo (${describeVersion(previousVersion)})` : 'Undo';
+  const redoLabel = canRedoVersion ? `Redo (${describeVersion(nextVersion)})` : 'Redo';
 
-  const getMostRecentHistoryMeta = () => {
-    const candidates = [];
-    if (structureHistory?.past?.length) {
-      candidates.push(structureHistory.past[structureHistory.past.length - 1]);
-    }
-    if (detailHistory?.past?.length) {
-      candidates.push(detailHistory.past[detailHistory.past.length - 1]);
-    }
-    if (!candidates.length) {
-      return null;
+  const handleLoadVersion = async (targetVersionNumber) => {
+    if (isLoadingVersion || !siteId) {
+      return;
     }
 
-    return candidates.reduce((latest, entry) => {
-      const entryTs = entry?.meta?.timestamp || 0;
-      const latestTs = latest?.meta?.timestamp || 0;
-      return entryTs >= latestTs ? entry : latest;
-    }, null);
+    const targetVersion = sortedVersions.find((version) => version.version_number === targetVersionNumber);
+    if (!targetVersion) {
+      addToast('Selected version could not be found', { variant: 'error' });
+      return;
+    }
+
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Loading a different version will discard them. Continue?'
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsLoadingVersion(true);
+    try {
+      loadSite({
+        id: siteId,
+        name: siteName,
+        site: targetVersion.template_config,
+        currentVersionNumber: targetVersion.version_number,
+        lastSavedAt: targetVersion.created_at
+      });
+      addToast(`Loaded ${describeVersion(targetVersion)}`, { variant: 'success' });
+    } catch (error) {
+      console.error('Failed to apply cached version:', error);
+      addToast('Failed to load version', { variant: 'error' });
+    } finally {
+      setIsLoadingVersion(false);
+    }
+  };
+
+  const handlePreviousVersion = () => {
+    if (previousVersion) {
+      handleLoadVersion(previousVersion.version_number);
+    }
+  };
+
+  const handleNextVersion = () => {
+    if (nextVersion) {
+      handleLoadVersion(nextVersion.version_number);
+    }
   };
 
   // Update titleValue when siteName changes (after loading from API)
@@ -170,7 +234,7 @@ const EditorTopBar = () => {
 
     if (!siteId) {
       console.warn('[Save] No siteId - cannot save');
-      alert('Cannot save yet. Please create the site first.');
+      addToast('Cannot save yet. Please create the site first.', { variant: 'warning' });
       return;
     }
 
@@ -250,7 +314,7 @@ const EditorTopBar = () => {
 
       if (failedUploads.length > 0) {
         console.error('[Save] Failed uploads:', failedUploads);
-        alert('Failed to upload some images. Please try again.');
+        addToast('Failed to upload some images. Please try again.', { variant: 'error' });
         return;
       }
 
@@ -278,8 +342,7 @@ const EditorTopBar = () => {
   await updateSiteTemplate(siteId, finalConfig, trimmedName);
       console.log('[Save] Site updated successfully');
 
-      const latestMetaEntry = getMostRecentHistoryMeta();
-      const changeSummary = formatHistoryDescription(latestMetaEntry?.meta) || '';
+      const changeSummary = 'Manual save'; // Simple default message
 
       let versionResponse = null;
       try {
@@ -292,9 +355,32 @@ const EditorTopBar = () => {
         console.error('[Save] Failed to create site version:', versionError);
       }
 
-      useNewEditorStore.setState(() => ({ site: finalConfig }));
+      // Update store with uploaded URLs (only current site state)
+      if (urlMap.size > 0) {
+        useNewEditorStore.setState((state) => {
+          // Update current site
+          let siteString = JSON.stringify(state.site);
+          urlMap.forEach((finalUrl, tempUrl) => {
+            const escapedTempUrl = tempUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedTempUrl, 'g');
+            siteString = siteString.replace(regex, finalUrl);
+          });
+          
+          return {
+            site: JSON.parse(siteString)
+          };
+        });
+      }
 
       if (versionResponse) {
+        const normalizedVersion = {
+          ...versionResponse,
+          template_config: versionResponse.template_config || finalConfig
+        };
+        setVersions((prev = []) => {
+          const filtered = prev.filter((entry) => entry.id !== normalizedVersion.id);
+          return [...filtered, normalizedVersion];
+        });
         markAsSaved({ version: versionResponse });
       } else {
         markAsSaved({ lastSavedAt: new Date().toISOString() });
@@ -303,10 +389,10 @@ const EditorTopBar = () => {
       const successMessage = versionResponse
         ? `Site saved successfully (v${versionResponse.version_number}).`
         : 'Site saved, but version history could not be recorded.';
-      alert(successMessage);
+      addToast(successMessage, { variant: 'success' });
     } catch (error) {
       console.error('[Save] Save failed:', error);
-      alert('Failed to save site. Please try again.');
+      addToast('Failed to save site. Please try again.', { variant: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -574,47 +660,8 @@ const EditorTopBar = () => {
       {/* Right Section */}
       <Stack direction="row" spacing={1} alignItems="center" flex={1} justifyContent="flex-end">
         {!isMobile ? (
-          <>
-            {/* Undo/Redo */}
-            <Tooltip title={undoTooltip}>
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={() => canUndo && undo(editorMode)}
-                  disabled={!canUndo}
-                  sx={{
-                    color: textPrimary,
-                    '&:hover': { bgcolor: hoverSurface },
-                    '&.Mui-disabled': {
-                      color: textMuted
-                    }
-                  }}
-                >
-                  <Undo fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            
-            <Tooltip title={redoTooltip}>
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={() => canRedo && redo(editorMode)}
-                  disabled={!canRedo}
-                  sx={{
-                    color: textPrimary,
-                    '&:hover': { bgcolor: hoverSurface },
-                    '&.Mui-disabled': {
-                      color: textMuted
-                    }
-                  }}
-                >
-                  <Redo fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-
-            {/* Separator */}
+          <Box display="flex" alignItems="center">
+            {/* Divider from title controls */}
             <Box
               sx={{
                 width: '1px',
@@ -685,7 +732,7 @@ const EditorTopBar = () => {
                 mx: 0.5
               }}
             />
-          </>
+          </Box>
         ) : null}
 
         {/* Device Toggle - Always visible */}
@@ -771,20 +818,20 @@ const EditorTopBar = () => {
               }}
             >
               <MenuItem 
-                onClick={() => { canUndo && undo(editorMode); setAnchorEl(null); }}
-                disabled={!canUndo}
+                onClick={() => { handlePreviousVersion(); setAnchorEl(null); }}
+                disabled={!canUndoVersion || isLoadingVersion}
                 sx={{ color: textPrimary }}
               >
                 <ListItemIcon><Undo fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
-                <ListItemText>Undo</ListItemText>
+                <ListItemText>{undoLabel}</ListItemText>
               </MenuItem>
               <MenuItem 
-                onClick={() => { canRedo && redo(editorMode); setAnchorEl(null); }}
-                disabled={!canRedo}
+                onClick={() => { handleNextVersion(); setAnchorEl(null); }}
+                disabled={!canRedoVersion || isLoadingVersion}
                 sx={{ color: textPrimary }}
               >
                 <ListItemIcon><Redo fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
-                <ListItemText>Redo</ListItemText>
+                <ListItemText>{redoLabel}</ListItemText>
               </MenuItem>
               <MenuItem 
                 onClick={() => { toggleMode(); setAnchorEl(null); }}
@@ -813,6 +860,46 @@ const EditorTopBar = () => {
           </>
         )}
 
+        {/* Version Navigation */}
+        {!isMobile && totalVersions > 0 && (
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Tooltip title={undoTooltip}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handlePreviousVersion}
+                  disabled={!canUndoVersion || isLoadingVersion}
+                  aria-label={undoLabel}
+                  sx={{
+                    color: textPrimary,
+                    '&:hover': { bgcolor: hoverSurface },
+                    '&.Mui-disabled': { color: textMuted }
+                  }}
+                >
+                  <Undo fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title={redoTooltip}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleNextVersion}
+                  disabled={!canRedoVersion || isLoadingVersion}
+                  aria-label={redoLabel}
+                  sx={{
+                    color: textPrimary,
+                    '&:hover': { bgcolor: hoverSurface },
+                    '&.Mui-disabled': { color: textMuted }
+                  }}
+                >
+                  <Redo fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
+        )}
+
         <Stack spacing={0.25} alignItems="flex-end" sx={{ mr: 0.5 }}>
           <Typography
             variant="caption"
@@ -823,6 +910,7 @@ const EditorTopBar = () => {
             }}
           >
             {versionLabel}
+            {versionPositionLabel}
           </Typography>
           <Typography
             variant="caption"

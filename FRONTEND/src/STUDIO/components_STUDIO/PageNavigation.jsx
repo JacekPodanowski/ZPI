@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { motion } from 'framer-motion'
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText, TextField } from '@mui/material'
 import useEditorStore from '../store/editorStore'
+import { useToast } from '../../contexts/ToastContext'
 
 const PageNavigation = ({ variant = 'panel', onNavigate }) => {
   const {
@@ -13,8 +15,14 @@ const PageNavigation = ({ variant = 'panel', onNavigate }) => {
     removePage,
     updatePage
   } = useEditorStore()
+  const addToast = useToast()
   const [renamingPageId, setRenamingPageId] = useState(null)
   const [newName, setNewName] = useState('')
+  const [addPageDialogOpen, setAddPageDialogOpen] = useState(false)
+  const [newPageName, setNewPageName] = useState('Nowa strona')
+  const [deletePageDialogOpen, setDeletePageDialogOpen] = useState(false)
+  const [pageToDelete, setPageToDelete] = useState(null)
+  
   const pageKeys = (templateConfig.pageOrder || Object.keys(templateConfig.pages || {}))
     .filter((key) => templateConfig.pages?.[key])
   const pages = pageKeys.map((key) => templateConfig.pages[key])
@@ -46,13 +54,23 @@ const PageNavigation = ({ variant = 'panel', onNavigate }) => {
   }
 
   const handleAddPage = () => {
-    const name = window.prompt('Podaj nazwę nowej strony:', 'Nowa strona')
-    if (name) {
-      addPage(name)
+    setNewPageName('Nowa strona')
+    setAddPageDialogOpen(true)
+  }
+
+  const confirmAddPage = () => {
+    if (newPageName.trim()) {
+      addPage(newPageName.trim())
       if (onNavigate) {
         onNavigate()
       }
+      addToast('Page added successfully', { variant: 'success' })
     }
+    setAddPageDialogOpen(false)
+  }
+
+  const cancelAddPage = () => {
+    setAddPageDialogOpen(false)
   }
 
   const handleRenameStart = (page) => {
@@ -95,12 +113,8 @@ const PageNavigation = ({ variant = 'panel', onNavigate }) => {
           type="button"
           className="text-xs px-2 py-1 rounded bg-white border border-gray-200 shadow-sm"
           onClick={() => {
-            if (window.confirm('Na pewno usunąć tę stronę?')) {
-              removePage(page.id)
-              if (onNavigate) {
-                onNavigate()
-              }
-            }
+            setPageToDelete(page)
+            setDeletePageDialogOpen(true)
           }}
         >
           🗑️
@@ -188,6 +202,71 @@ const PageNavigation = ({ variant = 'panel', onNavigate }) => {
           + Dodaj stronę
         </button>
       </div>
+
+      {/* Add Page Dialog */}
+      <Dialog open={addPageDialogOpen} onClose={cancelAddPage}>
+        <DialogTitle>Add New Page</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Page Name"
+            fullWidth
+            value={newPageName}
+            onChange={(e) => setNewPageName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                confirmAddPage()
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelAddPage}>Cancel</Button>
+          <Button onClick={confirmAddPage} variant="contained">Add</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Page Dialog */}
+      <Dialog open={deletePageDialogOpen} onClose={() => setDeletePageDialogOpen(false)}>
+        <DialogTitle>Delete Page</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this page? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletePageDialogOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (pageToDelete) {
+                const pageCount = Object.keys(templateConfig.pages).length
+                if (pageCount <= 1) {
+                  addToast('Cannot delete the last page', { variant: 'error' })
+                  setDeletePageDialogOpen(false)
+                  return
+                }
+                if (pageToDelete.id === 'home') {
+                  addToast('Cannot delete the home page', { variant: 'error' })
+                  setDeletePageDialogOpen(false)
+                  return
+                }
+                removePage(pageToDelete.id)
+                addToast('Page deleted successfully', { variant: 'success' })
+                if (onNavigate) {
+                  onNavigate()
+                }
+              }
+              setDeletePageDialogOpen(false)
+              setPageToDelete(null)
+            }}
+            color="error"
+            variant="contained"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

@@ -595,11 +595,9 @@ const useEditorStore = create((set, get) => ({
   removePage: (pageId) => set((state) => {
     const pageCount = Object.keys(state.templateConfig.pages).length
     if (pageCount <= 1) {
-      window.alert('Nie można usunąć ostatniej strony.')
       return state
     }
     if (pageId === 'home') {
-      window.alert('Nie można usunąć strony głównej.')
       return state
     }
 
