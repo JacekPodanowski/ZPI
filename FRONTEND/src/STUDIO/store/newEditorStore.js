@@ -1100,6 +1100,74 @@ const useNewEditorStore = create((set, get) => ({
     return state.moduleHeights[moduleType] || defaultHeight;
   },
 
+  undo: (mode) =>
+    set((state) => {
+      const chosenMode = mode || state.editorMode;
+      const { key } = getHistoryConfig(chosenMode);
+      const history = state[key];
+      if (!history || history.past.length === 0) {
+        return {};
+      }
+
+      const entry = history.past[history.past.length - 1];
+      const newPast = history.past.slice(0, -1);
+      const currentSnapshot = createSnapshot(state);
+      const newFuture = [...history.future, { state: currentSnapshot, meta: entry.meta }];
+
+      const snapshot = cloneSnapshot(entry.state);
+      const selection = deriveSelectionFromSnapshot(snapshot);
+
+      return {
+        site: snapshot.site,
+        entryPointPageId: snapshot.entryPointPageId,
+        selectedPageId: selection.selectedPageId,
+        selectedModuleId: selection.selectedModuleId,
+        [key]: {
+          past: newPast,
+          future: newFuture
+        },
+        hasUnsavedChanges: true,
+        aiTransaction: createTransactionState()
+      };
+    }),
+
+  redo: (mode) =>
+    set((state) => {
+      const chosenMode = mode || state.editorMode;
+      const { key } = getHistoryConfig(chosenMode);
+      const history = state[key];
+      if (!history || history.future.length === 0) {
+        return {};
+      }
+
+      const entry = history.future[history.future.length - 1];
+      const newFuture = history.future.slice(0, -1);
+      const currentSnapshot = createSnapshot(state);
+      const newPast = [...history.past, { state: currentSnapshot, meta: entry.meta }];
+
+      const snapshot = cloneSnapshot(entry.state);
+      const selection = deriveSelectionFromSnapshot(snapshot);
+
+      return {
+        site: snapshot.site,
+        entryPointPageId: snapshot.entryPointPageId,
+        selectedPageId: selection.selectedPageId,
+        selectedModuleId: selection.selectedModuleId,
+        [key]: {
+          past: newPast,
+          future: newFuture
+        },
+        hasUnsavedChanges: true,
+        aiTransaction: createTransactionState()
+      };
+    }),
+
+  clearHistories: () =>
+    set({
+      structureHistory: createHistoryStack(),
+      detailHistory: createHistoryStack()
+    }),
+
   startAITransaction: ({ mode = 'detail', conversationId = null, description = '' } = {}) =>
     set((state) => {
       if (state.aiTransaction.active) {

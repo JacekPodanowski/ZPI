@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -281,7 +281,8 @@ EventDisplay.propTypes = {
         event_type: PropTypes.string,
         client_name: PropTypes.string,
         current_capacity: PropTypes.number,
-        max_capacity: PropTypes.number
+        max_capacity: PropTypes.number,
+        capacity: PropTypes.number
     }).isRequired,
     siteColor: PropTypes.string.isRequired,
     onHover: PropTypes.func,
@@ -301,10 +302,11 @@ const DayDetailsModal = ({
     onCreateEvent, 
     onCreateAvailability,
     operatingStartHour = 6,
-    operatingEndHour = 22
+        operatingEndHour = 22,
+        onBookingRemoved
 }) => {
     const theme = useTheme();
-    const { showToast } = useToast();
+        const addToast = useToast();
     const [view, setView] = useState('timeline'); // 'timeline' | 'chooser' | 'createEvent' | 'createAvailability' | 'editEvent' | 'editAvailability'
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [editingItem, setEditingItem] = useState(null); // Store the item being edited
@@ -421,7 +423,7 @@ const DayDetailsModal = ({
             type: event.type || 'online',
             location: event.location || '',
             meetingType: event.event_type || 'individual',
-            capacity: event.max_capacity || 1,
+            capacity: event.capacity || event.max_capacity || 1,
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
             bufferTime: '0',
@@ -462,7 +464,7 @@ const DayDetailsModal = ({
                 contactMessage.subject,
                 contactMessage.message
             );
-            showToast('Wiadomość została wysłana', 'success');
+            addToast('Wiadomość została wysłana', { variant: 'success' });
             setContactFormOpen(false);
             setContactingBooking(null);
             setContactMessage({
@@ -471,7 +473,7 @@ const DayDetailsModal = ({
             });
         } catch (error) {
             console.error('Error sending message:', error);
-            showToast('Nie udało się wysłać wiadomości', 'error');
+            addToast('Nie udało się wysłać wiadomości', { variant: 'error' });
         }
     };
 
@@ -482,21 +484,61 @@ const DayDetailsModal = ({
 
         try {
             await eventService.cancelBooking(booking.id);
-            showToast('Uczestnik został usunięty, wysłano powiadomienie email', 'success');
-            
-            // Refresh the event data
-            if (editingItem) {
-                const updatedBookings = editingItem.bookings.filter(b => b.id !== booking.id);
+
+            const bookingId = booking.id;
+            const eventId = editingItem?.id
+                ?? booking.event
+                ?? booking.event_id
+                ?? booking.event_details?.id
+                ?? booking.event_details?.event
+                ?? null;
+
+            addToast('Uczestnik został usunięty, wysłano powiadomienie email', { variant: 'success' });
+
+            if (editingItem && Array.isArray(editingItem.bookings)) {
+                const updatedBookings = editingItem.bookings.filter((b) => b.id !== bookingId);
                 setEditingItem({ ...editingItem, bookings: updatedBookings });
             }
-            
-            // Trigger parent refresh
-            window.location.reload();
+
+            if (selectedBooking?.id === bookingId) {
+                setSelectedBooking(null);
+                setBookingModalOpen(false);
+            }
+
+            onBookingRemoved?.({ eventId, bookingId });
         } catch (error) {
             console.error('Error removing booking:', error);
-            showToast('Nie udało się usunąć uczestnika', 'error');
+            addToast('Nie udało się usunąć uczestnika', { variant: 'error' });
         }
     };
+
+    const handleBookingModalUpdate = useCallback((payload) => {
+        if (!payload || payload.action !== 'cancel') {
+            return;
+        }
+
+        const { bookingId } = payload;
+        const eventId = payload.eventId
+            ?? editingItem?.id
+            ?? selectedBooking?.event
+            ?? selectedBooking?.event_id
+            ?? selectedBooking?.event_details?.id
+            ?? selectedBooking?.event_details?.event
+            ?? null;
+
+        if (editingItem && Array.isArray(editingItem.bookings)) {
+            const matchesEditingItem = eventId ? String(editingItem.id) === String(eventId) : true;
+            if (matchesEditingItem) {
+                const updatedBookings = editingItem.bookings.filter((b) => b.id !== bookingId);
+                setEditingItem({ ...editingItem, bookings: updatedBookings });
+            }
+        }
+
+        onBookingRemoved?.({ eventId, bookingId });
+
+        setSelectedBooking(null);
+        setBookingModalOpen(false);
+    }, [editingItem, onBookingRemoved, selectedBooking, setSelectedBooking, setBookingModalOpen]);
 
     const handleSubmit = () => {
         if (view === 'createEvent') {
@@ -1118,10 +1160,7 @@ const DayDetailsModal = ({
                     setSelectedBooking(null);
                 }}
                 booking={selectedBooking}
-                onBookingUpdated={() => {
-                    // Refresh events after booking is cancelled
-                    window.location.reload(); // Simple refresh, can be improved
-                }}
+                onBookingUpdated={handleBookingModalUpdate}
             />
         )}
         </>
@@ -1139,7 +1178,8 @@ DayDetailsModal.propTypes = {
     onCreateEvent: PropTypes.func,
     onCreateAvailability: PropTypes.func,
     operatingStartHour: PropTypes.number,
-    operatingEndHour: PropTypes.number
+    operatingEndHour: PropTypes.number,
+    onBookingRemoved: PropTypes.func
 };
 
 DayDetailsModal.defaultProps = {
@@ -1151,7 +1191,8 @@ DayDetailsModal.defaultProps = {
     onCreateEvent: undefined,
     onCreateAvailability: undefined,
     operatingStartHour: 6,
-    operatingEndHour: 22
+    operatingEndHour: 22,
+    onBookingRemoved: undefined
 };
 
 export default DayDetailsModal;

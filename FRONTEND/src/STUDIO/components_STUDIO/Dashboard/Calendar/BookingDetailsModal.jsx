@@ -54,7 +54,7 @@ const BookingDetailsModal = ({ open, onClose, booking, onBookingUpdated }) => {
                 contactSubject || 'Wiadomość dotycząca Twojej rezerwacji',
                 contactMessage
             );
-            addToast('Wiadomość została wysłana', 'success');
+            addToast('Wiadomość została wysłana', { variant: 'success' });
             setContactSubject('');
             setContactMessage('');
             setActiveTab('details');
@@ -77,8 +77,13 @@ const BookingDetailsModal = ({ open, onClose, booking, onBookingUpdated }) => {
 
         try {
             await cancelBooking(booking.id, cancelReason);
-            addToast('Spotkanie zostało odwołane', 'success');
-            onBookingUpdated?.();
+            addToast('Spotkanie zostało odwołane', { variant: 'success' });
+            onBookingUpdated?.({
+                action: 'cancel',
+                bookingId: booking.id,
+                eventId: booking.event ?? booking.event_id ?? booking.event_details?.id ?? booking.event_details?.event ?? null,
+                booking
+            });
             onClose();
         } catch (err) {
             console.error('Error cancelling booking:', err);

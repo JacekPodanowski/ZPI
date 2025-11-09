@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import moment from 'moment';
@@ -331,6 +331,50 @@ const CreatorCalendarApp = () => {
         }
     };
 
+    const handleBookingRemoved = useCallback(({ eventId, bookingId }) => {
+        if (!eventId || !bookingId) {
+            return;
+        }
+
+        setEvents((prevEvents) => {
+            let changed = false;
+
+            const updatedEvents = prevEvents.map((event) => {
+                if (String(event.id) !== String(eventId)) {
+                    return event;
+                }
+
+                const eventBookings = Array.isArray(event.bookings) ? event.bookings : [];
+                const filteredBookings = eventBookings.filter((booking) => String(booking.id) !== String(bookingId));
+
+                if (filteredBookings.length === eventBookings.length) {
+                    return event;
+                }
+
+                changed = true;
+                return {
+                    ...event,
+                    bookings: filteredBookings
+                };
+            });
+
+            if (!changed) {
+                return prevEvents;
+            }
+
+            if (user?.id) {
+                setCache(`${CACHE_KEYS.EVENTS}_${user.id}`, updatedEvents, 1000 * 60 * 5);
+            }
+
+            return updatedEvents;
+        });
+
+        if (selectedBooking?.id === bookingId) {
+            setSelectedBooking(null);
+            setBookingModalOpen(false);
+        }
+    }, [user?.id, selectedBooking?.id, setSelectedBooking, setBookingModalOpen]);
+
     if (loading) {
         return (
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }}>
@@ -433,6 +477,7 @@ const CreatorCalendarApp = () => {
                 onCreateAvailability={handleCreateAvailability}
                 operatingStartHour={operatingStartHour}
                 operatingEndHour={operatingEndHour}
+                onBookingRemoved={handleBookingRemoved}
             />
             
             {/* Booking Details Modal */}
@@ -444,9 +489,22 @@ const CreatorCalendarApp = () => {
                         setSelectedBooking(null);
                     }}
                     booking={selectedBooking}
-                    onBookingUpdated={() => {
-                        // Refresh events after booking is cancelled
-                        window.location.reload();
+                    onBookingUpdated={(payload) => {
+                        if (!payload || payload.action !== 'cancel') {
+                            return;
+                        }
+
+                        const fallbackEventId = payload.eventId
+                            ?? selectedBooking?.event
+                            ?? selectedBooking?.event_id
+                            ?? selectedBooking?.event_details?.id
+                            ?? selectedBooking?.event_details?.event
+                            ?? null;
+
+                        handleBookingRemoved({
+                            eventId: fallbackEventId,
+                            bookingId: payload.bookingId
+                        });
                     }}
                 />
             )}
