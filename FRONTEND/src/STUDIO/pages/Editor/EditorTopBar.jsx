@@ -179,9 +179,17 @@ const EditorTopBar = () => {
 
     if (hasUnsavedChanges) {
       const confirmed = window.confirm(
-        'You have unsaved changes. Loading a different version will discard them. Continue?'
+        'You have unsaved changes. We will save them before loading the selected version. Continue?'
       );
       if (!confirmed) {
+        return;
+      }
+
+      await handleSave();
+
+      const { hasUnsavedChanges: stillUnsaved } = useNewEditorStore.getState();
+      if (stillUnsaved) {
+        addToast('Could not save current changes. Version loading cancelled.', { variant: 'error' });
         return;
       }
     }
