@@ -1,5 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Stack, Typography, IconButton, useMediaQuery, Drawer } from '@mui/material';
+import { 
+  Box, 
+  Stack, 
+  Typography, 
+  IconButton, 
+  useMediaQuery, 
+  Drawer,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItemButton,
+  ListItemText,
+  Button
+} from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Delete, Close, ViewModule } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
@@ -28,7 +43,7 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
   const popupHeaderBg = isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)';
   const popupText = isDarkMode ? 'rgba(240, 240, 242, 0.95)' : 'rgb(30, 30, 30)';
   const popupMutedText = isDarkMode ? 'rgba(225, 225, 228, 0.75)' : 'rgba(30, 30, 30, 0.7)';
-  const { removeModule, addPage, addModule, setDragging, currentPage } = useNewEditorStore();
+  const { removeModule, addPage, addModule, setDragging, currentPage, site } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
@@ -36,6 +51,11 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
   const hasInitiallyAnimated = useRef(false);
   const toolbarRef = useRef(null);
   const moduleRefs = useRef({});
+  
+  // Mobile-specific states
+  const [selectedModuleForPage, setSelectedModuleForPage] = useState(null);
+  const [pageSelectionDialogOpen, setPageSelectionDialogOpen] = useState(false);
+  const [touchHoldTimer, setTouchHoldTimer] = useState(null);
 
   const handleDragStart = (e, moduleType) => {
     console.log('[ModuleToolbar] Drag started:', moduleType);
@@ -77,6 +97,50 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
     
     setSelectedModule(null);
     setIsFirstRender(true);
+  };
+
+  // Mobile: Add module to specific page or create new page
+  const handleAddModuleToPage = (pageId) => {
+    if (!selectedModuleForPage) return;
+    
+    const defaultContent = getDefaultModuleContent(selectedModuleForPage.type);
+    
+    if (pageId === 'NEW_PAGE') {
+      // Create new page with this module
+      addPage({
+        modules: [{
+          type: selectedModuleForPage.type,
+          content: defaultContent
+        }]
+      });
+    } else if (pageId) {
+      // Add to existing page
+      addModule(pageId, {
+        type: selectedModuleForPage.type,
+        content: defaultContent
+      });
+    }
+    
+    setPageSelectionDialogOpen(false);
+    setSelectedModuleForPage(null);
+    setMobileDrawerOpen(false);
+  };
+
+  // Mobile: Handle touch hold to select module
+  const handleTouchStart = (module) => {
+    const timer = setTimeout(() => {
+      setSelectedModuleForPage(module);
+      setPageSelectionDialogOpen(true);
+    }, 500); // 500ms hold time
+    
+    setTouchHoldTimer(timer);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchHoldTimer) {
+      clearTimeout(touchHoldTimer);
+      setTouchHoldTimer(null);
+    }
   };
 
   const handleTrashDrop = (e) => {
@@ -152,6 +216,8 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
 
   // Mobile FAB button
   if (isMobile) {
+    const pages = site?.pages || [];
+    
     return (
       <>
         {/* Floating Action Button */}
@@ -224,13 +290,25 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
               </IconButton>
             </Box>
 
+            {/* Instructions */}
+            <Typography
+              sx={{
+                fontSize: '13px',
+                color: textMuted,
+                mb: 2,
+                textAlign: 'center'
+              }}
+            >
+              Hold to choose page, tap to add to current page
+            </Typography>
+
             {/* Module Grid */}
             <Box
               sx={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
                 gap: 2,
-                maxHeight: 'calc(80vh - 100px)',
+                maxHeight: 'calc(80vh - 140px)',
                 overflowY: 'auto'
               }}
             >
@@ -243,6 +321,9 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
                       handleAddModule(module);
                       setMobileDrawerOpen(false);
                     }}
+                    onTouchStart={() => handleTouchStart(module)}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                     sx={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -257,7 +338,8 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
                         bgcolor: moduleListHover
                       },
                       '&:active': {
-                        transform: 'scale(0.95)'
+                        transform: 'scale(0.95)',
+                        bgcolor: moduleListHover
                       }
                     }}
                   >
@@ -291,6 +373,111 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
             </Box>
           </Box>
         </Drawer>
+
+        {/* Page Selection Dialog */}
+        <Dialog
+          open={pageSelectionDialogOpen}
+          onClose={() => {
+            setPageSelectionDialogOpen(false);
+            setSelectedModuleForPage(null);
+          }}
+          sx={{
+            '& .MuiDialog-paper': {
+              borderRadius: '16px',
+              bgcolor: moduleListBg,
+              minWidth: '300px',
+              maxWidth: '90vw'
+            }
+          }}
+        >
+          <DialogTitle sx={{ color: textPrimary, fontWeight: 600, pb: 1 }}>
+            Select Page for {selectedModuleForPage?.label}
+          </DialogTitle>
+          <DialogContent sx={{ p: 0 }}>
+            <List sx={{ py: 0 }}>
+              {/* Option to create new page */}
+              <ListItemButton
+                onClick={() => handleAddModuleToPage('NEW_PAGE')}
+                sx={{
+                  py: 1.5,
+                  px: 3,
+                  borderBottom: `1px solid ${moduleListBorder}`,
+                  bgcolor: alpha(accentColor, 0.04),
+                  '&:hover': {
+                    bgcolor: alpha(accentColor, 0.08)
+                  }
+                }}
+              >
+                <ListItemText
+                  primary="➕ Create New Page"
+                  primaryTypographyProps={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: accentColor
+                  }}
+                  secondary="Add module to a new page"
+                  secondaryTypographyProps={{
+                    fontSize: '12px',
+                    color: textMuted
+                  }}
+                />
+              </ListItemButton>
+              
+              {/* Existing pages */}
+              {pages.map((page, index) => (
+                <ListItemButton
+                  key={page.id}
+                  onClick={() => handleAddModuleToPage(page.id)}
+                  sx={{
+                    py: 1.5,
+                    px: 3,
+                    borderBottom: `1px solid ${moduleListBorder}`,
+                    '&:hover': {
+                      bgcolor: moduleListHover
+                    },
+                    '&:last-child': {
+                      borderBottom: 'none'
+                    }
+                  }}
+                >
+                  <ListItemText
+                    primary={page.name || `Page ${index + 1}`}
+                    primaryTypographyProps={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: textPrimary
+                    }}
+                    secondary={page.id === currentPage?.id ? 'Current page' : ''}
+                    secondaryTypographyProps={{
+                      fontSize: '12px',
+                      color: accentColor,
+                      fontWeight: 600
+                    }}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+            <Box sx={{ p: 2, pt: 1 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => {
+                  setPageSelectionDialogOpen(false);
+                  setSelectedModuleForPage(null);
+                }}
+                sx={{
+                  borderRadius: '8px',
+                  color: textPrimary,
+                  borderColor: moduleListBorder,
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
+              >
+                Cancel
+              </Button>
+            </Box>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }

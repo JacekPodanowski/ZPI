@@ -108,17 +108,17 @@ const BillingPage = () => {
         backgroundColor: surfaceColor,
         borderRadius: '16px',
         border: `1px solid ${alpha(dividerColor, 0.1)}`,
-        p: 4
+        p: { xs: 2, sm: 3, md: 4 }
       }}
     >
-      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
         Billing & Plans
       </Typography>
       <Typography variant="body2" sx={{ mb: 4, color: colors?.text?.secondary }}>
         Choose the plan that fits your needs
       </Typography>
 
-      <Alert severity="warning" sx={{ mb: 4, borderRadius: '12px' }}>
+      <Alert severity="warning" sx={{ mb: 4, borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
         <strong>Development Mode:</strong> Payment API is not connected. Plan changes are simulated only.
       </Alert>
 
@@ -137,7 +137,7 @@ const BillingPage = () => {
       <Divider sx={{ mb: 4 }} />
 
       {/* Plans Grid */}
-      <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+      <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
         Available Plans
       </Typography>
       <Box
@@ -148,7 +148,7 @@ const BillingPage = () => {
             md: 'repeat(2, 1fr)',
             lg: 'repeat(3, 1fr)'
           },
-          gap: 3
+          gap: { xs: 2, sm: 2.5, md: 3 }
         }}
       >
         {plans.map((plan) => {
@@ -200,7 +200,7 @@ const BillingPage = () => {
                   Most Popular
                 </Box>
               )}
-              <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 4 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <Stack spacing={3} sx={{ flex: 1 }}>
                   {/* Plan Header */}
                   <Box>
@@ -209,12 +209,13 @@ const BillingPage = () => {
                       sx={{
                         fontWeight: 700,
                         color: isPrimary ? accentColor : 'text.primary',
-                        mb: 0.5
+                        mb: 0.5,
+                        fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
                       }}
                     >
                       {plan.name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                       {plan.description}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
@@ -222,13 +223,14 @@ const BillingPage = () => {
                         variant="h3"
                         sx={{
                           fontWeight: 700,
-                          color: isPrimary ? accentColor : 'text.primary'
+                          color: isPrimary ? accentColor : 'text.primary',
+                          fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
                         }}
                       >
                         {plan.price}
                       </Typography>
                       {plan.priceNote && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                           {plan.priceNote}
                         </Typography>
                       )}
@@ -268,8 +270,9 @@ const BillingPage = () => {
                     onClick={() => handleChoosePlan(plan.id)}
                     sx={{
                       borderRadius: '12px',
-                      py: 1.5,
+                      py: { xs: 1.25, sm: 1.5 },
                       fontWeight: 600,
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
                       ...(isPrimary && !isCurrentPlan && {
                         backgroundColor: accentColor,
                         '&:hover': {
@@ -288,12 +291,12 @@ const BillingPage = () => {
       </Box>
 
       {/* Billing History Section */}
-      <Box sx={{ mt: 6 }}>
+      <Box sx={{ mt: { xs: 4, md: 6 } }}>
         <Divider sx={{ mb: 4 }} />
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
           Billing History
         </Typography>
-        <Alert severity="info" sx={{ borderRadius: '12px' }}>
+        <Alert severity="info" sx={{ borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           <strong>TODO:</strong> Billing history and invoice management will be implemented here.
         </Alert>
       </Box>

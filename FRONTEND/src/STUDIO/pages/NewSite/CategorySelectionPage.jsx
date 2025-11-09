@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Container, Stack, Typography } from '@mui/material';
+import { Box, Container, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { motion } from 'framer-motion';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import SchoolIcon from '@mui/icons-material/School';
@@ -57,9 +57,10 @@ const CategoryCard = ({ category, index, onSelect, isSelected }) => {
                 onClick={() => onSelect(category.id)}
                 sx={{
                     position: 'relative',
-                    height: 120,
-                    minWidth: 180,
-                    width: 180,
+                    height: { xs: 110, sm: 115, md: 120 },
+                    width: '100%',
+                    minWidth: { xs: 'auto', md: 180 },
+                    maxWidth: { xs: '100%', md: 180 },
                     borderRadius: 3,
                     overflow: 'hidden',
                     cursor: 'pointer',
@@ -108,9 +109,9 @@ const CategoryCard = ({ category, index, onSelect, isSelected }) => {
                 <IconComponent
                     className="category-icon"
                     sx={{
-                        fontSize: 34,
+                        fontSize: { xs: 30, md: 34 },
                         color: 'text.secondary',
-                        mb: 1,
+                        mb: { xs: 0.75, md: 1 },
                         transition: 'all 0.34s ease'
                     }}
                 />
@@ -119,9 +120,10 @@ const CategoryCard = ({ category, index, onSelect, isSelected }) => {
                     sx={{ 
                         fontWeight: 700,
                         letterSpacing: 0.6,
-                        fontSize: '0.95rem',
+                        fontSize: { xs: '0.85rem', md: '0.95rem' },
                         position: 'relative',
-                        zIndex: 1
+                        zIndex: 1,
+                        px: 1
                     }}
                 >
                     {category.name}
@@ -133,6 +135,8 @@ const CategoryCard = ({ category, index, onSelect, isSelected }) => {
 
 const CategorySelectionPage = () => {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [selectedCategory, setSelectedCategory] = React.useState(null);
     const [pageVisible, setPageVisible] = React.useState(false);
 
@@ -160,13 +164,14 @@ const CategorySelectionPage = () => {
                     minHeight: 'calc(100vh - 60px)',
                     width: '100%',
                     display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'background.default',
-                position: 'relative',
-                overflow: 'hidden'
-            }}
-        >
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'background.default',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    py: { xs: 4, md: 0 }
+                }}
+            >
             {/* Ethereal background blobs */}
             <Box
                 sx={{
@@ -214,9 +219,9 @@ const CategorySelectionPage = () => {
                 />
             </Box>
 
-            <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+            <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, px: { xs: 2, sm: 3 } }}>
                 <Stack 
-                    spacing={5}
+                    spacing={{ xs: 3, md: 5 }}
                     sx={{
                         opacity: pageVisible ? 1 : 0,
                         transform: pageVisible ? 'translateY(0)' : 'translateY(-20px)',
@@ -232,9 +237,10 @@ const CategorySelectionPage = () => {
                             <Typography
                                 variant="overline"
                                 sx={{
-                                    letterSpacing: 6,
+                                    letterSpacing: { xs: 3, md: 6 },
                                     color: 'secondary.main',
-                                    fontWeight: 600
+                                    fontWeight: 600,
+                                    fontSize: { xs: '0.65rem', md: '0.75rem' }
                                 }}
                             >
                                 WYBIERZ KATEGORIĘ
@@ -249,8 +255,9 @@ const CategorySelectionPage = () => {
                                 variant="h2"
                                 sx={{
                                     fontWeight: 700,
-                                    mt: 2,
-                                    mb: 2,
+                                    mt: { xs: 1, md: 2 },
+                                    mb: { xs: 1, md: 2 },
+                                    fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
                                     background: (theme) =>
                                         theme.palette.mode === 'dark'
                                             ? 'linear-gradient(135deg, rgba(220,220,220,1) 0%, rgba(146,0,32,0.8) 100%)'
@@ -275,7 +282,9 @@ const CategorySelectionPage = () => {
                                     maxWidth: 600,
                                     mx: 'auto',
                                     lineHeight: 1.7,
-                                    fontWeight: 400
+                                    fontWeight: 400,
+                                    fontSize: { xs: '0.95rem', md: '1.25rem' },
+                                    px: { xs: 2, md: 0 }
                                 }}
                             >
                                 Dostosujemy dla Ciebie odpowiednie moduły
@@ -285,12 +294,17 @@ const CategorySelectionPage = () => {
 
                     <Box
                         sx={{
-                            display: 'flex',
-                            gap: 2.5,
+                            display: 'grid',
+                            gridTemplateColumns: { 
+                                xs: 'repeat(2, 1fr)', 
+                                sm: 'repeat(2, 1fr)',
+                                md: 'repeat(4, 1fr)' 
+                            },
+                            gap: { xs: 2, md: 2.5 },
                             justifyContent: 'center',
                             alignItems: 'center',
-                            overflow: 'visible',
-                            width: '100%'
+                            width: '100%',
+                            maxWidth: { xs: '100%', md: 'none' }
                         }}
                     >
                         {categories.map((category, index) => (
@@ -312,7 +326,7 @@ const CategorySelectionPage = () => {
                         <Box 
                             sx={{ 
                                 textAlign: 'center',
-                                mt: 2
+                                mt: { xs: 1, md: 2 }
                             }}
                         >
                             <Box 
@@ -323,15 +337,15 @@ const CategorySelectionPage = () => {
                                     gap: 0.5,
                                     cursor: 'pointer',
                                     color: 'text.secondary',
-                                    fontSize: '0.95rem',
+                                    fontSize: { xs: '0.9rem', md: '0.95rem' },
                                     fontWeight: 600,
-                                    letterSpacing: 1,
+                                    letterSpacing: { xs: 0.8, md: 1 },
                                     transition: 'all 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)',
                                     px: 1.5,
                                     py: 0.75,
                                     '&:hover': {
                                         color: 'primary.main',
-                                        letterSpacing: 1.5,
+                                        letterSpacing: { xs: 1.2, md: 1.5 },
                                         transform: 'scale(1.08)',
                                         filter: 'drop-shadow(0 4px 12px rgba(146, 0, 32, 0.3))',
                                         '& .skip-arrow': {

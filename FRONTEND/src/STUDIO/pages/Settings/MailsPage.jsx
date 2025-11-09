@@ -279,17 +279,17 @@ const MailsPage = () => {
           backgroundColor: surfaceColor,
           borderRadius: '16px',
           border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          p: 4,
+          p: { xs: 2, sm: 3, md: 4 },
           width: '100%',
           maxWidth: '100%',
           boxSizing: 'border-box'
         }}
       >
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+          <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
             Szablony Email
           </Typography>
-          <Typography variant="body2" sx={{ color: theme.colors?.text?.secondary }}>
+          <Typography variant="body2" sx={{ color: theme.colors?.text?.secondary, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             Zarządzaj szablonami wiadomości email
           </Typography>
         </Box>
@@ -357,16 +357,18 @@ const MailsPage = () => {
             <Box
               sx={{
                 display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: { xs: 'flex-start', md: 'center' },
+                gap: { xs: 2, md: 0 },
                 mb: 2,
                 pb: 2,
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                 width: '100%'
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: { xs: '1rem', md: '1.125rem' } }}>
                   Podgląd szablonu
                 </Typography>
                 <ToggleButtonGroup
@@ -379,24 +381,28 @@ const MailsPage = () => {
                   }}
                   size="small"
                 >
-                  <ToggleButton value="rendered">
-                    <VisibilityIcon sx={{ mr: 0.5, fontSize: '1.2rem' }} />
-                    Renderowany
+                  <ToggleButton value="rendered" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    <VisibilityIcon sx={{ mr: { xs: 0, sm: 0.5 }, fontSize: '1.2rem' }} />
+                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Renderowany</Box>
                   </ToggleButton>
-                  <ToggleButton value="code">
-                    <CodeIcon sx={{ mr: 0.5, fontSize: '1.2rem' }} />
-                    HTML
+                  <ToggleButton value="code" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    <CodeIcon sx={{ mr: { xs: 0, sm: 0.5 }, fontSize: '1.2rem' }} />
+                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>HTML</Box>
                   </ToggleButton>
                 </ToggleButtonGroup>
               </Box>
 
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
                 <Button
                   variant="outlined"
                   startIcon={<EditIcon />}
                   onClick={() => {
                     setEditedTemplate({ ...selectedTemplate });
                     setEditorOpen(true);
+                  }}
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    flex: { xs: 1, md: 'initial' }
                   }}
                 >
                   Edytuj
@@ -405,14 +411,20 @@ const MailsPage = () => {
                   variant="outlined"
                   startIcon={<SendIcon />}
                   onClick={() => setTestEmailOpen(true)}
+                  sx={{ 
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    flex: { xs: 1, md: 'initial' }
+                  }}
                 >
-                  Wyślij test
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Wyślij test</Box>
+                  <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Test</Box>
                 </Button>
                 {!selectedTemplate.is_default && (
                   <Tooltip title="Usuń szablon">
                     <IconButton
                       color="error"
                       onClick={() => handleDeleteTemplate(selectedTemplate)}
+                      sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -438,13 +450,13 @@ const MailsPage = () => {
                 backgroundColor: theme.colors?.bg?.default || theme.palette.background.default,
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                 borderRadius: '12px',
-                minHeight: '500px',
-                maxHeight: '700px',
+                minHeight: { xs: '400px', md: '500px' },
+                maxHeight: { xs: '600px', md: '700px' },
                 width: '100%',
                 maxWidth: '100%',
                 position: 'relative',
                 overflow: 'auto',
-                p: 3
+                p: { xs: 2, sm: 3 }
               }}
             >
               {/* Wewnętrzny box z zawartością */}

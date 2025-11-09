@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -9,7 +9,10 @@ import {
   ListItemText,
   Paper,
   Typography,
-  Divider
+  Divider,
+  useMediaQuery,
+  IconButton,
+  Drawer
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -19,6 +22,8 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
+import MenuIcon from '@mui/icons-material/Menu';
+import SettingsIcon from '@mui/icons-material/Settings';
 import useTheme from '../../theme/useTheme';
 import Navigation from '../../components/Navigation/Navigation';
 
@@ -70,6 +75,8 @@ const SettingsLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
@@ -81,7 +88,10 @@ const SettingsLayout = () => {
       return (
         <ListItemButton
           key={item.path}
-          onClick={() => navigate(item.path)}
+          onClick={() => {
+            navigate(item.path);
+            if (isMobile) setDrawerOpen(false);
+          }}
           sx={{
             borderRadius: '12px',
             mb: 0.5,
@@ -113,6 +123,62 @@ const SettingsLayout = () => {
       );
     });
 
+  const sidebarContent = (
+    <>
+      <Typography
+        variant="overline"
+        sx={{
+          px: 2,
+          py: 1,
+          color: subduedText,
+          fontWeight: 600,
+          letterSpacing: '0.5px'
+        }}
+      >
+        Dev
+      </Typography>
+      <List disablePadding sx={{ mt: 1 }}>
+        {renderNavItems(devNavigation)}
+      </List>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography
+        variant="overline"
+        sx={{
+          px: 2,
+          py: 1,
+          color: subduedText,
+          fontWeight: 600,
+          letterSpacing: '0.5px'
+        }}
+      >
+        Notifications
+      </Typography>
+      <List disablePadding sx={{ mt: 1 }}>
+        {renderNavItems(notificationsNavigation)}
+      </List>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography
+        variant="overline"
+        sx={{
+          px: 2,
+          py: 1,
+          color: subduedText,
+          fontWeight: 600,
+          letterSpacing: '0.5px'
+        }}
+      >
+        Account Settings
+      </Typography>
+      <List disablePadding sx={{ mt: 1 }}>
+        {renderNavItems(settingsNavigation)}
+      </List>
+    </>
+  );
+
   return (
     <Box
       sx={{
@@ -125,95 +191,84 @@ const SettingsLayout = () => {
 
       <Box sx={{ pt: 4, pb: 8 }}>
         <Container maxWidth="xl">
-        <Typography
-          variant="h3"
-          sx={{
-            mb: 1,
-            fontWeight: 700,
-            color: theme.colors?.text?.primary || theme.palette.text.primary
-          }}
-        >
-          Your Account
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          {/* Mobile Settings Menu Button */}
+          {isMobile && (
+            <IconButton
+              onClick={() => setDrawerOpen(true)}
+              sx={{
+                bgcolor: alpha(accentColor, 0.12),
+                color: accentColor,
+                '&:hover': {
+                  bgcolor: alpha(accentColor, 0.2)
+                }
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
+          )}
+
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: 700,
+              color: theme.colors?.text?.primary || theme.palette.text.primary,
+              fontSize: { xs: '1.75rem', md: '3rem' }
+            }}
+          >
+            Your Account
+          </Typography>
+        </Box>
+        
         <Typography
           variant="body1"
           sx={{
             mb: 4,
-            color: subduedText
+            ml: isMobile ? '56px' : 0,
+            color: subduedText,
+            fontSize: { xs: '0.9rem', md: '1rem' }
           }}
         >
           Manage your account preferences and settings
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
-          {/* Sidebar Navigation */}
-          <Paper
-            elevation={0}
-            sx={{
-              width: { xs: '100%', lg: 280 },
-              minWidth: { xs: '100%', lg: 180 },
-              flexShrink: 0,
-              backgroundColor: surfaceColor,
-              borderRadius: '16px',
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              p: 2,
-              height: 'fit-content',
-              position: 'sticky',
-              top: 100
+          {/* Desktop Sidebar Navigation */}
+          {!isMobile && (
+            <Paper
+              elevation={0}
+              sx={{
+                width: { xs: '100%', lg: 280 },
+                minWidth: { xs: '100%', lg: 180 },
+                flexShrink: 0,
+                backgroundColor: surfaceColor,
+                borderRadius: '16px',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                p: 2,
+                height: 'fit-content',
+                position: 'sticky',
+                top: 100
+              }}
+            >
+              {sidebarContent}
+            </Paper>
+          )}
+
+          {/* Mobile Drawer */}
+          <Drawer
+            anchor="left"
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            PaperProps={{
+              sx: {
+                width: 280,
+                backgroundColor: surfaceColor,
+                p: 2
+              }
             }}
           >
-            <Typography
-              variant="overline"
-              sx={{
-                px: 2,
-                py: 1,
-                color: subduedText,
-                fontWeight: 600,
-                letterSpacing: '0.5px'
-              }}
-            >
-              Dev
-            </Typography>
-            <List disablePadding sx={{ mt: 1 }}>
-              {renderNavItems(devNavigation)}
-            </List>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography
-              variant="overline"
-              sx={{
-                px: 2,
-                py: 1,
-                color: subduedText,
-                fontWeight: 600,
-                letterSpacing: '0.5px'
-              }}
-            >
-              Notifications
-            </Typography>
-            <List disablePadding sx={{ mt: 1 }}>
-              {renderNavItems(notificationsNavigation)}
-            </List>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Typography
-              variant="overline"
-              sx={{
-                px: 2,
-                py: 1,
-                color: subduedText,
-                fontWeight: 600,
-                letterSpacing: '0.5px'
-              }}
-            >
-              Account Settings
-            </Typography>
-            <List disablePadding sx={{ mt: 1 }}>
-              {renderNavItems(settingsNavigation)}
-            </List>
-          </Paper>
+            {sidebarContent}
+          </Drawer>
 
           {/* Main Content Area */}
           <Box sx={{ flex: 1 }}>

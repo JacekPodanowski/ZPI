@@ -5,7 +5,9 @@ import {
     Container,
     Stack,
     Switch,
-    Typography
+    Typography,
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -33,9 +35,9 @@ const ModuleCard = ({ module, onToggle, index }) => {
                     position: 'relative',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1.5,
-                    py: 1,
-                    px: 2,
+                    gap: { xs: 1, md: 1.5 },
+                    py: { xs: 0.75, md: 1 },
+                    px: { xs: 1.5, md: 2 },
                     borderRadius: 3,
                     border: '1.5px solid',
                     borderColor: isDisabled 
@@ -87,8 +89,8 @@ const ModuleCard = ({ module, onToggle, index }) => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        width: 40,
-                        height: 40,
+                        width: { xs: 36, md: 40 },
+                        height: { xs: 36, md: 40 },
                         borderRadius: 2,
                         background: isDisabled
                             ? 'rgba(158, 158, 158, 0.2)'
@@ -102,7 +104,7 @@ const ModuleCard = ({ module, onToggle, index }) => {
                 >
                     <IconComponent
                         sx={{
-                            fontSize: 20,
+                            fontSize: { xs: 18, md: 20 },
                             color: isDisabled 
                                 ? 'rgba(158, 158, 158, 0.85)' 
                                 : 'rgba(146, 0, 32, 0.9)',
@@ -117,7 +119,7 @@ const ModuleCard = ({ module, onToggle, index }) => {
                             fontWeight: 700, 
                             mb: 0.2, 
                             letterSpacing: 0.3, 
-                            fontSize: '0.9rem',
+                            fontSize: { xs: '0.85rem', md: '0.9rem' },
                             color: isDisabled ? 'rgba(100, 100, 100, 0.9)' : 'text.primary'
                         }}
                     >
@@ -127,8 +129,9 @@ const ModuleCard = ({ module, onToggle, index }) => {
                         variant="body2" 
                         sx={{ 
                             color: isDisabled ? 'rgba(120, 120, 120, 0.85)' : 'text.secondary', 
-                            fontSize: '0.8rem',
-                            lineHeight: 1.3
+                            fontSize: { xs: '0.75rem', md: '0.8rem' },
+                            lineHeight: 1.3,
+                            display: { xs: 'none', sm: 'block' }
                         }}
                     >
                         {module.description}
@@ -169,6 +172,8 @@ const ModuleCard = ({ module, onToggle, index }) => {
 const NewProjectPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { setTemplateConfig, resetTemplateConfig } = useEditorStore();
     
     const selectedCategory = location.state?.category || 'default';
@@ -349,7 +354,7 @@ const NewProjectPage = () => {
                 />
             </Box>
 
-            <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, width: '100%' }}>
+            <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, width: '100%', px: { xs: 2, sm: 3, md: 4 } }}>
                 {!titleConfirmed ? (
                     // Initial title entry - centered on page
                     <Box
@@ -368,10 +373,11 @@ const NewProjectPage = () => {
                             <Typography
                                 variant="overline"
                                 sx={{
-                                    letterSpacing: 6,
+                                    letterSpacing: { xs: 3, md: 6 },
                                     color: 'secondary.main',
                                     fontWeight: 600,
-                                    mb: 3
+                                    mb: 3,
+                                    fontSize: { xs: '0.65rem', md: '0.75rem' }
                                 }}
                             >
                                 NAZWA TWOJEJ STRONY
@@ -383,7 +389,7 @@ const NewProjectPage = () => {
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.2, duration: 0.7 }}
                         >
-                            <Box sx={{ display: 'inline-block', minWidth: '400px' }}>
+                            <Box sx={{ display: 'inline-block', minWidth: { xs: '280px', sm: '360px', md: '400px' }, width: '100%', maxWidth: '100%' }}>
                                 <input
                                     type="text"
                                     value={siteName}
@@ -404,7 +410,7 @@ const NewProjectPage = () => {
                                         WebkitTextFillColor: 'transparent',
                                         backgroundClip: 'text',
                                         textAlign: 'center',
-                                        fontSize: '3.5rem',
+                                        fontSize: isMobile ? '2rem' : '3.5rem',
                                         fontWeight: 700,
                                         padding: '0.5rem 1rem',
                                         width: '100%',
@@ -532,10 +538,11 @@ const NewProjectPage = () => {
                                         color: 'transparent',
                                         caretColor: 'rgba(146, 0, 32, 1)',
                                         textAlign: 'center',
-                                        fontSize: isEditingTitle ? '3rem' : '2rem',
+                                        fontSize: isEditingTitle ? (isMobile ? '2rem' : '3rem') : (isMobile ? '1.5rem' : '2rem'),
                                         fontWeight: 700,
                                         padding: '0.5rem 1rem',
-                                        minWidth: '300px',
+                                        minWidth: isMobile ? '200px' : '300px',
+                                        width: '100%',
                                         fontFamily: 'inherit',
                                         lineHeight: 1.167,
                                         cursor: isEditingTitle ? 'text' : 'pointer',
@@ -673,7 +680,9 @@ const NewProjectPage = () => {
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 pt: 2,
-                                borderTop: '1px solid rgba(146, 0, 32, 0.1)'
+                                borderTop: '1px solid rgba(146, 0, 32, 0.1)',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                gap: { xs: 2, sm: 0 }
                             }}
                         >
                             <Box
@@ -684,15 +693,18 @@ const NewProjectPage = () => {
                                     gap: 0.5,
                                     cursor: 'pointer',
                                     color: 'text.secondary',
-                                    fontSize: '0.95rem',
+                                    fontSize: { xs: '0.9rem', md: '0.95rem' },
                                     fontWeight: 600,
-                                    letterSpacing: 1,
+                                    letterSpacing: { xs: 0.8, md: 1 },
                                     transition: 'all 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)',
                                     px: 1.5,
                                     py: 0.75,
+                                    order: { xs: 2, sm: 1 },
+                                    width: { xs: '100%', sm: 'auto' },
+                                    justifyContent: { xs: 'center', sm: 'flex-start' },
                                     '&:hover': {
                                         color: 'primary.main',
-                                        letterSpacing: 1.5,
+                                        letterSpacing: { xs: 1.2, md: 1.5 },
                                         transform: 'scale(1.08)',
                                         filter: 'drop-shadow(0 4px 12px rgba(146, 0, 32, 0.3))',
                                         '& .back-arrow': {
@@ -717,7 +729,7 @@ const NewProjectPage = () => {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: 1,
-                                    px: 4,
+                                    px: { xs: 3, md: 4 },
                                     py: 1.5,
                                     borderRadius: 3,
                                     backgroundColor: canProceed ? 'rgba(146, 0, 32, 0.9)' : 'rgba(146, 0, 32, 0.25)',
@@ -725,10 +737,13 @@ const NewProjectPage = () => {
                                     cursor: canProceed ? 'pointer' : 'not-allowed',
                                     fontFamily: MONTSERRAT_FONT,
                                     fontWeight: 600,
-                                    fontSize: '0.95rem',
+                                    fontSize: { xs: '0.9rem', md: '0.95rem' },
                                     letterSpacing: 0.8,
                                     boxShadow: canProceed ? '0 6px 20px rgba(146, 0, 32, 0.2)' : 'none',
                                     transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    order: { xs: 1, sm: 2 },
+                                    width: { xs: '100%', sm: 'auto' },
+                                    justifyContent: 'center',
                                     '&:hover': canProceed ? {
                                         transform: 'translateY(-2px)',
                                         backgroundColor: 'rgba(146, 0, 32, 1)',

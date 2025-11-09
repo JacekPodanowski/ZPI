@@ -82,20 +82,26 @@ const NotificationsPage = () => {
         backgroundColor: surfaceColor,
         borderRadius: '16px',
         border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        p: 4,
+        p: { xs: 2, sm: 3, md: 4 },
         minHeight: '60vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center'
       }}
     >
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3, width: '100%', maxWidth: 700 }}>
+      <Stack 
+        direction={{ xs: 'column', sm: 'row' }} 
+        spacing={2} 
+        alignItems={{ xs: 'flex-start', sm: 'center' }} 
+        sx={{ mb: 3, width: '100%', maxWidth: 700 }}
+      >
         <Typography
           variant="h5"
           sx={{
             fontWeight: 600,
             flex: 1,
-            color: theme.colors?.text?.primary || theme.palette.text.primary
+            color: theme.colors?.text?.primary || theme.palette.text.primary,
+            fontSize: { xs: '1.25rem', md: '1.5rem' }
           }}
         >
           powiadomienia

@@ -162,14 +162,14 @@ const AppearancePage = () => {
         backgroundColor: surfaceColor,
         borderRadius: '16px',
         border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        p: 4,
+        p: { xs: 2, sm: 3, md: 4 },
         transition: 'background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
-      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+      <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
         Appearance
       </Typography>
-      <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary }}>
+      <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
         Customize how the application looks and feels
       </Typography>
 
@@ -179,11 +179,12 @@ const AppearancePage = () => {
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
             Theme Mode
           </Typography>
-          <Stack direction="row" spacing={1.5} sx={{ width: 'fit-content' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'fit-content' } }}>
             <Button
               variant={mode === 'light' ? 'contained' : 'outlined'}
               onClick={() => mode !== 'light' && toggleMode()}
               startIcon={<LightModeIcon />}
+              fullWidth={{ xs: true, sm: false }}
               sx={{
                 px: 3,
                 py: 1,
@@ -207,6 +208,7 @@ const AppearancePage = () => {
               variant={mode === 'dark' ? 'contained' : 'outlined'}
               onClick={() => mode !== 'dark' && toggleMode()}
               startIcon={<DarkModeIcon />}
+              fullWidth={{ xs: true, sm: false }}
               sx={{
                 px: 3,
                 py: 1,
@@ -354,19 +356,21 @@ const AppearancePage = () => {
 
         <Divider />
 
-        <Alert severity="info" sx={{ borderRadius: '12px' }}>
+        <Alert severity="info" sx={{ borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           <strong>TODO:</strong> Additional appearance settings and preferences will be added here.
         </Alert>
 
         {/* Save Button */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', sm: 'flex-end' }, pt: 2 }}>
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={handleSave}
+            fullWidth={{ xs: true, sm: false }}
             sx={{
               borderRadius: '12px',
               px: 4,
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               backgroundColor: accentColor,
               '&:hover': {
                 backgroundColor: alpha(accentColor, 0.9)

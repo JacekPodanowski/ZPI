@@ -162,7 +162,8 @@ const StructureMode = () => {
   useEffect(() => {
     if (!focusedId || selectedPageId === focusedId) return;
     setSelectedPage(focusedId);
-  }, [focusedId, selectedPageId, setSelectedPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedId]); // Only depend on focusedId to avoid infinite loop
 
   const handleFocusChange = useCallback((pageId) => {
     if (!pageId || pageId === focusedPageId) return;
