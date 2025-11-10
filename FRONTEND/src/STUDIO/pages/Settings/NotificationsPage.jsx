@@ -5,16 +5,19 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
   CircularProgress,
-  Divider,
-  Chip,
   Button,
-  Stack
+  Stack,
+  Checkbox,
+  IconButton,
+  Box,
+  Toolbar,
+  Tooltip
 } from '@mui/material';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import DoneIcon from '@mui/icons-material/Done';
-import SendIcon from '@mui/icons-material/Send';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import { alpha } from '@mui/material/styles';
 import useTheme from '../../../theme/useTheme';
 import apiClient from '../../../services/apiClient';
@@ -28,7 +31,7 @@ const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sending, setSending] = useState(false);
+  const [selected, setSelected] = useState([]);
 
   const fetchNotifications = async () => {
     try {
@@ -36,7 +39,6 @@ const NotificationsPage = () => {
       setNotifications(response.data || []);
       setError(null);
     } catch (err) {
-      // Provide a clearer, localized error message
       const msg = err?.response?.status
         ? `Błąd ${err.response.status}: nie udało się pobrać powiadomień`
         : 'Nie udało się pobrać powiadomień. Upewnij się, że jesteś zalogowany.';
@@ -50,30 +52,59 @@ const NotificationsPage = () => {
     fetchNotifications();
   }, []);
 
-  const sendMockNotification = async () => {
-    setSending(true);
-    try {
-      const mockNotifications = [
-        { message: 'Nowa rezerwacja na jutro o 10:00', notification_type: 'other' },
-        { message: 'Gratulacje! Osiągnięto 50 sesji', notification_type: 'achievement' },
-        { message: 'Klient anulował spotkanie zaplanowane na 15:00', notification_type: 'cancellation' },
-        { message: 'Grupa "Joga dla początkujących" jest pełna', notification_type: 'group_full' },
-      ];
-      
-      const randomNotification = mockNotifications[Math.floor(Math.random() * mockNotifications.length)];
-      
-      await apiClient.post('/notifications/', randomNotification);
-      addToast('Wysłano testowe powiadomienie!', { variant: 'success' });
-      
-      // Refresh the notifications list
-      await fetchNotifications();
-    } catch (err) {
-      const msg = err?.response?.data?.detail || 'Nie udało się wysłać powiadomienia';
-      addToast(msg, { variant: 'error' });
-    } finally {
-      setSending(false);
+  const handleSelectAll = (event) => {
+    if (event.target.checked) {
+      setSelected(notifications.map(n => n.id));
+    } else {
+      setSelected([]);
     }
   };
+
+  const handleSelectOne = (id) => {
+    setSelected(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await apiClient.post('/notifications/mark_all_read/');
+      addToast('Wszystkie powiadomienia oznaczone jako przeczytane', { variant: 'success' });
+      await fetchNotifications();
+      setSelected([]);
+    } catch (err) {
+      addToast('Nie udało się oznaczyć jako przeczytane', { variant: 'error' });
+    }
+  };
+
+  const handleMarkSelectedRead = async () => {
+    try {
+      await Promise.all(
+        selected.map(id => apiClient.post(`/notifications/${id}/mark_read/`))
+      );
+      addToast(`Oznaczono ${selected.length} powiadomień jako przeczytane`, { variant: 'success' });
+      await fetchNotifications();
+      setSelected([]);
+    } catch (err) {
+      addToast('Nie udało się oznaczyć jako przeczytane', { variant: 'error' });
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selected.length === 0) return;
+    try {
+      await apiClient.post('/notifications/delete_selected/', { ids: selected });
+      addToast(`Usunięto ${selected.length} powiadomień`, { variant: 'success' });
+      await fetchNotifications();
+      setSelected([]);
+    } catch (err) {
+      addToast('Nie udało się usunąć powiadomień', { variant: 'error' });
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const allSelected = notifications.length > 0 && selected.length === notifications.length;
+  const someSelected = selected.length > 0 && selected.length < notifications.length;
 
   return (
     <Paper
@@ -86,14 +117,13 @@ const NotificationsPage = () => {
         minHeight: '60vh',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
       }}
     >
+      {/* Header */}
       <Stack 
-        direction={{ xs: 'column', sm: 'row' }} 
-        spacing={2} 
-        alignItems={{ xs: 'flex-start', sm: 'center' }} 
-        sx={{ mb: 3, width: '100%', maxWidth: 700 }}
+        direction="row"
+        alignItems="center" 
+        sx={{ mb: 3 }}
       >
         <Typography
           variant="h5"
@@ -105,90 +135,169 @@ const NotificationsPage = () => {
           }}
         >
           powiadomienia
+          {unreadCount > 0 && (
+            <Typography
+              component="span"
+              sx={{
+                ml: 2,
+                fontSize: '0.9rem',
+                color: theme.palette.text.secondary,
+                fontWeight: 400
+              }}
+            >
+              ({unreadCount} nowych)
+            </Typography>
+          )}
         </Typography>
-        
-        <Button
-          variant="outlined"
-          color="primary"
-          startIcon={<SendIcon />}
-          onClick={sendMockNotification}
-          disabled={sending}
-          sx={{
-            borderRadius: '8px',
-            textTransform: 'none',
-            fontWeight: 500,
-          }}
-        >
-          {sending ? 'Wysyłanie...' : 'Test'}
-        </Button>
       </Stack>
 
       {loading ? (
-        <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
       ) : error ? (
-        <Typography color="error">{error}</Typography>
-      ) : notifications.length === 0 ? (
-        <Typography color={theme.palette.text.secondary}>
-          brak powiadomień
+        <Typography color="error" sx={{ textAlign: 'center', py: 8 }}>
+          {error}
         </Typography>
+      ) : notifications.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <MailOutlineIcon sx={{ fontSize: 64, color: theme.palette.text.disabled, mb: 2 }} />
+          <Typography color={theme.palette.text.secondary}>
+            brak powiadomień
+          </Typography>
+        </Box>
       ) : (
-        <List sx={{ width: '100%', maxWidth: 700 }}>
-          {notifications.map((n, idx) => (
-            <React.Fragment key={n.id}>
-              <ListItem
-                sx={{
-                  borderRadius: '12px',
-                  mb: 1,
-                  backgroundColor: alpha(
-                    theme.palette.primary.main,
-                    n.is_read ? 0.04 : 0.1
-                  ),
-                  transition: 'background-color 0.2s ease',
-                  '&:hover': {
-                    backgroundColor: alpha(
-                      theme.palette.primary.main,
-                      n.is_read ? 0.1 : 0.15
-                    )
-                  }
-                }}
-              >
-                <ListItemIcon>
-                  {n.is_read ? (
-                    <DoneIcon
-                      sx={{ color: alpha(theme.palette.text.primary, 0.6) }}
-                    />
-                  ) : (
-                    <NotificationsActiveIcon
-                      sx={{ color: theme.palette.primary.main }}
+        <>
+          {/* Action Toolbar */}
+          <Toolbar
+            sx={{
+              pl: { sm: 2 },
+              pr: { xs: 1, sm: 1 },
+              mb: 2,
+              borderRadius: '8px',
+              ...(selected.length > 0 && {
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+              }),
+            }}
+          >
+            <Checkbox
+              indeterminate={someSelected}
+              checked={allSelected}
+              onChange={handleSelectAll}
+              sx={{ mr: 1 }}
+            />
+            {selected.length > 0 ? (
+              <>
+                <Typography
+                  sx={{ flex: '1 1 100%' }}
+                  color="inherit"
+                  variant="subtitle1"
+                  component="div"
+                >
+                  {selected.length} zaznaczonych
+                </Typography>
+                <Tooltip title="Oznacz jako przeczytane">
+                  <IconButton onClick={handleMarkSelectedRead}>
+                    <MarkEmailReadIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Usuń zaznaczone">
+                  <IconButton onClick={handleDeleteSelected} color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <Typography
+                  sx={{ flex: '1 1 100%' }}
+                  variant="subtitle1"
+                  component="div"
+                >
+                  Zaznacz powiadomienia
+                </Typography>
+                {unreadCount > 0 && (
+                  <Tooltip title="Oznacz wszystkie jako przeczytane">
+                    <IconButton onClick={handleMarkAllRead}>
+                      <DoneAllIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </>
+            )}
+          </Toolbar>
+
+          {/* Notifications List */}
+          <List sx={{ width: '100%' }}>
+            {notifications.map((n) => {
+              const isSelected = selected.includes(n.id);
+              return (
+                <ListItem
+                  key={n.id}
+                  sx={{
+                    borderRadius: '8px',
+                    mb: 1,
+                    cursor: 'pointer',
+                    backgroundColor: n.is_read 
+                      ? 'transparent' 
+                      : alpha(theme.palette.primary.main, 0.08),
+                    border: `1px solid ${alpha(theme.palette.divider, n.is_read ? 0.05 : 0.1)}`,
+                    transition: 'all 0.2s ease',
+                    ...(isSelected && {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                      borderColor: theme.palette.primary.main,
+                    }),
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.15),
+                      borderColor: alpha(theme.palette.primary.main, 0.3),
+                    }
+                  }}
+                  onClick={() => handleSelectOne(n.id)}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    sx={{ mr: 2 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectOne(n.id);
+                    }}
+                  />
+
+                  <ListItemText
+                    primary={n.message}
+                    secondary={new Date(n.created_at).toLocaleString('pl-PL', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                    primaryTypographyProps={{
+                      color: theme.colors?.text?.primary || theme.palette.text.primary,
+                      fontWeight: n.is_read ? 400 : 600,
+                      fontSize: '0.95rem'
+                    }}
+                    secondaryTypographyProps={{
+                      fontSize: '0.8rem'
+                    }}
+                  />
+
+                  {!n.is_read && (
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: theme.palette.primary.main,
+                        ml: 2
+                      }}
                     />
                   )}
-                </ListItemIcon>
-
-                <ListItemText
-                  primary={n.message}
-                  secondary={new Date(n.created_at).toLocaleString('pl-PL')}
-                  primaryTypographyProps={{
-                    color:
-                      theme.colors?.text?.primary || theme.palette.text.primary,
-                    fontWeight: n.is_read ? 400 : 600
-                  }}
-                />
-
-                {!n.is_read && (
-                  <Chip
-                    label="nowe"
-                    color="primary"
-                    size="small"
-                    sx={{ fontSize: '0.7rem', ml: 1 }}
-                  />
-                )}
-              </ListItem>
-              {idx < notifications.length - 1 && (
-                <Divider variant="inset" component="li" />
-              )}
-            </React.Fragment>
-          ))}
-        </List>
+                </ListItem>
+              );
+            })}
+          </List>
+        </>
       )}
     </Paper>
   );

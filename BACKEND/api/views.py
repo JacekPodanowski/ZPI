@@ -1417,6 +1417,29 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        """Mark a single notification as read."""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'status': 'notification marked as read'})
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        """Mark all notifications as read."""
+        count = request.user.notifications.filter(is_read=False).update(is_read=True)
+        return Response({'status': 'all notifications marked as read', 'count': count})
+
+    @action(detail=False, methods=['post'])
+    def delete_selected(self, request):
+        """Delete multiple notifications by IDs."""
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No IDs provided'}, status=400)
+        count = request.user.notifications.filter(id__in=ids).delete()[0]
+        return Response({'status': 'notifications deleted', 'count': count})
+
 
 @extend_schema(tags=['Email Templates'])
 class EmailTemplateViewSet(viewsets.ModelViewSet):
