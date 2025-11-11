@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# ZakoĹ„cz skrypt natychmiast, jeĹ›li jakakolwiek komenda siÄ™ nie powiedzie
+# Zakończ skrypt natychmiast, jeśli jakakolwiek komenda się nie powiedzie
 set -e
 
 # --- ZADANIA KONFIGURACYJNE ---
