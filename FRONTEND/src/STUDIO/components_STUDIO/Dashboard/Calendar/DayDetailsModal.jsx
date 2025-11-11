@@ -32,7 +32,9 @@ import {
     Schedule as ScheduleIcon,
     Email as EmailIcon,
     Delete as DeleteIcon,
-    Person as PersonIcon
+    Person as PersonIcon,
+    ZoomIn as ZoomInIcon,
+    ZoomOut as ZoomOutIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
@@ -46,7 +48,7 @@ const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
     if (!start || !end || typeof start !== 'string' || typeof end !== 'string') {
         console.warn('Invalid time values:', { start, end });
-        return { top: '0%', height: '8.33%' }; // Default to 1 hour at start
+        return { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 }; // Default to 1 hour at start
     }
     
     const startParts = start.split(':');
@@ -55,7 +57,7 @@ const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Accept both HH:MM and HH:MM:SS formats
     if (startParts.length < 2 || startParts.length > 3 || endParts.length < 2 || endParts.length > 3) {
         console.warn('Invalid time format:', { start, end });
-        return { top: '0%', height: '8.33%' };
+        return { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 };
     }
     
     const [startHour, startMinute] = startParts.map(Number);
@@ -63,7 +65,7 @@ const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     
     if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
         console.warn('Non-numeric time values:', { start, end });
-        return { top: '0%', height: '8.33%' };
+        return { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 };
     }
     
     const startMinutes = startHour * 60 + startMinute;
@@ -80,48 +82,176 @@ const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     const topPercent = (relativeStartMinutes / totalMinutes) * 100;
     const heightPercent = (duration / totalMinutes) * 100;
     
-    return { top: `${topPercent}%`, height: `${heightPercent}%` };
+    return { 
+        top: `${topPercent}%`, 
+        height: `${heightPercent}%`,
+        startMinutes,
+        endMinutes
+    };
 };
 
-const AvailabilityBlockDisplay = ({ block, siteColor, onClick, dayStartMinutes, dayEndMinutes }) => {
-    const metrics = computeBlockMetrics(block.start_time, block.end_time, dayStartMinutes, dayEndMinutes);
+// Check if two time ranges overlap
+const doTimesOverlap = (start1, end1, start2, end2) => {
+    return start1 < end2 && start2 < end1;
+};
 
+// Calculate layout positions for overlapping events/blocks
+const calculateOverlapLayout = (items, dayStartMinutes, dayEndMinutes) => {
+    if (!items || items.length === 0) return [];
+
+    // Calculate metrics for each item
+    const itemsWithMetrics = items.map((item, index) => {
+        const metrics = computeBlockMetrics(item.start_time, item.end_time, dayStartMinutes, dayEndMinutes);
+        return {
+            ...item,
+            index,
+            metrics,
+            column: 0,
+            totalColumns: 1
+        };
+    });
+
+    // Sort by start time, then by duration (longer first)
+    itemsWithMetrics.sort((a, b) => {
+        const startDiff = a.metrics.startMinutes - b.metrics.startMinutes;
+        if (startDiff !== 0) return startDiff;
+        return (b.metrics.endMinutes - b.metrics.startMinutes) - (a.metrics.endMinutes - a.metrics.startMinutes);
+    });
+
+    // Group overlapping items
+    const groups = [];
+    for (const item of itemsWithMetrics) {
+        let placed = false;
+        
+        // Try to find an existing group this item overlaps with
+        for (const group of groups) {
+            const overlapsWithGroup = group.some(groupItem => 
+                doTimesOverlap(
+                    item.metrics.startMinutes,
+                    item.metrics.endMinutes,
+                    groupItem.metrics.startMinutes,
+                    groupItem.metrics.endMinutes
+                )
+            );
+            
+            if (overlapsWithGroup) {
+                group.push(item);
+                placed = true;
+                break;
+            }
+        }
+        
+        if (!placed) {
+            groups.push([item]);
+        }
+    }
+
+    // Assign columns within each group
+    for (const group of groups) {
+        const maxColumns = Math.min(group.length, 5); // Limit to 5 columns
+        
+        // For each item in the group, find which column it should be in
+        for (let i = 0; i < group.length; i++) {
+            const item = group[i];
+            
+            // Find the first available column
+            let column = 0;
+            const columnsUsed = new Array(maxColumns).fill(null);
+            
+            // Check previous items to see which columns are occupied at this time
+            for (let j = 0; j < i; j++) {
+                const prevItem = group[j];
+                if (doTimesOverlap(
+                    item.metrics.startMinutes,
+                    item.metrics.endMinutes,
+                    prevItem.metrics.startMinutes,
+                    prevItem.metrics.endMinutes
+                )) {
+                    columnsUsed[prevItem.column] = prevItem;
+                }
+            }
+            
+            // Find first free column
+            column = columnsUsed.findIndex(col => col === null);
+            if (column === -1) column = 0; // Fallback
+            
+            item.column = column;
+            item.totalColumns = maxColumns;
+        }
+    }
+
+    return itemsWithMetrics;
+};
+
+const AvailabilityBlockDisplay = ({ block, siteColor, siteName, onClick, dayStartMinutes, dayEndMinutes, column = 0, totalColumns = 1 }) => {
+    const metrics = computeBlockMetrics(block.start_time, block.end_time, dayStartMinutes, dayEndMinutes);
+    const [isHovered, setIsHovered] = useState(false);
+
+    // Calculate horizontal position based on column
+    // Timeline content area: left margin 60px, right margin 8px
+    const columnWidth = 100 / totalColumns;
+    const gapSize = totalColumns > 1 ? 2 : 0; // 2px gap between columns
+    
     return (
-        <Box
-            onClick={() => onClick?.(block)}
-            sx={{
+        <motion.div
+            style={{
                 position: 'absolute',
-                left: 60,
-                right: 8,
+                left: `calc(60px + ${column} * ((100% - 68px) / ${totalColumns}))`,
+                width: `calc((100% - 68px) / ${totalColumns} - ${gapSize}px)`,
                 top: metrics.top,
                 height: metrics.height,
-                backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                border: '2px dashed rgba(76, 175, 80, 0.4)',
-                borderRadius: 1.5,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1,
-                cursor: 'pointer',
-                transition: 'all 200ms ease',
-                '&:hover': {
-                    backgroundColor: 'rgba(76, 175, 80, 0.25)',
-                    border: '2px dashed rgba(76, 175, 80, 0.6)',
-                    transform: 'scale(1.01)'
-                }
+                zIndex: isHovered ? 10 : 1
             }}
+            whileHover={{ scale: 1.02 }}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
         >
-            <Typography
-                variant="caption"
+            <Box
+                onClick={() => onClick?.(block)}
                 sx={{
-                    color: 'rgba(56, 142, 60, 0.9)',
-                    fontWeight: 600,
-                    fontSize: '11px'
+                    height: '100%',
+                    backgroundColor: isHovered ? 'rgba(76, 175, 80, 0.25)' : 'rgba(76, 175, 80, 0.15)',
+                    border: isHovered ? '2px dashed rgba(76, 175, 80, 0.6)' : '2px dashed rgba(76, 175, 80, 0.4)',
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'background-color 200ms ease, border 200ms ease',
+                    position: 'relative',
+                    p: 1
                 }}
             >
-                Dostępny
-            </Typography>
-        </Box>
+                {siteName && (
+                    <Typography
+                        variant="caption"
+                        sx={{
+                            position: 'absolute',
+                            top: 4,
+                            left: 6,
+                            color: 'rgba(56, 142, 60, 0.8)',
+                            fontWeight: 700,
+                            fontSize: '9px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
+                        }}
+                    >
+                        {siteName}
+                    </Typography>
+                )}
+                <Typography
+                    variant="caption"
+                    sx={{
+                        color: 'rgba(56, 142, 60, 0.9)',
+                        fontWeight: 600,
+                        fontSize: '11px'
+                    }}
+                >
+                    Dostępny
+                </Typography>
+            </Box>
+        </motion.div>
     );
 };
 
@@ -132,27 +262,34 @@ AvailabilityBlockDisplay.propTypes = {
         title: PropTypes.string
     }).isRequired,
     siteColor: PropTypes.string.isRequired,
+    siteName: PropTypes.string,
     onClick: PropTypes.func,
     dayStartMinutes: PropTypes.number.isRequired,
-    dayEndMinutes: PropTypes.number.isRequired
+    dayEndMinutes: PropTypes.number.isRequired,
+    column: PropTypes.number,
+    totalColumns: PropTypes.number
 };
 
 
-const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayStartMinutes, dayEndMinutes }) => {
+const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayStartMinutes, dayEndMinutes, column = 0, totalColumns = 1 }) => {
     const metrics = computeBlockMetrics(event.start_time, event.end_time, dayStartMinutes, dayEndMinutes);
     const [isHovered, setIsHovered] = useState(false);
 
+    // Calculate horizontal position based on column
+    // Timeline content area: left margin 60px, right margin 8px = 68px total
+    const gapSize = totalColumns > 1 ? 2 : 0; // 2px gap between columns
+    
     return (
         <motion.div
             style={{
                 position: 'absolute',
-                left: 60,
-                right: 8,
+                left: `calc(60px + ${column} * ((100% - 68px) / ${totalColumns}))`,
+                width: `calc((100% - 68px) / ${totalColumns} - ${gapSize}px)`,
                 top: metrics.top,
                 height: metrics.height,
-                zIndex: 2
+                zIndex: isHovered ? 20 : 2
             }}
-            whileHover={{ scale: 1.02, zIndex: 10 }}
+            whileHover={{ scale: 1.02 }}
             onHoverStart={() => {
                 setIsHovered(true);
                 onHover?.(event.id);
@@ -287,8 +424,11 @@ EventDisplay.propTypes = {
     siteColor: PropTypes.string.isRequired,
     onHover: PropTypes.func,
     onClick: PropTypes.func,
+    onBookingClick: PropTypes.func,
     dayStartMinutes: PropTypes.number.isRequired,
-    dayEndMinutes: PropTypes.number.isRequired
+    dayEndMinutes: PropTypes.number.isRequired,
+    column: PropTypes.number,
+    totalColumns: PropTypes.number
 };
 
 const DayDetailsModal = ({ 
@@ -312,6 +452,7 @@ const DayDetailsModal = ({
     const [editingItem, setEditingItem] = useState(null); // Store the item being edited
     const [selectedBooking, setSelectedBooking] = useState(null); // For BookingDetailsModal
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
+    const [isZoomedTimeline, setIsZoomedTimeline] = useState(true); // Toggle between zoomed (smart) and full timeline
     const [contactFormOpen, setContactFormOpen] = useState(false);
     const [contactingBooking, setContactingBooking] = useState(null);
     const [contactMessage, setContactMessage] = useState({
@@ -343,7 +484,7 @@ const DayDetailsModal = ({
         return availabilityBlocks.filter(b => moment(b.date).format('YYYY-MM-DD') === dateKey);
     }, [availabilityBlocks, dateKey]);
 
-    // Calculate extended timeline based on events outside operating hours
+    // Smart timeline calculation: show 1 hour before first event and 1 hour after last event (when zoomed)
     const { actualStartHour, actualEndHour, dayStartMinutes, dayEndMinutes } = useMemo(() => {
         // Parse operating hours - floor the start hour, ceil the end hour
         const parseHour = (timeValue) => {
@@ -354,28 +495,67 @@ const DayDetailsModal = ({
             return timeValue;
         };
         
-        let minHour = Math.floor(parseHour(operatingStartHour));
-        let maxHour = Math.ceil(parseHour(operatingEndHour));
-
-        // Check all events for times outside operating hours
-        [...dayEvents, ...dayAvailability].forEach(item => {
+        const fullMinHour = Math.floor(parseHour(operatingStartHour));
+        const fullMaxHour = Math.ceil(parseHour(operatingEndHour));
+        
+        // If not zoomed, always use full operating hours
+        if (!isZoomedTimeline) {
+            return {
+                actualStartHour: fullMinHour,
+                actualEndHour: fullMaxHour,
+                dayStartMinutes: fullMinHour * 60,
+                dayEndMinutes: fullMaxHour * 60
+            };
+        }
+        
+        const allItems = [...dayEvents, ...dayAvailability];
+        
+        // If no events or availability blocks, use full operating hours
+        if (allItems.length === 0) {
+            return {
+                actualStartHour: fullMinHour,
+                actualEndHour: fullMaxHour,
+                dayStartMinutes: fullMinHour * 60,
+                dayEndMinutes: fullMaxHour * 60
+            };
+        }
+        
+        // Find earliest and latest times from events and availability blocks
+        let earliestMinutes = Infinity;
+        let latestMinutes = -Infinity;
+        
+        allItems.forEach(item => {
             const startTime = item.start_time;
             const endTime = item.end_time;
             
             if (startTime && typeof startTime === 'string') {
-                const [startHour] = startTime.split(':').map(Number);
-                if (!isNaN(startHour) && startHour < minHour) {
-                    minHour = Math.floor(startHour);
+                const [startHour, startMinute = 0] = startTime.split(':').map(Number);
+                if (!isNaN(startHour)) {
+                    const startMinutes = startHour * 60 + startMinute;
+                    if (startMinutes < earliestMinutes) {
+                        earliestMinutes = startMinutes;
+                    }
                 }
             }
             
             if (endTime && typeof endTime === 'string') {
-                const [endHour] = endTime.split(':').map(Number);
-                if (!isNaN(endHour) && endHour > maxHour) {
-                    maxHour = Math.ceil(endHour);
+                const [endHour, endMinute = 0] = endTime.split(':').map(Number);
+                if (!isNaN(endHour)) {
+                    const endMinutes = endHour * 60 + endMinute;
+                    if (endMinutes > latestMinutes) {
+                        latestMinutes = endMinutes;
+                    }
                 }
             }
         });
+        
+        // Add 1 hour padding before and after
+        const paddedStartMinutes = Math.max(0, earliestMinutes - 60);
+        const paddedEndMinutes = Math.min(24 * 60, latestMinutes + 60);
+        
+        // Convert back to hours (floor for start, ceil for end)
+        const minHour = Math.floor(paddedStartMinutes / 60);
+        const maxHour = Math.ceil(paddedEndMinutes / 60);
 
         return {
             actualStartHour: minHour,
@@ -383,7 +563,7 @@ const DayDetailsModal = ({
             dayStartMinutes: minHour * 60,
             dayEndMinutes: maxHour * 60
         };
-    }, [dayEvents, dayAvailability, operatingStartHour, operatingEndHour]);
+    }, [dayEvents, dayAvailability, operatingStartHour, operatingEndHour, isZoomedTimeline]);
 
     const HOURS = useMemo(() => {
         return Array.from({ length: actualEndHour - actualStartHour }, (_, idx) => actualStartHour + idx);
@@ -581,16 +761,26 @@ const DayDetailsModal = ({
                 position: 'relative'
             }}
         >
-            <Box
-                sx={{
-                    position: 'relative',
-                    width: '100%',
-                    height: '100%',  // Fill available space
-                    backgroundColor: theme.palette.background.default,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 2
+            <motion.div
+                key={`timeline-${actualStartHour}-${actualEndHour}`}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ 
+                    duration: 0.4, 
+                    ease: [0.4, 0, 0.2, 1]
                 }}
+                style={{ width: '100%', height: '100%' }}
             >
+                <Box
+                    sx={{
+                        position: 'relative',
+                        width: '100%',
+                        height: '100%',  // Fill available space
+                        backgroundColor: theme.palette.background.default,
+                        border: `1px solid ${theme.palette.divider}`,
+                        borderRadius: 2
+                    }}
+                >
             {/* Hour lines */}
             {HOURS.map((hour, index) => {
                 const topPercent = (index / HOURS.length) * 100;
@@ -627,34 +817,49 @@ const DayDetailsModal = ({
             })}
 
             {/* Availability blocks (rendered first, under events) */}
-            {dayAvailability.map((block) => (
-                <AvailabilityBlockDisplay
-                    key={block.id}
-                    block={block}
-                    siteColor={sites.find(s => s.id === (block.site_id || block.site))?.color_tag || 'rgb(146, 0, 32)'}
-                    onClick={handleAvailabilityClick}
-                    dayStartMinutes={dayStartMinutes}
-                    dayEndMinutes={dayEndMinutes}
-                />
-            ))}
+            {(() => {
+                const layoutedBlocks = calculateOverlapLayout(dayAvailability, dayStartMinutes, dayEndMinutes);
+                return layoutedBlocks.map((block) => {
+                    const site = sites.find(s => s.id === (block.site_id || block.site));
+                    return (
+                        <AvailabilityBlockDisplay
+                            key={block.id}
+                            block={block}
+                            siteColor={site?.color_tag || 'rgb(146, 0, 32)'}
+                            siteName={site?.name}
+                            onClick={handleAvailabilityClick}
+                            dayStartMinutes={dayStartMinutes}
+                            dayEndMinutes={dayEndMinutes}
+                            column={block.column}
+                            totalColumns={block.totalColumns}
+                        />
+                    );
+                });
+            })()}
 
             {/* Events */}
-            {dayEvents.map((event) => (
-                <EventDisplay
-                    key={event.id}
-                    event={event}
-                    siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
-                    onHover={setHoveredEventId}
-                    onClick={handleEventClick}
-                    onBookingClick={(booking) => {
-                        setSelectedBooking(booking);
-                        setBookingModalOpen(true);
-                    }}
-                    dayStartMinutes={dayStartMinutes}
-                    dayEndMinutes={dayEndMinutes}
-                />
-            ))}
-            </Box>
+            {(() => {
+                const layoutedEvents = calculateOverlapLayout(dayEvents, dayStartMinutes, dayEndMinutes);
+                return layoutedEvents.map((event) => (
+                    <EventDisplay
+                        key={event.id}
+                        event={event}
+                        siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
+                        onHover={setHoveredEventId}
+                        onClick={handleEventClick}
+                        onBookingClick={(booking) => {
+                            setSelectedBooking(booking);
+                            setBookingModalOpen(true);
+                        }}
+                        dayStartMinutes={dayStartMinutes}
+                        dayEndMinutes={dayEndMinutes}
+                        column={event.column}
+                        totalColumns={event.totalColumns}
+                    />
+                ));
+            })()}
+                </Box>
+            </motion.div>
         </Box>
     );
 
@@ -923,14 +1128,16 @@ const DayDetailsModal = ({
         <Dialog
             open={open}
             onClose={handleClose}
-            maxWidth="md"
-            fullWidth
+            maxWidth={false}
+            fullWidth={false}
             PaperProps={{
                 sx: {
                     borderRadius: 3,
                     minHeight: '96vh',
                     maxHeight: '98vh',
                     height: '96vh',
+                    width: '1000px',
+                    maxWidth: '95vw',
                     display: 'flex',
                     flexDirection: 'column',
                     p: 1.5  // Reduced padding on the paper itself
@@ -947,20 +1154,45 @@ const DayDetailsModal = ({
                             {dayEvents.length} wydarzeń • {dayAvailability.length} okien dostępności
                         </Typography>
                     </Box>
-                    <Stack direction="row" spacing={1}>
+                    <Stack direction="row" spacing={1} alignItems="center">
                         {view === 'timeline' && (
-                            <Tooltip title="Jak chcesz to zaplanować?">
-                                <Fab
-                                    color="primary"
-                                    size="small"
-                                    onClick={() => setView('chooser')}
-                                    sx={{
-                                        boxShadow: '0 4px 12px rgba(146, 0, 32, 0.3)'
-                                    }}
-                                >
-                                    <AddIcon />
-                                </Fab>
-                            </Tooltip>
+                            <>
+                                <Tooltip title={isZoomedTimeline ? "Pokaż pełną oś czasu" : "Przybliż do wydarzeń"}>
+                                    <IconButton
+                                        onClick={() => setIsZoomedTimeline(!isZoomedTimeline)}
+                                        sx={{
+                                            color: 'primary.main',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                                transform: 'scale(1.1)'
+                                            }
+                                        }}
+                                    >
+                                        <motion.div
+                                            key={isZoomedTimeline ? 'zoom-out' : 'zoom-in'}
+                                            initial={{ scale: 0.8, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            exit={{ scale: 0.8, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            {isZoomedTimeline ? <ZoomOutIcon /> : <ZoomInIcon />}
+                                        </motion.div>
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Jak chcesz to zaplanować?">
+                                    <Fab
+                                        color="primary"
+                                        size="small"
+                                        onClick={() => setView('chooser')}
+                                        sx={{
+                                            boxShadow: '0 4px 12px rgba(146, 0, 32, 0.3)'
+                                        }}
+                                    >
+                                        <AddIcon />
+                                    </Fab>
+                                </Tooltip>
+                            </>
                         )}
                         <IconButton onClick={handleClose}>
                             <CloseIcon />

@@ -33,11 +33,11 @@ class Command(BaseCommand):
         demo_sites = [
             {
                 'name': 'Pracownia Jogi',
-                'json_file': 'pracownia_jogi.json'
+                'json_file': 'pracownia_jogi_new.json'
             },
             {
                 'name': 'Studio Oddechu',
-                'json_file': 'studio_oddechu.json'
+                'json_file': 'studio_oddechu_new.json'
             }
         ]
 

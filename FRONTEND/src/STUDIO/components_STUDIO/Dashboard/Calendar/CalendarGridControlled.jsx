@@ -584,7 +584,7 @@ const CalendarGridControlled = ({
                     const isCurrentMonth = dayMoment.month() === currentMonthMoment.month();
                     const isToday = dayMoment.isSame(moment(), 'day');
                     const isPast = dayMoment.isBefore(moment(), 'day');
-                    const isDimmed = selectedSiteId && !dayEvents.some((event) => event.site_id === selectedSiteId);
+                    const isDimmed = selectedSiteId && !dayEvents.some((event) => event.site === selectedSiteId);
                     
                     // Determine if this day is crowded (events won't fit at normal size)
                     const eventCount = dayEvents.length;
@@ -936,7 +936,7 @@ const CalendarGridControlled = ({
                                             const isHovered = hoveredEventId === event.id;
                                             // Only shrink events in the SAME day as the hovered event
                                             const shouldShrink = hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
-                                            const isFiltered = !selectedSiteId || event.site_id === selectedSiteId;
+                                            const isFiltered = !selectedSiteId || event.site === selectedSiteId;
 
                                             return (
                                                 <motion.div
