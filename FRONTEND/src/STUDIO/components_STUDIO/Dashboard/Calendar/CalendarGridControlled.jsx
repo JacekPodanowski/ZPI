@@ -513,9 +513,10 @@ const CalendarGridControlled = ({
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: { xs: 0.5, sm: 0.75, md: 1 }, // Match calendar grid gap
-                    px: { xs: 0.5, sm: 1, md: 1.5 }, // Match calendar grid padding
+                    px: 0.25, // Match calendar grid padding
                     pt: { xs: 0.5, sm: 0.75 },
-                    pb: { xs: 0.5, sm: 1 }
+                    pb: { xs: 0.5, sm: 1 },
+                    justifyItems: 'stretch'
                 }}
             >
                 {['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nie'].map((day) => (
@@ -558,12 +559,21 @@ const CalendarGridControlled = ({
                         md: numberOfRows === 6 ? 'minmax(90px, 1fr)' : 'minmax(110px, 1fr)' // Desktop: full size
                     },
                     gap: { xs: 0.5, sm: 0.75, md: 1 }, // Responsive gap
-                    px: { xs: 0.5, sm: 1, md: 1.5 }, // Responsive padding
+                    px: 0.25, // Responsive padding
                     pb: { xs: 0.5, sm: 1 },
                     flex: 1,
                     minHeight: 0,
                     overflow: 'auto', // Allow scroll on mobile if needed
-                    overflowX: 'hidden' // Prevent horizontal scroll
+                    overflowX: 'hidden', // Prevent horizontal scroll
+                    alignItems: 'stretch',
+                    justifyItems: 'stretch',
+                    '& > *': {
+                        minWidth: 0
+                    },
+                    '& > * > div': {
+                        minWidth: 0,
+                        width: '100%'
+                    }
                 }}
             >
                 {calendarDays.map((dayMoment) => {
@@ -703,7 +713,12 @@ const CalendarGridControlled = ({
                     };
 
                     return (
-                        <motion.div key={dateKey} layout transition={{ duration: 0.2 }} style={{ minHeight: 0 }}>
+                        <motion.div
+                            key={dateKey}
+                            layout
+                            transition={{ duration: 0.2 }}
+                            style={{ minHeight: 0, minWidth: 0, width: '100%' }}
+                        >
                             <Box
                                 onClick={isClickable ? () => onDayClick?.(dayMoment.toDate()) : undefined}
                                 onMouseEnter={() => setHoveredDayKey(dateKey)}
@@ -723,6 +738,8 @@ const CalendarGridControlled = ({
                                     borderRadius: 2,
                                     p: isToday ? 0.75 : 0.85,
                                     height: '100%',
+                                    width: '100%',
+                                    minWidth: 0,
                                     minHeight: { xs: '70px', sm: '85px' }, // Ensure minimum height on mobile
                                     display: 'flex',
                                     flexDirection: 'column',

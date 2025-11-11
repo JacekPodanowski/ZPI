@@ -421,7 +421,7 @@ const CreatorCalendarApp = () => {
                         flex: 1,
                         display: 'flex',
                         flexDirection: 'column',
-                        px: { xs: 1, sm: 2, md: 3, lg: 4 },
+                        px: { xs: 0.5, sm: 1, md: 1.5, lg: 2 },
                         py: 0,
                         gap: 0,
                         minHeight: 0,
