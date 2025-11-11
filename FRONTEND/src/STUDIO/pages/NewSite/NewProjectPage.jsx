@@ -12,10 +12,8 @@ import {
 import { motion } from 'framer-motion';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { getModulesForCategory, validateSiteName } from './wizardConstants';
+import { getModulesForCategory, validateSiteName, WIZARD_STORAGE_KEYS } from './wizardConstants';
 import ModuleWarningModal from './ModuleWarningModal';
-import useEditorStore from '../../store/editorStore';
-import { createSite } from '../../../services/siteService';
 import Navigation from '../../../components/Navigation/Navigation';
 
 const MONTSERRAT_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';
@@ -174,8 +172,6 @@ const NewProjectPage = () => {
     const location = useLocation();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const { setTemplateConfig, resetTemplateConfig } = useEditorStore();
-    
     const selectedCategory = location.state?.category || 'default';
     
     const [siteName, setSiteName] = useState('');
@@ -191,6 +187,40 @@ const NewProjectPage = () => {
         const timer = setTimeout(() => setPageVisible(true), 80);
         return () => clearTimeout(timer);
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            const storedDraft = window.localStorage.getItem(WIZARD_STORAGE_KEYS.ACTIVE_DRAFT);
+            if (!storedDraft) {
+                return;
+            }
+
+            const parsedDraft = JSON.parse(storedDraft);
+            if (!parsedDraft || parsedDraft.category !== selectedCategory) {
+                return;
+            }
+
+            if (parsedDraft.name && !siteName) {
+                setSiteName(parsedDraft.name);
+                setTitleConfirmed(true);
+            }
+
+            if (Array.isArray(parsedDraft.modules) && parsedDraft.modules.length) {
+                setModules((prevModules) =>
+                    prevModules.map((module) => ({
+                        ...module,
+                        enabled: parsedDraft.modules.includes(module.id)
+                    }))
+                );
+            }
+        } catch (draftError) {
+            console.warn('[NewProjectPage] Failed to restore wizard draft:', draftError);
+        }
+    }, [selectedCategory, siteName]);
 
     const handleToggle = (module) => {
         if (module.enabled && module.disableWarning?.enabled) {
@@ -237,58 +267,50 @@ const NewProjectPage = () => {
         navigate('/studio/new');
     };
 
-    const handleNext = async () => {
-        if (!siteName?.trim() || validateSiteName(siteName)) return;
+    const handleNext = () => {
+        if (!siteName?.trim() || validateSiteName(siteName)) {
+            return;
+        }
 
         const enabledModules = modules.filter((m) => m.enabled).map((m) => m.id);
-
-        console.log('[NewProjectPage] Creating site with:', {
-            siteName,
-            selectedCategory,
-            enabledModules,
-            allModules: modules
-        });
-
-        const templateConfig = {
-            name: siteName,
+        const draftPayload = {
+            name: siteName.trim(),
             category: selectedCategory,
-            modules: enabledModules,
-            colors: { primary: '#920020', secondary: '#720015' },
-            structure: { sections: [] }
+            modules: enabledModules
         };
 
-        console.log('[NewProjectPage] Template config being sent:', templateConfig);
-
-        try {
-            const newSite = await createSite({ name: siteName, template_config: templateConfig });
-            console.log('[NewProjectPage] Site created successfully:', newSite);
-            
-            // Store the config and module info for the editor to use
-            setTemplateConfig(templateConfig);
-            
-            // Also store in localStorage so editor can access it
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem('editor:pendingTemplateConfig', JSON.stringify({
-                    templateConfig,
-                    enabledModules,
-                    category: selectedCategory
-                }));
-                window.localStorage.setItem('editor:pendingSiteMeta', JSON.stringify({
-                    meta: {
-                        name: siteName,
-                        id: newSite.id
-                    }
-                }));
+        if (typeof window !== 'undefined') {
+            try {
+                window.localStorage.setItem(
+                    WIZARD_STORAGE_KEYS.ACTIVE_DRAFT,
+                    JSON.stringify(draftPayload)
+                );
+            } catch (storageError) {
+                console.warn('[NewProjectPage] Failed to persist wizard draft:', storageError);
             }
-            
-            console.log('[NewProjectPage] Navigating to editor with site ID:', newSite.id);
-            navigate(`/studio/editor/${newSite.id}`);
-        } catch (error) {
-            console.error('[NewProjectPage] Failed to create site:', error);
         }
+
+        navigate('/studio/new/style', { state: draftPayload });
     };
 
     const canProceed = siteName?.trim() && !validateSiteName(siteName);
+
+    // Listen for Enter key when modules section is visible
+    useEffect(() => {
+        if (!titleConfirmed || !canProceed) {
+            return;
+        }
+
+        const handleKeyDown = (e) => {
+            // Only trigger if not typing in an input field
+            if (e.key === 'Enter' && e.target.tagName !== 'INPUT') {
+                handleNext();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [titleConfirmed, canProceed]);
 
     return (
         <>
@@ -399,6 +421,11 @@ const NewProjectPage = () => {
                                             setSiteName(newText);
                                             const error = validateSiteName(newText);
                                             setNameError(error);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && siteName?.trim() && !nameError) {
+                                            handleConfirmTitle();
                                         }
                                     }}
                                     autoFocus

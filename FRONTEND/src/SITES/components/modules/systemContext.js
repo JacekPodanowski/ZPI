@@ -3,7 +3,7 @@
  * Provides high-level system understanding
  */
 export const SYSTEM_CONTEXT = {
-  system: 'Module-based site builder with vibes (styling) and themes (colors)',
+  system: 'Module-based site builder with unified style system',
   
   modules: [
     { type: 'hero', desc: 'Eye-catching intro', layouts: ['centered', 'split', 'fullscreen'] },
@@ -14,10 +14,7 @@ export const SYSTEM_CONTEXT = {
     { type: 'navigation', desc: 'Site nav', layouts: ['horizontal', 'centered', 'minimal'], siteLevel: true }
   ],
   
-  vibes: ['vibe1', 'vibe2', 'vibe3', 'vibe4', 'vibe5'],
-  
-  themes: ['modernWellness', 'sereneForest', 'oceanCalm', 'sunsetWarmth', 'lavenderDream', 
-           'mintBreeze', 'coralSunset', 'slate', 'goldenHour', 'roseGarden'],
+  styles: ['auroraMinimal', 'nocturneBold', 'solsticePastel', 'verdantOrganic', 'lumenEditorial'],
   
   rules: [
     'Empty content field = use default',

@@ -7,12 +7,12 @@ const LAYOUTS = {
   table: CardsServices
 };
 
-const ServicesAndPricingModule = ({ layout = 'cards', content = {}, vibe, theme }) => {
+const ServicesAndPricingModule = ({ layout = 'cards', content = {}, style }) => {
   const defaults = SERVICES_DEFAULTS[layout] || SERVICES_DEFAULTS.cards;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.cards;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 ServicesAndPricingModule.descriptor = SERVICES_DESCRIPTOR;

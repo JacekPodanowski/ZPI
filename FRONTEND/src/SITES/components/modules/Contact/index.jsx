@@ -12,13 +12,13 @@ const LAYOUTS = {
   split: SplitContact
 };
 
-const ContactSection = ({ layout = 'form', content = {}, vibe, theme }) => {
+const ContactSection = ({ layout = 'form', content = {}, style }) => {
   const defaults = CONTACT_DEFAULTS[layout] || CONTACT_DEFAULTS.form;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.form;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 ContactSection.descriptor = CONTACT_DESCRIPTOR;

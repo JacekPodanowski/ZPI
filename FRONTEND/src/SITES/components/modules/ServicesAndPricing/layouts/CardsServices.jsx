@@ -3,21 +3,21 @@ import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 
-const CardsServices = ({ content, vibe, theme }) => {
+const CardsServices = ({ content, style }) => {
   const {
     title = 'Oferta',
     subtitle = 'Sprawdź naszą ofertę i przejrzyste ceny',
     offers = [],
     currency = 'PLN',
-    bgColor = theme?.background || '#FFFFFF',
-    textColor = theme?.text || 'rgb(30, 30, 30)',
-    accentColor = theme?.primary || 'rgb(146, 0, 32)'
+    bgColor = style?.background || '#FFFFFF',
+    textColor = style?.text || 'rgb(30, 30, 30)',
+    accentColor = style?.primary || 'rgb(146, 0, 32)'
   } = content || {};
 
   const hasOffers = offers && offers.length > 0;
 
   return (
-    <section className="py-12 px-4 md:py-20 md:px-6" style={{ backgroundColor: bgColor }}>
+    <section className={`${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor }}>
       <div className="max-w-6xl mx-auto space-y-10">
         {/* Header */}
         {(title || subtitle) && (
@@ -46,7 +46,7 @@ const CardsServices = ({ content, vibe, theme }) => {
                 <motion.article
                   key={offer.id}
                   whileHover={{ y: -6 }}
-                  className="rounded-3xl overflow-hidden bg-white shadow-lg border border-black/5"
+                  className={`${style.cardStyle} overflow-hidden bg-white shadow-lg border border-black/5`}
                 >
                   {hasValidImage && (
                     <div className="aspect-video overflow-hidden bg-black">

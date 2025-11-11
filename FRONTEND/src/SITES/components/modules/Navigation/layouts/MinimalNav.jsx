@@ -1,9 +1,14 @@
 // layouts/MinimalNav.jsx - Ultra minimal navigation
 import { useState } from 'react';
 
-const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
+const MinimalNav = ({ content, style, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
+
+  const backgroundColor = content.bgColor || style?.background || 'transparent';
+  const textColor = content.textColor || style?.text || '#111';
+  const activeColor = content.activeColor || style?.primary || textColor;
+  const animationClass = style?.animations || '';
 
   const handleLinkClick = (event, link) => {
     if (onNavigate && link.pageId) {
@@ -14,9 +19,9 @@ const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
   
   return (
     <nav 
-      className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${vibe.animations}`}
+      className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${animationClass}`}
       style={{ 
-        backgroundColor: content.bgColor || theme.background
+        backgroundColor
       }}
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
@@ -26,7 +31,7 @@ const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
             <a 
               href="/" 
               className="text-lg md:text-xl font-light tracking-wider"
-              style={{ color: content.textColor || theme.primary }}
+              style={{ color: activeColor }}
             >
               {content.logo.text}
             </a>
@@ -39,8 +44,8 @@ const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
                 key={index}
                 href={link.href}
                 onClick={(event) => handleLinkClick(event, link)}
-                className={`text-sm md:text-base ${vibe.animations} hover:opacity-60 tracking-wide ${link.pageId === activePageId ? 'font-semibold' : 'font-light'}`}
-                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
+                className={`text-sm md:text-base ${animationClass} hover:opacity-60 tracking-wide ${link.pageId === activePageId ? 'font-semibold' : 'font-light'}`}
+                style={{ color: link.pageId === activePageId ? activeColor : textColor }}
               >
                 {link.label}
               </a>
@@ -51,7 +56,7 @@ const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
           <button 
             className="md:hidden text-xl"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            style={{ color: content.textColor || theme.primary }}
+            style={{ color: activeColor }}
           >
             {isMenuOpen ? '✕' : '☰'}
           </button>
@@ -65,8 +70,8 @@ const MinimalNav = ({ content, vibe, theme, onNavigate }) => {
                 key={index}
                 href={link.href}
                 onClick={(event) => handleLinkClick(event, link)}
-                className={`block text-sm ${vibe.animations} hover:opacity-60 font-light`}
-                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
+                className={`block text-sm ${animationClass} hover:opacity-60 font-light`}
+                style={{ color: link.pageId === activePageId ? activeColor : textColor }}
               >
                 {link.label}
               </a>

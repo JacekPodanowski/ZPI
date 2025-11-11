@@ -3,13 +3,13 @@ import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { renderMedia } from '../helpers';
 
-const GridGallery = ({ content, vibe, theme }) => {
+const GridGallery = ({ content, style }) => {
   const { images = [], columns = 3, gap = '1rem', backgroundImage, backgroundOverlayColor } = content;
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.3)' : undefined);
 
   if (!images || images.length === 0) {
     return (
-      <div className={`${vibe.spacing} px-4 text-center`} style={{ color: theme.text }}>
+  <div className={`${style.spacing} px-4 text-center`} style={{ color: style.text }}>
         <div className="max-w-4xl mx-auto">
           <svg className="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -21,7 +21,7 @@ const GridGallery = ({ content, vibe, theme }) => {
   }
 
   return (
-    <div className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6 relative overflow-hidden`} style={{ backgroundColor: content.bgColor || theme.background }}>
+  <div className={`${style.spacing} py-12 px-4 md:py-20 md:px-6 relative overflow-hidden`} style={{ backgroundColor: content.bgColor || style.background }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div 
         className={`max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 relative z-10`}
@@ -57,12 +57,12 @@ const GridGallery = ({ content, vibe, theme }) => {
               viewport={{ once: true }}
               transition={{ delay: idx * 0.1 }}
               whileHover={{ scale: 1.05 }}
-              className={`${vibe.rounded} overflow-hidden ${vibe.shadows} cursor-pointer`}
+              className={`${style.rounded} overflow-hidden ${style.shadows} cursor-pointer`}
             >
               {renderMedia(imgUrlRaw, caption || `Gallery ${idx + 1}`, 'w-full h-64 object-cover')}
               {caption && (
                 <div className="p-3 bg-white">
-                  <p className="text-sm text-center" style={{ color: theme.text }}>
+                  <p className="text-sm text-center" style={{ color: style.text }}>
                     {caption}
                   </p>
                 </div>

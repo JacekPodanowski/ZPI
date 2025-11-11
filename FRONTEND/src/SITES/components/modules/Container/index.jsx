@@ -6,12 +6,12 @@ const LAYOUTS = {
   grid: FlexContainer
 };
 
-const ContainerModule = ({ layout = 'flex', content = {}, vibe, theme }) => {
+const ContainerModule = ({ layout = 'flex', content = {}, style }) => {
   const defaults = CONTAINER_DEFAULTS[layout] || CONTAINER_DEFAULTS.flex;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.flex;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 ContainerModule.descriptor = CONTAINER_DESCRIPTOR;

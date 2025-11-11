@@ -1,15 +1,15 @@
 import React from 'react';
 
-const CenteredText = ({ content, vibe, theme }) => {
+const CenteredText = ({ content, style }) => {
   return (
     <div 
-      className={`${vibe.spacing} ${vibe.rounded} text-center`}
-      style={{ backgroundColor: theme.background }}
+      className={`${style.spacing} ${style.rounded} text-center`}
+      style={{ backgroundColor: style.background }}
     >
       <div
-        className={`max-w-4xl mx-auto ${vibe.textSize}`}
+        className={`max-w-4xl mx-auto ${style.textSize}`}
         style={{ 
-          color: content.textColor || theme.text,
+          color: content.textColor || style.text,
           fontSize: content.fontSize || '18px'
         }}
         dangerouslySetInnerHTML={{ __html: content.content || '' }}

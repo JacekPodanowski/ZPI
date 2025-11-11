@@ -12,13 +12,13 @@ const LAYOUTS = {
   fullscreen: FullscreenHero
 };
 
-const HeroSection = ({ layout = 'centered', content = {}, vibe, theme }) => {
+const HeroSection = ({ layout = 'centered', content = {}, style }) => {
   const defaults = HERO_DEFAULTS[layout] || HERO_DEFAULTS.centered;
   
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.centered;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 HeroSection.descriptor = HERO_DESCRIPTOR;

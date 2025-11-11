@@ -15,12 +15,12 @@ const LAYOUTS = {
   fade: FadeGallery
 };
 
-const GalleryModule = ({ layout = 'grid', content = {}, vibe, theme }) => {
+const GalleryModule = ({ layout = 'grid', content = {}, style }) => {
   const defaults = GALLERY_DEFAULTS[layout] || GALLERY_DEFAULTS.grid;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 GalleryModule.descriptor = GALLERY_DESCRIPTOR;

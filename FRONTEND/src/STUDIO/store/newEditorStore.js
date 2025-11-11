@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 import { getDefaultModuleContent } from '../pages/Editor/moduleDefinitions';
+import { DEFAULT_STYLE_ID } from '../../SITES/styles';
+import composeSiteStyle, {
+  normalizeStyleState,
+  sanitizeStyleOverrides,
+  resolveStyleId
+} from '../../SITES/styles/utils';
 
 const MAX_STRUCTURE_HISTORY = 10;
 const MAX_DETAIL_HISTORY = 20;
 
 const deepClone = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
+const isDeepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const createHistoryStack = () => ({
   past: [],
@@ -109,6 +116,121 @@ const accumulateTransactionMeta = (transaction, metadata = {}) => {
   };
 };
 
+const toArray = (collection) => {
+  if (Array.isArray(collection)) {
+    return [...collection];
+  }
+
+  if (collection && typeof collection === 'object') {
+    return Object.entries(collection).map(([legacyKey, value]) => ({
+      ...(value || {}),
+      __legacyKey: legacyKey
+    }));
+  }
+
+  return [];
+};
+
+const buildStyleState = (styleId = DEFAULT_STYLE_ID, overrides = {}) => {
+  const cleanOverrides = sanitizeStyleOverrides(overrides);
+  const style = composeSiteStyle(styleId, cleanOverrides);
+  return {
+    styleId,
+    styleOverrides: cleanOverrides,
+    style
+  };
+};
+
+const normalizeModule = (module, index, pageId) => {
+  if (!module || typeof module !== 'object') {
+    return {
+      id: `${pageId || 'page'}-module-${index}`,
+      type: 'custom',
+      name: 'Custom Module',
+      content: {},
+      enabled: true,
+      order: index
+    };
+  }
+
+  const moduleId =
+    module.id || module.moduleId || module.slug || `${pageId || 'page'}-module-${index}`;
+  const moduleType = module.type || module.moduleType || moduleId;
+  const order = module.order ?? module.position ?? index;
+  const enabled = module.enabled !== undefined ? module.enabled : module.visible !== false;
+  const baseContent = deepClone(module.content || module.config || {});
+
+  const { __legacyKey, modules: _childModules, ...rest } = module;
+
+  const normalized = {
+    ...rest,
+    id: moduleId,
+    type: moduleType,
+    name: module.name || module.title || moduleType,
+    layout: module.layout || baseContent?.layout || null,
+    order,
+    enabled,
+    content: baseContent
+  };
+
+  if (!normalized.config && module.config) {
+    normalized.config = deepClone(module.config);
+  }
+
+  return normalized;
+};
+
+const normalizePage = (page, index) => {
+  if (!page || typeof page !== 'object') {
+    return null;
+  }
+
+  const { modules: rawModules, __legacyKey, ...rest } = page;
+  const pageId = page.id || page.pageId || page.slug || __legacyKey || `page-${index}`;
+  const order = rest.order ?? index;
+  const modules = toArray(rawModules)
+    .map((module, moduleIndex) => normalizeModule(module, moduleIndex, pageId))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const routeCandidate = rest.route || rest.path;
+  const route = routeCandidate || (pageId === 'home' ? '/' : `/${pageId}`);
+
+  return {
+    ...rest,
+    id: pageId,
+    name: rest.name || rest.title || pageId,
+    route,
+    modules,
+    order
+  };
+};
+
+const normalizeSiteConfig = (site = {}) => {
+  const { pageOrder: legacyOrder, navigation: legacyNavigation, ...rest } = site || {};
+  const styleState = normalizeStyleState(site);
+
+  const pages = toArray(site.pages)
+    .map((page, index) => normalizePage(page, index))
+    .filter(Boolean)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const pageOrder = Array.isArray(legacyOrder) && legacyOrder.length
+    ? legacyOrder
+    : pages.map((page) => page.id);
+
+  const navigation = legacyNavigation && typeof legacyNavigation === 'object' ? legacyNavigation : {};
+
+  return {
+    ...rest,
+    styleId: styleState.styleId,
+    styleOverrides: styleState.styleOverrides,
+    style: styleState.style,
+    pages,
+    pageOrder,
+    navigation
+  };
+};
+
 const applyChangeWithHistory = (state, mode, metadata, updates, snapshotOverride = null) => {
   if (state.aiTransaction.active && (state.aiTransaction.mode || 'detail') === mode) {
     return {
@@ -123,15 +245,12 @@ const applyChangeWithHistory = (state, mode, metadata, updates, snapshotOverride
   };
 };
 
-const createInitialSite = () => ({
-  vibe: 'minimal',
-  theme: {
-    primary: '#920020',
-    secondary: '#2D5A7B',
-    neutral: '#E4E5DA'
-  },
-  navigation: {},
-  pages: [
+const createInitialSite = () => {
+  const styleState = buildStyleState(DEFAULT_STYLE_ID);
+  return {
+    ...styleState,
+    navigation: {},
+    pages: [
     {
       id: 'home',
       name: 'Home',
@@ -146,7 +265,8 @@ const createInitialSite = () => ({
       ]
     }
   ]
-});
+  };
+};
 
 const createInitialState = () => ({
   siteId: null,
@@ -926,61 +1046,92 @@ const useNewEditorStore = create((set, get) => ({
       return applyChangeWithHistory(state, 'detail', metadata, updates);
     }),
 
-  updateTheme: (colorUpdates = {}) =>
+  updateStyleOverrides: (overrides = {}) =>
     set((state) => {
-      const keys = Object.keys(colorUpdates);
-      if (keys.length === 0) {
+      if (!overrides || typeof overrides !== 'object') {
         return {};
       }
 
-      const changedKeys = keys.filter((key) => state.site.theme?.[key] !== colorUpdates[key]);
-      if (changedKeys.length === 0) {
+      const overrideKeys = Object.keys(overrides);
+      if (overrideKeys.length === 0) {
         return {};
       }
 
-      const updatedSite = {
-        ...state.site,
-        theme: {
-          ...state.site.theme,
-          ...colorUpdates
-        }
-      };
+      const currentOverrides = state.site.styleOverrides || {};
+      const mergedOverrides = sanitizeStyleOverrides({
+        ...currentOverrides,
+        ...overrides
+      });
+
+      if (isDeepEqual(currentOverrides, mergedOverrides)) {
+        return {};
+      }
+
+      const { style } = buildStyleState(state.site.styleId || DEFAULT_STYLE_ID, mergedOverrides);
 
       const metadata = {
         source: state.aiTransaction.active ? 'ai' : 'user',
-        actionType: 'edit_theme',
-        description: 'Updated theme settings',
-        changesCount: changedKeys.length
+        actionType: 'edit_style',
+        description: 'Updated style overrides',
+        changesCount: Math.max(overrideKeys.length, 1)
       };
 
       const updates = {
-        site: updatedSite,
+        site: {
+          ...state.site,
+          style,
+          styleOverrides: mergedOverrides
+        },
         hasUnsavedChanges: true
       };
 
       return applyChangeWithHistory(state, 'detail', metadata, updates);
     }),
 
-  setVibe: (vibe) =>
+  setStyleId: (styleId, options = {}) =>
     set((state) => {
-      if (!vibe || state.site.vibe === vibe) {
+      const resolvedStyleId = resolveStyleId(styleId);
+      const resetOverrides = options.resetOverrides ?? false;
+      const providedOverrides =
+        options.overrides && typeof options.overrides === 'object' ? options.overrides : null;
+
+      const baseOverrides = resetOverrides ? {} : state.site.styleOverrides || {};
+      const mergedOverrides = sanitizeStyleOverrides(
+        providedOverrides ? { ...baseOverrides, ...providedOverrides } : baseOverrides
+      );
+
+      if (
+        resolvedStyleId === state.site.styleId &&
+        !resetOverrides &&
+        !providedOverrides
+      ) {
         return {};
       }
 
-      const updatedSite = {
-        ...state.site,
-        vibe
-      };
+      const nextStyleState = buildStyleState(resolvedStyleId, mergedOverrides);
+
+      if (
+        resolvedStyleId === state.site.styleId &&
+        isDeepEqual(state.site.styleOverrides || {}, nextStyleState.styleOverrides) &&
+        isDeepEqual(state.site.style, nextStyleState.style)
+      ) {
+        return {};
+      }
 
       const metadata = {
         source: state.aiTransaction.active ? 'ai' : 'user',
-        actionType: 'edit_vibe',
-        description: `Changed site vibe to "${vibe}"`,
+        actionType: 'edit_style',
+        description: `Changed site style to "${nextStyleState.style?.name || nextStyleState.styleId}"`,
         changesCount: 1
       };
 
       const updates = {
-        site: updatedSite,
+        site: {
+          ...state.site,
+          styleId: nextStyleState.styleId,
+          styleOverrides: nextStyleState.styleOverrides,
+          style: nextStyleState.style
+        },
         hasUnsavedChanges: true
       };
 
@@ -1033,8 +1184,14 @@ const useNewEditorStore = create((set, get) => ({
   setDevicePreview: (device) => set({ devicePreview: device }),
 
   loadSite: (siteData) => {
-    const nextSite = deepClone(siteData.site || createInitialSite());
-    const entryPoint = siteData.entryPointPageId || nextSite.pages?.[0]?.id || 'home';
+    const rawSite = deepClone(siteData.site || createInitialSite());
+    const nextSite = normalizeSiteConfig(rawSite);
+    const requestedEntryPoint =
+      siteData.entryPointPageId || rawSite.entryPointPageId || rawSite.homePageId || null;
+    const defaultEntryPoint = nextSite.pages?.[0]?.id || null;
+    const entryPoint = requestedEntryPoint && nextSite.pages.some((page) => page.id === requestedEntryPoint)
+      ? requestedEntryPoint
+      : defaultEntryPoint;
 
     set(() => {
       return {

@@ -8,12 +8,12 @@ const LAYOUTS = {
   masonry: GridBlog  // Use same for now
 };
 
-const BlogModule = ({ layout = 'grid', content = {}, vibe, theme }) => {
+const BlogModule = ({ layout = 'grid', content = {}, style }) => {
   const defaults = BLOG_DEFAULTS[layout] || BLOG_DEFAULTS.grid;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 BlogModule.descriptor = BLOG_DESCRIPTOR;

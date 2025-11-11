@@ -37,9 +37,17 @@ export function checkContrast(foreground, background) {
 }
 
 export function createTheme(definition, requestedMode = 'light') {
-  const safeMode = requestedMode === 'dark' ? 'dark' : 'light';
-  const baseColors = definition[safeMode];
-  const isLight = safeMode === 'light';
+  const preferredMode = requestedMode === 'dark' ? 'dark' : 'light';
+  const hasPreferred = Boolean(definition[preferredMode]);
+  const fallbackMode = definition.light ? 'light' : Object.keys(definition).find((mode) => definition[mode]) || 'light';
+  const activeMode = hasPreferred ? preferredMode : fallbackMode;
+  const baseColors = definition[activeMode];
+
+  if (!baseColors) {
+    throw new Error(`[colorSystem] Theme "${definition.id || 'unknown'}" does not define base colors.`);
+  }
+
+  const isLight = activeMode === 'light';
 
   const backgroundScale = generateColorScale(baseColors.background);
   const textScale = generateColorScale(baseColors.text);
@@ -114,7 +122,7 @@ export function createTheme(definition, requestedMode = 'light') {
     id: definition.id,
     name: definition.name,
     description: definition.description,
-    mode: safeMode,
+  mode: activeMode,
     baseColors,
     palettes: {
       background: backgroundScale,

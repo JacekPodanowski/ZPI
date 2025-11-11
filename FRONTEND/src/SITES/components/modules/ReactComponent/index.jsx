@@ -5,12 +5,12 @@ const LAYOUTS = {
   default: DefaultReactComponent
 };
 
-const ReactComponentModule = ({ layout = 'default', content = {}, vibe, theme }) => {
+const ReactComponentModule = ({ layout = 'default', content = {}, style }) => {
   const defaults = REACT_COMPONENT_DEFAULTS[layout] || REACT_COMPONENT_DEFAULTS.default;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.default;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 ReactComponentModule.descriptor = REACT_COMPONENT_DESCRIPTOR;

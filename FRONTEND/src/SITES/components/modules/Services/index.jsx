@@ -12,13 +12,13 @@ const LAYOUTS = {
   accordion: AccordionServices
 };
 
-const ServicesSection = ({ layout = 'cards', content = {}, vibe, theme }) => {
+const ServicesSection = ({ layout = 'cards', content = {}, style }) => {
   const defaults = SERVICES_DEFAULTS[layout] || SERVICES_DEFAULTS.cards;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.cards;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 ServicesSection.descriptor = SERVICES_DESCRIPTOR;

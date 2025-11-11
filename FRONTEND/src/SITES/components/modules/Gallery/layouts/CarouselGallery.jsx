@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { renderMedia } from '../helpers';
 
-const CarouselGallery = ({ content, vibe, theme }) => {
+const CarouselGallery = ({ content, style }) => {
   const { images = [] } = content;
   const scrollContainerRef = useRef(null);
 
@@ -23,7 +23,7 @@ const CarouselGallery = ({ content, vibe, theme }) => {
   };
 
   return (
-    <div className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: theme.background }}>
+  <div className={`${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: style.background }}>
       <div className="max-w-6xl mx-auto relative">
         <div 
           ref={scrollContainerRef}
@@ -38,12 +38,12 @@ const CarouselGallery = ({ content, vibe, theme }) => {
               <motion.div
                 key={idx}
                 whileHover={{ scale: 1.05 }}
-                className={`flex-shrink-0 w-72 sm:w-80 ${vibe.rounded} overflow-hidden ${vibe.shadows} cursor-pointer snap-center bg-white`}
+                className={`flex-shrink-0 w-72 sm:w-80 ${style.rounded} overflow-hidden ${style.shadows} cursor-pointer snap-center bg-white`}
               >
                 {renderMedia(imgUrlRaw, caption || `Carousel ${idx + 1}`, 'w-full h-64 object-cover')}
                 {caption && (
                   <div className="p-3">
-                    <p className="text-sm text-center" style={{ color: theme.text }}>
+                    <p className="text-sm text-center" style={{ color: style.text }}>
                       {caption}
                     </p>
                   </div>
@@ -57,7 +57,7 @@ const CarouselGallery = ({ content, vibe, theme }) => {
           <>
             <button
               onClick={() => scrollToImage('prev')}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 ${vibe.rounded} bg-white ${vibe.shadows} flex items-center justify-center hover:bg-gray-100 ${vibe.animations} z-10`}
+              className={`absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 ${style.rounded} bg-white ${style.shadows} flex items-center justify-center hover:bg-gray-100 ${style.animations} z-10`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -65,7 +65,7 @@ const CarouselGallery = ({ content, vibe, theme }) => {
             </button>
             <button
               onClick={() => scrollToImage('next')}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 ${vibe.rounded} bg-white ${vibe.shadows} flex items-center justify-center hover:bg-gray-100 ${vibe.animations} z-10`}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 ${style.rounded} bg-white ${style.shadows} flex items-center justify-center hover:bg-gray-100 ${style.animations} z-10`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -74,7 +74,7 @@ const CarouselGallery = ({ content, vibe, theme }) => {
           </>
         )}
 
-        <div className="text-center mt-4 text-sm opacity-60" style={{ color: theme.text }}>
+  <div className="text-center mt-4 text-sm opacity-60" style={{ color: style.text }}>
           ← Przewiń, aby zobaczyć więcej →
         </div>
       </div>

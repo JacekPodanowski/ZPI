@@ -10,7 +10,7 @@ const resolveBabel = () => {
   return window.Babel || null;
 };
 
-const DefaultReactComponent = ({ content, vibe, theme }) => {
+const DefaultReactComponent = ({ content, style }) => {
   const { componentUrl, sourceCode, props = {} } = content || {};
   const [Component, setComponent] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);

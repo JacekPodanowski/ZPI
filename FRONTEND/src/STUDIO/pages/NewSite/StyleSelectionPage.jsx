@@ -1,0 +1,509 @@
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+    Alert,
+    Box,
+    CircularProgress,
+    Container,
+    Stack,
+    Typography
+} from '@mui/material';
+import { motion } from 'framer-motion';
+import Navigation from '../../../components/Navigation/Navigation';
+import { STYLE_LIST, DEFAULT_STYLE_ID } from '../../../SITES/styles';
+import composeSiteStyle from '../../../SITES/styles/utils';
+import { createSite } from '../../../services/siteService';
+import { buildTemplateFromModules } from '../../utils/templateBuilder';
+import { WIZARD_STORAGE_KEYS } from './wizardConstants';
+
+const deriveWizardData = (state) => {
+    if (state?.name && Array.isArray(state.modules)) {
+        return {
+            name: state.name,
+            category: state.category || 'default',
+            modules: state.modules
+        };
+    }
+
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const stored = window.localStorage.getItem(WIZARD_STORAGE_KEYS.ACTIVE_DRAFT);
+        if (!stored) {
+            return null;
+        }
+        const parsed = JSON.parse(stored);
+        if (!parsed?.name || !Array.isArray(parsed.modules)) {
+            return null;
+        }
+        return {
+            name: parsed.name,
+            category: parsed.category || 'default',
+            modules: parsed.modules
+        };
+    } catch (error) {
+        console.warn('[StyleSelectionPage] Unable to read wizard draft:', error);
+        return null;
+    }
+};
+
+const StyleStrip = ({ styleDefinition, index, onSelect, isPending }) => {
+    const motionDelay = 0.15 + index * 0.07;
+
+    const handleClick = useCallback(() => {
+        if (!isPending) {
+            onSelect(styleDefinition);
+        }
+    }, [isPending, onSelect, styleDefinition]);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, translateY: 24 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ delay: motionDelay, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+        >
+            <Box
+                onClick={handleClick}
+                sx={{
+                    position: 'relative',
+                    width: '100%',
+                    minHeight: { xs: 220, md: 300, lg: 340 },
+                    overflow: 'hidden',
+                    cursor: isPending ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'flex-end',
+                    backgroundColor: styleDefinition.backgroundColor || 'rgba(245, 242, 235, 1)',
+                    transition: 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.45s ease, filter 0.45s ease',
+                    '&:hover': !isPending ? {
+                        transform: 'scale(1.015)',
+                        boxShadow: '0 24px 60px rgba(0, 0, 0, 0.18)',
+                        filter: 'brightness(1.03)'
+                    } : {},
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: 0,
+                        background: styleDefinition.overlayGradient || 'linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.45) 100%)',
+                        zIndex: 1,
+                        pointerEvents: 'none'
+                    }
+                }}
+            >
+                {styleDefinition.previewImage && (
+                    <Box
+                        component="img"
+                        src={styleDefinition.previewImage}
+                        alt={styleDefinition.name}
+                        loading="lazy"
+                        sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            opacity: 0.92,
+                            transition: 'transform 0.6s ease'
+                        }}
+                    />
+                )}
+                {styleDefinition.backgroundTexture && (
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundImage: styleDefinition.backgroundTexture,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            opacity: 0.35,
+                            mixBlendMode: 'multiply'
+                        }}
+                    />
+                )}
+                <Box
+                    sx={{
+                        position: 'relative',
+                        zIndex: 2,
+                        width: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'flex-end',
+                        gap: 1,
+                        px: { xs: 3, md: 5 },
+                        py: { xs: 3, md: 4 }
+                    }}
+                >
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: 'rgba(255,255,255,0.82)',
+                            maxWidth: { xs: '100%', md: '60%' },
+                            lineHeight: 1.6
+                        }}
+                    >
+                        {styleDefinition.description}
+                    </Typography>
+                    <Typography
+                        variant="h3"
+                        sx={{
+                            fontFamily: styleDefinition.titleFont || '"Montserrat", sans-serif',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            fontSize: { xs: '2rem', sm: '2.4rem', md: '2.8rem', lg: '3rem' },
+                            color: '#ffffff',
+                            letterSpacing: 1.4
+                        }}
+                    >
+                        {styleDefinition.name}
+                    </Typography>
+                </Box>
+            </Box>
+        </motion.div>
+    );
+};
+
+const StyleSelectionPage = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [pageVisible, setPageVisible] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [pendingStyle, setPendingStyle] = useState(null);
+    const [error, setError] = useState(null);
+    const [wizardData, setWizardData] = useState(() => deriveWizardData(location.state));
+
+    const pendingStyleLabel = useMemo(() => {
+        if (!pendingStyle) {
+            return '';
+        }
+
+        const match = STYLE_LIST.find(
+            (style) => style.id === pendingStyle || style.name === pendingStyle
+        );
+
+        return match?.name || pendingStyle;
+    }, [pendingStyle]);
+
+    useEffect(() => {
+        const derived = deriveWizardData(location.state);
+        if (derived) {
+            setWizardData(derived);
+        }
+    }, [location.state]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setPageVisible(true), 80);
+        return () => clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
+        if (!wizardData) {
+            navigate('/studio/new_project', { replace: true });
+        }
+    }, [wizardData, navigate]);
+
+    const styles = STYLE_LIST;
+
+    const handleBack = useCallback(() => {
+        navigate('/studio/new_project', { state: wizardData || undefined });
+    }, [navigate, wizardData]);
+
+    const handleSelectStyle = useCallback(async (styleDefinition) => {
+        if (!wizardData || isCreating) {
+            return;
+        }
+
+        setError(null);
+        setIsCreating(true);
+        setPendingStyle(styleDefinition.id || styleDefinition.name);
+
+        const enabledModules = wizardData.modules || [];
+        const templateConfig = buildTemplateFromModules(enabledModules, wizardData.name, wizardData.category);
+        templateConfig.modules = enabledModules;
+        templateConfig.category = wizardData.category;
+
+        const styleId = styleDefinition.id || DEFAULT_STYLE_ID;
+        const styleSnapshot = composeSiteStyle(styleId);
+
+    templateConfig.styleId = styleId;
+    templateConfig.styleOverrides = {};
+    templateConfig.style = styleSnapshot;
+    delete templateConfig.vibe;
+    delete templateConfig.vibeId;
+    delete templateConfig.theme;
+    delete templateConfig.themeId;
+    delete templateConfig.themeOverrides;
+
+        try {
+            const newSite = await createSite({
+                name: wizardData.name,
+                template_config: templateConfig
+            });
+
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem(
+                    'editor:pendingTemplateConfig',
+                    JSON.stringify({
+                        templateConfig,
+                        enabledModules,
+                        category: wizardData.category
+                    })
+                );
+                window.localStorage.setItem(
+                    'editor:pendingSiteMeta',
+                    JSON.stringify({
+                        meta: {
+                            name: wizardData.name,
+                            id: newSite.id
+                        }
+                    })
+                );
+                window.localStorage.removeItem(WIZARD_STORAGE_KEYS.ACTIVE_DRAFT);
+            }
+
+            navigate(`/studio/editor/${newSite.id}`);
+        } catch (creationError) {
+            console.error('[StyleSelectionPage] Failed to create site:', creationError);
+            setError(creationError.message || 'Nie udało się utworzyć strony. Spróbuj ponownie.');
+            setIsCreating(false);
+            setPendingStyle(null);
+        }
+    }, [wizardData, isCreating, navigate]);
+
+    if (!wizardData) {
+        return null;
+    }
+
+    return (
+        <>
+            <Navigation />
+            <Box
+                sx={{
+                    minHeight: 'calc(100vh - 60px)',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                    backgroundColor: 'background.default',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        pointerEvents: 'none',
+                        overflow: 'hidden'
+                    }}
+                >
+                    <Box
+                        component="span"
+                        sx={{
+                            position: 'absolute',
+                            width: '45vw',
+                            height: '45vw',
+                            top: '-18vw',
+                            right: '-12vw',
+                            borderRadius: '50%',
+                            background: 'radial-gradient(circle, rgba(146,0,32,0.04) 0%, rgba(146,0,32,0) 70%)',
+                            animation: 'styleGlow1 28s ease-in-out infinite',
+                            '@keyframes styleGlow1': {
+                                '0%': { transform: 'translate3d(0,0,0)', opacity: 0.4 },
+                                '50%': { transform: 'translate3d(-25px, 30px, 0)', opacity: 0.18 },
+                                '100%': { transform: 'translate3d(0,0,0)', opacity: 0.4 }
+                            }
+                        }}
+                    />
+                    <Box
+                        component="span"
+                        sx={{
+                            position: 'absolute',
+                            width: '55vw',
+                            height: '55vw',
+                            bottom: '-22vw',
+                            left: '-18vw',
+                            borderRadius: '50%',
+                            background: 'radial-gradient(circle, rgba(114,0,21,0.05) 0%, rgba(114,0,21,0) 68%)',
+                            animation: 'styleGlow2 32s ease-in-out infinite',
+                            '@keyframes styleGlow2': {
+                                '0%': { transform: 'translate3d(0,0,0)', opacity: 0.35 },
+                                '50%': { transform: 'translate3d(35px,-25px,0)', opacity: 0.2 },
+                                '100%': { transform: 'translate3d(0,0,0)', opacity: 0.35 }
+                            }
+                        }}
+                    />
+                </Box>
+
+                <Container
+                    maxWidth="lg"
+                    disableGutters
+                    sx={{
+                        position: 'relative',
+                        zIndex: 1,
+                        width: '100%',
+                        opacity: pageVisible ? 1 : 0,
+                        transform: pageVisible ? 'translateY(0)' : 'translateY(-24px)',
+                        transition: 'opacity 0.8s ease, transform 0.8s ease'
+                    }}
+                >
+                    <Stack spacing={0} sx={{ width: '100%' }}>
+                        <Box sx={{ px: { xs: 3, md: 5 }, py: { xs: 4, md: 6 } }}>
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1, duration: 0.6 }}
+                            >
+                                <Typography
+                                    variant="overline"
+                                    sx={{
+                                        letterSpacing: 6,
+                                        color: 'secondary.main',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    WYBIERZ STYL
+                                </Typography>
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0, y: -14 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.18, duration: 0.6 }}
+                            >
+                                <Typography
+                                    variant="h2"
+                                    sx={{
+                                        fontWeight: 700,
+                                        mt: 2,
+                                        background: (theme) =>
+                                            theme.palette.mode === 'dark'
+                                                ? 'linear-gradient(135deg, rgba(220,220,220,1) 0%, rgba(146,0,32,0.8) 100%)'
+                                                : 'linear-gradient(135deg, rgba(30,30,30,1) 0%, rgba(146,0,32,0.85) 100%)',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        backgroundClip: 'text'
+                                    }}
+                                >
+                                    Wybierz styl dla swojej strony
+                                </Typography>
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.26, duration: 0.7 }}
+                            >
+                                <Typography
+                                    variant="h6"
+                                    sx={{
+                                        color: 'text.secondary',
+                                        maxWidth: 540,
+                                        lineHeight: 1.7,
+                                        fontWeight: 400,
+                                        mt: 2
+                                    }}
+                                >
+                                    Każdy styl zawiera dopasowaną typografię i tło. Wybierz ten, który najlepiej oddaje charakter Twojej marki.
+                                </Typography>
+                            </motion.div>
+                        </Box>
+
+                        {error && (
+                            <Box sx={{ px: { xs: 3, md: 5 }, pb: 2 }}>
+                                <Alert severity="error">{error}</Alert>
+                            </Box>
+                        )}
+
+                        <Stack spacing={0} sx={{ width: '100%' }}>
+                            {styles.map((styleDefinition, index) => (
+                                <StyleStrip
+                                    key={styleDefinition.id || styleDefinition.name || index}
+                                    styleDefinition={styleDefinition}
+                                    index={index}
+                                    onSelect={handleSelectStyle}
+                                    isPending={isCreating}
+                                />
+                            ))}
+                        </Stack>
+
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                px: { xs: 3, md: 5 },
+                                py: 4,
+                                mt: 0,
+                                borderTop: '1px solid rgba(146, 0, 32, 0.1)',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                gap: { xs: 2, sm: 0 }
+                            }}
+                        >
+                            <Box
+                                onClick={handleBack}
+                                sx={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    cursor: 'pointer',
+                                    color: 'text.secondary',
+                                    fontSize: { xs: '0.9rem', md: '0.95rem' },
+                                    fontWeight: 600,
+                                    letterSpacing: { xs: 0.8, md: 1 },
+                                    transition: 'all 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                    px: 1.5,
+                                    py: 0.75,
+                                    '&:hover': {
+                                        color: 'primary.main',
+                                        letterSpacing: { xs: 1.2, md: 1.5 },
+                                        transform: 'scale(1.08)',
+                                        filter: 'drop-shadow(0 4px 12px rgba(146, 0, 32, 0.3))'
+                                    }
+                                }}
+                            >
+                                ← Wróć do modułów
+                            </Box>
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: 'text.secondary',
+                                    fontStyle: 'italic',
+                                    letterSpacing: 0.6
+                                }}
+                            >
+                                {isCreating
+                                    ? 'Tworzymy Twoją stronę...'
+                                    : 'Kliknij w sekcję, aby wybrać styl.'}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                </Container>
+
+                {isCreating && (
+                    <Box
+                        sx={{
+                            position: 'fixed',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backdropFilter: 'blur(4px)',
+                            backgroundColor: 'rgba(12,12,12,0.2)',
+                            zIndex: 9
+                        }}
+                    >
+                        <Stack spacing={2} alignItems="center">
+                            <CircularProgress size={48} thickness={4} />
+                            <Typography variant="body1" sx={{ color: '#ffffff' }}>
+                                Tworzymy Twoją stronę w stylu {pendingStyle ? pendingStyleLabel : ''}...
+                            </Typography>
+                        </Stack>
+                    </Box>
+                )}
+            </Box>
+        </>
+    );
+};
+
+export default StyleSelectionPage;

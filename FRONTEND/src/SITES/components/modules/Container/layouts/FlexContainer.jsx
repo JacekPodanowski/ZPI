@@ -5,7 +5,7 @@ import ButtonModule from '../../Button';
 import GalleryModule from '../../Gallery';
 import SpacerModule from '../../Spacer';
 
-const FlexContainer = ({ content, vibe, theme, isEditing = false }) => {
+const FlexContainer = ({ content, style, isEditing = false }) => {
   const { 
     direction = 'horizontal', 
     gap = '1rem', 
@@ -112,7 +112,7 @@ const FlexContainer = ({ content, vibe, theme, isEditing = false }) => {
                   {child.content?.flexGrow && ' ↔️'}
                 </div>
               )}
-              <Component content={child.content} vibe={vibe} theme={theme} />
+              <Component content={child.content} style={style} />
             </motion.div>
           );
         })}

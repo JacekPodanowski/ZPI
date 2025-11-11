@@ -10,12 +10,12 @@ const LAYOUTS = {
   large: LargeSpacer
 };
 
-const SpacerModule = ({ layout = 'medium', content = {}, vibe, theme }) => {
+const SpacerModule = ({ layout = 'medium', content = {}, style }) => {
   const defaults = SPACER_DEFAULTS[layout] || SPACER_DEFAULTS.medium;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.medium;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 SpacerModule.descriptor = SPACER_DESCRIPTOR;

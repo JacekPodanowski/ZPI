@@ -1,22 +1,22 @@
 // layouts/SplitContact.jsx - Split layout with info and form
-const SplitContact = ({ content, vibe, theme }) => {
+const SplitContact = ({ content, style }) => {
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} py-12 px-4 md:py-20 md:px-6`}
-      style={{ backgroundColor: theme.background }}
+  className={`${style.spacing} ${style.rounded} py-12 px-4 md:py-20 md:px-6`}
+  style={{ backgroundColor: style.background }}
     >
       <div className="max-w-6xl mx-auto">
         <h2 
-          className={`${vibe.headingSize} text-center`}
-          style={{ color: theme.primary }}
+          className={`${style.headingSize} text-center`}
+          style={{ color: style.primary }}
         >
           {content.title}
         </h2>
         
         {content.description && (
           <p 
-            className={`${vibe.textSize} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
-            style={{ color: theme.text }}
+            className={`${style.textSize} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
+            style={{ color: style.text }}
           >
             {content.description}
           </p>
@@ -27,24 +27,24 @@ const SplitContact = ({ content, vibe, theme }) => {
           <div className="space-y-6 md:space-y-8">
             <h3 
               className="text-2xl md:text-3xl lg:text-4xl font-semibold mb-6"
-              style={{ color: theme.primary }}
+              style={{ color: style.primary }}
             >
               Contact Information
             </h3>
             
             {content.email && (
               <div className="flex items-start gap-4">
-                <div className="text-2xl md:text-3xl" style={{ color: theme.primary }}>
+                <div className="text-2xl md:text-3xl" style={{ color: style.primary }}>
                   ✉️
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-1" style={{ color: theme.primary }}>
+                  <h4 className="font-semibold mb-1" style={{ color: style.primary }}>
                     Email
                   </h4>
                   <a 
                     href={`mailto:${content.email}`}
-                    className={`${vibe.textSize} underline ${vibe.animations}`}
-                    style={{ color: theme.text }}
+                    className={`${style.textSize} underline ${style.animations}`}
+                    style={{ color: style.text }}
                   >
                     {content.email}
                   </a>
@@ -54,17 +54,17 @@ const SplitContact = ({ content, vibe, theme }) => {
             
             {content.phone && (
               <div className="flex items-start gap-4">
-                <div className="text-2xl md:text-3xl" style={{ color: theme.primary }}>
+                <div className="text-2xl md:text-3xl" style={{ color: style.primary }}>
                   📞
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-1" style={{ color: theme.primary }}>
+                  <h4 className="font-semibold mb-1" style={{ color: style.primary }}>
                     Phone
                   </h4>
                   <a 
                     href={`tel:${content.phone.replace(/\s/g, '')}`}
-                    className={`${vibe.textSize} underline ${vibe.animations}`}
-                    style={{ color: theme.text }}
+                    className={`${style.textSize} underline ${style.animations}`}
+                    style={{ color: style.text }}
                   >
                     {content.phone}
                   </a>
@@ -74,14 +74,14 @@ const SplitContact = ({ content, vibe, theme }) => {
             
             {content.address && (
               <div className="flex items-start gap-4">
-                <div className="text-2xl md:text-3xl" style={{ color: theme.primary }}>
+                <div className="text-2xl md:text-3xl" style={{ color: style.primary }}>
                   📍
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-1" style={{ color: theme.primary }}>
+                  <h4 className="font-semibold mb-1" style={{ color: style.primary }}>
                     Address
                   </h4>
-                  <p className={vibe.textSize} style={{ color: theme.text }}>
+                  <p className={style.textSize} style={{ color: style.text }}>
                     {content.address}
                   </p>
                 </div>
@@ -94,7 +94,7 @@ const SplitContact = ({ content, vibe, theme }) => {
             <div>
               <h3 
                 className="text-2xl md:text-3xl font-semibold mb-6"
-                style={{ color: theme.primary }}
+                style={{ color: style.primary }}
               >
                 Send a Message
               </h3>
@@ -103,19 +103,19 @@ const SplitContact = ({ content, vibe, theme }) => {
                 {content.formFields?.includes('name') && (
                   <div>
                     <label 
-                      className={`block ${vibe.textSize} mb-2 font-medium`}
-                      style={{ color: theme.text }}
+                      className={`block ${style.textSize} mb-2 font-medium`}
+                      style={{ color: style.text }}
                     >
                       Name
                     </label>
                     <input 
                       type="text"
                       placeholder="Your name"
-                      className={`w-full px-4 py-2 md:py-3 ${vibe.rounded} border ${vibe.animations}`}
+                      className={`w-full px-4 py-2 md:py-3 ${style.rounded} border ${style.animations}`}
                       style={{ 
-                        borderColor: theme.secondary,
-                        backgroundColor: theme.background,
-                        color: theme.text
+                        borderColor: style.secondary,
+                        backgroundColor: style.background,
+                        color: style.text
                       }}
                     />
                   </div>
@@ -124,19 +124,19 @@ const SplitContact = ({ content, vibe, theme }) => {
                 {content.formFields?.includes('email') && (
                   <div>
                     <label 
-                      className={`block ${vibe.textSize} mb-2 font-medium`}
-                      style={{ color: theme.text }}
+                      className={`block ${style.textSize} mb-2 font-medium`}
+                      style={{ color: style.text }}
                     >
                       Email
                     </label>
                     <input 
                       type="email"
                       placeholder="your@email.com"
-                      className={`w-full px-4 py-2 md:py-3 ${vibe.rounded} border ${vibe.animations}`}
+                      className={`w-full px-4 py-2 md:py-3 ${style.rounded} border ${style.animations}`}
                       style={{ 
-                        borderColor: theme.secondary,
-                        backgroundColor: theme.background,
-                        color: theme.text
+                        borderColor: style.secondary,
+                        backgroundColor: style.background,
+                        color: style.text
                       }}
                     />
                   </div>
@@ -145,19 +145,19 @@ const SplitContact = ({ content, vibe, theme }) => {
                 {content.formFields?.includes('phone') && (
                   <div>
                     <label 
-                      className={`block ${vibe.textSize} mb-2 font-medium`}
-                      style={{ color: theme.text }}
+                      className={`block ${style.textSize} mb-2 font-medium`}
+                      style={{ color: style.text }}
                     >
                       Phone
                     </label>
                     <input 
                       type="tel"
                       placeholder="+1 (555) 123-4567"
-                      className={`w-full px-4 py-2 md:py-3 ${vibe.rounded} border ${vibe.animations}`}
+                      className={`w-full px-4 py-2 md:py-3 ${style.rounded} border ${style.animations}`}
                       style={{ 
-                        borderColor: theme.secondary,
-                        backgroundColor: theme.background,
-                        color: theme.text
+                        borderColor: style.secondary,
+                        backgroundColor: style.background,
+                        color: style.text
                       }}
                     />
                   </div>
@@ -166,19 +166,19 @@ const SplitContact = ({ content, vibe, theme }) => {
                 {content.formFields?.includes('message') && (
                   <div>
                     <label 
-                      className={`block ${vibe.textSize} mb-2 font-medium`}
-                      style={{ color: theme.text }}
+                      className={`block ${style.textSize} mb-2 font-medium`}
+                      style={{ color: style.text }}
                     >
                       Message
                     </label>
                     <textarea 
                       rows="4"
                       placeholder="Tell us how we can help..."
-                      className={`w-full px-4 py-2 md:py-3 ${vibe.rounded} border ${vibe.animations}`}
+                      className={`w-full px-4 py-2 md:py-3 ${style.rounded} border ${style.animations}`}
                       style={{ 
-                        borderColor: theme.secondary,
-                        backgroundColor: theme.background,
-                        color: theme.text
+                        borderColor: style.secondary,
+                        backgroundColor: style.background,
+                        color: style.text
                       }}
                     />
                   </div>
@@ -186,8 +186,8 @@ const SplitContact = ({ content, vibe, theme }) => {
                 
                 <button 
                   type="submit"
-                  className={`${vibe.buttonStyle} ${vibe.shadows} ${vibe.animations} w-full`}
-                  style={{ backgroundColor: theme.primary, color: theme.background }}
+                  className={`${style.buttonStyle} ${style.shadows} ${style.animations} w-full`}
+                  style={{ backgroundColor: style.primary, color: style.background }}
                 >
                   Send Message
                 </button>

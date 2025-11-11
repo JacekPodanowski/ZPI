@@ -3,9 +3,10 @@ import apiClient from '../services/apiClient';
 
 // JEDYNE POTRZEBNE IMPORTY SYSTEMOWE
 import { MODULE_REGISTRY } from './components/modules/ModuleRegistry.js';
-import { VIBES } from './vibes';
-import { themeDefinitions } from '../theme/themeDefinitions.js';
-import { createTheme } from '../theme/colorSystem.js';
+import composeSiteStyle, {
+  resolveStyleId as resolveStyleIdFromConfig,
+  extractStyleOverrides as extractStyleOverridesFromConfig
+} from './styles/utils.js';
 
 const fetchPublicSiteConfig = async (siteId) => {
   const response = await apiClient.get(`/public-sites/by-id/${siteId}/`);
@@ -13,7 +14,7 @@ const fetchPublicSiteConfig = async (siteId) => {
 };
 
 // NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
-const renderModule = (module, vibe, theme, siteId) => {
+const renderModule = (module, style, siteId) => {
   if (module?.enabled === false) return null;
   
   const moduleType = (module.type || module.id || '').toLowerCase();
@@ -27,8 +28,7 @@ const renderModule = (module, vibe, theme, siteId) => {
         key={module.id}
         layout={layout}
         content={module.content || {}}
-        vibe={vibe}
-        theme={theme}
+        style={style}
         siteId={siteId}
       />
     );
@@ -185,12 +185,9 @@ const SiteApp = () => {
   if (error) return <div>Error: {error}</div>;
   if (!config || !activePage) return <div>Site configuration is incomplete.</div>;
 
-  // Wyznacz motyw i styl
-  const siteThemeId = config?.themeId || 'modernWellness';
-  const siteVibeId = config?.vibeId || 'vibe1';
-  const themeDefinition = themeDefinitions[siteThemeId] || themeDefinitions.modernWellness;
-  const theme = createTheme(themeDefinition, 'light');
-  const vibe = VIBES[siteVibeId] || VIBES.vibe1;
+  const styleId = resolveStyleIdFromConfig(config);
+  const styleOverrides = extractStyleOverridesFromConfig(config);
+  const style = composeSiteStyle(styleId, styleOverrides);
 
   const modulesToRender = activePage.modules
     ?.filter((module) => module?.enabled !== false)
@@ -198,7 +195,7 @@ const SiteApp = () => {
 
   return (
     <main>
-      {modulesToRender.map((module) => renderModule(module, vibe, theme, siteId))}
+      {modulesToRender.map((module) => renderModule(module, style, siteId))}
     </main>
   );
 };

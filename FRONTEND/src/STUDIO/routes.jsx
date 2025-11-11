@@ -5,7 +5,7 @@ import SitesPage from './pages/Sites/SitesPage';
 import CategorySelectionPage from './pages/NewSite/CategorySelectionPage';
 import NewProjectPage from './pages/NewSite/NewProjectPage';
 import ManageModulesPage from './pages/NewSite/ManageModulesPage';
-import EditorPage from './pages/Editor/EditorPage';
+import StyleSelectionPage from './pages/NewSite/StyleSelectionPage';
 import NewEditorPage from './pages/Editor/NewEditorPage';
 import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
@@ -45,6 +45,7 @@ const StudioApp = () => (
     {/* Site creation flow - OUTSIDE StudioLayout to avoid layout padding/footer */}
     <Route path="new" element={<ProtectedRoute><CategorySelectionPage /></ProtectedRoute>} />
     <Route path="new_project" element={<ProtectedRoute><NewProjectPage /></ProtectedRoute>} />
+  <Route path="new/style" element={<ProtectedRoute><StyleSelectionPage /></ProtectedRoute>} />
     <Route path="sites/modules/:siteId" element={<ProtectedRoute><ManageModulesPage /></ProtectedRoute>} />
 
     <Route element={<StudioLayout />}>
@@ -85,10 +86,6 @@ const StudioApp = () => (
     <Route path="editor/new" element={<ProtectedRoute><NewEditorPage /></ProtectedRoute>} />
     <Route path="editor/:siteId" element={<ProtectedRoute><NewEditorPage /></ProtectedRoute>} />
     
-    {/* Old Editor (v1) - kept for legacy/fallback, not easily accessible */}
-    <Route path="legacy-editor/new" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
-    <Route path="legacy-editor/:siteId" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
-
     {/* Catch-all */}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>

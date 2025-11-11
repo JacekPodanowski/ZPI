@@ -7,12 +7,12 @@ const LAYOUTS = {
   timeline: ListEvents
 };
 
-const EventsModule = ({ layout = 'list', content = {}, vibe, theme }) => {
+const EventsModule = ({ layout = 'list', content = {}, style }) => {
   const defaults = EVENTS_DEFAULTS[layout] || EVENTS_DEFAULTS.list;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.list;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 EventsModule.descriptor = EVENTS_DESCRIPTOR;

@@ -2,16 +2,28 @@
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 
-const SplitHero = ({ content, vibe, theme }) => {
+const SplitHero = ({ content, style }) => {
   const imageOnLeft = content.imagePosition === 'left';
   const imageUrl = content.image ? resolveMediaUrl(content.image) : '';
   const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
+  const spacingClass = style?.spacing || '';
+  const roundedClass = style?.rounded || '';
+  const shadowClass = style?.shadows || '';
+  const animationClass = style?.animations || '';
+  const headingClass = style?.headingSize || 'text-5xl md:text-6xl';
+  const textClass = style?.textSize || 'text-lg';
+  const buttonClass = style?.buttonStyle || 'inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold';
+  const backgroundColor = content.bgColor || style?.surface || style?.background || '#f0f0ed';
+  const primaryColor = content.textColor || style?.primary || '#1e1e1e';
+  const textColor = content.textColor || style?.text || '#333333';
+  const ctaBackground = content.ctaBgColor || style?.accent || style?.primary || primaryColor;
+  const ctaTextColor = content.ctaTextColor || style?.background || '#ffffff';
   
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden py-16 px-4 md:py-24 md:px-6 lg:py-32`}
+      className={`${spacingClass} ${roundedClass} relative overflow-hidden py-16 px-4 md:py-24 md:px-6 lg:py-32`}
       style={{
-        backgroundColor: content.bgColor || theme.background
+        backgroundColor
       }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
@@ -25,14 +37,14 @@ const SplitHero = ({ content, vibe, theme }) => {
         {/* Text Content */}
         <div className={imageOnLeft ? 'md:col-start-2' : ''}>
           <h1 
-            className={vibe.headingSize}
-            style={{ color: content.textColor || theme.primary }}
+            className={headingClass}
+            style={{ color: primaryColor }}
           >
             {content.heading}
           </h1>
           
           {content.subheading && (
-            <p className={`${vibe.textSize} mt-4 md:mt-6`} style={{ color: content.textColor || theme.text }}>
+            <p className={`${textClass} mt-4 md:mt-6`} style={{ color: textColor }}>
               {content.subheading}
             </p>
           )}
@@ -40,10 +52,10 @@ const SplitHero = ({ content, vibe, theme }) => {
           {content.showButton !== false && content.ctaText && (
             <a href={content.ctaLink}>
               <button 
-                className={`${vibe.buttonStyle} ${vibe.shadows} ${vibe.animations} mt-6 md:mt-8`}
+                className={`${buttonClass} ${shadowClass} ${animationClass} mt-6 md:mt-8`}
                 style={{ 
-                  backgroundColor: content.ctaBgColor || theme.primary, 
-                  color: content.ctaTextColor || theme.background 
+                  backgroundColor: ctaBackground, 
+                  color: ctaTextColor 
                 }}
               >
                 {content.ctaText}
@@ -58,11 +70,11 @@ const SplitHero = ({ content, vibe, theme }) => {
             <img 
               src={imageUrl} 
               alt={content.heading}
-              className={`w-full h-full object-cover ${vibe.rounded} ${vibe.shadows}`}
+              className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
             />
           ) : (
             <div 
-              className={`w-full h-full min-h-[260px] ${vibe.rounded} ${vibe.shadows} bg-neutral-200`}
+              className={`w-full h-full min-h-[260px] ${roundedClass} ${shadowClass} bg-neutral-200`}
             />
           )}
         </div>

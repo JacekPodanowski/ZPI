@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
 
-const StandardVideo = ({ content, vibe, theme }) => {
+const StandardVideo = ({ content, style }) => {
   const { videoUrl, caption, captionColor, bgColor, muted } = content;
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted });
   const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'));
@@ -11,14 +11,14 @@ const StandardVideo = ({ content, vibe, theme }) => {
   const hasValidVideo = fullSelfHostedUrl ? fullSelfHostedUrl.trim() !== '' : Boolean(embedUrl);
 
   return (
-    <section className={`${vibe.spacing} px-6`} style={{ backgroundColor: bgColor || theme.background }}>
+  <section className={`${style.spacing} px-6`} style={{ backgroundColor: bgColor || style.background }}>
       <div className="max-w-5xl mx-auto flex flex-col items-center gap-4">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.5 }}
-          className={`w-full aspect-video ${vibe.rounded} overflow-hidden ${vibe.shadows} bg-black/20`}
+          className={`w-full aspect-video ${style.rounded} overflow-hidden ${style.shadows} bg-black/20`}
         >
           {hasValidVideo && (
             isSelfHosted ? (
@@ -52,7 +52,7 @@ const StandardVideo = ({ content, vibe, theme }) => {
         {caption && (
           <p
             className="text-sm text-center max-w-3xl"
-            style={{ color: captionColor || theme.grey }}
+            style={{ color: captionColor || style.grey }}
           >
             {caption}
           </p>

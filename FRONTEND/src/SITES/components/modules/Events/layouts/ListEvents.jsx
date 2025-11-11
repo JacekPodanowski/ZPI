@@ -16,22 +16,22 @@ const formatDate = (dateString) => {
   }
 };
 
-const ListEvents = ({ content, vibe, theme }) => {
+const ListEvents = ({ content, style }) => {
   const { title, subtitle, events = [], bgColor, accentColor, textColor } = content;
   const [activeEvent, setActiveEvent] = useState(null);
 
   return (
-    <section className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || theme.background }}>
+    <section className={`${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || style.background }}>
       <div className="max-w-5xl mx-auto space-y-10">
         {(title || subtitle) && (
           <div className="text-center space-y-3">
             {title && (
-              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || theme.text }}>
+              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || style.text }}>
                 {title}
               </h2>
             )}
             {subtitle && (
-              <p className={`${vibe.textSize} opacity-70`} style={{ color: textColor || theme.text }}>
+              <p className={`${style.textSize} opacity-70`} style={{ color: textColor || style.text }}>
                 {subtitle}
               </p>
             )}
@@ -44,17 +44,17 @@ const ListEvents = ({ content, vibe, theme }) => {
               key={event.id}
               onClick={() => setActiveEvent(event)}
               whileHover={{ scale: 1.01 }}
-              className={`w-full text-left bg-white ${vibe.shadows} ${vibe.rounded} px-4 py-4 sm:px-6 sm:py-6 flex flex-col md:flex-row gap-4 sm:gap-6 items-start border border-black/5 hover:border-transparent hover:shadow-xl ${vibe.animations}`}
+              className={`w-full text-left bg-white ${style.shadows} ${style.rounded} px-4 py-4 sm:px-6 sm:py-6 flex flex-col md:flex-row gap-4 sm:gap-6 items-start border border-black/5 hover:border-transparent hover:shadow-xl ${style.animations}`}
             >
               <div className="flex items-center gap-4 w-full md:w-auto">
-                <div className={`flex flex-col items-center justify-center ${vibe.rounded} px-5 py-3 text-white`} style={{ backgroundColor: accentColor || theme.primary }}>
+                <div className={`flex flex-col items-center justify-center ${style.rounded} px-5 py-3 text-white`} style={{ backgroundColor: accentColor || style.primary }}>
                   <span className="text-xs uppercase tracking-[0.2em]">{event.tag || 'Data'}</span>
                   <span className="text-lg font-semibold">
                     {event.date ? formatDate(event.date) : 'Wkrótce'}
                   </span>
                 </div>
               </div>
-              <div className="flex-1 space-y-2" style={{ color: textColor || theme.text }}>
+              <div className="flex-1 space-y-2" style={{ color: textColor || style.text }}>
                 <h3 className="text-2xl font-semibold">{event.title || 'Nowe wydarzenie'}</h3>
                 {event.summary && (
                   <p className="text-sm opacity-80 leading-relaxed" dangerouslySetInnerHTML={{ __html: event.summary }} />
@@ -63,7 +63,7 @@ const ListEvents = ({ content, vibe, theme }) => {
                   <p className="text-xs uppercase tracking-[0.3em] opacity-60">{event.location}</p>
                 )}
               </div>
-              <div className="ml-auto hidden md:flex items-center gap-2 text-sm font-medium" style={{ color: accentColor || theme.primary }}>
+              <div className="ml-auto hidden md:flex items-center gap-2 text-sm font-medium" style={{ color: accentColor || style.primary }}>
                 Szczegóły
                 <span aria-hidden>→</span>
               </div>
@@ -88,7 +88,7 @@ const ListEvents = ({ content, vibe, theme }) => {
             onClick={() => setActiveEvent(null)}
           >
             <motion.div
-              className={`max-w-3xl w-full max-h-[85vh] overflow-y-auto bg-white ${vibe.rounded} ${vibe.shadows} p-8 relative`}
+              className={`max-w-3xl w-full max-h-[85vh] overflow-y-auto bg-white ${style.rounded} ${style.shadows} p-8 relative`}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
@@ -96,15 +96,15 @@ const ListEvents = ({ content, vibe, theme }) => {
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                className={`absolute top-5 right-5 w-10 h-10 ${vibe.rounded} bg-black/5 flex items-center justify-center text-2xl`}
+                className={`absolute top-5 right-5 w-10 h-10 ${style.rounded} bg-black/5 flex items-center justify-center text-2xl`}
                 onClick={() => setActiveEvent(null)}
               >
                 ×
               </button>
 
-              <div className="space-y-6" style={{ color: textColor || theme.text }}>
+              <div className="space-y-6" style={{ color: textColor || style.text }}>
                 <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.3em]" style={{ color: accentColor || theme.primary }}>
+                  <p className="text-xs uppercase tracking-[0.3em]" style={{ color: accentColor || style.primary }}>
                     {activeEvent.date ? formatDate(activeEvent.date) : 'Wkrótce'}
                   </p>
                   <h3 className="text-3xl font-semibold">{activeEvent.title || 'Nowe wydarzenie'}</h3>
@@ -118,7 +118,7 @@ const ListEvents = ({ content, vibe, theme }) => {
                     {activeEvent.images.map((image, index) => {
                       const resolvedImage = resolveMediaUrl(image);
                       return resolvedImage && resolvedImage.trim() !== '' ? (
-                        <div key={index} className={`${vibe.rounded} overflow-hidden`}>
+                        <div key={index} className={`${style.rounded} overflow-hidden`}>
                           <img src={resolvedImage} alt={`${activeEvent.title} ${index + 1}`} className="w-full h-full object-cover" />
                         </div>
                       ) : null;

@@ -1,8 +1,7 @@
 import React from 'react'
 import GalleryModule from '../components/modules/Gallery'
-import { VIBES } from '../vibes'
-import { themeDefinitions } from '../../theme/themeDefinitions'
-import { createTheme } from '../../theme/colorSystem'
+import { STYLES, DEFAULT_STYLE_ID } from '../styles'
+import composeSiteStyle from '../styles/utils'
 
 const GalleryPage = () => {
   const galleryContent = {
@@ -15,16 +14,14 @@ const GalleryPage = () => {
     gap: '1rem'
   }
 
-  const theme = createTheme(themeDefinitions.modernWellness, 'light')
-  const vibe = VIBES.vibe1
+  const style = composeSiteStyle(DEFAULT_STYLE_ID)
 
   return (
     <div className="min-h-screen bg-background">
       <GalleryModule 
         layout="masonry"
         content={galleryContent}
-        vibe={vibe}
-        theme={theme}
+        style={style}
       />
     </div>
   )

@@ -1,0 +1,180 @@
+{
+  "site": {
+    "styleId": "auroraMinimal",
+    "styleOverrides": {},
+    "pages": [
+      {
+        "id": "home",
+        "name": "Home",
+        "route": "/",
+        "modules": [
+          {
+            "id": "hero-1",
+            "type": "hero",
+            "content": {
+              "layout": "split",
+              "heading": "Pracownia Jogi Anny Kowalskiej",
+              "subheading": "Znajdź balans ciała i umysłu w sercu Krakowa",
+              "description": "Od 2015 roku pomagam odnaleźć równowagę między ciałem a duchem. Zajęcia indywidualne, grupowe i warsztaty weekendowe dla początkujących i zaawansowanych.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1600&q=80",
+                "alt": "Praktyka jogi w spokojnej przestrzeni"
+              },
+              "cta": {
+                "primary": { "text": "Zarezerwuj zajęcia", "link": "/kalendarz" },
+                "secondary": { "text": "Poznaj mnie", "link": "/o-mnie" }
+              }
+            }
+          },
+          {
+            "id": "gallery-1",
+            "type": "gallery",
+            "content": {
+              "layout": "masonry",
+              "title": "Nasza przestrzeń",
+              "images": [
+                {
+                  "url": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Główna sala do praktyki",
+                  "caption": "Przestrzeń do praktyki"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1603988363607-e1e4a66962c6?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Zajęcia grupowe",
+                  "caption": "Zajęcia grupowe"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1545389336-cf090694435e?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Strefa relaksu",
+                  "caption": "Strefa relaksu"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "about",
+        "name": "O Mnie",
+        "route": "/o-mnie",
+        "modules": [
+          {
+            "id": "about-1",
+            "type": "about",
+            "content": {
+              "layout": "grid",
+              "title": "Anna Kowalska - Instruktorka Jogi",
+              "description": "Od dziecka fascynowała mnie filozofia Wschodu i możliwości ludzkiego ciała. Praktykę jogi rozpoczęłam w 2010 roku, a w 2015 otworzyłam własną pracownię w Krakowie.\n\nUkończyłam certyfikowane szkolenia instruktorskie w Indiach (RYT 200, RYT 500) oraz liczne warsztaty z zakresu anatomii, ajurwedy i medytacji. W mojej pracy łączę tradycyjne podejście z nowoczesną wiedzą o biomechanice ciała.\n\nSpecjalizuję się w pracy z osobami rozpoczynającymi praktykę oraz tymi, którzy szukają głębszego połączenia ze swoim ciałem. Prowadzę sesje indywidualne, zajęcia grupowe oraz warsztaty weekendowe.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80",
+                "alt": "Anna Kowalska podczas praktyki jogi"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "services",
+        "name": "Oferta",
+        "route": "/oferta",
+        "modules": [
+          {
+            "id": "services-1",
+            "type": "services",
+            "content": {
+              "layout": "cards",
+              "title": "Formy zajęć",
+              "subtitle": "Wybierz sposób praktyki dopasowany do Twoich potrzeb i stylu życia",
+              "services": [
+                {
+                  "name": "Sesje indywidualne",
+                  "description": "90-minutowe spotkanie dostosowane do Twoich celów: praca nad postawą, redukcja stresu, budowanie siły lub elastyczności. Idealne dla osób początkujących oraz tych, którzy chcą pogłębić swoją praktykę.",
+                  "price": "200 PLN / 90 min",
+                  "image": "https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                  "name": "Zajęcia grupowe",
+                  "description": "Cotygodniowe zajęcia w małych grupach (max 8 osób). Różne poziomy zaawansowania: od podstaw po praktykę zaawansowaną. Poniedziałki 18:00, Środy 17:30, Piątki 18:30.",
+                  "price": "80 PLN / zajęcia (karnet 10 wejść: 700 PLN)",
+                  "image": "https://images.unsplash.com/photo-1588286840104-8957b019727f?auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                  "name": "Warsztaty weekendowe",
+                  "description": "Intensywne dwudniowe warsztaty: sobota 10:00-17:00, niedziela 10:00-16:00. Praktyka asany, pranayamy, medytacja, filozofia jogi. W programie również catering roślinny i materiały.",
+                  "price": "550 PLN / weekend",
+                  "image": "https://images.unsplash.com/photo-1545389336-cf090694435e?auto=format&fit=crop&w=600&q=80"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "calendar",
+        "name": "Kalendarz",
+        "route": "/kalendarz",
+        "modules": [
+          {
+            "id": "calendar-1",
+            "type": "calendar",
+            "content": {
+              "type": "compact",
+              "layout": "sidebar",
+              "title": "Zarezerwuj zajęcia",
+              "description": "Wybierz dogodny termin dla siebie"
+            }
+          }
+        ]
+      },
+      {
+        "id": "pricing",
+        "name": "Cennik",
+        "route": "/cennik",
+        "modules": [
+          {
+            "id": "pricing-1",
+            "type": "servicesAndPricing",
+            "content": {
+              "layout": "cards",
+              "title": "Przejrzyste pakiety",
+              "subtitle": "Wybierz plan, który najlepiej współgra z Twoim rytmem",
+              "plans": [
+                {
+                  "name": "Sesja indywidualna",
+                  "price": "180 PLN",
+                  "period": "sesja",
+                  "features": ["60 minut pracy 1:1", "Personalizowana praktyka", "Konsultacja przed zajęciami"]
+                },
+                {
+                  "name": "Karnet miesięczny",
+                  "price": "520 PLN",
+                  "period": "miesiąc",
+                  "features": ["8 spotkań grupowych", "Dostęp do nagrań", "Grupa wsparcia"],
+                  "featured": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "name": "Kontakt",
+        "route": "/kontakt",
+        "modules": [
+          {
+            "id": "contact-1",
+            "type": "contact",
+            "content": {
+              "layout": "form",
+              "title": "Skontaktuj się",
+              "email": "kontakt@pracowniajogi.pl",
+              "phone": "+48 600 000 001"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "entryPointPageId": "home"
+}

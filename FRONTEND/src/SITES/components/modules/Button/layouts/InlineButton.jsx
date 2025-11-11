@@ -1,17 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const InlineButton = ({ content, vibe, theme }) => {
+const InlineButton = ({ content, style }) => {
   return (
-    <div className="inline-block px-4">
+    <div className={`${style.spacing} inline-block px-4`}>
       <motion.a
         href={content.link}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`inline-block px-8 py-3 ${vibe.rounded} font-medium ${vibe.shadows} ${vibe.animations}`}
+        className={`inline-block px-8 py-3 ${style.rounded} font-medium ${style.shadows} ${style.animations}`}
         style={{
-          backgroundColor: content.bgColor || theme.primary,
-          color: content.textColor || theme.background
+          backgroundColor: content.bgColor || style.primary,
+          color: content.textColor || style.background
         }}
       >
         {content.text}

@@ -1,0 +1,135 @@
+{
+  "site": {
+    "styleId": "solsticePastel",
+    "styleOverrides": {},
+    "pages": [
+      {
+        "id": "home",
+        "name": "Home",
+        "route": "/",
+        "modules": [
+          {
+            "id": "hero-1",
+            "type": "hero",
+            "content": {
+              "layout": "centered",
+              "heading": "Studio Oddechu",
+              "subheading": "Sesje pranajamy i technik oddechowych online",
+              "description": "Naucz się wykorzystywać moc oddechu do redukcji stresu, poprawy koncentracji i wzmocnienia zdrowia. Sesje prowadzone przez certyfikowanego terapeutę oddechowego z 8-letnim doświadczeniem.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1600&q=80",
+                "alt": "Spokojna praktyka oddechowa"
+              },
+              "cta": {
+                "primary": { "text": "Zarezerwuj sesję", "link": "/kalendarz" },
+                "secondary": { "text": "O Studiu", "link": "/o-studiu" }
+              }
+            }
+          },
+          {
+            "id": "text-1",
+            "type": "text",
+            "content": {
+              "layout": "centered",
+              "title": "Czym jest praca z oddechem?",
+              "text": "Oddech to most między ciałem a umysłem. W codziennym życiu oddychamy automatycznie, często płytko i nieefektywnie. Świadoma praca z oddechem pozwala:\n\n• Obniżyć poziom stresu i lęku\n• Poprawić jakość snu\n• Zwiększyć pojemność płuc\n• Wzmocnić układ odpornościowy\n• Zwiększyć energię i koncentrację\n• Lepiej radzić sobie z emocjami\n\nW Studio Oddechu łączę tradycyjne techniki pranajamy z nowoczesną wiedzą o fizjologii oddychania."
+            }
+          }
+        ]
+      },
+      {
+        "id": "about",
+        "name": "O Mnie",
+        "route": "/o-mnie",
+        "modules": [
+          {
+            "id": "about-1",
+            "type": "about",
+            "content": {
+              "layout": "narrative",
+              "title": "Marcin Nowak - Terapeuta oddechowy",
+              "description": "Z wykształcenia jestem fizjoterapeutą, ale moją prawdziwą pasją stała się praca z oddechem. Wszystko zaczęło się od własnych problemów z lękiem i bezsennością - to właśnie techniki oddechowe pomogły mi odzyskać równowagę.\n\nUkończyłam zaawansowane kursy z pranajamy w Oxygen Advantage® oraz certyfikat Buteyko Breathing Educator. Przez ostatnie 8 lat przeprowadziłem ponad 3000 sesji indywidualnych, pomagając ludziom w radzeniu sobie ze stresem, poprawie snu, problemami oddechowymi i wydolnością fizyczną.\n\nW Studio Oddechu oferuję sesje online, co pozwala mi pracować z osobami z całej Polski. Każda sesja jest dostosowana do indywidualnych potrzeb - od podstawowych technik relaksacyjnych po zaawansowane metody poprawy wydolności.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80",
+                "alt": "Marcin Nowak podczas sesji online"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "services",
+        "name": "Oferta",
+        "route": "/oferta",
+        "modules": [
+          {
+            "id": "services-1",
+            "type": "services",
+            "content": {
+              "layout": "list",
+              "title": "Sesje indywidualne online",
+              "subtitle": "Wszystkie sesje odbywają się przez Zoom w komfortowym środowisku Twojego domu",
+              "services": [
+                {
+                  "name": "Sesja wprowadzająca (60 min)",
+                  "description": "Poznanie Twoich celów, analiza wzorców oddechowych, wprowadzenie do podstawowych technik. Otrzymasz nagranie z instrukcjami do samodzielnej praktyki.",
+                  "price": "150 PLN"
+                },
+                {
+                  "name": "Sesja regularna (45 min)",
+                  "description": "Pogłębienie praktyki, nowe techniki dostosowane do Twoich potrzeb, odpowiedzi na pytania, korekta wykonywania ćwiczeń.",
+                  "price": "120 PLN"
+                },
+                {
+                  "name": "Pakiet 5 sesji",
+                  "description": "Kompleksowy program pracy nad konkretnym celem: redukcja stresu, poprawa snu, zwiększenie wydolności. Sesje co tydzień przez 5 tygodni.",
+                  "price": "550 PLN (oszczędzasz 50 PLN)"
+                },
+                {
+                  "name": "Program 3-miesięczny",
+                  "description": "12 sesji rozłożonych na 3 miesiące, pełna opieka między sesjami (kontakt mailowy), spersonalizowany plan praktyki, materiały edukacyjne.",
+                  "price": "1200 PLN (oszczędzasz 240 PLN)"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "calendar",
+        "name": "Kalendarz",
+        "route": "/kalendarz",
+        "modules": [
+          {
+            "id": "calendar-1",
+            "type": "calendar",
+            "content": {
+              "type": "full",
+              "layout": "default",
+              "title": "Zaplanuj sesję",
+              "description": "Umów się na indywidualną sesję oddechową"
+            }
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "name": "Kontakt",
+        "route": "/kontakt",
+        "modules": [
+          {
+            "id": "contact-1",
+            "type": "contact",
+            "content": {
+              "layout": "split",
+              "title": "Skontaktuj się",
+              "email": "hello@studiooddechu.pl",
+              "phone": "+48 600 000 002"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "entryPointPageId": "home"
+}

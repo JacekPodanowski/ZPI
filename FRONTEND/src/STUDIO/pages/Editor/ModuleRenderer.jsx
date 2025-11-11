@@ -1,23 +1,9 @@
 ﻿import React, { useMemo, useCallback } from 'react';
 import { Box, Typography } from '@mui/material';
 import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry.js';
-import { VIBES } from '../../../SITES/vibes';
+import { STYLES } from '../../../SITES/styles';
 import useNewEditorStore from '../../store/newEditorStore';
 import { buildNavigationContent } from './moduleDefinitions';
-
-// Default vibe for STUDIO preview (same structure as SITES vibes)
-const DEFAULT_VIBE = {
-  name: 'Studio Preview',
-  spacing: 'space-y-8 py-12 md:py-16 px-4 md:px-6',
-  borders: 'border border-gray-200',
-  shadows: 'shadow-sm hover:shadow-md',
-  rounded: '', // No rounded corners in editor - modules should be square
-  animations: 'transition-all duration-300 ease-in-out',
-  textSize: 'text-base md:text-lg leading-relaxed',
-  headingSize: 'text-3xl md:text-4xl lg:text-5xl font-light tracking-tight',
-  buttonStyle: 'px-6 md:px-8 py-2 md:py-3 rounded-md font-medium text-sm md:text-base',
-  cardStyle: 'border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-lg'
-};
 
 // Default theme for STUDIO preview (modernWellness light mode)
 const DEFAULT_THEME = {
@@ -56,37 +42,9 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const selectedPageId = useNewEditorStore(state => state.selectedPageId);
   const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
 
-  const fallbackVibe = useMemo(() => VIBES?.vibe1 || DEFAULT_VIBE, []);
-
-  const resolvedVibe = useMemo(() => {
-    const candidateKeys = [site?.vibeId, site?.vibe, site?.style?.vibe];
-    const aliasMap = {
-      minimal: 'vibe1',
-      soft: 'vibe2',
-      bold: 'vibe3'
-    };
-
-    for (const rawKey of candidateKeys) {
-      if (!rawKey || typeof rawKey !== 'string') {
-        continue;
-      }
-      const normalizedKey = rawKey.trim();
-      if (!normalizedKey) {
-        continue;
-      }
-
-      if (VIBES?.[normalizedKey]) {
-        return VIBES[normalizedKey];
-      }
-
-      const aliasKey = aliasMap[normalizedKey.toLowerCase()];
-      if (aliasKey && VIBES?.[aliasKey]) {
-        return VIBES[aliasKey];
-      }
-    }
-
-    return fallbackVibe;
-  }, [fallbackVibe, site?.style?.vibe, site?.vibe, site?.vibeId]);
+  const resolvedStyle = useMemo(() => {
+    return site?.style || STYLES.auroraMinimal || {};
+  }, [site?.style]);
   
   if (!module) {
     return (
@@ -190,7 +148,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const componentProps = {
     layout,
     content: isNavigationModule ? (navigationContent || {}) : (module.content || {}),
-    vibe: resolvedVibe || DEFAULT_VIBE,
+    style: resolvedStyle,
     theme: effectiveTheme,
     siteId,
     isEditing: true,

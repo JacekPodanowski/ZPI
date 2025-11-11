@@ -90,7 +90,7 @@ const NewEditorPage = () => {
               id: data.id,
               name: data.name,
               site: {
-                vibe: data.template_config.vibe || 'minimal',
+                vibe: data.template_config.vibe || 'auroraMinimal',
                 theme: data.template_config.theme || {
                   primary: '#920020',
                   secondary: '#2D5A7B',
@@ -160,7 +160,7 @@ const NewEditorPage = () => {
               id: data.id,
               name: data.name,
               site: {
-                vibe: data.template_config?.vibe || 'minimal',
+                vibe: data.template_config?.vibe || 'auroraMinimal',
                 theme: data.template_config?.colors ? {
                   primary: data.template_config.colors.primary || '#920020',
                   secondary: data.template_config.colors.secondary || '#2D5A7B',

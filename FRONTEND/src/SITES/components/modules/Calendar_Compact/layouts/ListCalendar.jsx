@@ -1,5 +1,5 @@
 // layouts/ListCalendar.jsx - List view of upcoming sessions
-const ListCalendar = ({ content, vibe, theme }) => {
+const ListCalendar = ({ content, style }) => {
   // Mock upcoming sessions data
   const mockSessions = [
     { day: "Monday", date: "Nov 11", time: "2:00 PM", type: "Individual", available: true },
@@ -11,21 +11,21 @@ const ListCalendar = ({ content, vibe, theme }) => {
   
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded}`}
-      style={{ backgroundColor: theme.background }}
+  className={`${style.spacing} ${style.rounded}`}
+  style={{ backgroundColor: style.background }}
     >
       <div className="max-w-4xl mx-auto">
         <h2 
-          className={`${vibe.headingSize} text-center`}
-          style={{ color: theme.primary }}
+          className={`${style.headingSize} text-center`}
+          style={{ color: style.primary }}
         >
           {content.title}
         </h2>
         
         {content.description && (
           <p 
-            className={`${vibe.textSize} text-center mt-4 md:mt-6`}
-            style={{ color: theme.text }}
+            className={`${style.textSize} text-center mt-4 md:mt-6`}
+            style={{ color: style.text }}
           >
             {content.description}
           </p>
@@ -38,9 +38,9 @@ const ListCalendar = ({ content, vibe, theme }) => {
             .map((session, index) => (
               <div 
                 key={index}
-                className={`${vibe.cardStyle} ${vibe.animations} flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}
+                className={`${style.cardStyle} ${style.animations} flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}
                 style={{ 
-                  borderColor: theme.secondary,
+                  borderColor: style.secondary,
                   opacity: session.available ? 1 : 0.5 
                 }}
               >
@@ -49,24 +49,24 @@ const ListCalendar = ({ content, vibe, theme }) => {
                   <div className="flex items-baseline gap-3 mb-1">
                     <h3 
                       className="text-lg md:text-xl font-semibold"
-                      style={{ color: theme.primary }}
+                      style={{ color: style.primary }}
                     >
                       {session.day}, {session.date}
                     </h3>
                     <span 
                       className="text-base md:text-lg"
-                      style={{ color: theme.text }}
+                      style={{ color: style.text }}
                     >
                       {session.time}
                     </span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm">
-                    <span style={{ color: theme.text }}>
+                    <span style={{ color: style.text }}>
                       {session.type === 'Group' ? '👥' : '👤'} {session.type}
                     </span>
                     {session.type === 'Group' && session.spots && (
-                      <span style={{ color: theme.text }}>
+                      <span style={{ color: style.text }}>
                         • {session.spots} spots left
                       </span>
                     )}
@@ -76,10 +76,10 @@ const ListCalendar = ({ content, vibe, theme }) => {
                 {/* Action Button */}
                 <a href={content.bookingUrl}>
                   <button 
-                    className={`${vibe.buttonStyle} ${vibe.shadows} ${vibe.animations}`}
+                    className={`${style.buttonStyle} ${style.shadows} ${style.animations}`}
                     style={{ 
-                      backgroundColor: session.available ? theme.primary : theme.secondary, 
-                      color: theme.background 
+                      backgroundColor: session.available ? style.primary : style.secondary, 
+                      color: style.background 
                     }}
                     disabled={!session.available}
                   >
@@ -94,8 +94,8 @@ const ListCalendar = ({ content, vibe, theme }) => {
         <div className="text-center mt-8 md:mt-10">
           <a 
             href={content.bookingUrl}
-            className={`${vibe.textSize} underline ${vibe.animations}`}
-            style={{ color: theme.primary }}
+            className={`${style.textSize} underline ${style.animations}`}
+            style={{ color: style.primary }}
           >
             View Full Calendar →
           </a>

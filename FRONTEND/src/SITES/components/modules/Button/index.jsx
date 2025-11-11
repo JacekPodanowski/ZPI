@@ -10,12 +10,12 @@ const LAYOUTS = {
   fullWidth: FullWidthButton
 };
 
-const ButtonModule = ({ layout = 'block', content = {}, vibe, theme }) => {
+const ButtonModule = ({ layout = 'block', content = {}, style }) => {
   const defaults = BUTTON_DEFAULTS[layout] || BUTTON_DEFAULTS.block;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.block;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 ButtonModule.descriptor = BUTTON_DESCRIPTOR;

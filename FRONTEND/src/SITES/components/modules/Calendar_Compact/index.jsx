@@ -7,7 +7,7 @@ import { pl } from 'date-fns/locale';
 import BookingModal from '../../../../components/Calendar/BookingModal';
 import { CALENDAR_DESCRIPTOR } from './descriptor';
 
-const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) => {
+const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [availableSlots, setAvailableSlots] = useState({});
@@ -19,14 +19,14 @@ const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) =>
   const { 
     title = 'Wybierz dogodny termin zajęć', 
     subtitle = 'Poniższy kalendarz prezentuje aktualne wydarzenia dostępne do rezerwacji.',
-    bgColor = '#f8f9fa',
-    textColor = '#1a1a1a',
+    bgColor = content.bgColor || style?.background || '#f8f9fa',
+    textColor = content.textColor || style?.text || '#1a1a1a',
     calendarAccentColor,
     showCapacity = true
   } = content;
 
-  // Use calendarAccentColor from content, fallback to theme primary, then default
-  const effectiveAccentColor = calendarAccentColor || theme?.primary || '#146B3A';
+  // Use calendarAccentColor from content, fallback to style primary, then default
+  const effectiveAccentColor = calendarAccentColor || style?.primary || '#146B3A';
 
   useEffect(() => {
     if (!siteId) {
@@ -119,7 +119,7 @@ const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) =>
       className="w-full text-left p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-md"
       style={{
         borderColor: `${effectiveAccentColor}30`,
-        backgroundColor: 'white'
+        backgroundColor: style?.surface || 'white'
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = effectiveAccentColor;
@@ -127,7 +127,7 @@ const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) =>
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = `${effectiveAccentColor}30`;
-        e.currentTarget.style.backgroundColor = 'white';
+        e.currentTarget.style.backgroundColor = style?.surface || 'white';
       }}
     >
       <div className="flex items-center justify-between">
@@ -260,7 +260,7 @@ const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) =>
 
   const renderSlotsList = () => (
     <div className="p-8">
-      <h3 className="text-xl font-semibold mb-6" style={{ color: '#1a1a1a' }}>
+      <h3 className="text-xl font-semibold mb-6" style={{ color: textColor }}>
         {selectedDay 
           ? `Terminy ${format(selectedDay, 'd MMMM yyyy', { locale: pl })}`
           : 'Wybierz dzień z kalendarza'
@@ -303,17 +303,17 @@ const CalendarSection = ({ content = {}, siteId, theme, layout = 'sidebar' }) =>
   );
 
   return (
-    <section className="py-16 sm:py-20" style={{ backgroundColor: bgColor }}>
+    <section className="py-16 sm:py-20" style={{ backgroundColor: bgColor, color: textColor }}>
       <div className="mx-auto max-w-6xl px-4">
         {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4" style={{ color: '#1a1a1a' }}>
+          <h2 className="text-4xl font-bold mb-4" style={{ color: textColor }}>
             {title}
           </h2>
-          <p className="text-lg text-neutral-600 max-w-3xl mx-auto mb-2">
+          <p className="text-lg max-w-3xl mx-auto mb-2" style={{ color: style?.neutral || '#6b7280' }}>
             {subtitle}
           </p>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm" style={{ color: style?.grey || '#9ca3af' }}>
             Źródło danych: {siteId ? 'API Backend' : 'dane makietowe (mock)'}
           </p>
         </div>

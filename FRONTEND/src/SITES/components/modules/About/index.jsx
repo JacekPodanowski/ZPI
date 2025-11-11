@@ -12,13 +12,13 @@ const LAYOUTS = {
   narrative: NarrativeAbout
 };
 
-const AboutSection = ({ layout = 'grid', content = {}, vibe, theme }) => {
+const AboutSection = ({ layout = 'grid', content = {}, style }) => {
   const defaults = ABOUT_DEFAULTS[layout] || ABOUT_DEFAULTS.grid;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 AboutSection.descriptor = ABOUT_DESCRIPTOR;

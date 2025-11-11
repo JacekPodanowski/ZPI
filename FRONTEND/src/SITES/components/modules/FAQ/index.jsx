@@ -11,12 +11,12 @@ const LAYOUTS = {
   cards: CardsFAQ
 };
 
-const FAQModule = ({ layout = 'accordion', content = {}, vibe, theme }) => {
+const FAQModule = ({ layout = 'accordion', content = {}, style }) => {
   const defaults = FAQ_DEFAULTS[layout] || FAQ_DEFAULTS.accordion;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.accordion;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 FAQModule.descriptor = FAQ_DESCRIPTOR;

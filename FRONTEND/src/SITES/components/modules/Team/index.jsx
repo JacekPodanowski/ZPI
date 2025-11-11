@@ -8,12 +8,12 @@ const LAYOUTS = {
   list: GridTeam
 };
 
-const TeamModule = ({ layout = 'grid', content = {}, vibe, theme }) => {
+const TeamModule = ({ layout = 'grid', content = {}, style }) => {
   const defaults = TEAM_DEFAULTS[layout] || TEAM_DEFAULTS.grid;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 TeamModule.descriptor = TEAM_DESCRIPTOR;

@@ -10,12 +10,12 @@ const LAYOUTS = {
   compact: CompactVideo
 };
 
-const VideoModule = ({ layout = 'standard', content = {}, vibe, theme }) => {
+const VideoModule = ({ layout = 'standard', content = {}, style }) => {
   const defaults = VIDEO_DEFAULTS[layout] || VIDEO_DEFAULTS.standard;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.standard;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 VideoModule.descriptor = VIDEO_DESCRIPTOR;

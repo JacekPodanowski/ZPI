@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import moment from 'moment';
 import PublicCalendar from '../components/PublicCalendar';
 import BookingModal from '../../../../../components/Calendar/BookingModal';
+import { applyOpacity } from '../../../../../utils/color';
 
 const normalizeEvents = (events = []) => {
   const entries = Array.isArray(events) ? events : [];
@@ -56,7 +57,7 @@ const normalizeEvents = (events = []) => {
   return map;
 };
 
-const FullWidthCalendar = ({ content, theme, siteId }) => {
+const FullWidthCalendar = ({ content, style, siteId }) => {
   const [activeDay, setActiveDay] = useState(null);
   const [apiEvents, setApiEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,6 +65,19 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
   const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+
+  const accent = content.highlightColor || style?.primary || '#920020';
+  const headingColor = content.textColor || style?.text || '#1e1e1e';
+  const sectionBackground = content.backgroundColor || style?.background || '#f0f0ed';
+  const neutralText = style?.neutral || '#6b7280';
+  const subtleText = style?.colors?.text?.subtle || applyOpacity(neutralText, 0.8);
+  const surface = style?.surface || '#ffffff';
+  const borderColor = style?.colors?.border || style?.borderColor || 'rgba(0, 0, 0, 0.14)';
+  const subtleBorder = style?.colors?.borderSubtle || applyOpacity(borderColor, 0.5);
+  const buttonText = content.buttonTextColor || (style?.mode === 'dark'
+    ? style?.text || '#f5f5f5'
+    : style?.background || '#ffffff');
+  const emptyState = content.emptyStateMessage || 'Wybierz dzień z kalendarza, aby zobaczyć wydarzenia.';
 
   // Fetch events from API
   useEffect(() => {
@@ -186,27 +200,25 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
     return eventsByDate.get(activeDayKey) || [];
   }, [activeDayKey, eventsByDate]);
 
-  const accent = content.highlightColor || theme?.colors?.primary || theme?.palette?.primary?.main || '#920020';
-  const headingColor = content.textColor || theme?.colors?.text || '#1e1e1e';
-  const sectionBackground = content.backgroundColor || theme?.colors?.background || '#f0f0ed';
-  const emptyState = content.emptyStateMessage || 'Wybierz dzień z kalendarza, aby zobaczyć wydarzenia.';
-
   return (
     <section className="py-16 sm:py-20" style={{ backgroundColor: sectionBackground }}>
       <div className="mx-auto max-w-6xl px-4">
         {(content.title || content.subtitle) && (
           <header className="text-center mb-12">
             {content.title && (
-              <h2 className="text-4xl font-semibold tracking-tight" style={{ color: headingColor }}>
+              <h2 className={style?.headingSize || 'text-4xl font-semibold tracking-tight'} style={{ color: headingColor }}>
                 {content.title}
               </h2>
             )}
             {content.subtitle && (
-              <p className="mt-4 text-lg text-neutral-600">
+              <p
+                className={`${style?.textSize || 'text-lg'} mt-4`}
+                style={{ color: subtleText }}
+              >
                 {content.subtitle}
               </p>
             )}
-            <p className="mt-2 text-sm text-neutral-500">
+            <p className="mt-2 text-sm" style={{ color: neutralText }}>
               Źródło danych: {siteId ? (apiEvents.length > 0 ? 'API Backend' : 'dane przykładowe') : 'dane przykładowe (brak siteId)'}
             </p>
           </header>
@@ -223,12 +235,15 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
         {loading && (
           <div className="flex items-center justify-center py-12 mb-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: accent }}></div>
-            <span className="ml-3 text-neutral-600">Ładowanie wydarzeń...</span>
+            <span className="ml-3" style={{ color: neutralText }}>Ładowanie wydarzeń...</span>
           </div>
         )}
 
-        <div className="rounded-3xl shadow-xl overflow-hidden border border-neutral-200/70 bg-white/90 backdrop-blur">
-          <PublicCalendar eventsByDate={eventsByDate} onDayClick={handleDayClick} />
+        <div
+          className={`${style?.rounded || 'rounded-3xl'} ${style?.shadows || 'shadow-xl'} overflow-hidden ${style?.borders || 'border border-neutral-200/70'}`}
+          style={{ backgroundColor: surface, borderColor }}
+        >
+          <PublicCalendar eventsByDate={eventsByDate} onDayClick={handleDayClick} style={style} />
         </div>
 
         <div className="mt-10">
@@ -247,7 +262,11 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
                 return (
                   <article
                     key={event.id}
-                    className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm transition-colors duration-200 hover:border-neutral-300 hover:shadow-md"
+                    className={`${style?.rounded || 'rounded-2xl'} ${style?.shadows || 'shadow-sm'} border p-6 ${style?.animations || 'transition-colors duration-200'} hover:shadow-md`}
+                    style={{
+                      backgroundColor: surface,
+                      borderColor: subtleBorder
+                    }}
                   >
                     <div className="flex items-center justify-between gap-4">
                       <h4 className="text-xl font-semibold" style={{ color: headingColor }}>
@@ -256,7 +275,7 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
                       {event.category && (
                         <span
                           className="text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full"
-                          style={{ color: accent, backgroundColor: `${accent}1a` }}
+                          style={{ color: accent, backgroundColor: applyOpacity(accent, 0.1) }}
                         >
                           {event.category}
                         </span>
@@ -271,25 +290,25 @@ const FullWidthCalendar = ({ content, theme, siteId }) => {
                     )}
 
                     {event.location && (
-                      <p className="mt-2 text-sm text-neutral-500">{event.location}</p>
+                      <p className="mt-2 text-sm" style={{ color: neutralText }}>{event.location}</p>
                     )}
 
                     {event.description && (
-                      <p className="mt-4 text-sm leading-relaxed text-neutral-600">{event.description}</p>
+                      <p className="mt-4 text-sm leading-relaxed" style={{ color: subtleText }}>{event.description}</p>
                     )}
 
                     {typeof event.capacity === 'number' && (
-                      <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-wider" style={{ color: neutralText }}>
                         Dostępne miejsca: {event.availableSpots ?? event.capacity}/{event.capacity}
                       </p>
                     )}
 
                     <button
                       onClick={() => handleSlotClick(event)}
-                      className="mt-4 w-full rounded-lg py-3 px-4 text-sm font-medium transition-all duration-200 hover:shadow-md"
+                      className={`mt-4 w-full ${style?.buttonStyle || 'rounded-lg py-3 px-4 text-sm font-medium'} ${style?.animations || 'transition-all duration-200'} ${style?.shadows || ''} hover:shadow-md`}
                       style={{
                         backgroundColor: accent,
-                        color: '#ffffff'
+                        color: buttonText
                       }}
                     >
                       Rezerwuj spotkanie
@@ -344,7 +363,7 @@ FullWidthCalendar.propTypes = {
       })
     )
   }),
-  theme: PropTypes.object,
+  style: PropTypes.object,
   siteId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
 };
 
@@ -352,7 +371,7 @@ FullWidthCalendar.defaultProps = {
   content: {
     events: []
   },
-  theme: undefined,
+  style: undefined,
   siteId: null
 };
 

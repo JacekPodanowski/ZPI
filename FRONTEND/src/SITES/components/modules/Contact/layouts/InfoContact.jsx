@@ -1,22 +1,22 @@
 // layouts/InfoContact.jsx - Information-focused layout
-const InfoContact = ({ content, vibe, theme }) => {
+const InfoContact = ({ content, style }) => {
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded}`}
-      style={{ backgroundColor: theme.background }}
+  className={`${style.spacing} ${style.rounded}`}
+  style={{ backgroundColor: style.background }}
     >
       <div className="max-w-4xl mx-auto">
         <h2 
-          className={`${vibe.headingSize} text-center`}
-          style={{ color: theme.primary }}
+          className={`${style.headingSize} text-center`}
+          style={{ color: style.primary }}
         >
           {content.title}
         </h2>
         
         {content.description && (
           <p 
-            className={`${vibe.textSize} text-center mt-4 md:mt-6 max-w-2xl mx-auto`}
-            style={{ color: theme.text }}
+            className={`${style.textSize} text-center mt-4 md:mt-6 max-w-2xl mx-auto`}
+            style={{ color: style.text }}
           >
             {content.description}
           </p>
@@ -27,20 +27,20 @@ const InfoContact = ({ content, vibe, theme }) => {
           {/* Email Card */}
           {content.email && (
             <div 
-              className={`${vibe.cardStyle} ${vibe.animations} text-center`}
-              style={{ borderColor: theme.secondary }}
+              className={`${style.cardStyle} ${style.animations} text-center`}
+              style={{ borderColor: style.secondary }}
             >
               <div className="text-3xl md:text-4xl mb-3">✉️</div>
               <h3 
                 className="text-lg md:text-xl font-semibold mb-2"
-                style={{ color: theme.primary }}
+                style={{ color: style.primary }}
               >
                 Email
               </h3>
               <a 
                 href={`mailto:${content.email}`}
-                className={`${vibe.textSize} underline ${vibe.animations}`}
-                style={{ color: theme.text }}
+                className={`${style.textSize} underline ${style.animations}`}
+                style={{ color: style.text }}
               >
                 {content.email}
               </a>
@@ -50,20 +50,20 @@ const InfoContact = ({ content, vibe, theme }) => {
           {/* Phone Card */}
           {content.phone && (
             <div 
-              className={`${vibe.cardStyle} ${vibe.animations} text-center`}
-              style={{ borderColor: theme.secondary }}
+              className={`${style.cardStyle} ${style.animations} text-center`}
+              style={{ borderColor: style.secondary }}
             >
               <div className="text-3xl md:text-4xl mb-3">📞</div>
               <h3 
                 className="text-lg md:text-xl font-semibold mb-2"
-                style={{ color: theme.primary }}
+                style={{ color: style.primary }}
               >
                 Phone
               </h3>
               <a 
                 href={`tel:${content.phone.replace(/\s/g, '')}`}
-                className={`${vibe.textSize} underline ${vibe.animations}`}
-                style={{ color: theme.text }}
+                className={`${style.textSize} underline ${style.animations}`}
+                style={{ color: style.text }}
               >
                 {content.phone}
               </a>
@@ -73,19 +73,19 @@ const InfoContact = ({ content, vibe, theme }) => {
           {/* Address Card */}
           {content.address && (
             <div 
-              className={`${vibe.cardStyle} ${vibe.animations} text-center`}
-              style={{ borderColor: theme.secondary }}
+              className={`${style.cardStyle} ${style.animations} text-center`}
+              style={{ borderColor: style.secondary }}
             >
               <div className="text-3xl md:text-4xl mb-3">📍</div>
               <h3 
                 className="text-lg md:text-xl font-semibold mb-2"
-                style={{ color: theme.primary }}
+                style={{ color: style.primary }}
               >
                 Address
               </h3>
               <p 
-                className={`${vibe.textSize}`}
-                style={{ color: theme.text }}
+                className={`${style.textSize}`}
+                style={{ color: style.text }}
               >
                 {content.address}
               </p>

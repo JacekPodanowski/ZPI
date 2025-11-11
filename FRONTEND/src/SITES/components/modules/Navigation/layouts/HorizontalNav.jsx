@@ -1,9 +1,18 @@
 // layouts/HorizontalNav.jsx - Traditional horizontal navigation
 import { useState } from 'react';
 
-const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
+const HorizontalNav = ({ content, style, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
+
+  const backgroundColor = content.bgColor || style?.background || 'transparent';
+  const textColor = content.textColor || style?.text || '#111';
+  const activeColor = content.activeColor || style?.primary || textColor;
+  const borderColor = style?.colors?.border || style?.borderColor || style?.secondary || activeColor;
+  const dividerColor = style?.colors?.borderSubtle || borderColor;
+  const animationClass = style?.animations || '';
+  const shadowClass = style?.shadows || '';
+  const textSizeClass = style?.textSize || 'text-base';
 
   const handleLinkClick = (event, link) => {
     if (onNavigate && link.pageId) {
@@ -14,10 +23,10 @@ const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
   
   return (
     <nav 
-      className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${vibe.shadows} ${vibe.animations}`}
+      className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${shadowClass} ${animationClass}`}
       style={{ 
-        backgroundColor: content.bgColor || theme.background,
-        borderBottom: `1px solid ${theme.secondary}`
+        backgroundColor,
+        borderBottom: `1px solid ${borderColor}`
       }}
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-5">
@@ -34,7 +43,7 @@ const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
             {content.logo?.text && (
               <span 
                 className="text-xl md:text-2xl font-semibold"
-                style={{ color: content.textColor || theme.primary }}
+                style={{ color: activeColor }}
               >
                 {content.logo.text}
               </span>
@@ -48,9 +57,9 @@ const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
                 key={index}
                 href={link.href}
                 onClick={(event) => handleLinkClick(event, link)}
-                className={`inline-flex items-center h-full ${vibe.textSize} ${vibe.animations} hover:opacity-70 ${link.pageId === activePageId ? 'font-semibold' : ''}`}
+                className={`inline-flex items-center h-full ${textSizeClass} ${animationClass} hover:opacity-70 ${link.pageId === activePageId ? 'font-semibold' : ''}`}
                 style={{
-                  color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text),
+                  color: link.pageId === activePageId ? activeColor : textColor,
                   lineHeight: 1.2
                 }}
               >
@@ -63,7 +72,7 @@ const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
           <button 
             className="md:hidden text-2xl"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            style={{ color: content.textColor || theme.primary }}
+            style={{ color: activeColor }}
           >
             {isMenuOpen ? '✕' : '☰'}
           </button>
@@ -71,14 +80,14 @@ const HorizontalNav = ({ content, vibe, theme, onNavigate }) => {
         
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden mt-4 pt-4 border-t space-y-3" style={{ borderColor: theme.secondary }}>
+          <div className="md:hidden mt-4 pt-4 border-t space-y-3" style={{ borderColor: dividerColor }}>
             {content.links?.map((link, index) => (
               <a 
                 key={index}
                 href={link.href}
                 onClick={(event) => handleLinkClick(event, link)}
-                className={`block ${vibe.textSize} ${vibe.animations} hover:opacity-70`}
-                style={{ color: link.pageId === activePageId ? (content.activeColor || theme.primary) : (content.textColor || theme.text) }}
+                className={`block ${textSizeClass} ${animationClass} hover:opacity-70`}
+                style={{ color: link.pageId === activePageId ? activeColor : textColor }}
               >
                 {link.label}
               </a>

@@ -1,8 +1,16 @@
 import { useState } from 'react';
 
-const MobileNav = ({ content, vibe, theme, onNavigate }) => {
+const MobileNav = ({ content, style, onNavigate }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
+
+  const backgroundColor = content.bgColor || style?.surface || style?.background || 'transparent';
+  const textColor = content.textColor || style?.text || '#111';
+  const activeColor = content.activeColor || style?.primary || textColor;
+  const borderColor = style?.colors?.border || style?.borderColor || style?.secondary || activeColor;
+  const dividerColor = style?.colors?.borderSubtle || borderColor;
+  const animationClass = style?.animations || '';
+  const textSizeClass = style?.textSize || 'text-base';
 
   const handleLinkClick = (event, link) => {
     if (onNavigate && link.pageId) {
@@ -14,10 +22,10 @@ const MobileNav = ({ content, vibe, theme, onNavigate }) => {
 
   return (
     <nav
-      className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${vibe.animations}`}
+      className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${animationClass}`}
       style={{
-        backgroundColor: content.bgColor || theme.surface,
-        borderBottom: `1px solid ${theme.border}`
+        backgroundColor,
+        borderBottom: `1px solid ${borderColor}`
       }}
     >
       <div className="px-4 py-3 flex items-center justify-between">
@@ -32,7 +40,7 @@ const MobileNav = ({ content, vibe, theme, onNavigate }) => {
           {content.logo?.text && (
             <span
               className="text-lg font-semibold"
-              style={{ color: content.textColor || theme.primary }}
+              style={{ color: activeColor }}
             >
               {content.logo.text}
             </span>
@@ -43,7 +51,7 @@ const MobileNav = ({ content, vibe, theme, onNavigate }) => {
           type="button"
           className="text-2xl"
           onClick={() => setIsMenuOpen((prev) => !prev)}
-          style={{ color: content.textColor || theme.text }}
+          style={{ color: textColor }}
         >
           {isMenuOpen ? '✕' : '☰'}
         </button>
@@ -53,7 +61,7 @@ const MobileNav = ({ content, vibe, theme, onNavigate }) => {
         className={`overflow-hidden transition-all duration-300 ease-in-out border-t ${
           isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
         }`}
-        style={{ borderColor: theme.divider, backgroundColor: content.bgColor || theme.surface }}
+        style={{ borderColor: dividerColor, backgroundColor }}
       >
         <div className="flex flex-col gap-2 px-4 py-3">
           {content.links?.map((link, index) => {
@@ -63,9 +71,9 @@ const MobileNav = ({ content, vibe, theme, onNavigate }) => {
                 key={index}
                 href={link.href}
                 onClick={(event) => handleLinkClick(event, link)}
-                className={`${vibe.textSize} font-medium`}
+                className={`${textSizeClass} font-medium`}
                 style={{
-                  color: isActive ? (content.activeColor || theme.primary) : (content.textColor || theme.text)
+                  color: isActive ? activeColor : textColor
                 }}
               >
                 {link.label}

@@ -4,9 +4,8 @@ import useEditorStore from '../store/editorStore'
 import EditableWrapper from './EditableWrapper'
 import SiteNavigation from './SiteNavigation'
 import { MODULE_REGISTRY } from '../../SITES/components/modules/ModuleRegistry'
-import { VIBES } from '../../SITES/vibes'
-import { themeDefinitions } from '../../theme/themeDefinitions'
-import { createTheme } from '../../theme/colorSystem'
+import { STYLES, DEFAULT_STYLE_ID } from '../../SITES/styles'
+import composeSiteStyle from '../../SITES/styles/utils'
 
 const SiteCanvas = () => {
   const {
@@ -76,12 +75,53 @@ const SiteCanvas = () => {
     }
   }
 
-  // Get theme and vibe from templateConfig
-  const siteThemeId = templateConfig?.themeId || 'modernWellness'
-  const siteVibeId = templateConfig?.vibeId || 'vibe1'
-  const themeDefinition = themeDefinitions[siteThemeId] || themeDefinitions.modernWellness
-  const theme = createTheme(themeDefinition, 'light')
-  const vibe = VIBES[siteVibeId] || VIBES.vibe1
+  const resolveStyleId = () => {
+    const candidates = [
+      templateConfig?.styleId,
+      templateConfig?.style?.id,
+      templateConfig?.style?.styleId,
+      typeof templateConfig?.style === 'string' ? templateConfig.style : null,
+      templateConfig?.vibeId,
+      templateConfig?.vibe,
+      templateConfig?.style?.vibe
+    ]
+
+    const match = candidates.find((id) => id && STYLES[id])
+    return match || DEFAULT_STYLE_ID
+  }
+
+  const extractStyleOverrides = () => {
+    const overrides = {}
+
+    if (templateConfig?.styleOverrides && typeof templateConfig.styleOverrides === 'object') {
+      Object.assign(overrides, templateConfig.styleOverrides)
+    }
+
+    if (templateConfig?.style && typeof templateConfig.style === 'object' && !Array.isArray(templateConfig.style)) {
+      const { id, styleId, vibe, vibeId, themeId, theme, ...rest } = templateConfig.style
+      Object.assign(overrides, rest)
+      if (theme && typeof theme === 'object') {
+        overrides.colors = {
+          ...(overrides.colors || {}),
+          ...theme
+        }
+      }
+    }
+
+    const legacyThemeOverrides = templateConfig?.themeOverrides || templateConfig?.theme
+    if (legacyThemeOverrides && typeof legacyThemeOverrides === 'object') {
+      overrides.colors = {
+        ...(overrides.colors || {}),
+        ...legacyThemeOverrides
+      }
+    }
+
+    return overrides
+  }
+
+  const styleId = resolveStyleId()
+  const styleOverrides = extractStyleOverrides()
+  const style = composeSiteStyle(styleId, styleOverrides)
 
   // Intersection Observer TYLKO dla single-page
   useEffect(() => {
@@ -163,15 +203,12 @@ const SiteCanvas = () => {
         viewport: { once: true },
         transition: { duration: 0.5 }
       },
-      none: {}
     }
 
-    // For new modular architecture
     const componentProps = {
-      layout: layout,
+      layout,
       content: module.content || module.config || {},
-      vibe: vibe,
-      theme: theme
+      style
     }
 
     const content = animations.enabled ? (

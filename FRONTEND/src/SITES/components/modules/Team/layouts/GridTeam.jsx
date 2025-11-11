@@ -4,22 +4,22 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 
-const GridTeam = ({ content, vibe, theme }) => {
+const GridTeam = ({ content, style }) => {
   const {
     title = 'Poznaj nasz zespół',
     subtitle = 'Ludzie, którzy wspierają Cię w drodze do równowagi',
     members = [],
-    bgColor = theme?.background || '#FFFFFF',
+    bgColor = style?.background || '#FFFFFF',
     backgroundImage,
     backgroundOverlayColor,
-    textColor = theme?.text || 'rgb(30, 30, 30)',
-    accentColor = theme?.primary || 'rgb(146, 0, 32)'
+    textColor = style?.text || 'rgb(30, 30, 30)',
+    accentColor = style?.primary || 'rgb(146, 0, 32)'
   } = content || {};
 
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
 
   return (
-    <section className="py-12 px-4 md:py-20 md:px-6 relative overflow-hidden" style={{ backgroundColor: bgColor }}>
+    <section className={`${style.spacing} relative overflow-hidden`} style={{ backgroundColor: bgColor }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-6xl mx-auto space-y-10 relative z-10">
         {(title || subtitle) && (

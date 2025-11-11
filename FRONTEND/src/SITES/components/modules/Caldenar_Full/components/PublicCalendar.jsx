@@ -2,19 +2,25 @@ import React, { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
 import 'moment/locale/pl';
-import { Box, Button, Fade, IconButton, Paper, Typography } from '@mui/material';
+import { Box, Fade, IconButton, Paper, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
-import useTheme from '../../../../../theme/useTheme';
+import { applyOpacity } from '../../../../../utils/color';
 import styles from './PublicCalendar.module.css';
 
 moment.locale('pl');
 
 const DAY_NAMES = ['pn', 'wt', 'śr', 'cz', 'pt', 'so', 'nd'];
 
-const PublicCalendar = ({ eventsByDate, onDayClick }) => {
-    const theme = useTheme();
+const PublicCalendar = ({ eventsByDate, onDayClick, style }) => {
     const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'));
     const today = useMemo(() => moment().startOf('day'), []);
+
+    const surface = style?.surface || '#ffffff';
+    const textColor = style?.text || '#1f2937';
+    const neutralText = style?.neutral || '#6b7280';
+    const accent = style?.primary || '#920020';
+    const borderColor = style?.colors?.border || style?.borderColor || 'rgba(0, 0, 0, 0.12)';
+    const subtleBorder = style?.colors?.borderSubtle || applyOpacity(borderColor, 0.5);
 
     const { days, monthLabel } = useMemo(() => {
         const startOfMonth = currentMonth.clone();
@@ -58,8 +64,8 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
         const formatted = dayMoment.format('YYYY-MM-DD');
         const hasEvents = events.length > 0;
 
-        const background = hasEvents ? 'rgba(160, 0, 22, 0.12)' : theme.palette.background.paper;
-        const color = theme.palette.text.primary;
+    const background = hasEvents ? applyOpacity(accent, 0.12) : surface;
+    const color = textColor;
 
         return (
             <Fade in key={formatted} timeout={220}>
@@ -75,8 +81,8 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                         background,
                         color,
                         border: isToday
-                            ? `2px solid ${theme.palette.primary.main}`
-                            : '1px solid rgba(0,0,0,0.04)'
+                            ? `2px solid ${accent}`
+                            : `1px solid ${subtleBorder}`
                     }}
                 >
                     <Typography
@@ -93,15 +99,15 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                                 key={event.id}
                                 className={styles.dayChip}
                                 style={{
-                                    color: theme.palette.primary.main,
-                                    backgroundColor: 'rgba(160, 0, 22, 0.16)'
+                                    color: accent,
+                                    backgroundColor: applyOpacity(accent, 0.16)
                                 }}
                             >
                                 {event.title}
                             </Box>
                         ))}
                         {events.length > 2 && (
-                            <Typography variant="caption" sx={{ opacity: 0.66 }}>
+                            <Typography variant="caption" sx={{ opacity: 0.66, color: neutralText }}>
                                 {`+${events.length - 2} więcej`}
                             </Typography>
                         )}
@@ -116,19 +122,19 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
             className={styles.calendarWrapper}
             elevation={0}
             style={{
-                background: theme.palette.background.paper,
-                color: theme.palette.text.primary,
-                border: `1px solid ${theme.palette.divider}`
+                background: surface,
+                color: textColor,
+                border: `1px solid ${borderColor}`
             }}
         >
             <Box className={styles.header}>
-                <IconButton onClick={handlePrevMonth} aria-label="poprzedni miesiąc">
+                <IconButton onClick={handlePrevMonth} aria-label="poprzedni miesiąc" style={{ color: accent }}>
                     <ChevronLeft />
                 </IconButton>
-                <Typography className={styles.monthLabel} sx={{ color: theme.palette.text.primary }}>
+                <Typography className={styles.monthLabel} sx={{ color: textColor }}>
                     {monthLabel}
                 </Typography>
-                <IconButton onClick={handleNextMonth} aria-label="następny miesiąc">
+                <IconButton onClick={handleNextMonth} aria-label="następny miesiąc" style={{ color: accent }}>
                     <ChevronRight />
                 </IconButton>
             </Box>
@@ -139,7 +145,7 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
                         <Typography
                             key={name}
                             className={styles.dayNameCell}
-                            sx={{ color: theme.palette.text.secondary }}
+                            sx={{ color: neutralText }}
                         >
                             {name}
                         </Typography>
@@ -156,12 +162,14 @@ const PublicCalendar = ({ eventsByDate, onDayClick }) => {
 
 PublicCalendar.propTypes = {
     eventsByDate: PropTypes.instanceOf(Map),
-    onDayClick: PropTypes.func
+    onDayClick: PropTypes.func,
+    style: PropTypes.object
 };
 
 PublicCalendar.defaultProps = {
     eventsByDate: new Map(),
-    onDayClick: undefined
+    onDayClick: undefined,
+    style: undefined
 };
 
 export default PublicCalendar;

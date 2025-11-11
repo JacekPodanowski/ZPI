@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { renderMedia } from '../helpers';
 
-const SlideshowGallery = ({ content, vibe, theme }) => {
+const SlideshowGallery = ({ content, style }) => {
   const { images = [] } = content;
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -32,9 +32,9 @@ const SlideshowGallery = ({ content, vibe, theme }) => {
   const caption = typeof currentItem === 'object' ? currentItem?.caption : '';
 
   return (
-    <div className={`${vibe.spacing} px-4`} style={{ backgroundColor: theme.background }}>
+  <div className={`${style.spacing} px-4`} style={{ backgroundColor: style.background }}>
       <div className="max-w-4xl mx-auto relative">
-        <div className={`relative h-96 ${vibe.rounded} overflow-hidden ${vibe.shadows}`}>
+  <div className={`relative h-96 ${style.rounded} overflow-hidden ${style.shadows}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}
@@ -55,7 +55,7 @@ const SlideshowGallery = ({ content, vibe, theme }) => {
 
           <button
             onClick={handlePrev}
-            className={`absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 ${vibe.rounded} bg-white bg-opacity-80 hover:bg-opacity-100 flex items-center justify-center ${vibe.shadows} ${vibe.animations} z-10`}
+            className={`absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 ${style.rounded} bg-white bg-opacity-80 hover:bg-opacity-100 flex items-center justify-center ${style.shadows} ${style.animations} z-10`}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -63,7 +63,7 @@ const SlideshowGallery = ({ content, vibe, theme }) => {
           </button>
           <button
             onClick={handleNext}
-            className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 ${vibe.rounded} bg-white bg-opacity-80 hover:bg-opacity-100 flex items-center justify-center ${vibe.shadows} ${vibe.animations} z-10`}
+            className={`absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 ${style.rounded} bg-white bg-opacity-80 hover:bg-opacity-100 flex items-center justify-center ${style.shadows} ${style.animations} z-10`}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -76,9 +76,9 @@ const SlideshowGallery = ({ content, vibe, theme }) => {
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
-              className={`w-3 h-3 rounded-full ${vibe.animations}`}
+              className={`w-3 h-3 rounded-full ${style.animations}`}
               style={{
-                backgroundColor: idx === currentIndex ? theme.primary : theme.grey
+                backgroundColor: idx === currentIndex ? style.primary : style.grey
               }}
             />
           ))}

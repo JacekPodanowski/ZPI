@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { renderMedia } from '../helpers';
 
-const FadeGallery = ({ content, vibe, theme }) => {
+const FadeGallery = ({ content, style }) => {
   const { images = [] } = content;
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -24,9 +24,9 @@ const FadeGallery = ({ content, vibe, theme }) => {
   const caption = typeof currentItem === 'object' ? currentItem?.caption : '';
 
   return (
-    <div className={`${vibe.spacing} px-4`} style={{ backgroundColor: theme.background }}>
+  <div className={`${style.spacing} px-4`} style={{ backgroundColor: style.background }}>
       <div className="max-w-4xl mx-auto relative">
-        <div className={`relative h-96 ${vibe.rounded} overflow-hidden ${vibe.shadows}`}>
+  <div className={`relative h-96 ${style.rounded} overflow-hidden ${style.shadows}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={currentIndex}
@@ -51,9 +51,9 @@ const FadeGallery = ({ content, vibe, theme }) => {
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
-              className={`w-3 h-3 rounded-full ${vibe.animations}`}
+              className={`w-3 h-3 rounded-full ${style.animations}`}
               style={{
-                backgroundColor: idx === currentIndex ? theme.primary : theme.grey
+                backgroundColor: idx === currentIndex ? style.primary : style.grey
               }}
             />
           ))}

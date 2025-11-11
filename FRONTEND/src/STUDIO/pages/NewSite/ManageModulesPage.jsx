@@ -14,8 +14,9 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { getModulesForCategory } from './wizardConstants';
 import ModuleWarningModal from './ModuleWarningModal';
-import useEditorStore from '../../store/editorStore';
 import { fetchSiteById, updateSiteTemplate } from '../../../services/siteService';
+import { DEFAULT_STYLE_ID } from '../../../SITES/styles';
+import { normalizeStyleState } from '../../../SITES/styles/utils';
 import Navigation from '../../../components/Navigation/Navigation';
 
 const MONTSERRAT_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';
@@ -171,8 +172,6 @@ const ModuleCard = ({ module, onToggle, index }) => {
 const ManageModulesPage = () => {
     const navigate = useNavigate();
     const { siteId } = useParams();
-    const { setTemplateConfig } = useEditorStore();
-    
     const [siteName, setSiteName] = useState('');
     const [modules, setModules] = useState([]);
     const [warningModal, setWarningModal] = useState({ open: false, module: null });
@@ -194,17 +193,37 @@ const ManageModulesPage = () => {
             try {
                 setLoading(true);
                 const siteData = await fetchSiteById(siteId);
-                setSite(siteData);
-                setSiteName(siteData.name);
+                const templateConfig = siteData.template_config || {};
+                const { styleId, styleOverrides, style } = normalizeStyleState(templateConfig);
+
+                const normalizedTemplateConfig = {
+                    ...templateConfig,
+                    styleId: styleId || DEFAULT_STYLE_ID,
+                    styleOverrides,
+                    style,
+                    vibe: undefined,
+                    vibeId: undefined,
+                    theme: undefined,
+                    themeId: undefined,
+                    themeOverrides: undefined
+                };
+
+                const normalizedSiteData = {
+                    ...siteData,
+                    template_config: normalizedTemplateConfig
+                };
+
+                setSite(normalizedSiteData);
+                setSiteName(normalizedSiteData.name);
                 
                 // Get the category from template_config or default
-                const category = siteData.template_config?.category || 'default';
+                const category = normalizedTemplateConfig?.category || 'default';
                 
                 // Get all available modules for this category
                 const availableModules = getModulesForCategory(category);
                 
                 // Get enabled modules from template_config
-                const enabledModuleIds = siteData.template_config?.modules || [];
+                const enabledModuleIds = normalizedTemplateConfig?.modules || [];
                 
                 // Set module states based on what's enabled in template_config
                 const modulesWithState = availableModules.map(module => ({
@@ -254,19 +273,32 @@ const ManageModulesPage = () => {
             setSaving(true);
             
             const enabledModules = modules.filter((m) => m.enabled).map((m) => m.id);
-            
+            const templateConfig = site.template_config || {};
+            const { styleId, styleOverrides, style } = normalizeStyleState(templateConfig);
+
             // Update template_config with new module selection
             const updatedTemplateConfig = {
-                ...site.template_config,
-                modules: enabledModules
+                ...templateConfig,
+                modules: enabledModules,
+                styleId: styleId || DEFAULT_STYLE_ID,
+                styleOverrides,
+                style
             };
+
+            delete updatedTemplateConfig.vibe;
+            delete updatedTemplateConfig.vibeId;
+            delete updatedTemplateConfig.theme;
+            delete updatedTemplateConfig.themeId;
+            delete updatedTemplateConfig.themeOverrides;
             
             // Use updateSiteTemplate to ensure proper backend handling
             await updateSiteTemplate(siteId, updatedTemplateConfig, site.name);
-            
-            // Update the editor store
-            setTemplateConfig(updatedTemplateConfig);
-            
+
+            // Keep local state in sync post-save
+            setSite((prevSite) =>
+                prevSite ? { ...prevSite, template_config: updatedTemplateConfig } : prevSite
+            );
+
             // Navigate back to sites page
             navigate('/studio/sites');
         } catch (error) {

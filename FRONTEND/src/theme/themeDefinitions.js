@@ -1,4 +1,9 @@
 // src/theme/themeDefinitions.js
+// ============================================================================
+// STUDIO THEMES - for the Studio/Editor UI interface only
+// ============================================================================
+// These themes control the appearance of the Studio application (editor, dashboard, etc.).
+// Note: User sites have their own separate styles system (SITES/styles).
 // Defines base colors for each theme in light and dark modes.
 // Users select only these base colors; the rest of the palette is generated automatically.
 
@@ -12,7 +17,8 @@ const createBaseOptions = () => ({
   secondaryColor: null
 });
 
-export const themeDefinitions = {
+// Studio theme definitions
+export const STUDIO_THEMES = {
   modernWellness: {
     id: 'modernWellness',
     name: 'Modern Wellness',
@@ -194,5 +200,8 @@ export const themeDefinitions = {
     options: createBaseOptions()
   }
 };
+
+// Backward compatibility export
+export const themeDefinitions = STUDIO_THEMES;
 
 export const defaultThemeId = 'modernWellness';

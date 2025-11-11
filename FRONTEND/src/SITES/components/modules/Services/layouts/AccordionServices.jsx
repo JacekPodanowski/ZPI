@@ -2,28 +2,28 @@
 import { useState } from 'react';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
-const AccordionServices = ({ content, vibe, theme }) => {
+const AccordionServices = ({ content, style }) => {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.25)' : undefined);
   
   return (
     <section 
-      className={`${vibe.spacing} ${vibe.rounded} relative overflow-hidden`}
-      style={{ backgroundColor: content.bgColor || theme.background }}
+      className={`${style.spacing} ${style.rounded} relative overflow-hidden`}
+      style={{ backgroundColor: content.bgColor || style.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-4xl mx-auto">
         <h2 
-          className={`${vibe.headingSize} text-center`}
-          style={{ color: theme.primary }}
+          className={`${style.headingSize} text-center`}
+          style={{ color: style.primary }}
         >
           {content.title}
         </h2>
         
         {content.subtitle && (
           <p 
-            className={`${vibe.textSize} text-center mt-4 md:mt-6`}
-            style={{ color: theme.text }}
+            className={`${style.textSize} text-center mt-4 md:mt-6`}
+            style={{ color: style.text }}
           >
             {content.subtitle}
           </p>
@@ -34,8 +34,8 @@ const AccordionServices = ({ content, vibe, theme }) => {
           {content.items?.map((item, index) => (
             <div 
               key={index}
-              className={`${vibe.cardStyle} ${vibe.animations} overflow-hidden cursor-pointer`}
-              style={{ borderColor: theme.secondary }}
+              className={`${style.cardStyle} ${style.animations} overflow-hidden cursor-pointer`}
+              style={{ borderColor: style.secondary }}
               onClick={() => setExpandedIndex(expandedIndex === index ? -1 : index)}
             >
               {/* Header */}
@@ -43,14 +43,14 @@ const AccordionServices = ({ content, vibe, theme }) => {
                 <div className="flex-1">
                   <h3 
                     className="text-xl md:text-2xl font-semibold mb-2"
-                    style={{ color: theme.primary }}
+                    style={{ color: style.primary }}
                   >
                     {item.name}
                   </h3>
                   
                   <p 
-                    className={`${vibe.textSize} text-sm md:text-base`}
-                    style={{ color: theme.text }}
+                    className={`${style.textSize} text-sm md:text-base`}
+                    style={{ color: style.text }}
                   >
                     {item.description}
                   </p>
@@ -61,7 +61,7 @@ const AccordionServices = ({ content, vibe, theme }) => {
                   className={`text-2xl transition-transform duration-300 ${
                     expandedIndex === index ? 'rotate-180' : ''
                   }`}
-                  style={{ color: theme.primary }}
+                  style={{ color: style.primary }}
                 >
                   ▼
                 </div>
@@ -70,12 +70,12 @@ const AccordionServices = ({ content, vibe, theme }) => {
               {/* Expanded Details */}
               {expandedIndex === index && item.details && (
                 <div 
-                  className={`mt-4 pt-4 border-t ${vibe.animations}`}
-                  style={{ borderColor: theme.secondary }}
+                  className={`mt-4 pt-4 border-t ${style.animations}`}
+                  style={{ borderColor: style.secondary }}
                 >
                   <p 
-                    className={vibe.textSize}
-                    style={{ color: theme.text }}
+                    className={style.textSize}
+                    style={{ color: style.text }}
                   >
                     {item.details}
                   </p>

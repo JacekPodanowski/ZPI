@@ -4,14 +4,14 @@ import Button from './Button'
 import { resolveMediaUrl } from '../config/api'
 import { deleteMediaAsset } from '../services/mediaService'
 import { isVideoUrl } from '../utils/mediaUtils'
-import useEditorStore from '../STUDIO/store/editorStore'
+import useNewEditorStore from '../STUDIO/store/newEditorStore'
 import { storeTempImage, isTempBlobUrl } from '../services/tempMediaCache'
 
 const ImageUploader = ({ label, value, onChange, aspectRatio = '16/9', multiple = false, usage = 'site_content', siteId: explicitSiteId }) => {
   const [isDragging, setIsDragging] = useState(false)
   const [preview, setPreview] = useState(value || '')
   const fileInputRef = useRef(null)
-  const editorSiteId = useEditorStore((state) => state.siteMeta?.id)
+  const editorSiteId = useNewEditorStore((state) => state.siteId)
   const resolvedSiteId = explicitSiteId ?? editorSiteId ?? null
 
   const ensureUploadContext = useCallback(() => {

@@ -8,12 +8,12 @@ const LAYOUTS = {
   default: FullWidthCalendar
 };
 
-const PublicCalendarBigModule = ({ layout = 'default', content = {}, vibe, theme, siteId }) => {
+const PublicCalendarBigModule = ({ layout = 'default', content = {}, style, siteId }) => {
   const defaults = PUBLIC_CALENDAR_BIG_DEFAULTS[layout] || PUBLIC_CALENDAR_BIG_DEFAULTS.default;
   const mergedContent = mergeWithDefaults(defaults, content);
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.default;
 
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} siteId={siteId} />;
+  return <LayoutComponent content={mergedContent} style={style} siteId={siteId} />;
 };
 
 PublicCalendarBigModule.descriptor = PUBLIC_CALENDAR_BIG_DESCRIPTOR;

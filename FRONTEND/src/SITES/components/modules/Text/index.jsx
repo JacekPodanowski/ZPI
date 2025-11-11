@@ -10,12 +10,12 @@ const LAYOUTS = {
   centered: CenteredText
 };
 
-const TextModule = ({ layout = 'block', content = {}, vibe, theme }) => {
+const TextModule = ({ layout = 'block', content = {}, style }) => {
   const defaults = TEXT_DEFAULTS[layout] || TEXT_DEFAULTS.block;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.block;
-  return <LayoutComponent content={mergedContent} vibe={vibe} theme={theme} />;
+  return <LayoutComponent content={mergedContent} style={style} />;
 };
 
 TextModule.descriptor = TEXT_DESCRIPTOR;

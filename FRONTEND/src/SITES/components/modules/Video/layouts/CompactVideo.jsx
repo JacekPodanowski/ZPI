@@ -2,7 +2,7 @@ import React from 'react';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
 
-const CompactVideo = ({ content, vibe, theme }) => {
+const CompactVideo = ({ content, style }) => {
   const { videoUrl, caption, captionColor, muted } = content;
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted });
   const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'));
@@ -10,9 +10,9 @@ const CompactVideo = ({ content, vibe, theme }) => {
   const hasValidVideo = fullSelfHostedUrl ? fullSelfHostedUrl.trim() !== '' : Boolean(embedUrl);
 
   return (
-    <section className="py-6 px-4" style={{ backgroundColor: theme.background }}>
+    <section className="py-6 px-4" style={{ backgroundColor: style.background }}>
       <div className="max-w-3xl mx-auto">
-        <div className={`aspect-video ${vibe.rounded} overflow-hidden ${vibe.shadows} bg-black/10`}>
+  <div className={`aspect-video ${style.rounded} overflow-hidden ${style.shadows} bg-black/10`}>
           {hasValidVideo && (
             isSelfHosted ? (
               <video
@@ -34,14 +34,14 @@ const CompactVideo = ({ content, vibe, theme }) => {
                 allowFullScreen
               />
             ) : (
-              <div className="w-full h-full grid place-items-center text-sm" style={{ color: theme.grey }}>
+              <div className="w-full h-full grid place-items-center text-sm" style={{ color: style.grey }}>
                 Dodaj wideo
               </div>
             )
           )}
         </div>
         {caption && (
-          <p className="text-sm text-center mt-3" style={{ color: captionColor || theme.grey }}>
+          <p className="text-sm text-center mt-3" style={{ color: captionColor || style.grey }}>
             {caption}
           </p>
         )}

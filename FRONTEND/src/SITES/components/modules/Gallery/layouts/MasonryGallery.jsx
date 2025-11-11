@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { renderMedia } from '../helpers';
 
-const MasonryGallery = ({ content, vibe, theme }) => {
+const MasonryGallery = ({ content, style }) => {
   const { images = [], columns = 3, gap = '1rem' } = content;
 
   if (!images || images.length === 0) {
@@ -10,7 +10,7 @@ const MasonryGallery = ({ content, vibe, theme }) => {
   }
 
   return (
-    <div className={`${vibe.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: theme.background }}>
+  <div className={`${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: style.background }}>
       <div 
         className="max-w-6xl mx-auto"
         style={{
@@ -42,12 +42,12 @@ const MasonryGallery = ({ content, vibe, theme }) => {
               viewport={{ once: true }}
               transition={{ delay: idx * 0.1 }}
               whileHover={{ scale: 1.02 }}
-              className={`mb-4 ${vibe.rounded} overflow-hidden ${vibe.shadows} cursor-pointer break-inside-avoid`}
+              className={`mb-4 ${style.rounded} overflow-hidden ${style.shadows} cursor-pointer break-inside-avoid`}
             >
               {renderMedia(imgUrlRaw, caption || `Gallery ${idx + 1}`, 'w-full object-cover')}
               {caption && (
                 <div className="p-3 bg-white">
-                  <p className="text-sm text-center" style={{ color: theme.text }}>
+                  <p className="text-sm text-center" style={{ color: style.text }}>
                     {caption}
                   </p>
                 </div>
