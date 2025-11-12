@@ -115,10 +115,10 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
 
   const handleAvatarChange = async (newAvatarUrl) => {
     // Update local state immediately
-    setLocalUser((prev) => ({ ...prev, avatar: newAvatarUrl }));
+    setLocalUser((prev) => ({ ...prev, avatar_url: newAvatarUrl }));
   };
 
-  const avatarSrc = localUser?.avatar ? resolveMediaUrl(localUser.avatar) : ShadowAvatarSrc;
+  const avatarSrc = localUser?.avatar_url ? resolveMediaUrl(localUser.avatar_url) : ShadowAvatarSrc;
 
   // Calculate the percentage where avatar edge is in the gradient
   const avatarEdgePercent = (AVATAR_BUTTON_SIZE / (AVATAR_BUTTON_SIZE + GLOW_MAX_RANGE * 2)) * 100;
@@ -228,7 +228,7 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
               {open && (
                 <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                   <AvatarUploader
-                    currentAvatar={localUser?.avatar}
+                    currentAvatar={localUser?.avatar_url}
                     onAvatarChange={handleAvatarChange}
                     size={48}
                   />

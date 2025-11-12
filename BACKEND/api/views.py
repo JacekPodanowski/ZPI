@@ -1301,9 +1301,9 @@ class FileUploadView(APIView):
                 user=request.user,
                 usage_type=MediaUsage.UsageType.AVATAR,
             ).delete()
-            if request.user.avatar == asset.file_url:
-                request.user.avatar = None
-                request.user.save(update_fields=['avatar'])
+            if request.user.avatar_url == asset.file_url:
+                request.user.avatar_url = None
+                request.user.save(update_fields=['avatar_url'])
         else:
             if not site_id:
                 return Response({'error': 'site_id is required to detach site media'}, status=status.HTTP_400_BAD_REQUEST)

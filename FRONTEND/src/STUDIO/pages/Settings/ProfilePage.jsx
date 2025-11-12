@@ -80,7 +80,7 @@ const ProfilePage = () => {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'center', sm: 'center' }}>
             <Box sx={{ position: 'relative' }}>
               <Avatar
-                src={user?.avatar}
+                src={user?.avatar_url}
                 sx={{
                   width: { xs: 80, sm: 100 },
                   height: { xs: 80, sm: 100 },
@@ -90,7 +90,7 @@ const ProfilePage = () => {
                 {formData.firstName?.[0]?.toUpperCase() || 'U'}
               </Avatar>
               <AvatarUploader
-                currentAvatar={user?.avatar}
+                currentAvatar={user?.avatar_url}
                 onAvatarChange={handleAvatarChange}
                 size={100}
               />

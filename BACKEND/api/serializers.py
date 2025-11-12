@@ -87,7 +87,7 @@ class PlatformUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlatformUser
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name', 'avatar',
+            'id', 'username', 'email', 'first_name', 'last_name', 'avatar_url',
             'account_type', 'source_tag', 'is_staff', 'is_active',
             'preferences', 'created_at', 'updated_at'
         ]
@@ -95,13 +95,13 @@ class PlatformUserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
-        old_avatar_url = instance.avatar
-        new_avatar_url = validated_data.get('avatar', old_avatar_url)
+        old_avatar_url = instance.avatar_url
+        new_avatar_url = validated_data.get('avatar_url', old_avatar_url)
         user = super().update(instance, validated_data)
         if password:
             user.set_password(password)
             user.save(update_fields=['password'])
-        if 'avatar' in validated_data:
+        if 'avatar_url' in validated_data:
             self._sync_avatar_usage(user, old_avatar_url, new_avatar_url)
         return user
 

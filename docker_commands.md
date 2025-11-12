@@ -56,14 +56,14 @@ docker-compose logs -f
 # wyczyść całą pamięć dockera
 docker system prune -a --volumes
 
-# migracje
+# migracje 1
+docker-compose exec backend python manage.py makemigrations
+
+# migracje 2
 docker-compose exec backend python manage.py migrate
 
 # backup bazy do json
 docker-compose exec backend python manage.py dumpdata > backup_bazy.json
-
-# wykonaj testy
-docker-compose exec backend python manage.py test apizrob
 
 # Generowanie wykresu bazy
 docker-compose exec backend python manage.py graph_models -a -o my_models.png
