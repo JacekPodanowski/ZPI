@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton } from '@mui/material';
+import { Box, Typography, IconButton, useTheme } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import { Add as AddIcon, Delete as DeleteIcon, ChevronRight, ExpandMore } from '@mui/icons-material';
@@ -9,7 +9,11 @@ import Logo from '../../../../components/Logo/Logo';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 import TemplateDeletionModal from './TemplateDeletionModal';
 
+
+//orginal color  rgba(228, 229, 218, 0.5)
+
 const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemplateDragStart, onTemplateDragEnd }) => {
+    const theme = useTheme();
     const templateLibraryWidth = 230; // Fixed width for templates-only mode
     const [draggingTemplate, setDraggingTemplate] = useState(null);
     const [dayTemplatesExpanded, setDayTemplatesExpanded] = useState(true);
@@ -93,12 +97,12 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
             style={{
                 width: templateLibraryWidth,
                 height: '100%',
-                borderRight: '1px solid rgba(146, 0, 32, 0.1)',
-                backgroundColor: 'rgba(228, 229, 218, 0.5)',
+                borderRight: `1px solid ${theme.palette.divider}`,
+                backgroundColor: theme.semantic?.colors?.bg?.subtle || theme.palette.background.paper,
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden', // Prevent any scroll
-                position: 'relative' // For absolute positioning of trash zone
+                overflow: 'hidden',
+                position: 'relative'
             }}
         >
             <Box
@@ -205,7 +209,9 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                         height: 24,
                                         color: 'primary.main',
                                         '&:hover': {
-                                            backgroundColor: 'rgba(146, 0, 32, 0.08)'
+                                            backgroundColor: theme.palette.mode === 'dark'
+                                                ? 'rgba(114, 0, 21, 0.15)'
+                                                : 'rgba(146, 0, 32, 0.08)'
                                         }
                                     }}
                                 >
@@ -239,9 +245,15 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                 '&::-webkit-scrollbar': { width: '4px' },
                                                 '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
                                                 '&::-webkit-scrollbar-thumb': {
-                                                    backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                                    backgroundColor: theme.palette.mode === 'dark' 
+                                                        ? 'rgba(114, 0, 21, 0.4)' 
+                                                        : 'rgba(146, 0, 32, 0.2)',
                                                     borderRadius: '2px',
-                                                    '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
+                                                    '&:hover': { 
+                                                        backgroundColor: theme.palette.mode === 'dark' 
+                                                            ? 'rgba(114, 0, 21, 0.6)' 
+                                                            : 'rgba(146, 0, 32, 0.3)' 
+                                                    }
                                                 }
                                             }}
                                         >
@@ -284,10 +296,14 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                     alignSelf: 'center',
                                                     width: 36,
                                                     height: 36,
-                                                    backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                                    backgroundColor: theme.palette.mode === 'dark'
+                                                        ? 'rgba(114, 0, 21, 0.15)'
+                                                        : 'rgba(146, 0, 32, 0.08)',
                                                     color: 'primary.main',
                                                     '&:hover': {
-                                                        backgroundColor: 'rgba(146, 0, 32, 0.15)'
+                                                        backgroundColor: theme.palette.mode === 'dark'
+                                                            ? 'rgba(114, 0, 21, 0.25)'
+                                                            : 'rgba(146, 0, 32, 0.15)'
                                                     }
                                                 }}
                                             >
@@ -304,7 +320,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                     <Box
                         sx={{
                             height: '1px',
-                            backgroundColor: 'rgba(146, 0, 32, 0.16)',
+                            backgroundColor: theme.palette.divider,
                             flexShrink: 0
                         }}
                     />
@@ -372,7 +388,9 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                         height: 24,
                                         color: 'primary.main',
                                         '&:hover': {
-                                            backgroundColor: 'rgba(146, 0, 32, 0.08)'
+                                            backgroundColor: theme.palette.mode === 'dark'
+                                                ? 'rgba(114, 0, 21, 0.15)'
+                                                : 'rgba(146, 0, 32, 0.08)'
                                         }
                                     }}
                                 >
@@ -406,9 +424,15 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                 '&::-webkit-scrollbar': { width: '4px' },
                                                 '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
                                                 '&::-webkit-scrollbar-thumb': {
-                                                    backgroundColor: 'rgba(146, 0, 32, 0.2)',
+                                                    backgroundColor: theme.palette.mode === 'dark' 
+                                                        ? 'rgba(114, 0, 21, 0.4)' 
+                                                        : 'rgba(146, 0, 32, 0.2)',
                                                     borderRadius: '2px',
-                                                    '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.3)' }
+                                                    '&:hover': { 
+                                                        backgroundColor: theme.palette.mode === 'dark' 
+                                                            ? 'rgba(114, 0, 21, 0.6)' 
+                                                            : 'rgba(146, 0, 32, 0.3)' 
+                                                    }
                                                 }
                                             }}
                                         >
@@ -451,10 +475,14 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                     alignSelf: 'center',
                                                     width: 36,
                                                     height: 36,
-                                                    backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                                    backgroundColor: theme.palette.mode === 'dark'
+                                                        ? 'rgba(114, 0, 21, 0.15)'
+                                                        : 'rgba(146, 0, 32, 0.08)',
                                                     color: 'primary.main',
                                                     '&:hover': {
-                                                        backgroundColor: 'rgba(146, 0, 32, 0.15)'
+                                                        backgroundColor: theme.palette.mode === 'dark'
+                                                            ? 'rgba(114, 0, 21, 0.25)'
+                                                            : 'rgba(146, 0, 32, 0.15)'
                                                     }
                                                 }}
                                             >
