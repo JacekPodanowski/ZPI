@@ -1,345 +1,514 @@
 # Template Config Format
 
-**Version:** 2.0 (Optimized)
-**Last Updated:** 2025-01-02
+**Version:** 2.1 (Current Implementation)
+**Last Updated:** November 13, 2025
+**Status:** ✅ Active Format - Fully Implemented in New Editor
 
 ## Overview
 
-This document defines the unified JSON format for storing site configurations in the `template_config` field of the `Site` model. The format is optimized for:
-- **Minimal tokens**: Removed redundant fields, flattened structures
-- **Readability**: Clear property names
-- **Extensibility**: Easy to add new features
-- **Defaults**: Missing fields use sensible defaults
+This document defines the JSON format for storing site configurations in the `template_config` field of the `Site` model. The format is:
+- **Optimized for minimal size**: Removes redundant fields, flattens structures
+- **Editor-native**: Matches the store structure used by `newEditorStore.js`
+- **API-compatible**: Saved directly via `PATCH /api/v1/sites/{id}/`
+- **Backward-compatible**: Old formats auto-converted on load
 
 ---
 
-## Root Structure
+## Root Structure (What Gets Saved)
+
+The frontend store (`newEditorStore.js`) directly saves the `site` object to `template_config`:
 
 ```json
 {
-  "site": { },           // Site configuration (required)
-  "entryPointPageId": "" // ID of landing page (optional, defaults to first page)
+  "styleId": "auroraMinimal",
+  "styleOverrides": { "density": 1.2 },
+  "style": { ... },
+  "navigation": { "content": { ... } },
+  "pages": [ ... ],
+  "pageOrder": [ "home", "page-2", "page-3" ]
 }
 ```
 
-**Note:** `userLibrary` is omitted when empty (defaults to `{ "customAssets": [] }`)
+**Note on structure:**
+- The root IS the `site` object (not wrapped in `{ site: {} }`)
+- Frontend sends entire `site` object when saving
+- Backend stores it in `template_config` JSONField
+- When loading, frontend checks for both old and new formats for compatibility
 
 ---
 
-## Site Object
+## Page Structure
 
 ```json
 {
-  "vibe": "minimal",  // Visual style: "minimal" | "bold" | "soft"
-  "theme": {          // Color palette (flattened)
-    "primary": "#920020",
-    "secondary": "#2D5A7B",
-    "neutral": "#E4E5DA"
-  },
-  "navigation": {     // Site-wide navigation (optional)
-    "content": {}     // Only include customizations (defaults applied from moduleDefinitions)
-  },
-  "pages": []         // Array of page objects
+  "id": "home",
+  "name": "Home",
+  "route": "/",
+  "modules": [ ... ],
+  "order": 0
 }
 ```
 
-**Navigation:**
-- Navigation is a special site-level module that appears on every page
-- By default, uses standard navigation from `moduleDefinitions` 
-- Only store customizations in `site.navigation.content`
-- If `navigation` object is omitted or empty, defaults are used
-- Navigation uses site's `vibe` and `theme` like other modules
-
-**Example with custom navigation:**
-```json
-{
-  "vibe": "minimal",
-  "theme": { "primary": "#920020" },
-  "navigation": {
-    "content": {
-      "logo": { "text": "My Brand" },
-      "links": [
-        { "label": "Home", "route": "/" },
-        { "label": "Services", "route": "/services" }
-      ]
-    }
-  },
-  "pages": []
-}
-```
-
-**Optimizations:**
-- `theme.colors` → `theme` (flattened)
-- Colors stored directly without nesting
-- Navigation only stores differences from default
+**Required fields:**
+- `id`: Unique page identifier
+- `name`: Display name
+- `route`: URL path (auto-generated if not provided)
+- `modules`: Array of module objects
 
 ---
 
-## Page Object
+## Module Structure (Actual Implementation)
 
 ```json
 {
-  "id": "home",        // Unique page ID (required)
-  "name": "Home",      // Display name (required)
-  "route": "/",        // URL path (required)
-  "modules": []        // Array of module objects
+  "id": "module-hero-1",
+  "type": "hero",
+  "name": "Hero Section",
+  "content": { ... },
+  "order": 0,
+  "enabled": true
 }
 ```
 
----
+**Actually stored** (what's really in the config):
+- `id`: Unique module ID
+- `type`: Module type (hero, about, services, gallery, calendar, contact, text, video, testimonials, pricing, faq, team)
+- `name`: Display name (defaults to type)
+- `content`: All content fields for this module
+- `order`: Position in page (defaults to array index)
+- `enabled`: Boolean (defaults to true, omitted when true)
 
-## Module Object (Minimal)
-
-```json
-{
-  "id": "hero-1",      // Unique module ID (required)
-  "type": "hero",      // Module type (required)
-  "content": {}        // Content fields (required)
-}
-```
-
-**Omitted fields use defaults:**
-- `moduleType`: `"standard"` (only include if "extended" or "custom")
-- `name`: Uses `type` as fallback
-- `customElements`: `[]` (empty array)
-- `layout`: `"system:default"`
-- `style`: `"system:{vibe}"` (inherits from site vibe)
-- `visibility`: `{}` (all elements visible by default)
-- `order`: Inferred from array index
+**NOT stored** (frontend derives these):
+- `moduleType`: Always defaults to `"standard"` (custom modules not yet implemented)
+- `layout`: Stored in content if customized, otherwise defaults
+- `style`: Inherited from site's styleId/styleOverrides
+- `customElements`: Not yet implemented
+- `visibility`: Not used in current implementation
 
 ---
 
-## Module Content by Type
+## Actual Module Content by Type
 
 ### Hero
 ```json
 {
-  "heading": "Welcome",
-  "subheading": "Subtitle text",
-  "ctaText": "Button text",   // Optional
-  "ctaLink": "/path"           // Optional
+  "type": "hero",
+  "content": {
+    "heading": "Welcome to Our Site",
+    "subheading": "Discover what we offer",
+    "ctaText": "Get Started",
+    "ctaLink": "/services"
+  }
 }
 ```
 
 ### About
 ```json
 {
-  "title": "About Us",
-  "description": "Long text..."
+  "type": "about",
+  "content": {
+    "title": "About Us",
+    "description": "Our story and mission..."
+  }
 }
 ```
 
 ### Services
 ```json
 {
-  "title": "Our Services",
-  "subtitle": "Optional subtitle",
-  "items": [
-    {
-      "name": "Service Name",
-      "description": "Service description",
-      "icon": "person"  // Optional icon identifier
-    }
-  ]
+  "type": "services",
+  "content": {
+    "title": "Our Services",
+    "items": [
+      {
+        "name": "Service 1",
+        "description": "Description",
+        "icon": "person"
+      }
+    ]
+  }
+}
+```
+
+### Gallery
+```json
+{
+  "type": "gallery",
+  "content": {
+    "title": "Gallery",
+    "images": [
+      {
+        "url": "https://...",
+        "caption": "Photo 1"
+      }
+    ]
+  }
 }
 ```
 
 ### Calendar
 ```json
 {
-  "title": "Book a Session",
-  "description": "Optional description"
+  "type": "calendar",
+  "content": {
+    "title": "Book a Session"
+  }
 }
 ```
 
 ### Contact
 ```json
 {
-  "email": "hello@example.com",
-  "phone": "+48 600 000 000"
+  "type": "contact",
+  "content": {
+    "email": "hello@example.com",
+    "phone": "+48 600 000 000"
+  }
 }
 ```
 
-### Navigation (Site-Level Only)
+### Testimonials
 ```json
 {
-  "logo": {
-    "text": "Logo",      // Logo text (or future: image URL)
-    "type": "text"      // "text" | "image"
-  },
-  "links": [
-    {
-      "label": "Home",
-      "route": "/"
-    },
-    {
-      "label": "About",
-      "route": "/about"
-    }
-  ],
-  "bgColor": "transparent",
-  "textColor": "rgb(30, 30, 30)"
+  "type": "testimonials",
+  "content": {
+    "title": "What Our Clients Say",
+    "testimonials": [
+      {
+        "text": "Great service!",
+        "author": "John Doe",
+        "role": "Client"
+      }
+    ]
+  }
 }
 ```
-**Note:** Navigation is stored at `site.navigation.content`, not in page modules. Only customizations need to be saved.
 
 ### Pricing
 ```json
 {
-  "title": "Pricing Plans",
-  "subtitle": "Optional subtitle",
-  "plans": [
-    {
-      "name": "Plan Name",
-      "price": "99",
-      "currency": "PLN",
-      "period": "month",           // Optional: "month" | "year" | "session"
-      "features": ["Feature 1"],   // Array of strings
-      "featured": true             // Optional: highlight this plan
-    }
-  ]
-}
-```
-
----
-
-## Complete Example
-
-```json
-{
-  "site": {
-    "vibe": "minimal",
-    "theme": {
-      "primary": "#920020",
-      "secondary": "#2D5A7B",
-      "neutral": "#E4E5DA"
-    },
-    "navigation": {
-      "content": {
-        "logo": { "text": "Yoga Studio" },
-        "links": [
-          { "label": "Home", "route": "/" },
-          { "label": "Classes", "route": "/classes" },
-          { "label": "Book", "route": "/calendar" }
-        ]
-      }
-    },
-    "pages": [
+  "type": "pricing",
+  "content": {
+    "title": "Pricing Plans",
+    "plans": [
       {
-        "id": "home",
-        "name": "Home",
-        "route": "/",
-        "modules": [
-          {
-            "id": "hero-1",
-            "type": "hero",
-            "content": {
-              "heading": "Welcome",
-              "subheading": "Find balance",
-              "ctaText": "Book Now",
-              "ctaLink": "/calendar"
-            }
-          }
-        ]
-      },
-      {
-        "id": "contact",
-        "name": "Contact",
-        "route": "/contact",
-        "modules": [
-          {
-            "id": "contact-1",
-            "type": "contact",
-            "content": {
-              "email": "hello@example.com",
-              "phone": "+48 600 000 000"
-            }
-          }
-        ]
+        "name": "Basic",
+        "price": "99",
+        "currency": "PLN",
+        "period": "month",
+        "features": ["Feature 1", "Feature 2"],
+        "featured": false
       }
     ]
+  }
+}
+```
+
+### Pricing, FAQ, Team, Text, Video
+All follow same pattern - array items stored in content for collections.
+
+---
+
+## Real-World Example (What Gets Sent)
+
+When you save a site in the editor, this is what goes to the API:
+
+```json
+{
+  "styleId": "auroraMinimal",
+  "styleOverrides": {
+    "density": 1.1,
+    "roundness": "soft"
   },
-  "entryPointPageId": "home"
+  "style": {
+    "id": "auroraMinimal",
+    "name": "Aurora Minimal",
+    "backgroundColor": "rgb(228,229,218)",
+    "accentColor": "rgb(146,0,32)",
+    "options": {
+      "roundness": "soft",
+      "shadowPreset": "floating",
+      "borderWidthPreset": "hairline"
+    }
+  },
+  "navigation": {
+    "content": {
+      "logo": {
+        "text": "My Yoga Studio"
+      },
+      "links": [
+        { "label": "Home", "route": "/" },
+        { "label": "Classes", "route": "/classes" },
+        { "label": "Book", "route": "/booking" }
+      ]
+    }
+  },
+  "pages": [
+    {
+      "id": "home",
+      "name": "Home",
+      "route": "/",
+      "modules": [
+        {
+          "id": "module-hero-1",
+          "type": "hero",
+          "name": "Hero",
+          "content": {
+            "heading": "Welcome to Yoga Studio",
+            "subheading": "Find your balance",
+            "ctaText": "Book Now",
+            "ctaLink": "/booking"
+          },
+          "order": 0,
+          "enabled": true
+        },
+        {
+          "id": "module-services-1",
+          "type": "services",
+          "name": "Services",
+          "content": {
+            "title": "Our Classes",
+            "items": [
+              {
+                "name": "Hatha Yoga",
+                "description": "Beginner friendly",
+                "icon": "spa"
+              }
+            ]
+          },
+          "order": 1
+        }
+      ],
+      "order": 0
+    },
+    {
+      "id": "booking",
+      "name": "Book a Class",
+      "route": "/booking",
+      "modules": [
+        {
+          "id": "module-calendar-1",
+          "type": "calendar",
+          "name": "Calendar",
+          "content": {
+            "title": "Book Your Session"
+          },
+          "order": 0
+        }
+      ],
+      "order": 1
+    }
+  ],
+  "pageOrder": ["home", "booking"]
 }
 ```
 
 ---
 
-## Token Savings
+## Loading & Compatibility
 
-**Old Format (~450 tokens per module):**
-```json
-{
-  "id": "hero-1",
-  "type": "hero",
-  "moduleType": "standard",
-  "name": "Hero Section",
-  "content": { },
-  "customElements": [],
-  "layout": "system:default",
-  "style": "system:minimal",
-  "visibility": { "heading": true, "subheading": true },
-  "order": 0
+### How the Editor Loads Sites
+
+**NewEditorPage.jsx** (entry point):
+1. Fetches site from API → gets `template_config`
+2. Checks if `template_config.site` exists (new format)
+3. If not, treats `template_config` root as site (current format)
+4. Normalizes data via `normalizeSiteConfig()`
+5. Stores in Zustand via `loadSite()`
+
+**Old Format Support:**
+```javascript
+if (data.template_config && data.template_config.site) {
+  // New format: { site: { pages: [...] } }
+  site = data.template_config.site;
+} else {
+  // Current format: { pages: [...] } (root is site object)
+  site = data.template_config;
 }
 ```
 
-**New Format (~120 tokens per module):**
-```json
-{
-  "id": "hero-1",
-  "type": "hero",
-  "content": { }
-}
-```
+### Normalization Process
 
-**Reduction: ~73% fewer tokens** (defaults applied by frontend)
+`newEditorStore.js` runs `normalizeModule()`, `normalizePage()`, `normalizeSiteConfig()`:
+- Converts old field names (`path` → `route`, `config` → `content`)
+- Applies defaults for missing fields
+- Generates IDs if missing
+- Sorts modules by order
+- Validates structure
 
 ---
 
-## Frontend Defaults
+## Saving Process
 
-When loading a module, the frontend applies these defaults:
+### Frontend → API Flow
+
+**EditorTopBar.jsx** `handleSave()`:
+1. Deep clones the store's `site` object
+2. Finds all blob URLs (temporary image uploads)
+3. Uploads each blob to `/upload/` endpoint
+4. Replaces blob URLs with permanent URLs in config
+5. Calls `updateSiteTemplate(siteId, finalConfig, name)`
+
+**updateSiteTemplate** (siteService.js):
+```javascript
+const payload = {
+  template_config: templateConfig,  // The full site object
+  name: name  // Optional, for title updates
+};
+PATCH /api/v1/sites/{siteId}/ ← payload
+```
+
+### Backend Stores
+
+Django model receives the full config in `template_config` JSONField:
+- Field: `Site.template_config` (JSONField)
+- Auto-includes `updated_at` timestamp
+- Creates `SiteVersion` record for versioning
+
+---
+
+## Key Differences from Documentation
+
+| Item | Documentation Said | Actually Works |
+|------|-------------------|----------------|
+| Root structure | `{ site: {}, entryPointPageId: "" }` | Root IS site object, no wrapper |
+| Storage | Wrapped in "site" key | Direct site object in template_config |
+| entryPointPageId | In root | Derived from `site.pages[0].id` or explicit |
+| userLibrary | In root | Stored separately in store (not yet persisted) |
+| Navigation | At `site.navigation.content` | ✅ Correct |
+| Vibes | Called "vibe" | ✅ Changed to "styleId" + "styleOverrides" |
+| Defaults | Extensive | ✅ Frontend applies via normalization |
+
+---
+
+## What's Working in Production
+
+✅ **Full save/load cycle:**
+- Create site → Save to API → Close browser → Reopen → Data restored
+- Edit modules → Changes auto-saved
+- Upload images → Blob URLs converted to permanent URLs
+- Navigation editing → Persists via API
+
+✅ **Version history:**
+- Each save creates versioned snapshot
+- Can load previous versions
+- Change summaries tracked
+
+✅ **Style system:**
+- Style selection persists
+- Color overrides persist
+- Theme data stored in `style` object
+
+---
+
+## What's Not Yet Persisted
+
+❌ **User Library:**
+- Saved in store memory only
+- Not persisted to backend
+- Lost on page refresh
+
+❌ **Custom Elements:**
+- Not yet implemented
+
+❌ **Custom Modules:**
+- Not yet implemented
+
+---
+
+## Frontend Defaults Applied on Load
+
+When loading `template_config`, frontend applies:
 
 ```javascript
-const module = {
-  id: data.id,
-  type: data.type,
-  moduleType: data.moduleType || 'standard',
-  name: data.name || data.type,
-  content: data.content || {},
-  customElements: data.customElements || [],
-  layout: data.layout || 'system:default',
-  style: data.style || `system:${site.vibe}`,
-  visibility: data.visibility || {},
-  order: data.order !== undefined ? data.order : index
-};
+// Module defaults
+{
+  moduleType: 'standard',
+  layout: null,
+  order: 0,
+  enabled: true
+}
+
+// Page defaults
+{
+  order: 0
+}
+
+// Site defaults
+{
+  styleId: 'auroraMinimal',
+  styleOverrides: {},
+  style: { ... computed ... },
+  navigation: {},
+  pageOrder: [ ... inferred from pages ... ]
+}
 ```
 
-**Rendering Logic:**
-- Modules are **enabled by default** (no `enabled` field needed)
-- Set `enabled: false` explicitly to hide a module
-- `content` field replaces old `config` field (backward compatible)
-- `route` field replaces old `path` field (backward compatible)
+---
+
+## Best Practices
+
+1. **Only required fields needed:**
+   - Module: `id`, `type`, `content`
+   - Page: `id`, `name`, `route`, `modules`
+   - Site: `pages` (others have sensible defaults)
+
+2. **Omit falsy values:**
+   - `enabled: true` → omit
+   - `order: 0` → omit (use array index)
+   - Empty `overrides: {}` → omit
+
+3. **Content structure:**
+   - Always lowercase field names
+   - Array items for collections (services, gallery, testimonials, etc.)
+   - Use theme colors for UI (when implemented)
+
+4. **IDs:**
+   - Must be unique within scope (page-level for modules, site-level for pages)
+   - Use format: `module-{type}-{timestamp}` for auto-generation
+   - Never use spaces or special characters
 
 ---
 
-## Site Rendering Compatibility
+## API Integration
 
-Both `SiteApp.jsx` (FRONTEND) and `SiteRendererPage.jsx` (VIEWER_FRONTEND) support:
-- **New format**: `template_config.site.pages` as array
-- **Old format**: `template_config.pages` as object
+### Save Endpoint
+```
+PATCH /api/v1/sites/{id}/
+Content-Type: application/json
 
-Pages array is automatically converted to object internally for rendering.
+{
+  "template_config": { ... full site object ... },
+  "name": "Updated Title"  // optional
+}
+```
+
+### Response
+```json
+{
+  "id": 123,
+  "name": "Updated Title",
+  "template_config": { ... saved config ... },
+  "updated_at": "2025-11-13T10:30:00Z",
+  "latest_version": {
+    "version_number": 42,
+    "template_config": { ... },
+    "created_at": "2025-11-13T10:30:00Z"
+  }
+}
+```
 
 ---
 
-## Migration from Old Format
+## Migration from Older Versions
 
-The frontend (`NewEditorPage.jsx`) automatically creates default structures when:
-- `template_config` is missing → Creates single Home page
-- `template_config.site` is missing → Creates default site structure
+The system auto-migrates:
+- **Pre-Phase2** (pages as object): Converted to array
+- **Pre-Phase3** (using "vibe" string): Converted to "styleId"
+- **Missing fields**: Filled with sensible defaults
+- **Old module names**: Mapped to new types
 
-Site viewers automatically handle both formats during rendering.
+No data loss. Old configs still work.
 
 ---
 
@@ -349,8 +518,8 @@ Site viewers automatically handle both formats during rendering.
 2. **Omit empty arrays/objects**: `customElements: []` → omit entirely
 3. **Omit default values**: `moduleType: "standard"` → omit
 4. **Use array index for order**: Don't include `order` field
-5. **Keep content minimal**: Only required fields per module type
+6. **Keep content minimal**: Only required fields per module type
 
 ---
 
-**Status:** ✅ Active Format (v2.0)
+**Status:** ✅ Production Ready (Phases 1-2 Complete)
