@@ -49,7 +49,7 @@ A single, compressed context object is sent at the start of each session to give
 File: `FRONTEND/src/SITES/components/modules/systemContext.js`
 ```javascript
 export const SYSTEM_CONTEXT = {
-  system: 'Module-based site builder with vibes (styling) and themes (colors)',
+  system: 'Module-based site builder with styles (styling) and themes (colors)',
   
   modules: [
     { type: 'hero', desc: 'Eye-catching intro', layouts: ['centered', 'split'] },
@@ -60,7 +60,7 @@ export const SYSTEM_CONTEXT = {
     { type: 'navigation', desc: 'Site nav', layouts: ['horizontal', 'centered'], siteLevel: true }
   ],
   
-  vibes: ['vibe1', 'vibe2', 'vibe3', 'vibe4', 'vibe5'],
+  styles: ['auroraMinimal', 'nocturneBold', 'solsticePastel', 'verdantOrganic', 'lumenEditorial'],
   
   themes: ['modernWellness', 'sereneForest', 'oceanCalm', 'sunsetWarmth', 'lavenderDream', /* ...and 5 more */],
   

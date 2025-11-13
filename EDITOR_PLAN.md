@@ -218,13 +218,15 @@ Structural arrangements that change positioning, not aesthetics.
 System Layouts: Pre-built (2-3 per module) Custom Layouts: User or AI-created, saved to library
 Selection: Thumbnail grid in Appearance section
 
-Vibes
+Styles
 Global aesthetic presets applied site-wide.
-Available Vibes:
-Minimal: Clean, spacious, subtle shadows, thin borders, soft animations
-Bold: High contrast, thick borders, sharp corners, heavy fonts
-Soft: Rounded corners, soft shadows, medium-weight fonts, slow animations
-Custom Vibes: User-created style presets, saved to library
+Available Styles:
+auroraMinimal: Clean, spacious, subtle shadows, thin borders, soft animations
+nocturneBold: High contrast, thick borders, sharp corners, heavy fonts
+solsticePastel: Soft colors, rounded corners, gentle shadows, medium-weight fonts
+verdantOrganic: Natural palette, organic shapes, balanced spacing
+lumenEditorial: Editorial focus, strong typography, structured layouts
+Custom Styles: User-created style presets, saved to library
 
 Themes
 Base Colors (3):
@@ -486,7 +488,7 @@ Link inputs
 Visibility toggles for base elements
 APPEARANCE
 Layout selector (thumbnails: system + custom)
-Style selector (dropdown: vibes + custom)
+Style selector (dropdown: styles + custom)
 Custom elements:
 List of added elements
 [+ Add element...] button
@@ -532,128 +534,218 @@ Phase 7: Custom code modules, sandbox execution, visual configuration generation
 Phase 8: AI assistant, smart module type selection, library search, preview-to-use workflow
 
 
-WORK STATUS:
+## WORK STATUS (UPDATED NOVEMBER 13, 2025)
 
 ## ✅ COMPLETED
 
 ### Phase 1: Core Architecture (100%)
-- **newEditorStore.js**: Complete state management with site structure, user library, CRUD operations, theme management, drag/drop, device preview, undo/redo hooks, null safety checks
-- **Routes**: `/studio/editor/:siteId` → New Editor (DEFAULT), legacy moved to `/studio/legacy-editor/`
+- ✅ **newEditorStore.js** (1434 lines): Complete Zustand state management with:
+  - Site structure CRUD (pages, modules, content)
+  - Transaction system for multi-step operations
+  - History stacks for undo/redo (10 structure, 20 detail history)
+  - Device preview toggle (mobile/desktop)
+  - Deep cloning and merge utilities
+  - Null safety checks and error recovery
+  - Theme normalization & style composition
+  - Snapshot management for versioning
+  
+- ✅ **Routes**: `/studio/editor/:siteId` → New Editor (PRIMARY)
 
-### Structure Mode (100%)
-- **StructureMode.jsx**: Two-canvas system with hierarchical two-row layout
-  - Row 1: Home page (700px, full size) with eye icon and entry point indicator above
-  - Row 2: Other pages (450px, scaled 0.64x) in horizontal wrap layout
-  - Arrows pointing from home page to other pages
-  - Editor canvas drop creates new page with module automatically (no empty pages)
-  - Page canvas drop adds module to that specific page with stopPropagation to prevent bubbling
-- **SiteCanvas.jsx**: Dedicated component with 16:9 aspect ratio, vertical module stacking, real borders, drag-drop zones with event stopPropagation, icon/real rendering
-- **ModuleToolbar.jsx**: 180px wide (25% reduction), 12 module types
-- **PageCard.jsx**: Entry point, badges, context menu (OLD structure mode component - deprecated)
-- **Page Titles**: Dynamic titles above each canvas ("Home Page", "{ModuleType} Page")
-- **Entry Point Indicator**: Eye icon with animated downward arrow above home page
-- **Removed**: "Drop to create new page" zone - new pages created instantly via editor canvas drop
+### Phase 1-2: Structure Mode (100% COMPLETE)
+- ✅ **StructureMode.jsx**: Full two-canvas system with:
+  - Row 1: Home page (700px, full size) with eye icon + animated entry point arrow
+  - Row 2: Secondary pages (450px, scaled 0.64x) auto-fit horizontal layout
+  - Editor canvas drop → Creates new page with module instantly (no empty pages)
+  - Page canvas drop → Adds module to specific page (stopPropagation prevents bubbling)
+  - Double-click page → Transitions to Detail Mode with smooth spring animation
+  
+- ✅ **SiteCanvas.jsx**: Individual page preview with:
+  - 16:9 aspect ratio maintained
+  - Vertical module stacking
+  - Icon/Real render mode toggle
+  - Drag-drop with visual feedback (dashed border highlights)
+  - Module selection and removal
+  
+- ✅ **ModuleToolbar.jsx**: 180px wide sidebar with 12 module types
+- ✅ **Page Titles**: Dynamic labels above each canvas
+- ✅ **Entry Point Indicator**: Eye icon with animated downward arrow
+- ✅ **CanvasHeader.jsx & CanvasSettings.jsx**: Top bar controls
+- ✅ **AddModuleButton.jsx**: Quick module insertion UI
 
-### Detail Mode (100%)
-- **DetailMode.jsx**: Three-panel layout (navigator/canvas/properties)
-- **SectionNavigator.jsx**: Module list with jump-to
-- **DetailCanvas.jsx**: Live preview with selection outline
-- **PropertiesPanel.jsx**: Three sections (Content/Appearance/Advanced), dynamic fields for all 12 modules
+### Phase 2: Detail Mode (100% COMPLETE)
+- ✅ **DetailMode.jsx**: Responsive three-panel layout with:
+  - Left panel (15% width, resizable): Section Navigator
+  - Center (flexible): Live canvas preview
+  - Right panel (15% width, resizable): Properties Panel
+  - Mobile drawer support with toggle buttons
+  - Smooth drag-based panel resizing with clamping (min 10%, max 35%)
+  - All panels have animation transitions
+  
+- ✅ **SectionNavigator.jsx**: Module list with:
+  - Color-coded module types (icons from definitions)
+  - Click to jump to module in canvas
+  - Smooth scroll behavior
+  - Current selection highlight
+  
+- ✅ **DetailCanvas.jsx**: Full-screen page preview with:
+  - Live site preview (scrollable)
+  - Module selection outline on click
+  - Module IDs for jump-to navigation
+  - Real rendering (scaled 50% in structure, full in detail)
+  
+- ✅ **PropertiesPanel.jsx** (1236 lines): Three-section dynamic editor:
+  - **CONTENT**: Text fields, textareas, color pickers, image uploaders, toggles, enums
+  - **APPEARANCE**: (Ready for layout/style selectors - UI structure complete)
+  - **ADVANCED**: (Collapsed by default - extensible for overrides)
+  - Array item editors for: services, gallery, testimonials, pricing, FAQ, team
+  - Add/remove/reorder items with up/down arrows
+  - Gallery image preview thumbnails
+  - Full field type support (text, textarea, richtext, color, image, boolean, enum, array)
 
-### Module System (12/12 Complete)
-- **ModuleRenderer.jsx**: Hero, About, Contact, Services, Gallery, Calendar, Text, Video, Testimonials, Pricing, FAQ, Team
-- **moduleDefinitions.js**: Icons, colors, defaults for all types
+### Phase 1-2: Module System (12/12 COMPLETE)
+- ✅ **moduleDefinitions.js**: All 12 modules fully defined with:
+  - Icon, color, default content, field descriptors per module
+  - MODULE_REGISTRY exported for dynamic rendering
+  - Color codes: Hero #FF6B6B | About #4ECDC4 | Services #45B7D1 | Gallery #FFA07A | Calendar #98D8C8 | Contact #FFD93D | Text #A8E6CF | Video #C7CEEA | Testimonials #F8B195 | Pricing #88D8B0 | FAQ #FFEAA7 | Team #DFE6E9
 
-### UI Components
-- **EditorTopBar.jsx**: Editable site title with OK/Cancel, API integration, mode-aware controls, device preview toggle
-- **NewEditorPage.jsx**: API fetch on mount, loading/error states, populates siteId/siteName/template_config, wrapped with EditorErrorBoundary
-- **EditorErrorBoundary.jsx**: Catches and displays editor errors with reload option, prevents crashes
+- ✅ **ModuleRenderer.jsx**: Dynamic component that renders all module types
+- ✅ **NewEditorPage.jsx**: Entry point with:
+  - API fetch on mount (siteId from URL params)
+  - Legacy module format → New format conversion
+  - Loading/error/success states
+  - Wrapped with EditorErrorBoundary
 
-### Design System
-- ✅ Ethereal minimalism: rgb(228,229,218), rgb(146,0,32)
-- ✅ Backdrop blur, spring animations, spacious layouts
+### Phase 2: UI Components (COMPLETE)
+- ✅ **EditorTopBar.jsx**: Smart top bar with:
+  - Editable site title (edit/OK/Cancel)
+  - API integration for title updates
+  - Device preview toggle (mobile/desktop)
+  - Back/exit buttons (mode-aware)
+  - Style selector placeholder
+  - Save status indicator
+  
+- ✅ **EditorErrorBoundary.jsx**: Error handling with reload option
+- ✅ **MockAIChatPanel.jsx**: Placeholder AI chat UI at bottom center
+
+### Phase 3: Styling System (PARTIAL - UI Ready)
+- ✅ **Styles renamed from Vibes**: System now uses:
+  - `auroraMinimal`, `nocturneBold`, `solsticePastel`, `verdantOrganic`, `lumenEditorial`
+  - Backward compatibility via STYLE_ALIAS_MAP
+  - composeSiteStyle() composes style + overrides into final theme
+  - PropertiesPanel ready for style selector UI
+  
+- 🔄 **Still TODO**: Theme editor UI, color pickers, live style preview
+
+### Design System (COMPLETE)
+- ✅ Ethereal minimalism theme
+- ✅ Color tokens: bg rgb(228,229,218), accent rgb(146,0,32)
+- ✅ Spring animations via Framer Motion
+- ✅ Spacious layouts with backdrop blur
+- ✅ Dark mode support (switchable)
 
 ---
 
 ## 🚧 IN PROGRESS / TODO
 
-### Phase 2: Enhanced Detail Mode
-- [ ] Array item editors (services/gallery/testimonials/pricing/faq/team)
-- [ ] Image upload system
-- [ ] Inline text editing (double-click)
-- [ ] Save button → API (template_config persistence)
+### Phase 3: Styling System (UI Implementation)
+- [ ] Style selector dropdown in Properties Panel
+- [ ] Theme editor with 3 base color pickers
+- [ ] Live preview update on style/theme change
+- [ ] "Generate Palette" AI-assisted button
+- [ ] System layouts with thumbnail grid
+- [ ] Custom layout/style/theme saving to library
+
+### Phase 4: Backend Integration
 - [ ] Auto-save every 2 minutes
-- [ ] Background color pickers
-
-### Phase 3: Styling System
-- [ ] Vibe selector UI (minimal/bold/soft)
-- [ ] Theme editor with color picker
-- [ ] System layouts with thumbnails
-- [ ] Custom layout saving
-
-### Phase 4-8: Advanced Features
-- [ ] Extended modules (custom elements)
-- [ ] User library browser
-- [ ] Custom code modules with sandbox
-- [ ] AI Assistant integration
-- [ ] Full undo/redo implementation
-- [ ] Version history
-
----
-
-## 🎯 Quick Reference
-
-**Routes**: `/studio/editor/:siteId` (new), `/studio/legacy-editor/:siteId` (old), `/studio/lab/editor` (lab)
-
-**Key Files**: `newEditorStore.js`, `NewEditorPage.jsx`, `SiteCanvas.jsx`, `ModuleRenderer.jsx`
-
-**Module Colors**: Hero #FF6B6B | About #4ECDC4 | Services #45B7D1 | Gallery #FFA07A | Calendar #98D8C8 | Contact #FFD93D | Text #A8E6CF | Video #C7CEEA | Testimonials #F8B195 | Pricing #88D8B0 | FAQ #FFEAA7 | Team #DFE6E9
+- [ ] Save button → API (template_config persistence)
+- [ ] Full versioning with snapshots
+- [ ] Publish workflow trigger
 
 ### Phase 5: User Library
 - [ ] Save custom layouts
 - [ ] Save custom styles
 - [ ] Save custom themes
-- [ ] Asset thumbnails generation
+- [ ] Asset thumbnails auto-generation
 - [ ] Library browser UI
 - [ ] Drag from library to canvas
 
-### Phase 6: Custom Elements
-- [ ] Predefined element library (Badge, Icon, Divider, etc.)
-- [ ] Drag-and-drop element positioning
+### Phase 6: Custom Elements (Extended Modules)
+- [ ] Predefined element library (Badge, Icon, Divider, Spacer, etc.)
+- [ ] Drag-and-drop element positioning in canvas
 - [ ] Snap zones with visual indicators
-- [ ] Element configuration panel
+- [ ] Element configuration in Properties
 - [ ] Position syntax (before:, after:, inside:)
 
 ### Phase 7: Custom Code Modules
 - [ ] Sandbox iframe system
 - [ ] React component generation by AI
-- [ ] Visual configuration interface generator
+- [ ] Visual configuration interface auto-generation
 - [ ] Preview modal
 - [ ] Security sandboxing
 
 ### Phase 8: AI Assistant
-- [ ] Chat interface (bottom center)
-- [ ] Context awareness
-- [ ] Smart module type selection
+- [ ] Chat interface integration (bottom center)
+- [ ] Context awareness (current module, page, site state)
+- [ ] Smart module type selection logic
 - [ ] Library search before creation
 - [ ] Color management (auto-add to theme)
-- [ ] Natural language to actions
-
-### Backend Integration
-- [ ] Connect to site API endpoints
-- [ ] Save/load site configurations
-- [ ] Versioning system (snapshots)
-- [ ] Auto-save every 2 minutes
-- [ ] Publish workflow
+- [ ] Natural language → actions translation
 
 ### Quality & Polish
-- [ ] Keyboard shortcuts
-- [ ] Full undo/redo stack
-- [ ] Error boundaries
-- [ ] Loading states
-- [ ] Toast notifications
+- [ ] Keyboard shortcuts (Cmd+S save, Cmd+Z undo, etc.)
+- [ ] Full undo/redo stack implementation
+- [ ] Toast notifications (save success, error, etc.)
+- [ ] Loading spinners for API calls
 - [ ] Responsive mobile editing
-- [ ] Performance optimization
+- [ ] Performance optimization (lazy load modules, memoization)
+- [ ] Inline text editing (double-click)
+
+---
+
+## 🎯 QUICK REFERENCE
+
+**Location**: `/FRONTEND/src/STUDIO/pages/Editor/`
+
+**Key Files**:
+- `newEditorStore.js` - State management (1434 lines)
+- `NewEditorPage.jsx` - Main entry point with API fetch
+- `StructureMode.jsx` - Two-canvas site overview
+- `DetailMode.jsx` - Three-panel detail editor
+- `DetailCanvas.jsx` - Live page preview
+- `PropertiesPanel.jsx` - Content/Appearance/Advanced editor (1236 lines)
+- `SectionNavigator.jsx` - Module list with jump-to
+- `ModuleRenderer.jsx` - Dynamic module rendering
+- `moduleDefinitions.js` - All module types, colors, defaults
+- `EditorTopBar.jsx` - Mode-aware top controls
+- `SiteCanvas.jsx` - Individual page preview
+- `ModuleToolbar.jsx` - Draggable module palette
+
+**Module Colors**: Hero #FF6B6B | About #4ECDC4 | Services #45B7D1 | Gallery #FFA07A | Calendar #98D8C8 | Contact #FFD93D | Text #A8E6CF | Video #C7CEEA | Testimonials #F8B195 | Pricing #88D8B0 | FAQ #FFEAA7 | Team #DFE6E9
+
+**Routes**: 
+- `/studio/editor/:siteId` - New primary editor
+- `/studio/lab/editor` - Lab/testing version
+- Legacy `/studio/legacy-editor/` - Old version (deprecated)
+
+**State Management Structure**:
+```javascript
+site: {
+  id, name, identifier,
+  pages: [{ id, route, modules: [{ id, type, content, enabled }], ... }],
+  styleId: 'auroraMinimal',
+  styleOverrides: { density: 1.2, ... },
+  theme: { colors: { primary, secondary, neutral, ... } }
+},
+editorMode: 'structure' | 'detail',
+selectedPageId, selectedModuleId,
+devicePreview: 'mobile' | 'desktop',
+history: { past: [], future: [] }
+```
+
+**Next Phase Priority**:
+1. ✅ Phase 1-2 DONE: Architecture, Structure/Detail modes, 12 modules, Properties editor
+2. 🚀 Phase 3 NEXT: Styling system UI (style selector, theme editor, live preview)
+3. Then: Backend persistence, User library, Custom elements/modules, AI Assistant
 
 
 

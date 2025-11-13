@@ -8,7 +8,7 @@ This document outlines a module-based site builder designed for creating persona
 
 -   **Modules**: Reusable content blocks like 'Hero', 'About', and 'Services' that form the building blocks of a page.
 -   **Layouts**: Different visual arrangements for each module (e.g., a 'Hero' module can have 'centered', 'split', or 'fullscreen' layouts).
--   **Vibes**: Site-wide styling rules that define the overall aesthetic, including spacing, borders, shadows, and typography.
+-   **Styles**: Site-wide styling rules that define the overall aesthetic, including spacing, borders, shadows, and typography.
 -   **Themes**: Palettes that control the color scheme, with support for both light and dark modes.
 
 ---
@@ -71,13 +71,13 @@ export const MODULE_DESCRIPTOR = {
 
 ---
 
-## 4. Styling: Vibes and Themes
+## 4. Styling: Styles and Themes
 
 The visual styling of the site is managed by two distinct, yet complementary systems.
 
-### Vibe System
+### Style System
 
-Vibes control the overall aesthetic and feel of the site by defining global CSS classes for:
+Styles control the overall aesthetic and feel of the site by defining global CSS classes for:
 -   Spacing (padding and margins)
 -   Borders and shadows
 -   Corner roundness
@@ -85,7 +85,7 @@ Vibes control the overall aesthetic and feel of the site by defining global CSS 
 -   Typography (heading and body text sizes)
 -   Button and card styles
 
-**Available Vibes**: `Clean & Spacious`, `Bold & Dramatic`, `Soft & Rounded`, `Compact & Efficient`, and `Expansive & Elegant`.
+**Available Styles**: `auroraMinimal`, `nocturneBold`, `solsticePastel`, `verdantOrganic`, and `lumenEditorial`.
 
 ### Theme System
 
@@ -105,7 +105,7 @@ The AI integration is designed to be efficient and context-aware.
 
 ### Initial Context
 
-At the start of each conversation, a compact `SYSTEM_CONTEXT` object is sent to the AI. This object, costing only ~50 tokens, provides the AI with a complete overview of all available modules, layouts, vibes, and themes, along with the core operational rules.
+At the start of each conversation, a compact `SYSTEM_CONTEXT` object is sent to the AI. This object, costing only ~50 tokens, provides the AI with a complete overview of all available modules, layouts, styles, and themes, along with the core operational rules.
 
 ### Progressive Loading Workflow
 
@@ -127,4 +127,4 @@ The process for extending the system with a new module is straightforward and fo
 4.  **Build Layouts**: Create the React components for each layout in the `layouts/` sub-directory, ensuring they are responsive.
 5.  **Create Main Component**: Develop the main `index.jsx` file to manage layout switching and content merging.
 6.  **Register Module**: Add the new module to the `MODULE_REGISTRY`.
-7.  **Update AI Context**: Add a summary of the new module to the `SYSTEM_CONTEXT` to make the AI aware of its existence.
+7.  **Update AI Context**: Add a summary of the new module to the `SYSTEM_CONTEXT` to make the AI aware of its existence, including available styles and themes.
