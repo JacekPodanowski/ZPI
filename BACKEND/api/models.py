@@ -54,6 +54,7 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     class AccountType(models.TextChoices):
         FREE = 'free', 'Free'
         PRO = 'pro', 'Pro'
+        PRO_PLUS = 'pro_plus', 'Pro+'
 
     class SourceTag(models.TextChoices):
         JACEK = 'JACEK', 'Jacek Campaign'
