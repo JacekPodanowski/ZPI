@@ -345,7 +345,7 @@ class MediaUsage(models.Model):
 
 
 def custom_component_path(instance, filename):
-    return f'komponenty/{filename}'
+    return f'components/{filename}'
 
 
 class CustomReactComponent(models.Model):
