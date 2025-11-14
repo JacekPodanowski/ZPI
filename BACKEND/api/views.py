@@ -85,6 +85,7 @@ from .serializers import (
     EmailTemplateSerializer,
     TestEmailSerializer,
     TeamMemberSerializer,
+    TeamMemberInfoSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -698,6 +699,30 @@ class SiteViewSet(viewsets.ModelViewSet):
             'team_member_sites': team_serializer.data
         })
 
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated], url_path='calendar-roster')
+    def calendar_roster(self, request, pk=None):
+        """Return lightweight team roster info for calendar filters."""
+        site = self.get_object()
+        role, membership = resolve_site_role(request.user, site)
+
+        if role is None and not request.user.is_staff:
+            raise PermissionDenied('You do not have access to this site.')
+
+        active_members = site.team_members.filter(
+            is_active=True,
+            invitation_status='linked'
+        ).order_by('created_at')
+
+        roster = TeamMemberInfoSerializer(active_members, many=True).data
+
+        return Response({
+            'site': SiteSerializer(site, context={'request': request}).data,
+            'role': role or 'owner',
+            'membership_id': membership.id if membership else None,
+            'team_members': roster,
+            'permissions': get_role_permissions(role, request.user.is_staff),
+        })
+
     def perform_create(self, serializer):
         """
         Auto-assign the next available color index when creating a new site.
@@ -826,6 +851,67 @@ class SiteScopedMixin:
         return queryset
 
 
+def resolve_site_role(user, site):
+    """Return tuple(role, membership) describing user's access to a site."""
+    if user.is_staff:
+        return 'owner', None
+    if site.owner_id == user.id:
+        return 'owner', None
+    membership = TeamMember.objects.filter(
+        site=site,
+        linked_user=user,
+        invitation_status='linked'
+    ).select_related('site').first()
+    if membership:
+        return membership.permission_role, membership
+    return None, None
+
+
+def get_role_permissions(role: str, is_staff: bool = False) -> dict:
+    """Map calendar capabilities for a given site role."""
+    if is_staff:
+        return {
+            'can_create_events': True,
+            'can_assign_anyone': True,
+            'can_edit_all_events': True,
+            'can_manage_availability': True,
+            'auto_assign_self': False,
+        }
+
+    role = role or 'viewer'
+    permissions_map = {
+        'owner': {
+            'can_create_events': True,
+            'can_assign_anyone': True,
+            'can_edit_all_events': True,
+            'can_manage_availability': True,
+            'auto_assign_self': False,
+        },
+        'manager': {
+            'can_create_events': True,
+            'can_assign_anyone': True,
+            'can_edit_all_events': True,
+            'can_manage_availability': True,
+            'auto_assign_self': False,
+        },
+        'contributor': {
+            'can_create_events': True,
+            'can_assign_anyone': False,
+            'can_edit_all_events': False,
+            'can_manage_availability': False,
+            'auto_assign_self': True,
+        },
+        'viewer': {
+            'can_create_events': False,
+            'can_assign_anyone': False,
+            'can_edit_all_events': False,
+            'can_manage_availability': False,
+            'auto_assign_self': False,
+        },
+    }
+    return permissions_map.get(role, permissions_map['viewer'])
+
+
 @tag_viewset('Clients')
 class ClientViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = ClientSerializer
@@ -857,32 +943,136 @@ class EventViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
 
+    def _get_site_roles(self):
+        if hasattr(self, '_site_role_cache'):
+            return self._site_role_cache, self._site_membership_cache
+
+        user = self.request.user
+        role_map = {}
+        membership_map = {}
+
+        if user.is_staff:
+            self._site_role_cache = {'__all__': 'owner'}
+            self._site_membership_cache = {}
+            return self._site_role_cache, self._site_membership_cache
+
+        owned_ids = Site.objects.filter(owner=user).values_list('id', flat=True)
+        for site_id in owned_ids:
+            role_map[site_id] = 'owner'
+
+        memberships = TeamMember.objects.filter(
+            linked_user=user,
+            invitation_status='linked'
+        ).select_related('site')
+
+        for membership in memberships:
+            role_map[membership.site_id] = membership.permission_role
+            membership_map[membership.site_id] = membership
+
+        self._site_role_cache = role_map
+        self._site_membership_cache = membership_map
+        return role_map, membership_map
+
     def get_queryset(self):
         qs = Event.objects.select_related('site', 'site__owner', 'creator').prefetch_related('bookings', 'bookings__client')
-        if not self.request.user.is_staff:
-            qs = qs.filter(site__owner=self.request.user)
+        user = self.request.user
+        if user.is_staff:
+            return self._filter_by_site_param(qs)
+
+        role_map, membership_map = self._get_site_roles()
+        if not role_map:
+            return qs.none()
+
+        role_filter = Q()
+        owner_ids = [sid for sid, role in role_map.items() if role == 'owner']
+        manager_ids = [sid for sid, role in role_map.items() if role == TeamMember.PermissionRole.MANAGER]
+        contributor_ids = [sid for sid, role in role_map.items() if role == TeamMember.PermissionRole.CONTRIBUTOR]
+        viewer_ids = [sid for sid, role in role_map.items() if role == TeamMember.PermissionRole.VIEWER]
+
+        if owner_ids:
+            role_filter |= Q(site_id__in=owner_ids)
+        if manager_ids:
+            role_filter |= Q(site_id__in=manager_ids)
+        if contributor_ids:
+            role_filter |= Q(site_id__in=contributor_ids)
+        if viewer_ids:
+            viewer_member_ids = [
+                membership_map[sid].id
+                for sid in viewer_ids
+                if sid in membership_map
+            ]
+            if viewer_member_ids:
+                role_filter |= Q(site_id__in=viewer_ids, assigned_to_team_member_id__in=viewer_member_ids)
+
+        if role_filter == Q():
+            return qs.none()
+
+        qs = qs.filter(role_filter)
         return self._filter_by_site_param(qs)
 
     def perform_create(self, serializer):
         site = serializer.validated_data['site']
-        creator = serializer.validated_data.get('creator', self.request.user)
-        if not self.request.user.is_staff and creator != self.request.user:
-            raise PermissionDenied('You can only create events as yourself.')
-        self._ensure_site_access(site)
+        user = self.request.user
+        creator = user
+
+        if user.is_staff:
+            serializer.save(creator=creator)
+            return
+
+        role, membership = resolve_site_role(user, site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        if role == TeamMember.PermissionRole.VIEWER:
+            raise PermissionDenied('Viewers cannot create events.')
+
+        if role == TeamMember.PermissionRole.CONTRIBUTOR and membership:
+            serializer.validated_data['assigned_to_owner'] = None
+            serializer.validated_data['assigned_to_team_member'] = membership
+
         serializer.save(creator=creator)
 
     def perform_update(self, serializer):
-        site = serializer.validated_data.get('site', serializer.instance.site)
-        creator = serializer.validated_data.get('creator', serializer.instance.creator)
-        if not self.request.user.is_staff and creator != self.request.user:
-            raise PermissionDenied('You can only manage your own events.')
-        self._ensure_site_access(site)
+        user = self.request.user
+        event = serializer.instance
+
+        if user.is_staff:
+            serializer.save()
+            return
+
+        role, membership = resolve_site_role(user, event.site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        if role == TeamMember.PermissionRole.VIEWER:
+            raise PermissionDenied('Viewers cannot edit events.')
+
+        if role == TeamMember.PermissionRole.CONTRIBUTOR:
+            if not membership or event.assigned_to_team_member_id != membership.id:
+                raise PermissionDenied('Contributors can only edit their own events.')
+            serializer.validated_data['assigned_to_owner'] = None
+            serializer.validated_data['assigned_to_team_member'] = membership
+
         serializer.save()
 
     def perform_destroy(self, instance):
-        self._ensure_site_access(instance.site)
-        if not self.request.user.is_staff and instance.creator != self.request.user:
-            raise PermissionDenied('You can only delete your own events.')
+        user = self.request.user
+
+        if user.is_staff:
+            instance.delete()
+            return
+
+        role, membership = resolve_site_role(user, instance.site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        if role == TeamMember.PermissionRole.VIEWER:
+            raise PermissionDenied('Viewers cannot delete events.')
+
+        if role == TeamMember.PermissionRole.CONTRIBUTOR:
+            if not membership or instance.assigned_to_team_member_id != membership.id:
+                raise PermissionDenied('You can only delete your own events.')
+
         instance.delete()
 
 
@@ -2297,9 +2487,15 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Return team members for sites owned by current user."""
+        """Return team members for sites owned by current user OR where user is the invitee."""
         user = self.request.user
-        return TeamMember.objects.filter(site__owner=user).select_related('site', 'linked_user')
+        # Owner can see all team members of their sites
+        # Invitees can see their own team member records
+        return TeamMember.objects.filter(
+            Q(site__owner=user) | 
+            Q(linked_user=user) |
+            Q(email__iexact=user.email, invitation_status__in=['pending', 'invited'])
+        ).select_related('site', 'linked_user')
     
     def perform_create(self, serializer):
         """Validate site ownership before creating team member."""
@@ -2400,6 +2596,11 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         team_member.linked_user = None
         team_member.save(update_fields=['invitation_status', 'linked_user'])
         
+        # Update site team_size
+        site = team_member.site
+        site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
+        site.save(update_fields=['team_size'])
+        
         return Response({
             'message': 'You have left the team.'
         })
@@ -2425,6 +2626,11 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         team_member.invitation_status = 'linked'
         team_member.save(update_fields=['linked_user', 'invitation_status'])
         
+        # Update site team_size
+        site = team_member.site
+        site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
+        site.save(update_fields=['team_size'])
+        
         return Response({
             'message': 'Invitation accepted successfully.',
             'site_id': team_member.site.id
@@ -2447,8 +2653,15 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             )
         
         # Reject invitation
+        was_linked = team_member.invitation_status == 'linked'
         team_member.invitation_status = 'rejected'
         team_member.save(update_fields=['invitation_status'])
+        
+        # Update site team_size if previously linked
+        if was_linked:
+            site = team_member.site
+            site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
+            site.save(update_fields=['team_size'])
         
         return Response({
             'message': 'Invitation rejected.'

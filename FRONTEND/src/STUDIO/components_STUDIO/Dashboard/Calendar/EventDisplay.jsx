@@ -66,17 +66,26 @@ export const EventBlock = ({
     // Calculate height based on density and hover state
     // Normal height ensures events fit within ~90px available space (110px tile - 20px day number/padding)
     const getHeight = () => {
-        if (displayMode === 'normal') return isHovered ? 30 : 26; // 3 events: 3*26 + 2*4(gap) = 86px
-        if (displayMode === 'compact') return isHovered ? 22 : 18; // 5 events: 5*18 + 4*3(gap) = 102px
-        if (displayMode === 'minimal') return isHovered ? 18 : 14; // 7 events: 7*14 + 6*2.5(gap) = 113px
-        return 28;
+        let baseHeight;
+        if (displayMode === 'normal') baseHeight = isHovered ? 30 : 26; // 3 events: 3*26 + 2*4(gap) = 86px
+        else if (displayMode === 'compact') baseHeight = isHovered ? 22 : 18; // 5 events: 5*18 + 4*3(gap) = 102px
+        else if (displayMode === 'minimal') baseHeight = isHovered ? 18 : 14; // 7 events: 7*14 + 6*2.5(gap) = 113px
+        else baseHeight = 28;
+        
+        // Make non-selected site events 30% smaller
+        return isSelectedSite ? baseHeight : baseHeight * 0.7;
     };
 
     // Calculate font size based on density
     const getFontSize = () => {
-        if (displayMode === 'normal') return isHovered ? '11.5px' : '11px';
-        if (displayMode === 'compact') return isHovered ? '10.5px' : '10px';
-        return isHovered ? '9.5px' : '9px';
+        let baseFontSize;
+        if (displayMode === 'normal') baseFontSize = isHovered ? 11.5 : 11;
+        else if (displayMode === 'compact') baseFontSize = isHovered ? 10.5 : 10;
+        else baseFontSize = isHovered ? 9.5 : 9;
+        
+        // Make non-selected site events text slightly smaller
+        const fontSize = isSelectedSite ? baseFontSize : baseFontSize * 0.85;
+        return `${fontSize}px`;
     };
 
     // Calculate hover transform - can go out of bounds

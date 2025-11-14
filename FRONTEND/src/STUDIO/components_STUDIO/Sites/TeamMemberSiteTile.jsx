@@ -29,6 +29,9 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
     const [localStatus] = useState(site.status || (site.is_active ? 'online' : 'offline'));
     const [acceptHovered, setAcceptHovered] = useState(false);
     const [rejectHovered, setRejectHovered] = useState(false);
+    const [invitationStatus, setInvitationStatus] = useState(teamMemberInfo?.invitation_status ?? 'linked');
+    const [isProcessingInvitation, setIsProcessingInvitation] = useState(false);
+    const [isDismissed, setIsDismissed] = useState(false);
 
     const DEBUG_MENU_AREA = false;
     const siteStatus = localStatus;
@@ -108,40 +111,56 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
     };
 
     const handleAcceptInvitation = async () => {
+        if (invitationStatus !== 'pending' || isProcessingInvitation || !teamMemberInfo?.id) {
+            return;
+        }
+        setIsProcessingInvitation(true);
         try {
             await acceptTeamInvitation(teamMemberInfo.id);
-            if (onInvitationUpdate) {
-                onInvitationUpdate();
-            } else {
-                window.location.reload();
-            }
+            setInvitationStatus('linked');
+            onInvitationUpdate?.();
         } catch (error) {
             console.error('Failed to accept invitation:', error);
             alert('Nie udało się zaakceptować zaproszenia.');
+        } finally {
+            setIsProcessingInvitation(false);
         }
     };
 
     const handleRejectInvitation = async () => {
+        if (invitationStatus !== 'pending' || isProcessingInvitation || !teamMemberInfo?.id) {
+            return;
+        }
+        setIsProcessingInvitation(true);
         try {
             await rejectTeamInvitation(teamMemberInfo.id);
-            if (onInvitationUpdate) {
-                onInvitationUpdate();
-            } else {
-                window.location.reload();
-            }
+            setInvitationStatus('rejected');
+            setIsDismissed(true);
+            onInvitationUpdate?.();
         } catch (error) {
             console.error('Failed to reject invitation:', error);
             alert('Nie udało się odrzucić zaproszenia.');
+        } finally {
+            setIsProcessingInvitation(false);
         }
     };
 
     const handleTileClick = () => {
-        if (teamMemberInfo.invitation_status === 'linked') {
+        if (invitationStatus === 'linked') {
             navigate(`/studio/editor/${site.id}`);
         }
     };
 
-    const isPending = teamMemberInfo.invitation_status === 'pending';
+    useEffect(() => {
+        setInvitationStatus(teamMemberInfo?.invitation_status ?? 'linked');
+        setIsDismissed(false);
+    }, [teamMemberInfo]);
+
+    if (isDismissed) {
+        return null;
+    }
+
+    const isPending = invitationStatus === 'pending';
 
     return (
         <motion.div
@@ -483,89 +502,154 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
                             flexDirection: 'column',
                             gap: 1.5,
                             minHeight: '200px',
-                            justifyContent: 'center'
+                            justifyContent: isPending ? 'center' : 'flex-start'
                         }}
                     >
-                        {/* Owner Name */}
-                        <Typography 
-                            variant="body1" 
-                            sx={{ 
-                                fontWeight: 700, 
-                                lineHeight: 1.2,
-                                fontSize: '1rem',
-                                textAlign: 'center'
-                            }}
-                        >
-                            {site.owner?.first_name} {site.owner?.last_name}
-                        </Typography>
+                        {isPending ? (
+                            <>
+                                {/* Owner Name */}
+                                <Typography 
+                                    variant="body1" 
+                                    sx={{ 
+                                        fontWeight: 700, 
+                                        lineHeight: 1.2,
+                                        fontSize: '1rem',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    {site.owner?.first_name} {site.owner?.last_name}
+                                </Typography>
 
-                        {/* Invitation Text with Tooltip */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.95rem' }}>
-                                zaprasza cię jako
-                            </Typography>
-                            <Tooltip
-                                title={getRoleInfo(teamMemberInfo.permission_role).description}
-                                placement="top"
-                                arrow
-                                slotProps={{
-                                    tooltip: {
-                                        sx: {
-                                            bgcolor: 'rgba(0, 0, 0, 0.85)',
-                                            fontSize: '0.875rem',
-                                            py: 1,
-                                            px: 1.5,
-                                            maxWidth: 280
-                                        }
-                                    },
-                                    arrow: {
-                                        sx: {
-                                            color: 'rgba(0, 0, 0, 0.85)'
-                                        }
-                                    }
-                                }}
-                            >
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'help' }}>
-                                    <PeopleIcon sx={{ fontSize: '1.1rem', color: 'rgb(146, 0, 32)' }} />
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgb(146, 0, 32)', fontSize: '0.95rem' }}>
-                                        {getRoleInfo(teamMemberInfo.permission_role).namePolish}
+                                {/* Invitation Text with Tooltip */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.95rem' }}>
+                                        zaprasza cię jako
                                     </Typography>
+                                    <Tooltip
+                                        title={getRoleInfo(teamMemberInfo.permission_role).description}
+                                        placement="top"
+                                        arrow
+                                        slotProps={{
+                                            tooltip: {
+                                                sx: {
+                                                    bgcolor: 'rgba(0, 0, 0, 0.85)',
+                                                    fontSize: '0.875rem',
+                                                    py: 1,
+                                                    px: 1.5,
+                                                    maxWidth: 280
+                                                }
+                                            },
+                                            arrow: {
+                                                sx: {
+                                                    color: 'rgba(0, 0, 0, 0.85)'
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'help' }}>
+                                            <PeopleIcon sx={{ fontSize: '1.1rem', color: 'rgb(146, 0, 32)' }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'rgb(146, 0, 32)', fontSize: '0.95rem' }}>
+                                                {getRoleInfo(teamMemberInfo.permission_role).namePolish}
+                                            </Typography>
+                                        </Box>
+                                    </Tooltip>
                                 </Box>
-                            </Tooltip>
-                        </Box>
 
-                        {/* Accept/Reject Actions - Only for pending invitations */}
-                        {isPending && (
-                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'center', mt: 0.5 }}>
-                                <IconButton
-                                    onClick={handleAcceptInvitation}
-                                    onMouseEnter={() => setAcceptHovered(true)}
-                                    onMouseLeave={() => setAcceptHovered(false)}
-                                    sx={{
-                                        color: acceptHovered ? '#16a34a' : 'text.primary',
-                                        transition: 'all 0.3s ease',
-                                        '&:hover': {
-                                            backgroundColor: 'rgba(74, 222, 128, 0.1)'
-                                        }
+                                {/* Accept/Reject Actions */}
+                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'center', mt: 0.5 }}>
+                                    <IconButton
+                                        onClick={handleAcceptInvitation}
+                                        onMouseEnter={() => setAcceptHovered(true)}
+                                        onMouseLeave={() => setAcceptHovered(false)}
+                                        sx={{
+                                            color: acceptHovered ? '#16a34a' : 'text.primary',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(74, 222, 128, 0.1)'
+                                            }
+                                        }}
+                                    >
+                                        <CheckIcon />
+                                    </IconButton>
+                                    <IconButton
+                                        onClick={handleRejectInvitation}
+                                        disabled={isProcessingInvitation}
+                                        onMouseEnter={() => setRejectHovered(true)}
+                                        onMouseLeave={() => setRejectHovered(false)}
+                                        sx={{
+                                            color: rejectHovered ? '#dc2626' : 'text.primary',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                                            }
+                                        }}
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                </Box>
+                            </>
+                        ) : (
+                            <>
+                                {/* Linked State - Top Left: Invited By */}
+                                <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                        color: 'text.secondary',
+                                        fontSize: '0.85rem',
+                                        textAlign: 'left',
+                                        mb: 1
                                     }}
                                 >
-                                    <CheckIcon />
-                                </IconButton>
-                                <IconButton
-                                    onClick={handleRejectInvitation}
-                                    onMouseEnter={() => setRejectHovered(true)}
-                                    onMouseLeave={() => setRejectHovered(false)}
-                                    sx={{
-                                        color: rejectHovered ? '#dc2626' : 'text.primary',
-                                        transition: 'all 0.3s ease',
-                                        '&:hover': {
-                                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                                        }
+                                    Zaproszony przez <Box component="span" sx={{ fontWeight: 700 }}>{site.owner?.first_name} {site.owner?.last_name}</Box>
+                                </Typography>
+
+                                {/* Center: Team Icon and Role in one line */}
+                                <Box 
+                                    sx={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 1,
+                                        flex: 1
                                     }}
                                 >
-                                    <CloseIcon />
-                                </IconButton>
-                            </Box>
+                                    <PeopleIcon sx={{ fontSize: '1.8rem', color: 'rgb(146, 0, 32)' }} />
+                                    <Tooltip
+                                        title={getRoleInfo(teamMemberInfo.permission_role).description}
+                                        placement="top"
+                                        arrow
+                                        slotProps={{
+                                            tooltip: {
+                                                sx: {
+                                                    bgcolor: 'rgba(0, 0, 0, 0.85)',
+                                                    fontSize: '0.875rem',
+                                                    py: 1,
+                                                    px: 1.5,
+                                                    maxWidth: 280
+                                                }
+                                            },
+                                            arrow: {
+                                                sx: {
+                                                    color: 'rgba(0, 0, 0, 0.85)'
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <Typography 
+                                            variant="body1" 
+                                            sx={{ 
+                                                fontWeight: 600,
+                                                color: 'rgb(146, 0, 32)',
+                                                fontSize: '0.95rem',
+                                                cursor: 'help'
+                                            }}
+                                        >
+                                            {getRoleInfo(teamMemberInfo.permission_role).namePolish}
+                                        </Typography>
+                                    </Tooltip>
+                                </Box>
+                            </>
                         )}
                     </Box>
                 </Box>

@@ -69,3 +69,8 @@ export const fetchSiteVersions = async (siteId) => {
     const response = await apiClient.get(`/sites/${siteId}/versions/`);
     return response.data;
 };
+
+export const fetchSiteCalendarRoster = async (siteId) => {
+    const response = await apiClient.get(`/sites/${siteId}/calendar-roster/`);
+    return response.data;
+};

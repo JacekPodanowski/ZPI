@@ -146,6 +146,28 @@ class PlatformUserSerializer(serializers.ModelSerializer):
                 cleanup_asset_if_unused(old_asset)
 
 
+class UserSummarySerializer(serializers.ModelSerializer):
+    """Simplified serializer for user info in calendar roster responses."""
+    avatar_color = serializers.SerializerMethodField()
+    avatar_letter = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PlatformUser
+        fields = [
+            'id', 'first_name', 'last_name', 'avatar_url', 
+            'avatar_color', 'avatar_letter'
+        ]
+    
+    def get_avatar_color(self, obj):
+        from .utils import get_avatar_color
+        full_name = obj.get_full_name() or obj.email
+        return get_avatar_color(full_name)
+    
+    def get_avatar_letter(self, obj):
+        from .utils import get_avatar_letter
+        return get_avatar_letter(obj.first_name)
+
+
 class SiteSerializer(serializers.ModelSerializer):
     owner = PlatformUserSerializer(read_only=True)
     latest_version = serializers.SerializerMethodField()
@@ -153,10 +175,10 @@ class SiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Site
         fields = [
-            'id', 'owner', 'name', 'identifier', 'color_index',
+            'id', 'owner', 'name', 'identifier', 'color_index', 'team_size',
             'template_config', 'created_at', 'updated_at', 'latest_version'
         ]
-        read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner']
+        read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner', 'team_size']
         extra_kwargs = {
             'color_index': {'required': False}
         }
@@ -229,15 +251,19 @@ class ClientSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     attendees = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     bookings = serializers.SerializerMethodField()
+    assignment_type = serializers.SerializerMethodField()
+    assignment_label = serializers.SerializerMethodField()
     
     class Meta:
         model = Event
         fields = [
             'id', 'site', 'creator', 'title', 'description',
             'start_time', 'end_time', 'capacity', 'event_type',
-            'attendees', 'bookings', 'created_at', 'updated_at'
+            'attendees', 'bookings', 'created_at', 'updated_at',
+            'assigned_to_owner', 'assigned_to_team_member',
+            'assignment_type', 'assignment_label'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'attendees', 'creator', 'bookings']
+        read_only_fields = ['created_at', 'updated_at', 'attendees', 'creator', 'bookings', 'assignment_type', 'assignment_label']
 
     def get_bookings(self, obj):
         """Return booking information including client/guest details"""
@@ -249,6 +275,22 @@ class EventSerializer(serializers.ModelSerializer):
             'notes': booking.notes,
             'created_at': booking.created_at
         } for booking in bookings]
+    
+    def get_assignment_type(self, obj):
+        """Return 'owner' or 'team_member' based on which assignment field is filled"""
+        if obj.assigned_to_owner_id:
+            return 'owner'
+        elif obj.assigned_to_team_member_id:
+            return 'team_member'
+        return None
+    
+    def get_assignment_label(self, obj):
+        """Return human-readable label for the assigned person"""
+        if obj.assigned_to_owner:
+            return obj.assigned_to_owner.get_full_name() or obj.assigned_to_owner.email
+        elif obj.assigned_to_team_member:
+            return f"{obj.assigned_to_team_member.first_name} {obj.assigned_to_team_member.last_name}"
+        return None
 
     def validate(self, attrs):
         site = attrs.get('site') or (self.instance.site if self.instance else None)

@@ -40,6 +40,14 @@ export const createEvent = async (eventData) => {
             event_type: meetingType,
             site: eventData.site_id,
         };
+
+        if (eventData.assigned_to_owner) {
+            apiEventData.assigned_to_owner = eventData.assigned_to_owner;
+        }
+
+        if (eventData.assigned_to_team_member) {
+            apiEventData.assigned_to_team_member = eventData.assigned_to_team_member;
+        }
         
         console.log('Sending event data to API:', apiEventData);
         const response = await apiClient.post('/events/', apiEventData);

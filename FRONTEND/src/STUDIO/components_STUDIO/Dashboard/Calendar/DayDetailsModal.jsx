@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -182,6 +182,22 @@ const calculateOverlapLayout = (items, dayStartMinutes, dayEndMinutes) => {
 
     return itemsWithMetrics;
 };
+
+const createDefaultFormState = (siteId = null) => ({
+    title: '',
+    startTime: '10:00',
+    endTime: '11:00',
+    type: 'online',
+    location: '',
+    meetingType: 'individual',
+    capacity: 1,
+    meetingLengths: ['30', '60'],
+    timeSnapping: '30',
+    bufferTime: '0',
+    siteId: siteId || null,
+    assigneeType: 'owner',
+    assigneeId: null
+});
 
 const AvailabilityBlockDisplay = ({ block, siteColor, siteName, onClick, dayStartMinutes, dayEndMinutes, column = 0, totalColumns = 1 }) => {
     const metrics = computeBlockMetrics(block.start_time, block.end_time, dayStartMinutes, dayEndMinutes);
@@ -442,8 +458,12 @@ const DayDetailsModal = ({
     onCreateEvent, 
     onCreateAvailability,
     operatingStartHour = 6,
-        operatingEndHour = 22,
-        onBookingRemoved
+    operatingEndHour = 22,
+    onBookingRemoved,
+    sitePermissions,
+    rolePermissionMap,
+    siteRosters,
+    ensureSiteRoster
 }) => {
     const theme = useTheme();
         const addToast = useToast();
@@ -459,22 +479,88 @@ const DayDetailsModal = ({
         subject: 'Zmiana w terminie spotkania',
         message: 'Witam,\n\nNiestety muszę wprowadzić zmiany w harmonogramie. Proszę o kontakt w celu ustalenia nowego terminu.\n\nPrzepraszam za niedogodności.\nPozdrawiam'
     });
-    const [formData, setFormData] = useState({
-        title: '',
-        startTime: '10:00',
-        endTime: '11:00',
-        type: 'online',
-        location: '',
-        meetingType: 'individual',
-        capacity: 1,
-        meetingLengths: ['30', '60'],
-        timeSnapping: '30',
-        bufferTime: '0',
-        siteId: selectedSiteId || null  // Add siteId to form data
-    });
+    const [formData, setFormData] = useState(() => createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
+    const resetFormData = useCallback(() => {
+        setFormData(createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
+    }, [selectedSiteId, sites]);
 
     const dateFormatted = useMemo(() => moment(date).format('dddd, D MMMM YYYY'), [date]);
     const dateKey = useMemo(() => moment(date).format('YYYY-MM-DD'), [date]);
+    const hasSingleSite = useMemo(() => Array.isArray(sites) && sites.length === 1, [sites]);
+    const activeSiteId = formData.siteId || selectedSiteId || (Array.isArray(sites) && sites.length ? sites[0].id : null);
+    const activeSite = useMemo(() => {
+        if (!activeSiteId || !Array.isArray(sites)) {
+            return null;
+        }
+        return sites.find((site) => String(site.id) === String(activeSiteId)) || null;
+    }, [sites, activeSiteId]);
+    const fallbackPermissions = useMemo(() => {
+        if (!rolePermissionMap) {
+            return {};
+        }
+        const roleKey = activeSite?.calendarRole ?? 'viewer';
+        return rolePermissionMap[roleKey] || rolePermissionMap.viewer || {};
+    }, [activeSite?.calendarRole, rolePermissionMap]);
+    const currentPermissions = useMemo(() => {
+        if (activeSiteId && sitePermissions && sitePermissions[activeSiteId]) {
+            return sitePermissions[activeSiteId];
+        }
+        return fallbackPermissions;
+    }, [activeSiteId, sitePermissions, fallbackPermissions]);
+    const rosterData = activeSiteId && siteRosters ? siteRosters[activeSiteId] : null;
+    const ownerProfile = rosterData?.owner || activeSite?.owner || null;
+    const membershipId = activeSite?.calendarMembershipId || rosterData?.membership_id || null;
+    const [rosterLoading, setRosterLoading] = useState(false);
+    const assignmentOptions = useMemo(() => {
+        if (!activeSiteId) {
+            return [];
+        }
+        const options = [];
+        if (ownerProfile) {
+            const ownerName = `${ownerProfile.first_name ?? ''} ${ownerProfile.last_name ?? ''}`.trim() || ownerProfile.email || 'Właściciel strony';
+            options.push({
+                key: `owner:${ownerProfile.id ?? 'owner'}`,
+                type: 'owner',
+                id: ownerProfile.id ?? null,
+                label: ownerName,
+                avatar_url: ownerProfile.avatar_url,
+                avatar_letter: ownerName.charAt(0)?.toUpperCase() || 'O',
+                role: 'Właściciel strony'
+            });
+        }
+        const members = Array.isArray(rosterData?.team_members) ? rosterData.team_members : [];
+        members.forEach((member) => {
+            const memberName = `${member.first_name ?? ''} ${member.last_name ?? ''}`.trim() || member.role_description || 'Członek zespołu';
+            options.push({
+                key: `team_member:${member.id}`,
+                type: 'team_member',
+                id: member.id,
+                label: memberName,
+                avatar_url: member.avatar_url,
+                avatar_color: member.avatar_color,
+                avatar_letter: member.avatar_letter || memberName.charAt(0)?.toUpperCase() || 'T',
+                role: member.role_description || 'Członek zespołu'
+            });
+        });
+        if (!options.length && ownerProfile === null) {
+            options.push({
+                key: 'owner:auto',
+                type: 'owner',
+                id: null,
+                label: 'Właściciel strony',
+                avatar_letter: 'O',
+                role: 'Właściciel strony'
+            });
+        }
+        return options;
+    }, [activeSiteId, ownerProfile, rosterData]);
+    const assignmentValue = useMemo(() => {
+        if (formData.assigneeType === 'team_member' && formData.assigneeId) {
+            return `team_member:${formData.assigneeId}`;
+        }
+        const ownerOption = assignmentOptions.find((option) => option.type === 'owner');
+        return ownerOption?.key || 'owner:auto';
+    }, [assignmentOptions, formData.assigneeType, formData.assigneeId]);
 
     const dayEvents = useMemo(() => {
         return events.filter(e => moment(e.date).format('YYYY-MM-DD') === dateKey);
@@ -483,6 +569,76 @@ const DayDetailsModal = ({
     const dayAvailability = useMemo(() => {
         return availabilityBlocks.filter(b => moment(b.date).format('YYYY-MM-DD') === dateKey);
     }, [availabilityBlocks, dateKey]);
+
+    useEffect(() => {
+        if (!hasSingleSite || !sites?.[0]?.id) {
+            return;
+        }
+        setFormData((prev) => {
+            if (prev.siteId && String(prev.siteId) !== String(sites[0].id)) {
+                return prev;
+            }
+            if (view === 'editEvent' || view === 'editAvailability') {
+                return prev;
+            }
+            return { ...prev, siteId: sites[0].id };
+        });
+    }, [hasSingleSite, sites, view]);
+
+    useEffect(() => {
+        if (!selectedSiteId) {
+            return;
+        }
+        if (view !== 'timeline' && view !== 'chooser') {
+            return;
+        }
+        setFormData((prev) => {
+            if (String(prev.siteId) === String(selectedSiteId)) {
+                return prev;
+            }
+            return { ...prev, siteId: selectedSiteId };
+        });
+    }, [selectedSiteId, view]);
+
+    useEffect(() => {
+        if (!activeSiteId || !ensureSiteRoster) {
+            return;
+        }
+        const teamSize = activeSite?.team_size ?? 1;
+        if (teamSize <= 1 || rosterData) {
+            setRosterLoading(false);
+            return;
+        }
+        let cancelled = false;
+        setRosterLoading(true);
+        ensureSiteRoster(activeSiteId)
+            .catch((error) => {
+                console.error('Nie udało się wczytać listy zespołu', error);
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setRosterLoading(false);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [activeSiteId, activeSite?.team_size, rosterData, ensureSiteRoster]);
+
+    useEffect(() => {
+        if (view !== 'createEvent') {
+            return;
+        }
+        if (!currentPermissions?.autoAssignSelf || !membershipId) {
+            return;
+        }
+        setFormData((prev) => {
+            if (prev.assigneeType === 'team_member' && String(prev.assigneeId) === String(membershipId)) {
+                return prev;
+            }
+            return { ...prev, assigneeType: 'team_member', assigneeId: membershipId };
+        });
+    }, [view, currentPermissions?.autoAssignSelf, membershipId]);
 
     // Smart timeline calculation: show 1 hour before first event and 1 hour after last event (when zoomed)
     const { actualStartHour, actualEndHour, dayStartMinutes, dayEndMinutes } = useMemo(() => {
@@ -571,31 +727,66 @@ const DayDetailsModal = ({
 
     const HOUR_HEIGHT = 60;
     const timelineHeight = ((dayEndMinutes - dayStartMinutes) / 60) * HOUR_HEIGHT;
+    const canAssignAnyone = Boolean(currentPermissions?.canAssignAnyone);
+    const canCreateEvents = Boolean(currentPermissions?.canCreateEvents);
+    const canManageAvailability = Boolean(currentPermissions?.canManageAvailability);
+    const ownerIdForSite = ownerProfile?.id ?? activeSite?.owner?.id ?? null;
+    const siteHasTeam = (activeSite?.team_size ?? 1) > 1;
+    const rosterUnavailable = siteHasTeam && !rosterData;
+    const disableAssignmentSelect = !canAssignAnyone || assignmentOptions.length <= 1 || rosterLoading;
+    const submitDisabled = (view === 'createEvent' && !canCreateEvents) || (view === 'createAvailability' && !canManageAvailability);
 
     const handleClose = () => {
         setView('timeline');
-        setFormData({
-            title: '',
-            startTime: '10:00',
-            endTime: '11:00',
-            type: 'online',
-            location: '',
-            meetingType: 'individual',
-            capacity: 1,
-            meetingLengths: ['30', '60'],
-            timeSnapping: '30',
-            bufferTime: '0',
-            siteId: selectedSiteId || null
-        });
+        resetFormData();
+        setEditingItem(null);
+        setSelectedBooking(null);
+        setBookingModalOpen(false);
         onClose();
     };
 
     const handleCreateChoice = (type) => {
+        if (type === 'event' && !currentPermissions?.canCreateEvents) {
+            addToast('Nie masz uprawnień do tworzenia wydarzeń dla tej strony.', { variant: 'warning' });
+            return;
+        }
+        if (type === 'availability' && !currentPermissions?.canManageAvailability) {
+            addToast('Nie masz uprawnień do zarządzania dostępnością zespołu.', { variant: 'warning' });
+            return;
+        }
+        setFormData((prev) => ({
+            ...prev,
+            siteId: activeSiteId,
+            assigneeType: prev.assigneeType,
+            assigneeId: prev.assigneeId
+        }));
         setView(type === 'event' ? 'createEvent' : 'createAvailability');
+    };
+
+    const handleAssigneeSelection = (value) => {
+        if (!value) {
+            return;
+        }
+        const [type, rawId] = value.split(':');
+        if (type === 'team_member') {
+            const parsedId = Number(rawId);
+            setFormData((prev) => ({
+                ...prev,
+                assigneeType: 'team_member',
+                assigneeId: Number.isNaN(parsedId) ? rawId : parsedId
+            }));
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                assigneeType: 'owner',
+                assigneeId: null
+            }));
+        }
     };
 
     const handleEventClick = (event) => {
         setEditingItem(event);
+        const derivedAssigneeType = event.assignment_type || (event.assigned_to_team_member ? 'team_member' : 'owner');
         setFormData({
             title: event.title || '',
             startTime: event.start_time || '10:00',
@@ -607,7 +798,9 @@ const DayDetailsModal = ({
             meetingLengths: ['30', '60'],
             timeSnapping: '30',
             bufferTime: '0',
-            siteId: event.site || selectedSiteId || null
+            siteId: event.site || selectedSiteId || null,
+            assigneeType: derivedAssigneeType,
+            assigneeId: derivedAssigneeType === 'team_member' ? event.assigned_to_team_member : null
         });
         setView('editEvent');
     };
@@ -721,32 +914,41 @@ const DayDetailsModal = ({
     }, [editingItem, onBookingRemoved, selectedBooking, setSelectedBooking, setBookingModalOpen]);
 
     const handleSubmit = () => {
+        const { assigneeType, assigneeId, ...restFormData } = formData;
+        const targetSiteId = restFormData.siteId || activeSiteId;
+
+        if (!targetSiteId) {
+            addToast('Wybierz stronę, aby zapisać zmiany.', { variant: 'warning' });
+            return;
+        }
+
         if (view === 'createEvent') {
+            if (!canCreateEvents) {
+                addToast('Nie masz uprawnień do tworzenia wydarzeń na tej stronie.', { variant: 'warning' });
+                return;
+            }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
             onCreateEvent?.({
-                ...formData,
-                date: dateKey
+                ...restFormData,
+                siteId: targetSiteId,
+                date: dateKey,
+                assignee: assigneePayload
             });
         } else if (view === 'createAvailability') {
+            if (!canManageAvailability) {
+                addToast('Nie masz uprawnień do zarządzania dostępnością zespołu.', { variant: 'warning' });
+                return;
+            }
             onCreateAvailability?.({
-                ...formData,
+                ...restFormData,
+                siteId: targetSiteId,
                 date: dateKey
             });
         }
         
-        // Reset form and return to timeline instead of closing modal
-        setFormData({
-            title: '',
-            startTime: '10:00',
-            endTime: '11:00',
-            type: 'online',
-            location: '',
-            meetingType: 'individual',
-            capacity: 1,
-            meetingLengths: ['30', '60'],
-            timeSnapping: '30',
-            bufferTime: '0',
-            siteId: selectedSiteId || null
-        });
+        resetFormData();
         setView('timeline');
     };
 
@@ -886,21 +1088,42 @@ const DayDetailsModal = ({
                         )}
                     </Alert>
 
-                {/* Site selector */}
-                <FormControl fullWidth required>
-                    <InputLabel>Strona</InputLabel>
-                    <Select
-                        value={formData.siteId || ''}
-                        label="Strona"
-                        onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
-                    >
-                        {sites.map((site) => (
-                            <MenuItem key={site.id} value={site.id}>
-                                {site.name}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                    {isEvent && !canCreateEvents && (
+                        <Alert severity="warning">
+                            Nie masz uprawnień do tworzenia wydarzeń na tej stronie. Poproś właściciela o rozszerzenie roli lub wybierz inną stronę.
+                        </Alert>
+                    )}
+                    {!isEvent && !canManageAvailability && (
+                        <Alert severity="warning">
+                            Nie możesz edytować dostępności zespołu dla tej strony.
+                        </Alert>
+                    )}
+
+                {!hasSingleSite && (
+                    <FormControl fullWidth required>
+                        <InputLabel>Strona</InputLabel>
+                        <Select
+                            value={formData.siteId || ''}
+                            label="Strona"
+                            onChange={(e) => {
+                                const rawValue = e.target.value;
+                                const parsedValue = Number(rawValue);
+                                setFormData({
+                                    ...formData,
+                                    siteId: Number.isNaN(parsedValue) ? rawValue : parsedValue,
+                                    assigneeType: 'owner',
+                                    assigneeId: null
+                                });
+                            }}
+                        >
+                            {sites.map((site) => (
+                                <MenuItem key={site.id} value={site.id}>
+                                    {site.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                )}
 
                 <TextField
                     fullWidth
@@ -971,6 +1194,76 @@ const DayDetailsModal = ({
                                 inputProps={{ min: 1 }}
                             />
                         )}
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 1 }}>
+                                Prowadzący
+                            </Typography>
+                            {rosterLoading && (
+                                <Chip
+                                    label="Ładuję listę zespołu..."
+                                    size="small"
+                                    sx={{ alignSelf: 'flex-start' }}
+                                />
+                            )}
+                            <FormControl fullWidth disabled={disableAssignmentSelect}>
+                                <InputLabel>Prowadzący wydarzenie</InputLabel>
+                                <Select
+                                    value={assignmentValue}
+                                    label="Prowadzący wydarzenie"
+                                    onChange={(e) => handleAssigneeSelection(e.target.value)}
+                                    renderValue={(value) => {
+                                        const option = assignmentOptions.find((opt) => opt.key === value);
+                                        return option ? option.label : 'Właściciel strony';
+                                    }}
+                                >
+                                    {assignmentOptions.map((option) => (
+                                        <MenuItem key={option.key} value={option.key}>
+                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                <Avatar
+                                                    src={option.avatar_url || undefined}
+                                                    sx={{
+                                                        width: 32,
+                                                        height: 32,
+                                                        bgcolor: option.avatar_url ? 'transparent' : (option.avatar_color || 'primary.main'),
+                                                        color: option.avatar_url ? 'inherit' : '#fff',
+                                                        fontSize: '0.875rem',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    {!option.avatar_url ? (option.avatar_letter || option.label?.charAt(0) || '•') : null}
+                                                </Avatar>
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={600}>
+                                                        {option.label}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {option.role}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                        </MenuItem>
+                                    ))}
+                                    {assignmentOptions.length === 0 && (
+                                        <MenuItem value="owner:auto" disabled>
+                                            Brak dostępnych prowadzących
+                                        </MenuItem>
+                                    )}
+                                </Select>
+                            </FormControl>
+                            {(!canAssignAnyone || assignmentOptions.length <= 1) && (
+                                <Typography variant="caption" color="text.secondary">
+                                    {!canAssignAnyone
+                                        ? 'Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.'
+                                        : 'Na razie tylko właściciel strony może prowadzić spotkania.'}
+                                </Typography>
+                            )}
+                            {rosterUnavailable && !rosterLoading && (
+                                <Typography variant="caption" color="text.secondary">
+                                    Dodaj aktywnych członków zespołu, aby przypisywać wydarzenia do konkretnej osoby.
+                                </Typography>
+                            )}
+                        </Box>
                     </>
                 )}
 
@@ -1208,10 +1501,10 @@ const DayDetailsModal = ({
                     {view === 'timeline' && (
                         <motion.div
                             key="timeline"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
+                            initial={{ opacity: 0, scale: 0.94 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.04 }}
+                            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
                         >
                             {renderTimeline()}
@@ -1221,10 +1514,10 @@ const DayDetailsModal = ({
                     {view === 'chooser' && (
                         <motion.div
                             key="chooser"
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
+                            exit={{ opacity: 0, scale: 1.1 }}
+                            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                         >
                             <Box
                                 sx={{
@@ -1300,10 +1593,10 @@ const DayDetailsModal = ({
                     {(view === 'createEvent' || view === 'createAvailability' || view === 'editEvent' || view === 'editAvailability') && (
                         <motion.div
                             key="form"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.04 }}
+                            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                         >
                             {renderCreationForm()}
                         </motion.div>
@@ -1316,7 +1609,7 @@ const DayDetailsModal = ({
                     <Button onClick={() => setView('timeline')} variant="outlined">
                         Anuluj
                     </Button>
-                    <Button onClick={handleSubmit} variant="contained">
+                    <Button onClick={handleSubmit} variant="contained" disabled={submitDisabled}>
                         {(view === 'editEvent' || view === 'editAvailability') ? 'Zaktualizuj' : 'Zapisz'}
                     </Button>
                 </DialogActions>
@@ -1411,7 +1704,11 @@ DayDetailsModal.propTypes = {
     onCreateAvailability: PropTypes.func,
     operatingStartHour: PropTypes.number,
     operatingEndHour: PropTypes.number,
-    onBookingRemoved: PropTypes.func
+    onBookingRemoved: PropTypes.func,
+    sitePermissions: PropTypes.object,
+    rolePermissionMap: PropTypes.object,
+    siteRosters: PropTypes.object,
+    ensureSiteRoster: PropTypes.func
 };
 
 DayDetailsModal.defaultProps = {
@@ -1424,7 +1721,11 @@ DayDetailsModal.defaultProps = {
     onCreateAvailability: undefined,
     operatingStartHour: 6,
     operatingEndHour: 22,
-    onBookingRemoved: undefined
+    onBookingRemoved: undefined,
+    sitePermissions: {},
+    rolePermissionMap: {},
+    siteRosters: {},
+    ensureSiteRoster: undefined
 };
 
 export default DayDetailsModal;

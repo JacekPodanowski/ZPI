@@ -107,25 +107,9 @@ const TeamPage = () => {
                         color: 'text.secondary'
                     }}
                 >
-                    Zarządzaj członkami zespołu i uprawnieniami
+                    Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia.
                 </Typography>
-            </motion.div>
-
-            {/* Info about team system */}
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-            >
-                <Typography
-                    variant="body2"
-                    sx={{
-                        color: 'text.secondary'
-                    }}
-                >
-                    Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia. Każdy członek może zarządzać swoim kalendarzem.
-                </Typography>
-            </motion.div>
+                </motion.div>
 
             {/* Team Members List */}
             <Box

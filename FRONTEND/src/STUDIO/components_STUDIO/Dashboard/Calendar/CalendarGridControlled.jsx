@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Typography, IconButton, Button, TextField } from '@mui/material';
+import { Box, Typography, IconButton, Button, TextField, Avatar, Tooltip } from '@mui/material';
 import { ChevronLeft, ChevronRight, WbSunny, NightsStay } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
@@ -26,7 +26,10 @@ const CalendarGridControlled = ({
     operatingStartHour: propOperatingStartHour,
     operatingEndHour: propOperatingEndHour,
     onOperatingStartHourChange,
-    onOperatingEndHourChange
+    onOperatingEndHourChange,
+    teamRoster,
+    selectedAssigneeFilter,
+    onAssigneeFilterChange
 }) => {
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredEventDayKey, setHoveredEventDayKey] = useState(null); // Track which day the hovered event is in
@@ -109,10 +112,76 @@ const CalendarGridControlled = ({
         return allSites.slice(0, 3);
     }, [sites]);
     
-    const secondarySites = useMemo(() => {
-        // Don't show secondary sites anymore - all sites go in primary (max 5)
-        return [];
-    }, [sites]);
+    const activeSite = useMemo(() => {
+        if (!selectedSiteId) {
+            return null;
+        }
+        return (sites || []).find((site) => String(site.id) === String(selectedSiteId)) || null;
+    }, [sites, selectedSiteId]);
+
+    const showTeamFilters = useMemo(() => Boolean(activeSite && (activeSite.team_size ?? 1) > 1), [activeSite]);
+
+    const ownerColorFallback = useMemo(() => (
+        activeSite ? getSiteColorHex(activeSite.color_index ?? 0) : '#920020'
+    ), [activeSite]);
+
+    const ownerProfile = useMemo(() => {
+        if (!showTeamFilters) {
+            return null;
+        }
+        if (teamRoster?.owner) {
+            return teamRoster.owner;
+        }
+        if (activeSite?.owner) {
+            const ownerFirst = activeSite.owner.first_name || 'Owner';
+            return {
+                id: activeSite.owner.id,
+                first_name: ownerFirst,
+                last_name: activeSite.owner.last_name,
+                email: activeSite.owner.email,
+                avatar_url: activeSite.owner.avatar_url,
+                avatar_letter: ownerFirst.charAt(0)?.toUpperCase() || 'O',
+                avatar_color: ownerColorFallback
+            };
+        }
+        return null;
+    }, [showTeamFilters, teamRoster, activeSite, ownerColorFallback]);
+
+    const assigneeOptions = useMemo(() => {
+        if (!showTeamFilters) {
+            return [];
+        }
+
+        const ownerOption = ownerProfile
+            ? [{
+                key: `owner-${ownerProfile.id ?? 'owner'}`,
+                id: ownerProfile.id ?? 'owner',
+                label: `${ownerProfile.first_name || ''} ${ownerProfile.last_name || ''}`.trim()
+                    || ownerProfile.email
+                    || 'Owner',
+                avatar_url: ownerProfile.avatar_url,
+                avatar_color: ownerProfile.avatar_color || ownerColorFallback,
+                avatar_letter: ownerProfile.avatar_letter
+                    || ownerProfile.first_name?.charAt(0)?.toUpperCase()
+                    || 'O',
+                type: 'owner'
+            }]
+            : [];
+
+        const memberOptions = (teamRoster?.team_members || []).map((member) => ({
+            key: `member-${member.id}`,
+            id: member.id,
+            label: `${member.first_name || ''} ${member.last_name || ''}`.trim() || 'Członek zespołu',
+            avatar_url: member.avatar_url,
+            avatar_color: member.avatar_color || alpha(ownerColorFallback, 0.75),
+            avatar_letter: member.avatar_letter || member.first_name?.charAt(0)?.toUpperCase() || 'T',
+            type: 'team_member'
+        }));
+
+        return [...ownerOption, ...memberOptions];
+    }, [showTeamFilters, ownerProfile, teamRoster, ownerColorFallback]);
+
+    const isRosterLoading = showTeamFilters && !teamRoster;
     
     const handleGoToToday = () => {
         const today = new Date();
@@ -160,9 +229,73 @@ const CalendarGridControlled = ({
         onMonthChange?.(newMonth);
     };
 
-    const handleSiteToggle = (siteId) => {
-        const nextSelection = selectedSiteId === siteId ? null : siteId;
-        onSiteSelect?.(nextSelection);
+    const handleSiteClick = (event, siteId) => {
+        if (event?.detail > 1) {
+            return;
+        }
+        // Toggle selection: unselect if clicking the same site, select if clicking a different one
+        if (selectedSiteId === siteId) {
+            onSiteSelect?.(null, { reason: 'clear' });
+        } else {
+            onSiteSelect?.(siteId);
+        }
+    };
+
+    const handleSiteDoubleClick = (event, siteId) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        onSiteSelect?.(null, { reason: 'clear', siteId });
+    };
+
+    const handleAssigneeClick = (assigneeOption) => {
+        if (!assigneeOption || !onAssigneeFilterChange) {
+            return;
+        }
+        onAssigneeFilterChange({ type: assigneeOption.type, id: assigneeOption.id });
+    };
+
+    const renderAssigneeAvatar = (option) => {
+        const currentKey = option.type === 'owner'
+            ? String(option.id ?? 'owner')
+            : String(option.id);
+        const selectedKey = selectedAssigneeFilter
+            ? String(selectedAssigneeFilter.id ?? 'owner')
+            : null;
+        const isActive = Boolean(
+            selectedAssigneeFilter &&
+            selectedAssigneeFilter.type === option.type &&
+            currentKey === selectedKey
+        );
+
+        return (
+            <Tooltip title={option.label} key={option.key} placement="top">
+                <Avatar
+                    src={option.avatar_url || undefined}
+                    onClick={() => handleAssigneeClick(option)}
+                    sx={{
+                        width: 36,
+                        height: 36,
+                        fontSize: 14,
+                        bgcolor: option.avatar_url ? 'transparent' : (option.avatar_color || 'primary.main'),
+                        color: option.avatar_url ? 'inherit' : '#fff',
+                        border: isActive ? '2px solid #920020' : '2px solid transparent',
+                        boxShadow: isActive
+                            ? '0 0 0 3px rgba(146, 0, 32, 0.25)'
+                            : '0 1px 3px rgba(15, 15, 15, 0.2)',
+                        cursor: 'pointer',
+                        transition: 'all 180ms ease',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 3px 8px rgba(15, 15, 15, 0.3)'
+                        }
+                    }}
+                >
+                    {!option.avatar_url
+                        ? (option.avatar_letter || option.label?.charAt(0)?.toUpperCase() || '•')
+                        : null}
+                </Avatar>
+            </Tooltip>
+        );
     };
 
     const renderSiteChip = (site) => {
@@ -184,13 +317,15 @@ const CalendarGridControlled = ({
                 transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
             >
                 <Box
-                    onClick={() => handleSiteToggle(site.id)}
+                    onClick={(event) => handleSiteClick(event, site.id)}
+                    onDoubleClick={(event) => handleSiteDoubleClick(event, site.id)}
                     sx={{
                         px: needsScaling ? 1.25 : 1.75,
                         py: needsScaling ? 0.65 : 0.85,
                         borderRadius: 3,
                         cursor: 'pointer',
                         minWidth: needsScaling ? 70 : 90,
+                        maxWidth: needsScaling ? 160 : 200,
                         textAlign: 'center',
                         fontSize: needsScaling ? '11.5px' : '13px',
                         fontWeight: 500,
@@ -199,6 +334,9 @@ const CalendarGridControlled = ({
                         color: isSelected ? '#fff' : siteColor,
                         border: `2px solid ${alpha(siteColor, isSelected ? 1 : 0.34)}`,
                         transition: 'all 200ms ease',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                         '&:hover': {
                             backgroundColor: isSelected ? siteColor : alpha(siteColor, 0.25),
                             color: isSelected ? '#fff' : siteColor,
@@ -222,6 +360,7 @@ const CalendarGridControlled = ({
                 flexDirection: 'column',
                 minHeight: 0,
                 position: 'relative',
+                pt: 1,
                 '@keyframes pulse': {
                     '0%, 100%': {
                         boxShadow: '0 0 0 0 rgba(146, 0, 32, 0.4)'
@@ -269,36 +408,41 @@ const CalendarGridControlled = ({
             <Box
                 sx={{
                     display: 'flex',
-                    flexWrap: { xs: 'wrap', lg: 'nowrap' }, // Wrap on mobile
+                    flexWrap: { xs: 'wrap', lg: 'nowrap' },
                     alignItems: 'center',
                     gap: { xs: 1, md: 2 },
                     px: { xs: 1.5, md: 2 },
                     py: { xs: 1, md: 1.5 },
-                    mb: 0,
-                    borderBottom: '1px solid rgba(146, 0, 32, 0.08)'
+                    mb: 0.2,
+                    borderBottom: '1px solid rgba(146, 0, 32, 0.08)',
+                    position: 'relative' // Add relative positioning for absolute center
                 }}
             >
+                {/* Left Navigation */}
                 <IconButton
                     onClick={() => handleMonthChange(-1)}
                     size="small"
                     sx={{
                         borderRadius: 2,
                         backgroundColor: 'rgba(146, 0, 32, 0.08)',
-                        '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.16)' }
+                        '&:hover': { backgroundColor: 'rgba(146, 0, 32, 0.16)' },
+                        zIndex: 1
                     }}
                 >
                     <ChevronLeft fontSize="small" />
                 </IconButton>
 
+                {/* Site Chips - Left Side */}
                 <Box
                     sx={{
-                        flex: { xs: '0 0 100%', sm: '0 0 auto', lg: 1 }, // Full width on mobile, auto on tablet, flex on desktop
+                        flex: { xs: '0 0 100%', sm: '0 0 auto', lg: 0 },
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: { xs: 'flex-start', lg: 'flex-start' },
                         gap: 1,
                         minHeight: 38,
-                        order: { xs: 2, lg: 0 } // Move to second row on mobile
+                        order: { xs: 2, lg: 0 },
+                        zIndex: 1
                     }}
                 >
                     <AnimatePresence mode="popLayout">
@@ -306,7 +450,22 @@ const CalendarGridControlled = ({
                     </AnimatePresence>
                 </Box>
 
-                <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                {/* Center section: Month/Year - Absolutely Centered */}
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1,
+                        pointerEvents: 'none', // Allow clicks to pass through
+                        '& > *': {
+                            pointerEvents: 'auto' // Re-enable clicks on children
+                        }
+                    }}
+                >
                     {/* Left Arrow */}
                     <AnimatePresence>
                         {draggingTemplate && (
@@ -330,76 +489,76 @@ const CalendarGridControlled = ({
                         )}
                     </AnimatePresence>
 
-                    <Box
-                        onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = 'move';
-                            setIsOverMonthName(true);
-                        }}
-                        onDragLeave={() => {
-                            setIsOverMonthName(false);
-                        }}
-                        onDrop={(e) => {
-                            e.preventDefault();
-                            setIsOverMonthName(false);
-                            const templateType = e.dataTransfer.getData('templateType');
-                            const templateId = e.dataTransfer.getData('templateId');
-                            const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
-                            
-                            console.log('Apply template to entire month:', {
-                                month: currentMonthMoment.format('MMMM YYYY'),
-                                templateType,
-                                templateId,
-                                templateData
-                            });
-                            
-                            // TODO: Show confirmation modal for month-wide application
-                        }}
-                        sx={{
-                            px: 2.5,
-                            py: 1,
-                            borderRadius: 2,
-                            transition: 'all 250ms ease',
-                            backgroundColor: isOverMonthName ? 'rgba(146, 0, 32, 0.12)' : 'transparent',
-                            border: isOverMonthName ? '2px dashed' : '2px solid transparent',
-                            borderColor: isOverMonthName ? 'primary.main' : 'transparent',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            ...(draggingTemplate && {
-                                cursor: 'pointer',
-                                transform: 'scale(1.1)',
-                                transition: 'all 350ms ease'
-                            }),
-                            ...(isOverMonthName && {
-                                animation: 'none',
-                                transform: 'scale(1.15)',
-                                boxShadow: '0 0 20px rgba(146, 0, 32, 0.3)'
-                            })
-                        }}
-                    >
-                        <Typography 
-                            variant="h5" 
-                            sx={{ 
-                                fontWeight: draggingTemplate ? 700 : 600,
-                                letterSpacing: draggingTemplate ? 0.8 : 0.4,
-                                color: (isOverMonthName || draggingTemplate) ? 'primary.main' : 'text.primary',
+                        <Box
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                                setIsOverMonthName(true);
+                            }}
+                            onDragLeave={() => {
+                                setIsOverMonthName(false);
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                setIsOverMonthName(false);
+                                const templateType = e.dataTransfer.getData('templateType');
+                                const templateId = e.dataTransfer.getData('templateId');
+                                const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
+                                
+                                console.log('Apply template to entire month:', {
+                                    month: currentMonthMoment.format('MMMM YYYY'),
+                                    templateType,
+                                    templateId,
+                                    templateData
+                                });
+                                
+                                // TODO: Show confirmation modal for month-wide application
+                            }}
+                            sx={{
+                                px: 2.5,
+                                py: 1,
+                                borderRadius: 2,
                                 transition: 'all 250ms ease',
+                                backgroundColor: isOverMonthName ? 'rgba(146, 0, 32, 0.12)' : 'transparent',
+                                border: isOverMonthName ? '2px dashed' : '2px solid transparent',
+                                borderColor: isOverMonthName ? 'primary.main' : 'transparent',
                                 position: 'relative',
-                                zIndex: 1,
-                                // Shine effect on text only
-                                ...(draggingTemplate && !isOverMonthName && {
-                                    backgroundImage: 'linear-gradient(90deg, transparent, rgba(146, 0, 32, 0.8), transparent)',
-                                    backgroundSize: '200% 100%',
-                                    backgroundClip: 'text',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    animation: 'shine 2s linear infinite'
+                                overflow: 'hidden',
+                                ...(draggingTemplate && {
+                                    cursor: 'pointer',
+                                    transform: 'scale(1.1)',
+                                    transition: 'all 350ms ease'
+                                }),
+                                ...(isOverMonthName && {
+                                    animation: 'none',
+                                    transform: 'scale(1.15)',
+                                    boxShadow: '0 0 20px rgba(146, 0, 32, 0.3)'
                                 })
                             }}
                         >
-                            {currentMonthMoment.format('MMMM YYYY')}
-                        </Typography>
-                    </Box>
+                            <Typography 
+                                variant="h5" 
+                                sx={{ 
+                                    fontWeight: draggingTemplate ? 700 : 600,
+                                    letterSpacing: draggingTemplate ? 0.8 : 0.4,
+                                    color: (isOverMonthName || draggingTemplate) ? 'primary.main' : 'text.primary',
+                                    transition: 'all 250ms ease',
+                                    position: 'relative',
+                                    zIndex: 1,
+                                    // Shine effect on text only
+                                    ...(draggingTemplate && !isOverMonthName && {
+                                        backgroundImage: 'linear-gradient(90deg, transparent, rgba(146, 0, 32, 0.8), transparent)',
+                                        backgroundSize: '200% 100%',
+                                        backgroundClip: 'text',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        animation: 'shine 2s linear infinite'
+                                    })
+                                }}
+                            >
+                                {currentMonthMoment.format('MMMM YYYY')}
+                            </Typography>
+                        </Box>
 
                     {/* Right Arrow */}
                     <AnimatePresence>
@@ -435,9 +594,33 @@ const CalendarGridControlled = ({
                         minHeight: 38,
                         order: { xs: 3, lg: 0 }, // Move to third row on mobile
                         width: { xs: '100%', lg: 'auto' }, // Full width on mobile
-                        flexWrap: 'wrap' // Allow wrapping on very small screens
+                        flexWrap: 'wrap', // Allow wrapping on very small screens
+                        zIndex: 1
                     }}
                 >
+                    {/* Team Avatars - Now part of right section */}
+                    {showTeamFilters && (
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.75,
+                                minHeight: 38,
+                                //mr: 25
+                            }}
+                        >
+                            {isRosterLoading ? (
+                                <Typography variant="caption" color="text.secondary">
+                                    Ładowanie...
+                                </Typography>
+                            ) : (
+                                assigneeOptions.length > 0
+                                    ? assigneeOptions.map(renderAssigneeAvatar)
+                                    : null
+                            )}
+                        </Box>
+                    )}
+
                     {/* Now Button - Only visible when not on current month */}
                     <AnimatePresence>
                         {!isCurrentMonth && (
@@ -936,7 +1119,6 @@ const CalendarGridControlled = ({
                                             const isHovered = hoveredEventId === event.id;
                                             // Only shrink events in the SAME day as the hovered event
                                             const shouldShrink = hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
-                                            const isFiltered = !selectedSiteId || event.site === selectedSiteId;
 
                                             return (
                                                 <motion.div
@@ -966,7 +1148,7 @@ const CalendarGridControlled = ({
                                                 >
                                                     <EventBlock
                                                         event={event}
-                                                        isSelectedSite={isFiltered}
+                                                        isSelectedSite={event.isFromSelectedSite}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                         }}
@@ -1049,10 +1231,19 @@ CalendarGridControlled.propTypes = {
     onSiteSelect: PropTypes.func,
     draggingTemplate: PropTypes.object, // NEW: template being dragged
     onApplyTemplate: PropTypes.func, // NEW: callback for applying templates
-    operatingStartHour: PropTypes.number,
-    operatingEndHour: PropTypes.number,
+    operatingStartHour: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    operatingEndHour: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     onOperatingStartHourChange: PropTypes.func,
-    onOperatingEndHourChange: PropTypes.func
+    onOperatingEndHourChange: PropTypes.func,
+    teamRoster: PropTypes.shape({
+        owner: PropTypes.object,
+        team_members: PropTypes.arrayOf(PropTypes.object)
+    }),
+    selectedAssigneeFilter: PropTypes.shape({
+        type: PropTypes.string,
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+    }),
+    onAssigneeFilterChange: PropTypes.func
 };
 
 CalendarGridControlled.defaultProps = {
@@ -1063,10 +1254,13 @@ CalendarGridControlled.defaultProps = {
     onSiteSelect: () => {},
     draggingTemplate: null,
     onApplyTemplate: () => {},
-    operatingStartHour: 6,
-    operatingEndHour: 22,
+    operatingStartHour: '06:00',
+    operatingEndHour: '22:00',
     onOperatingStartHourChange: () => {},
-    onOperatingEndHourChange: () => {}
+    onOperatingEndHourChange: () => {},
+    teamRoster: null,
+    selectedAssigneeFilter: null,
+    onAssigneeFilterChange: () => {}
 };
 
 export default CalendarGridControlled;
