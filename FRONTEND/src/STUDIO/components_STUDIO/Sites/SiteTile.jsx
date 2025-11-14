@@ -50,9 +50,11 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
         traffic: Math.floor(Math.random() * 5000) + 500,
         trafficChange: (Math.random() * 40 - 10).toFixed(1),
         totalEvents: Math.floor(Math.random() * 35),
-        teamMembers: 1, // Default to 1
         nextEvent: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000)
     });
+    
+    // Use real team_size from site object
+    const teamSize = site.team_size ?? 1;
 
     useEffect(() => {
         // Preload image and detect color
@@ -732,10 +734,10 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                 </Typography>
                             </Box>
                             <Typography variant="h6" fontWeight={700} fontSize="1.1rem">
-                                {analytics.teamMembers}
+                                {teamSize}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" fontSize="0.7rem">
-                                {analytics.teamMembers === 1 ? 'member' : 'members'}
+                                {teamSize === 1 ? 'member' : 'members'}
                             </Typography>
                         </Box>
 

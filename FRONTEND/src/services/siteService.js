@@ -74,3 +74,28 @@ export const fetchSiteCalendarRoster = async (siteId) => {
     const response = await apiClient.get(`/sites/${siteId}/calendar-roster/`);
     return response.data;
 };
+
+export const addTeamMember = async (memberData) => {
+    const response = await apiClient.post('/team-members/', memberData);
+    return response.data;
+};
+
+export const updateTeamMember = async (memberId, memberData) => {
+    const response = await apiClient.patch(`/team-members/${memberId}/`, memberData);
+    return response.data;
+};
+
+export const deleteTeamMember = async (memberId) => {
+    const response = await apiClient.delete(`/team-members/${memberId}/`);
+    return response.data;
+};
+
+export const sendTeamInvitation = async (memberId) => {
+    const response = await apiClient.post(`/team-members/${memberId}/send-invitation/`);
+    return response.data;
+};
+
+export const fetchTeamMembers = async (siteId) => {
+    const response = await apiClient.get(`/team-members/?site=${siteId}`);
+    return response.data;
+};

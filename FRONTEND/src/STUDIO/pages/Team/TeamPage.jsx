@@ -3,14 +3,16 @@ import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, 
 import { useParams } from 'react-router-dom';
 import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { fetchSiteById } from '../../../services/siteService';
+import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers } from '../../../services/siteService';
 import Avatar from '../../../components/Avatar/Avatar';
+import AddTeamMemberDialog from '../../components_STUDIO/Team/AddTeamMemberDialog';
 
 const TeamPage = () => {
     const { siteId } = useParams();
     const [loading, setLoading] = useState(true);
     const [site, setSite] = useState(null);
     const [teamMembers, setTeamMembers] = useState([]);
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     useEffect(() => {
         const loadSiteData = async () => {
@@ -23,8 +25,9 @@ const TeamPage = () => {
                 }
                 setSite(siteData);
                 
-                // TODO: Fetch actual team members from API
-                setTeamMembers(siteData?.team_members || []);
+                // Fetch team members from API
+                const members = await fetchTeamMembers(siteId);
+                setTeamMembers(members);
             } catch (err) {
                 console.error('[TeamPage] Failed to load site data:', err);
             } finally {
@@ -36,23 +39,69 @@ const TeamPage = () => {
     }, [siteId]);
 
     const handleAddMember = () => {
-        // TODO: Open modal to add new member
-        console.log('Add member clicked');
+        setDialogOpen(true);
     };
 
-    const handleRoleChange = (memberId, newRole) => {
-        // TODO: Update member role via API
-        console.log('Role changed:', memberId, newRole);
+    const handleDialogClose = () => {
+        setDialogOpen(false);
     };
 
-    const handleSendInvitation = (memberId) => {
-        // TODO: Send invitation via API
-        console.log('Send invitation:', memberId);
+    const handleDialogAdd = async (memberData) => {
+        try {
+            const newMember = await addTeamMember({
+                ...memberData,
+                site: siteId
+            });
+            setTeamMembers(prev => [...prev, newMember]);
+            // Refresh site data to get updated team_size
+            const updatedSite = await fetchSiteById(siteId);
+            setSite(updatedSite);
+        } catch (error) {
+            console.error('Failed to add team member:', error);
+            throw error;
+        }
     };
 
-    const handleDeleteMember = (memberId) => {
-        // TODO: Delete member via API
-        console.log('Delete member:', memberId);
+    const handleRoleChange = async (memberId, newRole) => {
+        try {
+            const updatedMember = await updateTeamMember(memberId, {
+                permission_role: newRole
+            });
+            setTeamMembers(prev => prev.map(member =>
+                member.id === memberId ? { ...member, ...updatedMember } : member
+            ));
+        } catch (error) {
+            console.error('Failed to update role:', error);
+        }
+    };
+
+    const handleSendInvitation = async (memberId) => {
+        try {
+            const result = await sendTeamInvitation(memberId);
+            setTeamMembers(prev => prev.map(member =>
+                member.id === memberId
+                    ? { ...member, invitation_status: result.status, invited_at: new Date().toISOString() }
+                    : member
+            ));
+        } catch (error) {
+            console.error('Failed to send invitation:', error);
+        }
+    };
+
+    const handleDeleteMember = async (memberId) => {
+        if (!window.confirm('Czy na pewno chcesz usunąć tego członka zespołu?')) {
+            return;
+        }
+        
+        try {
+            await deleteTeamMember(memberId);
+            setTeamMembers(prev => prev.filter(member => member.id !== memberId));
+            // Refresh site data to get updated team_size
+            const updatedSite = await fetchSiteById(siteId);
+            setSite(updatedSite);
+        } catch (error) {
+            console.error('Failed to delete member:', error);
+        }
     };
 
     if (loading) {
@@ -185,7 +234,9 @@ const TeamPage = () => {
                     )}
 
                     {/* Team Members */}
-                    {teamMembers.map((member, index) => (
+                    {teamMembers
+                        .filter(member => member.linked_user !== site?.owner?.id)
+                        .map((member, index) => (
                         <motion.div
                             key={member.id}
                             initial={{ opacity: 0, y: 20 }}
@@ -291,7 +342,10 @@ const TeamPage = () => {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 + (teamMembers.length + 1) * 0.05 }}
+                        transition={{ 
+                            duration: 0.3, 
+                            delay: 0.2 + (teamMembers.filter(m => m.linked_user !== site?.owner?.id).length + 1) * 0.05 
+                        }}
                     >
                         <Box
                             onClick={handleAddMember}
@@ -346,6 +400,13 @@ const TeamPage = () => {
                         </Box>
                     </motion.div>
                 </Box>
+
+            {/* Add Team Member Dialog */}
+            <AddTeamMemberDialog
+                open={dialogOpen}
+                onClose={handleDialogClose}
+                onAdd={handleDialogAdd}
+            />
         </Box>
     );
 };
