@@ -5,7 +5,6 @@ import {
   Typography,
   TextField,
   Button,
-  Avatar,
   Stack,
   Divider,
   Alert
@@ -16,10 +15,11 @@ import SaveIcon from '@mui/icons-material/Save';
 import useTheme from '../../../theme/useTheme';
 import { useAuth } from '../../../contexts/AuthContext';
 import AvatarUploader from '../../../components/Navigation/AvatarUploader';
+import Avatar from '../../../components/Avatar/Avatar';
 
 const ProfilePage = () => {
   const theme = useTheme();
-  const { user, updatePreferences } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
@@ -42,7 +42,7 @@ const ProfilePage = () => {
 
   const handleAvatarChange = async (newAvatarUrl) => {
     try {
-      await updatePreferences({ avatar: newAvatarUrl });
+      updateUser({ avatar_url: newAvatarUrl });
       console.log('Avatar updated successfully');
     } catch (error) {
       console.error('Failed to update avatar:', error);
@@ -80,15 +80,13 @@ const ProfilePage = () => {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'center', sm: 'center' }}>
             <Box sx={{ position: 'relative' }}>
               <Avatar
-                src={user?.avatar_url}
+                avatarUrl={user?.avatar_url}
+                user={user}
+                size={100}
                 sx={{
-                  width: { xs: 80, sm: 100 },
-                  height: { xs: 80, sm: 100 },
                   border: `2px solid ${alpha(accentColor, 0.2)}`
                 }}
-              >
-                {formData.firstName?.[0]?.toUpperCase() || 'U'}
-              </Avatar>
+              />
               <AvatarUploader
                 currentAvatar={user?.avatar_url}
                 onAvatarChange={handleAvatarChange}

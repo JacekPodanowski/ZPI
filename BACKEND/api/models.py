@@ -119,6 +119,7 @@ class Site(models.Model):
     name = models.CharField(max_length=255)
     identifier = models.SlugField(max_length=255, unique=True, editable=False, blank=True, null=True)
     color_index = models.IntegerField(default=0, help_text='Index of the site color in the palette (0-11)')
+    team_size = models.IntegerField(default=1, help_text='Cached count of team members for calendar optimization')
     template_config = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -193,6 +194,54 @@ class Client(models.Model):
         return f"{self.email} ({self.site.identifier})"
 
 
+class TeamMember(models.Model):
+    """Represents a team member with invitation and permission management."""
+    class InvitationStatus(models.TextChoices):
+        MOCK = 'mock', 'Mock (Not invited)'
+        INVITED = 'invited', 'Invited (No account)'
+        PENDING = 'pending', 'Pending (Has account)'
+        LINKED = 'linked', 'Linked (Connected)'
+        REJECTED = 'rejected', 'Rejected/Left'
+
+    class PermissionRole(models.TextChoices):
+        VIEWER = 'viewer', 'Viewer'
+        CONTRIBUTOR = 'contributor', 'Contributor'
+        MANAGER = 'manager', 'Manager'
+
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='team_members')
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    email = models.EmailField(blank=True, null=True, help_text='Required for sending invitations')
+    role_description = models.CharField(max_length=255, blank=True, help_text='E.g., "Yoga Instructor", "Therapist"')
+    bio = models.TextField(blank=True, help_text='Member bio for public display')
+    avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='Custom avatar URL or null for generated')
+    is_active = models.BooleanField(default=True)
+    
+    # Invitation management
+    linked_user = models.ForeignKey(PlatformUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='team_memberships')
+    invitation_status = models.CharField(max_length=16, choices=InvitationStatus.choices, default=InvitationStatus.MOCK)
+    invitation_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    invited_at = models.DateTimeField(null=True, blank=True)
+    
+    # Permissions
+    permission_role = models.CharField(max_length=16, choices=PermissionRole.choices, default=PermissionRole.VIEWER)
+    
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['site', 'linked_user']),
+            models.Index(fields=['invitation_token']),
+            models.Index(fields=['email']),
+        ]
+
+    def __str__(self):
+        status = f"({self.get_invitation_status_display()})"
+        return f"{self.first_name} {self.last_name} {status} - {self.site.name}"
+
+
 class Event(models.Model):
     class EventType(models.TextChoices):
         INDIVIDUAL = 'individual', 'Individual'
@@ -200,6 +249,25 @@ class Event(models.Model):
 
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='events')
     creator = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='created_events')
+    
+    # Dual assignment: exactly one must be filled
+    assigned_to_team_member = models.ForeignKey(
+        'TeamMember',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_events',
+        help_text='Team member assigned to this event'
+    )
+    assigned_to_owner = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_events',
+        help_text='Owner assigned to this event'
+    )
+    
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     start_time = models.DateTimeField()
@@ -215,6 +283,14 @@ class Event(models.Model):
         constraints = [
             models.CheckConstraint(check=models.Q(end_time__gt=models.F('start_time')), name='event_end_after_start'),
             models.CheckConstraint(check=models.Q(capacity__gte=1), name='event_capacity_positive'),
+            # Ensure exactly one assignment field is filled
+            models.CheckConstraint(
+                check=(
+                    models.Q(assigned_to_team_member__isnull=False, assigned_to_owner__isnull=True) |
+                    models.Q(assigned_to_team_member__isnull=True, assigned_to_owner__isnull=False)
+                ),
+                name='event_single_assignment'
+            ),
         ]
 
     def __str__(self):

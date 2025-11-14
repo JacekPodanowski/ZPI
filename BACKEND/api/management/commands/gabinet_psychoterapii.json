@@ -1,0 +1,170 @@
+{
+  "site": {
+    "styleId": "auroraMinimal",
+    "styleOverrides": {},
+    "pages": [
+      {
+        "id": "home",
+        "name": "Home",
+        "route": "/",
+        "modules": [
+          {
+            "id": "hero-1",
+            "type": "hero",
+            "content": {
+              "layout": "split",
+              "heading": "Gabinet Psychoterapii Marii Wiśniewskiej",
+              "subheading": "Wsparcie psychologiczne online i stacjonarne",
+              "description": "Od 2018 roku pomagam odnaleźć wewnętrzną równowagę i radzić sobie z wyzwaniami życia. Terapia indywidualna dla dorosłych, par oraz wsparcie w kryzysie.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=1600&q=80",
+                "alt": "Spokojna przestrzeń terapeutyczna"
+              },
+              "cta": {
+                "primary": { "text": "Umów wizytę", "link": "/kalendarz" },
+                "secondary": { "text": "Poznaj mnie", "link": "/o-mnie" }
+              }
+            }
+          },
+          {
+            "id": "text-1",
+            "type": "text",
+            "content": {
+              "layout": "centered",
+              "title": "Jak pracuję?",
+              "text": "W mojej pracy łączę podejście psychodynamiczne z elementami terapii poznawczo-behawioralnej i uważności. Wierzę, że każdy człowiek ma w sobie potencjał do zmiany - czasem potrzebuje tylko bezpiecznej przestrzeni i wsparcia, aby go odkryć.\n\nSesje prowadzę zarówno online (przez bezpieczną platformę video) jak i stacjonarnie w gabinecie w centrum Warszawy. Specjalizuję się w pracy z:\n\n• Lękiem i stanami depresyjnymi\n• Kryzysami życiowymi i zmianami\n• Trudnościami w relacjach\n• Niską samooceną i brakiem pewności siebie\n• Problemami w pracy i wypaleniem zawodowym"
+            }
+          }
+        ]
+      },
+      {
+        "id": "about",
+        "name": "O Mnie",
+        "route": "/o-mnie",
+        "modules": [
+          {
+            "id": "about-1",
+            "type": "about",
+            "content": {
+              "layout": "narrative",
+              "title": "Maria Wiśniewska - Psychoterapeutka",
+              "description": "Jestem psychologiem i psychoterapeutką z 10-letnim doświadczeniem w pracy terapeutycznej. Ukończyłam studia magisterskie z psychologii klinicznej na Uniwersytecie Warszawskim oraz 4-letnie szkolenie z psychoterapii psychodynamicznej w Polskim Instytucie Psychoterapii.\n\nPrzez lata pracowałam w poradni zdrowia psychicznego, ośrodku interwencji kryzysowej oraz prowadziłam warsztaty grupowe. W 2018 roku otworzyłam własny gabinet, aby móc oferować bardziej spersonalizowane i pogłębione wsparcie.\n\nRegularnie uczestniczę w superwizjach i szkoleniach, by stale rozwijać swoje umiejętności. Jestem członkiem Polskiego Towarzystwa Psychoterapii Psychodynamicznej. W wolnym czasie praktykuję jogę i medytację, które pomagają mi zachować równowagę w wymagającej pracy terapeuty.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=800&q=80",
+                "alt": "Maria Wiśniewska w gabinecie terapeutycznym"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "services",
+        "name": "Oferta",
+        "route": "/oferta",
+        "modules": [
+          {
+            "id": "services-1",
+            "type": "services",
+            "content": {
+              "layout": "cards",
+              "title": "Formy terapii",
+              "subtitle": "Wybierz formę wsparcia dostosowaną do Twoich potrzeb",
+              "services": [
+                {
+                  "name": "Sesja indywidualna",
+                  "description": "50-minutowa sesja terapeutyczna prowadzona online lub stacjonarnie. Pierwsze spotkanie to sesja diagnostyczna, podczas której poznamy Twoje potrzeby i ustalimy cele terapii.",
+                  "price": "200 PLN / 50 min",
+                  "image": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                  "name": "Terapia dla par",
+                  "description": "80-minutowa sesja dla par pracująca nad komunikacją, rozwiązywaniem konfliktów i budowaniem więzi. Pomaga w trudnych momentach związku oraz wspiera rozwój relacji.",
+                  "price": "300 PLN / 80 min",
+                  "image": "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=600&q=80"
+                },
+                {
+                  "name": "Interwencja kryzysowa",
+                  "description": "Pilne wsparcie w sytuacji kryzysu życiowego. Sesja dostępna w trybie przyspieszonym (często tego samego dnia) online lub stacjonarnie.",
+                  "price": "250 PLN / sesja",
+                  "image": "https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=600&q=80"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "calendar",
+        "name": "Kalendarz",
+        "route": "/kalendarz",
+        "modules": [
+          {
+            "id": "calendar-1",
+            "type": "calendar",
+            "content": {
+              "type": "full",
+              "layout": "default",
+              "title": "Umów wizytę",
+              "description": "Wybierz dogodny termin sesji"
+            }
+          }
+        ]
+      },
+      {
+        "id": "pricing",
+        "name": "Cennik",
+        "route": "/cennik",
+        "modules": [
+          {
+            "id": "pricing-1",
+            "type": "servicesAndPricing",
+            "content": {
+              "layout": "cards",
+              "title": "Cennik",
+              "subtitle": "Transparentne ceny bez ukrytych kosztów",
+              "plans": [
+                {
+                  "name": "Sesja pojedyncza",
+                  "price": "200 PLN",
+                  "period": "sesja",
+                  "features": ["50 minut terapii", "Online lub stacjonarnie", "Elastyczne terminy"]
+                },
+                {
+                  "name": "Pakiet 4 sesji",
+                  "price": "750 PLN",
+                  "period": "miesiąc",
+                  "features": ["4 sesje po 50 min", "Oszczędzasz 50 PLN", "Stałe terminy"],
+                  "featured": true
+                },
+                {
+                  "name": "Terapia dla par",
+                  "price": "300 PLN",
+                  "period": "sesja",
+                  "features": ["80 minut", "Wspólna praca", "Materiały pomocnicze"]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "contact",
+        "name": "Kontakt",
+        "route": "/kontakt",
+        "modules": [
+          {
+            "id": "contact-1",
+            "type": "contact",
+            "content": {
+              "layout": "form",
+              "title": "Kontakt",
+              "email": "kontakt@psychoterapia-wisniewski.pl",
+              "phone": "+48 600 000 003"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "entryPointPageId": "home"
+}

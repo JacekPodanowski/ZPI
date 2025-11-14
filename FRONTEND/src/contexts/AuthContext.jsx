@@ -110,6 +110,10 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
+    const updateUser = useCallback((updates) => {
+        setUser((prev) => ({ ...prev, ...updates }));
+    }, []);
+
     const value = useMemo(
         () => ({
             user,
@@ -121,9 +125,10 @@ export const AuthProvider = ({ children }) => {
             googleLogin,
             mockLogin,
             refresh: loadCurrentUser,
-            updatePreferences
+            updatePreferences,
+            updateUser
         }),
-        [user, loading, login, logout, signup, googleLogin, mockLogin, loadCurrentUser, updatePreferences]
+        [user, loading, login, logout, signup, googleLogin, mockLogin, loadCurrentUser, updatePreferences, updateUser]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

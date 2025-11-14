@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from django.db import ProgrammingError, OperationalError
+from django.db.models import Q
 
 from .models import (
     PlatformUser,
@@ -21,6 +22,7 @@ from .models import (
     AvailabilityBlock,
     TermsOfService,
     EmailTemplate,
+    TeamMember,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -145,7 +147,7 @@ class PlatformUserSerializer(serializers.ModelSerializer):
 
 
 class SiteSerializer(serializers.ModelSerializer):
-    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    owner = PlatformUserSerializer(read_only=True)
     latest_version = serializers.SerializerMethodField()
 
     class Meta:
@@ -451,3 +453,123 @@ class SessionNewReservationEmailSerializer(BaseTemplatedEmailSerializer):
     date = serializers.CharField(required=True, max_length=255)
     start_time = serializers.CharField(required=True, max_length=255)
     end_time = serializers.CharField(required=True, max_length=255)
+
+
+# Team Member Serializers
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """Serializer for TeamMember with avatar generation support."""
+    avatar_color = serializers.SerializerMethodField()
+    avatar_letter = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TeamMember
+        fields = [
+            'id', 'site', 'first_name', 'last_name', 'email', 'role_description', 
+            'bio', 'avatar_url', 'is_active', 'linked_user', 'invitation_status',
+            'invitation_token', 'invited_at', 'permission_role', 'created_at',
+            'updated_at', 'avatar_color', 'avatar_letter'
+        ]
+        read_only_fields = ['id', 'invitation_token', 'created_at', 'updated_at', 'invited_at']
+        extra_kwargs = {
+            'site': {'required': True},
+            'linked_user': {'read_only': True},
+            'invitation_status': {'read_only': True},
+        }
+    
+    def get_avatar_color(self, obj):
+        """Get deterministic color for avatar based on name."""
+        from .utils import get_avatar_color
+        full_name = f"{obj.first_name} {obj.last_name}"
+        return get_avatar_color(full_name)
+    
+    def get_avatar_letter(self, obj):
+        """Get first letter for avatar display."""
+        from .utils import get_avatar_letter
+        return get_avatar_letter(obj.first_name)
+
+
+class TeamMemberInfoSerializer(serializers.ModelSerializer):
+    """Simplified serializer for team member info in site responses."""
+    avatar_color = serializers.SerializerMethodField()
+    avatar_letter = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TeamMember
+        fields = [
+            'id', 'first_name', 'last_name', 'role_description', 'permission_role',
+            'invitation_status', 'avatar_url', 'avatar_color', 'avatar_letter'
+        ]
+    
+    def get_avatar_color(self, obj):
+        from .utils import get_avatar_color
+        full_name = f"{obj.first_name} {obj.last_name}"
+        return get_avatar_color(full_name)
+    
+    def get_avatar_letter(self, obj):
+        from .utils import get_avatar_letter
+        return get_avatar_letter(obj.first_name)
+
+
+class SiteWithTeamSerializer(serializers.ModelSerializer):
+    """Extended Site serializer that includes team member info."""
+    owner = PlatformUserSerializer(read_only=True)
+    latest_version = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
+    team_member_info = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Site
+        fields = [
+            'id', 'owner', 'name', 'identifier', 'color_index', 'team_size',
+            'template_config', 'created_at', 'updated_at', 'latest_version',
+            'is_owner', 'team_member_info'
+        ]
+        read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner', 'team_size']
+    
+    def get_latest_version(self, obj):
+        try:
+            latest = obj.versions.order_by('-version_number').first()
+        except (ProgrammingError, OperationalError):
+            logger.warning(
+                "SiteVersion table unavailable while fetching latest version for site %s", obj.pk,
+                exc_info=True,
+            )
+            return None
+
+        if not latest:
+            return None
+        return {
+            'id': str(latest.id),
+            'version_number': latest.version_number,
+            'created_at': latest.created_at,
+            'created_by': latest.created_by_id,
+            'notes': latest.notes,
+            'change_summary': latest.change_summary
+        }
+    
+    def get_is_owner(self, obj):
+        """Check if current user is the site owner."""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.owner_id == request.user.id
+    
+    def get_team_member_info(self, obj):
+        """Get team member info if current user is a team member."""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        # Check if user is a team member of this site
+        from .models import TeamMember
+        team_member = TeamMember.objects.filter(
+            site=obj,
+            invitation_status__in=['pending', 'linked']
+        ).filter(
+            Q(linked_user=request.user) |
+            Q(linked_user__isnull=True, email__iexact=request.user.email)
+        ).first()
+        
+        if team_member:
+            return TeamMemberInfoSerializer(team_member).data
+        return None

@@ -50,6 +50,16 @@ export const updateSite = async (siteId, payload) => {
     return response.data;
 };
 
+export const acceptTeamInvitation = async (teamMemberId) => {
+    const response = await apiClient.post(`/team-members/${teamMemberId}/accept/`);
+    return response.data;
+};
+
+export const rejectTeamInvitation = async (teamMemberId) => {
+    const response = await apiClient.post(`/team-members/${teamMemberId}/reject/`);
+    return response.data;
+};
+
 export const createSiteVersion = async (siteId, payload) => {
     const response = await apiClient.post(`/sites/${siteId}/versions/`, payload);
     return response.data;

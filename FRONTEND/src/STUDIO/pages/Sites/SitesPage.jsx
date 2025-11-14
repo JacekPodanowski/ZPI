@@ -5,10 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { Add as AddIcon } from '@mui/icons-material';
 import { fetchSites } from '../../../services/siteService';
 import SiteTile from '../../components_STUDIO/Sites/SiteTile';
+import TeamMemberSiteTile from '../../components_STUDIO/Sites/TeamMemberSiteTile';
 
 const SitesPage = () => {
     const navigate = useNavigate();
-    const [sites, setSites] = useState([]);
+    const [ownedSites, setOwnedSites] = useState([]);
+    const [teamMemberSites, setTeamMemberSites] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -20,7 +22,9 @@ const SitesPage = () => {
                 setLoading(true);
                 const response = await fetchSites();
                 if (active) {
-                    setSites(response);
+                    // Backend should return { owned_sites: [...], team_member_sites: [...] }
+                    setOwnedSites(response.owned_sites || response);
+                    setTeamMemberSites(response.team_member_sites || []);
                 }
             } catch (err) {
                 if (active) {
@@ -45,7 +49,7 @@ const SitesPage = () => {
     };
 
     const handleSiteDeleted = (siteId) => {
-        setSites(prevSites => prevSites.filter(site => site.id !== siteId));
+        setOwnedSites(prevSites => prevSites.filter(site => site.id !== siteId));
     };
 
     if (loading) {
@@ -166,7 +170,7 @@ const SitesPage = () => {
                     mx: 'auto'
                 }}
             >
-                {sites.length === 0 ? (
+                {(ownedSites.length === 0 && teamMemberSites.length === 0) ? (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -228,10 +232,12 @@ const SitesPage = () => {
                             gridTemplateColumns: {
                                 xs: '1fr',
                                 sm: 'repeat(2, 1fr)',
-                                lg: sites.length > 3 ? 'repeat(auto-fit, minmax(300px, 1fr))' : 'repeat(3, 1fr)'
+                                lg: (ownedSites.length + teamMemberSites.length) > 3 
+                                    ? 'repeat(auto-fit, minmax(300px, 1fr))' 
+                                    : 'repeat(3, 1fr)'
                             },
-                            gap: sites.length > 3 ? 2 : 3,
-                            maxWidth: sites.length > 3 ? '100%' : 1400,
+                            gap: (ownedSites.length + teamMemberSites.length) > 3 ? 2 : 3,
+                            maxWidth: (ownedSites.length + teamMemberSites.length) > 3 ? '100%' : 1400,
                             mx: 'auto',
                             '& > *': {
                                 minWidth: 0
@@ -239,12 +245,23 @@ const SitesPage = () => {
                         }}
                     >
                         <AnimatePresence mode="popLayout">
-                            {sites.map((site, index) => (
+                            {/* Owned Sites */}
+                            {ownedSites.map((site, index) => (
                                 <SiteTile
                                     key={site.id}
                                     site={site}
                                     index={index}
                                     onSiteDeleted={handleSiteDeleted}
+                                />
+                            ))}
+                            
+                            {/* Team Member Sites */}
+                            {teamMemberSites.map((teamSite, index) => (
+                                <TeamMemberSiteTile
+                                    key={teamSite.id}
+                                    site={teamSite}
+                                    teamMemberInfo={teamSite.team_member_info}
+                                    index={ownedSites.length + index}
                                 />
                             ))}
                         </AnimatePresence>

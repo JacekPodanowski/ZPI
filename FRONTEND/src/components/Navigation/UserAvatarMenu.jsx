@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Avatar,
   Box,
   Button,
   Divider,
@@ -23,15 +22,17 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import { useNavigate } from 'react-router-dom';
 import useTheme from '../../theme/useTheme';
-import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 import AvatarUploader from './AvatarUploader';
 import { resolveMediaUrl } from '../../config/api';
 import apiClient from '../../services/apiClient';
+import Avatar from '../Avatar/Avatar';
+import { useAuth } from '../../contexts/AuthContext';
 
 const AVATAR_BUTTON_SIZE = 44;
 const GLOW_MAX_RANGE = 7;
 
 const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
+  const { updateUser } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
@@ -116,9 +117,11 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
   const handleAvatarChange = async (newAvatarUrl) => {
     // Update local state immediately
     setLocalUser((prev) => ({ ...prev, avatar_url: newAvatarUrl }));
+    // Update global auth context
+    updateUser({ avatar_url: newAvatarUrl });
   };
 
-  const avatarSrc = localUser?.avatar_url ? resolveMediaUrl(localUser.avatar_url) : ShadowAvatarSrc;
+  const avatarUrl = localUser?.avatar_url ? resolveMediaUrl(localUser.avatar_url) : null;
 
   // Calculate the percentage where avatar edge is in the gradient
   const avatarEdgePercent = (AVATAR_BUTTON_SIZE / (AVATAR_BUTTON_SIZE + GLOW_MAX_RANGE * 2)) * 100;
@@ -183,11 +186,10 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
           }}
         >
           <Avatar
-            src={avatarSrc}
-            alt={displayName}
+            avatarUrl={avatarUrl}
+            user={localUser}
+            size={AVATAR_BUTTON_SIZE - 2}
             sx={{ 
-              width: AVATAR_BUTTON_SIZE - 2, 
-              height: AVATAR_BUTTON_SIZE - 2,
               position: 'relative',
               zIndex: 2,
             }}
@@ -224,7 +226,11 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
         <Stack spacing={2}>
           <Stack direction="row" spacing={2} alignItems="center">
             <Box sx={{ position: 'relative' }}>
-              <Avatar src={avatarSrc} alt={displayName} sx={{ width: 48, height: 48 }} />
+              <Avatar 
+                avatarUrl={avatarUrl}
+                user={localUser}
+                size={48}
+              />
               {open && (
                 <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                   <AvatarUploader

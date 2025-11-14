@@ -37,6 +37,10 @@ from .views import (
     SendTestEmailView,
     PublicAvailabilityView,
     PublicBookingView,
+    TeamMemberViewSet,
+    accept_invitation,
+    accept_invitation_studio,
+    reject_invitation_studio,
 )
 
 
@@ -51,6 +55,7 @@ router.register(r'custom-components', CustomReactComponentViewSet, basename='cus
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='availabilityblock')
 router.register(r'email-templates', EmailTemplateViewSet, basename='emailtemplate')
+router.register(r'team-members', TeamMemberViewSet, basename='teammember')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -80,4 +85,8 @@ urlpatterns = [
     path('admin/sites/', AdminSitesListView.as_view(), name='admin-sites-list'),
     path('public-sites/<int:site_id>/availability/', PublicAvailabilityView.as_view(), name='public_availability'),
     path('public-sites/<int:site_id>/bookings/', PublicBookingView.as_view(), name='public_booking'),
+    # Team invitation endpoints
+    path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
+    path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),
+    path('team-invitations/<uuid:token>/reject/', reject_invitation_studio, name='reject-invitation-studio'),
 ]

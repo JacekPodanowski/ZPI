@@ -17,7 +17,7 @@ export const SIZE_LIMITS = {
   // IMAGE LIMITS
   // ============================================
   // Upload limits (before optimization)
-  MAX_IMAGE_UPLOAD_SIZE: 10 * 1024 * 1024, // 10MB raw upload
+  MAX_IMAGE_UPLOAD_SIZE: 25 * 1024 * 1024, // 25MB raw upload
   
   // Final storage limits (after WebP conversion)
   MAX_IMAGE_FINAL_SIZE: 5 * 1024 * 1024, // 5MB after compression

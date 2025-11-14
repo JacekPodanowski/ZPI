@@ -1,30 +1,58 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, CircularProgress, Avatar, Chip } from '@mui/material';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Add as AddIcon, People as PeopleIcon, Email as EmailIcon, AdminPanelSettings as AdminIcon } from '@mui/icons-material';
+import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
+import { useParams } from 'react-router-dom';
+import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { motion } from 'framer-motion';
+import { fetchSiteById } from '../../../services/siteService';
+import Avatar from '../../../components/Avatar/Avatar';
 
 const TeamPage = () => {
     const { siteId } = useParams();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [teamMembers, setTeamMembers] = useState([
-        {
-            id: 1,
-            name: 'Owner',
-            email: 'owner@example.com',
-            role: 'Owner',
-            avatar: null,
-            joinedDate: 'Jan 2025'
-        }
-    ]);
+    const [loading, setLoading] = useState(true);
+    const [site, setSite] = useState(null);
+    const [teamMembers, setTeamMembers] = useState([]);
 
-    const handleBack = () => {
-        navigate('/studio/sites');
-    };
+    useEffect(() => {
+        const loadSiteData = async () => {
+            try {
+                setLoading(true);
+                const siteData = await fetchSiteById(siteId);
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('[TeamPage] Loaded site data:', siteData);
+                    console.log('[TeamPage] Owner payload:', siteData?.owner);
+                }
+                setSite(siteData);
+                
+                // TODO: Fetch actual team members from API
+                setTeamMembers(siteData?.team_members || []);
+            } catch (err) {
+                console.error('[TeamPage] Failed to load site data:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSiteData();
+    }, [siteId]);
 
     const handleAddMember = () => {
-        // TODO: Implement add member functionality
+        // TODO: Open modal to add new member
         console.log('Add member clicked');
+    };
+
+    const handleRoleChange = (memberId, newRole) => {
+        // TODO: Update member role via API
+        console.log('Role changed:', memberId, newRole);
+    };
+
+    const handleSendInvitation = (memberId) => {
+        // TODO: Send invitation via API
+        console.log('Send invitation:', memberId);
+    };
+
+    const handleDeleteMember = (memberId) => {
+        // TODO: Delete member via API
+        console.log('Delete member:', memberId);
     };
 
     if (loading) {
@@ -45,333 +73,295 @@ const TeamPage = () => {
     return (
         <Box
             sx={{
+                minHeight: 'calc(100vh - 60px)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 5,
-                py: { xs: 4, md: 6 },
-                px: { xs: 1, md: 0 }
+                gap: 3
             }}
         >
-            {/* Hero Section */}
-            <Box
-                sx={{
-                    borderRadius: 5,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    background:
-                        'radial-gradient(circle at 10% 20%, rgba(146,0,32,0.36) 0%, rgba(12,12,12,0.92) 55%, rgba(12,12,12,0.88) 100%)',
-                    boxShadow: '0 30px 60px rgba(12,12,12,0.45)',
-                    color: 'rgb(228,229,218)'
-                }}
+            {/* Header with gradient title */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
             >
-                <Box
+                <Typography
+                    variant="h3"
                     sx={{
-                        display: 'flex',
-                        flexDirection: { xs: 'column', md: 'row' },
-                        gap: { xs: 3, md: 6 },
-                        p: { xs: 4, md: 6 },
-                        position: 'relative',
-                        zIndex: 1
+                        fontWeight: 600,
+                        letterSpacing: '-0.02em',
+                        background: (theme) => theme.palette.mode === 'light'
+                            ? 'linear-gradient(135deg, rgb(146, 0, 32) 0%, rgb(30, 30, 30) 100%)'
+                            : 'linear-gradient(135deg, rgb(114, 0, 21) 0%, rgb(220, 220, 220) 100%)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        mb: 0.5
                     }}
                 >
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Typography variant="overline" sx={{ letterSpacing: 3, opacity: 0.7 }}>
-                            ZARZĄDZANIE ZESPOŁEM
-                        </Typography>
-                        <Typography variant="h3" sx={{ fontWeight: 600 }}>
-                            Twój Zespół
-                        </Typography>
-                        <Typography variant="body1" sx={{ opacity: 0.76, maxWidth: 520 }}>
-                            Współpracuj z zespołem nad rozwojem witryny. Zarządzaj rolami, uprawnieniami i monitoruj aktywność członków zespołu.
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                            <Button
-                                variant="contained"
-                                color="secondary"
-                                startIcon={<AddIcon />}
-                                onClick={handleAddMember}
-                                sx={{ fontWeight: 600 }}
-                            >
-                                Dodaj członka
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                onClick={handleBack}
-                                sx={{ fontWeight: 600, borderColor: 'rgba(228,229,218,0.4)', color: 'rgb(228,229,218)' }}
-                            >
-                                Wróć do panelu
-                            </Button>
-                        </Box>
-                    </Box>
-
-                    {/* Team Stats Card */}
-                    <Box
-                        sx={{
-                            flex: 1,
-                            borderRadius: 4,
-                            backdropFilter: 'blur(12px)',
-                            background: 'linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.02) 100%)',
-                            border: '1px solid rgba(228,229,218,0.18)',
-                            boxShadow: '0 20px 35px rgba(12,12,12,0.35)',
-                            p: 4,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 3
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box
-                                sx={{
-                                    width: 64,
-                                    height: 64,
-                                    borderRadius: 3,
-                                    background: 'linear-gradient(135deg, rgba(146,0,32,0.3) 0%, rgba(146,0,32,0.15) 100%)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    border: '1px solid rgba(146,0,32,0.3)'
-                                }}
-                            >
-                                <PeopleIcon sx={{ fontSize: 32, color: 'rgb(228,229,218)' }} />
-                            </Box>
-                            <Box>
-                                <Typography variant="h3" sx={{ fontWeight: 600 }}>
-                                    {teamMembers.length}
-                                </Typography>
-                                <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                                    {teamMembers.length === 1 ? 'Członek zespołu' : 'Członków zespołu'}
-                                </Typography>
-                            </Box>
-                        </Box>
-
-                        <Box
-                            sx={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(2, 1fr)',
-                                gap: 2,
-                                pt: 2,
-                                borderTop: '1px solid rgba(228,229,218,0.12)'
-                            }}
-                        >
-                            <Box>
-                                <Typography variant="caption" sx={{ opacity: 0.6, letterSpacing: 1 }}>
-                                    AKTYWNI
-                                </Typography>
-                                <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                                    {teamMembers.length}
-                                </Typography>
-                            </Box>
-                            <Box>
-                                <Typography variant="caption" sx={{ opacity: 0.6, letterSpacing: 1 }}>
-                                    ROLA ADMIN
-                                </Typography>
-                                <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                                    {teamMembers.filter(m => m.role === 'Owner').length}
-                                </Typography>
-                            </Box>
-                        </Box>
-                    </Box>
-                </Box>
-
-                <Box
+                    Zespół
+                </Typography>
+                <Typography
+                    variant="body1"
                     sx={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'radial-gradient(circle at 80% 10%, rgba(146,0,32,0.45) 0%, transparent 45%)',
-                        pointerEvents: 'none'
+                        color: 'text.secondary'
                     }}
-                />
-            </Box>
+                >
+                    Zarządzaj członkami zespołu i uprawnieniami
+                </Typography>
+            </motion.div>
 
-            {/* Team Members Section */}
+            {/* Info about team system */}
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+            >
+                <Typography
+                    variant="body2"
+                    sx={{
+                        color: 'text.secondary'
+                    }}
+                >
+                    Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia. Każdy członek może zarządzać swoim kalendarzem.
+                </Typography>
+            </motion.div>
+
+            {/* Team Members List */}
             <Box
                 sx={{
-                    borderRadius: 4,
-                    p: { xs: 3, md: 4 },
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(228,229,218,0.85) 100%)',
-                    border: '1px solid rgba(146, 0, 32, 0.12)',
-                    boxShadow: '0 20px 40px rgba(12,12,12,0.15)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 3
+                    gap: 2,
+                    background: (theme) => theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.8)'
+                        : 'rgba(35, 35, 35, 0.9)',
+                    borderRadius: 3,
+                    p: { xs: 2, md: 3 },
+                    border: (theme) => theme.palette.mode === 'light'
+                        ? '1px solid rgba(188, 186, 179, 0.3)'
+                        : '1px solid rgba(70, 70, 68, 0.3)',
+                    boxShadow: '0 6px 30px rgba(0, 0, 0, 0.08)'
                 }}
             >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        Członkowie zespołu
-                    </Typography>
-                    <Chip
-                        label={`${teamMembers.length} ${teamMembers.length === 1 ? 'osoba' : 'osób'}`}
-                        sx={{
-                            backgroundColor: 'rgba(146, 0, 32, 0.1)',
-                            color: 'rgb(146, 0, 32)',
-                            fontWeight: 600
-                        }}
-                    />
-                </Box>
+                    {/* Owner */}
+                    {site?.owner && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.2 }}
+                        >
+                            <Box
+                                sx={{
+                                    p: 2.5,
+                                    borderRadius: 2,
+                                    background: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgba(255, 255, 255, 0.9)'
+                                        : 'rgba(40, 40, 40, 0.9)',
+                                    border: (theme) => theme.palette.mode === 'light'
+                                        ? '1px solid rgba(146, 0, 32, 0.15)'
+                                        : '1px solid rgba(146, 0, 32, 0.3)',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2
+                                }}
+                            >
+                                <Avatar
+                                    avatarUrl={site.owner.avatar_url}
+                                    user={site.owner}
+                                    size={56}
+                                />
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {teamMembers.map((member) => (
-                        <Box
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                        {site.owner.first_name && site.owner.last_name
+                                            ? `${site.owner.first_name} ${site.owner.last_name}`
+                                            : site.owner.email}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <EmailIcon sx={{ fontSize: '0.875rem', opacity: 0.6 }} />
+                                        <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                                            {site.owner.email}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                <Chip
+                                    label="Owner"
+                                    sx={{
+                                        bgcolor: 'rgba(146, 0, 32, 0.15)',
+                                        color: 'rgb(146, 0, 32)',
+                                        fontWeight: 600,
+                                        border: '1px solid rgba(146, 0, 32, 0.3)'
+                                    }}
+                                />
+                            </Box>
+                        </motion.div>
+                    )}
+
+                    {/* Team Members */}
+                    {teamMembers.map((member, index) => (
+                        <motion.div
                             key={member.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.2 + (index + 1) * 0.05 }}
+                        >
+                            <Box
+                                sx={{
+                                    p: 2.5,
+                                    borderRadius: 2,
+                                    background: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgba(255, 255, 255, 0.9)'
+                                        : 'rgba(40, 40, 40, 0.9)',
+                                    border: (theme) => theme.palette.mode === 'light'
+                                        ? '1px solid rgba(188, 186, 179, 0.3)'
+                                        : '1px solid rgba(70, 70, 68, 0.5)',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2
+                                }}
+                            >
+                                <Avatar
+                                    avatarUrl={member.avatar_url}
+                                    user={member}
+                                    size={56}
+                                />
+
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                        {member.first_name} {member.last_name}
+                                    </Typography>
+                                    {member.email && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <EmailIcon sx={{ fontSize: '0.875rem', opacity: 0.6 }} />
+                                            <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                                                {member.email}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    {member.role_description && (
+                                        <Typography variant="caption" sx={{ opacity: 0.6 }}>
+                                            {member.role_description}
+                                        </Typography>
+                                    )}
+                                </Box>
+
+                                <Select
+                                    value={member.permission_role}
+                                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                                    size="small"
+                                    sx={{ minWidth: 140 }}
+                                >
+                                    <MenuItem value="viewer">
+                                        <Tooltip title="Widzi tylko swoje wydarzenia">
+                                            <span>Viewer</span>
+                                        </Tooltip>
+                                    </MenuItem>
+                                    <MenuItem value="contributor">
+                                        <Tooltip title="Zarządza swoim kalendarzem">
+                                            <span>Contributor</span>
+                                        </Tooltip>
+                                    </MenuItem>
+                                    <MenuItem value="manager">
+                                        <Tooltip title="Pełna kontrola nad kalendarzem">
+                                            <span>Manager</span>
+                                        </Tooltip>
+                                    </MenuItem>
+                                </Select>
+
+                                <Chip
+                                    label={member.invitation_status}
+                                    size="small"
+                                    sx={{ minWidth: 80 }}
+                                />
+
+                                {member.invitation_status === 'mock' && member.email && (
+                                    <Tooltip title="Wyślij zaproszenie">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => handleSendInvitation(member.id)}
+                                            sx={{ color: 'rgb(146, 0, 32)' }}
+                                        >
+                                            <SendIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
+
+                                <Tooltip title="Usuń członka">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => handleDeleteMember(member.id)}
+                                        sx={{ color: 'text.secondary' }}
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                        </motion.div>
+                    ))}
+
+                    {/* Add New Member Button */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 + (teamMembers.length + 1) * 0.05 }}
+                    >
+                        <Box
+                            onClick={handleAddMember}
                             sx={{
-                                borderRadius: 3,
-                                p: 3,
-                                background: 'rgba(255,255,255,0.6)',
-                                border: '1px solid rgba(146, 0, 32, 0.08)',
-                                transition: 'all 0.3s ease',
+                                p: 2.5,
+                                borderRadius: 2,
+                                background: (theme) => theme.palette.mode === 'light'
+                                    ? 'rgba(255, 255, 255, 0.7)'
+                                    : 'rgba(40, 40, 40, 0.7)',
+                                border: (theme) => theme.palette.mode === 'light'
+                                    ? '2px dashed rgba(188, 186, 179, 0.5)'
+                                    : '2px dashed rgba(70, 70, 68, 0.7)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
                                 '&:hover': {
+                                    background: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgba(255, 255, 255, 1)'
+                                        : 'rgba(40, 40, 40, 1)',
+                                    borderColor: 'rgb(146, 0, 32)',
                                     transform: 'translateY(-2px)',
-                                    boxShadow: '0 8px 24px rgba(12,12,12,0.12)',
-                                    background: 'rgba(255,255,255,0.8)'
+                                    boxShadow: '0 4px 12px rgba(146, 0, 32, 0.15)'
                                 }
                             }}
                         >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <Avatar
-                                    sx={{
-                                        width: 64,
-                                        height: 64,
-                                        bgcolor: 'rgb(146, 0, 32)',
-                                        fontSize: '1.5rem',
-                                        fontWeight: 600
-                                    }}
-                                >
-                                    {member.name.charAt(0)}
-                                </Avatar>
-                                <Box sx={{ flex: 1 }}>
-                                    <Typography variant="h6" fontWeight={600} sx={{ mb: 0.5 }}>
-                                        {member.name}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                                        <EmailIcon sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
-                                        <Typography variant="body2" color="text.secondary">
-                                            {member.email}
-                                        </Typography>
-                                    </Box>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Dołączył: {member.joinedDate}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Chip
-                                        icon={<AdminIcon />}
-                                        label={member.role}
-                                        sx={{
-                                            backgroundColor: 'rgba(146, 0, 32, 0.15)',
-                                            color: 'rgb(146, 0, 32)',
-                                            fontWeight: 600,
-                                            border: '1px solid rgba(146, 0, 32, 0.2)'
-                                        }}
-                                    />
-                                </Box>
-                            </Box>
-                        </Box>
-                    ))}
-                </Box>
+                            <Avatar
+                                avatarUrl={null}
+                                user={null}
+                                size={56}
+                                sx={{
+                                    bgcolor: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgba(188, 186, 179, 0.3)'
+                                        : 'rgba(70, 70, 68, 0.5)'
+                                }}
+                            >
+                                <AddIcon />
+                            </Avatar>
 
-                {/* Empty State */}
-                {teamMembers.length === 0 && (
-                    <Box
-                        sx={{
-                            borderRadius: 3,
-                            p: 6,
-                            background: 'rgba(255,255,255,0.6)',
-                            border: '1px solid rgba(146, 0, 32, 0.08)',
-                            textAlign: 'center'
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                width: 80,
-                                height: 80,
-                                borderRadius: 3,
-                                background: 'linear-gradient(135deg, rgba(146,0,32,0.1) 0%, rgba(146,0,32,0.05) 100%)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto 16px',
-                                border: '1px solid rgba(146,0,32,0.15)'
-                            }}
-                        >
-                            <PeopleIcon sx={{ fontSize: 40, color: 'rgb(146, 0, 32)', opacity: 0.7 }} />
+                            <Typography
+                                variant="h6"
+                                sx={{
+                                    fontWeight: 600,
+                                    color: (theme) => theme.palette.mode === 'light'
+                                        ? 'rgb(70, 70, 68)'
+                                        : 'rgb(188, 186, 179)'
+                                }}
+                            >
+                                + Dodaj członka zespołu
+                            </Typography>
                         </Box>
-                        <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
-                            Nie ma jeszcze członków zespołu
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 420, mx: 'auto' }}>
-                            Dodaj członków zespołu, aby wspólnie pracować nad rozwojem witryny. Zarządzaj uprawnieniami i monitoruj aktywność.
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={handleAddMember}
-                            sx={{
-                                bgcolor: 'rgb(146, 0, 32)',
-                                '&:hover': {
-                                    bgcolor: 'rgb(114, 0, 21)'
-                                },
-                                fontWeight: 600
-                            }}
-                        >
-                            Dodaj pierwszego członka
-                        </Button>
-                    </Box>
-                )}
-            </Box>
-
-            {/* Permissions Section */}
-            <Box
-                sx={{
-                    borderRadius: 4,
-                    p: { xs: 3, md: 4 },
-                    background: 'linear-gradient(135deg, rgba(12,12,12,0.92) 0%, rgba(30,30,30,0.95) 100%)',
-                    border: '1px solid rgba(146, 0, 32, 0.18)',
-                    boxShadow: '0 20px 40px rgba(12,12,12,0.35)',
-                    color: 'rgb(228,229,218)',
-                    display: 'flex',
-                    flexDirection: { xs: 'column', md: 'row' },
-                    gap: 3
-                }}
-            >
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        Uprawnienia i role
-                    </Typography>
-                    <Typography variant="body1" sx={{ opacity: 0.75, maxWidth: 520 }}>
-                        Kontroluj, kto ma dostęp do różnych funkcji witryny. Przypisuj role i zarządzaj uprawnieniami członków zespołu.
-                    </Typography>
+                    </motion.div>
                 </Box>
-                <Box
-                    sx={{
-                        flex: 1,
-                        borderRadius: 3,
-                        p: 3,
-                        background: 'rgba(255,255,255,0.08)',
-                        border: '1px solid rgba(228,229,218,0.12)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 1.5
-                    }}
-                >
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        Dostępne role
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.75 }}>
-                        • <strong>Owner</strong> – Pełne uprawnienia administratora
-                        <br />• <strong>Editor</strong> – Edycja treści i modułów
-                        <br />• <strong>Viewer</strong> – Tylko podgląd analityki
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        sx={{ alignSelf: 'flex-start', mt: 1 }}
-                        onClick={handleAddMember}
-                    >
-                        Zarządzaj uprawnieniami
-                    </Button>
-                </Box>
-            </Box>
         </Box>
     );
 };

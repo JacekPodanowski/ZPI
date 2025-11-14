@@ -9,7 +9,7 @@ from typing import Any, Dict
 
 import requests
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, models
 from django.db.models import Sum, Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -44,6 +44,7 @@ from .models import (
     TermsOfService,
     MagicLink,
     EmailTemplate,
+    TeamMember,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -83,6 +84,7 @@ from .serializers import (
     SessionNewReservationEmailSerializer,
     EmailTemplateSerializer,
     TestEmailSerializer,
+    TeamMemberSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -652,7 +654,49 @@ class SiteViewSet(viewsets.ModelViewSet):
         qs = Site.objects.select_related('owner').all()
         if self.request.user.is_staff:
             return qs
-        return qs.filter(owner=self.request.user)
+        # Return both owned sites and sites where user is a team member
+        from .models import TeamMember
+        team_member_site_ids = TeamMember.objects.filter(
+            invitation_status__in=['pending', 'linked']
+        ).filter(
+            models.Q(linked_user=self.request.user) |
+            models.Q(linked_user__isnull=True, email__iexact=self.request.user.email)
+        ).values_list('site_id', flat=True)
+        
+        return qs.filter(
+            models.Q(owner=self.request.user) | models.Q(id__in=team_member_site_ids)
+        )
+    
+    def list(self, request, *args, **kwargs):
+        """Return owned_sites and team_member_sites separately."""
+        from .models import TeamMember
+        from .serializers import SiteWithTeamSerializer
+        
+        user = request.user
+        
+        # Get owned sites
+        owned_sites = Site.objects.filter(owner=user).select_related('owner')
+        owned_serializer = SiteSerializer(owned_sites, many=True, context={'request': request})
+        
+        # Get sites where user is a team member
+        team_memberships = TeamMember.objects.filter(
+            invitation_status__in=['pending', 'linked']
+        ).filter(
+            models.Q(linked_user=user) |
+            models.Q(linked_user__isnull=True, email__iexact=user.email)
+        ).select_related('site', 'site__owner')
+        
+        team_member_sites = [tm.site for tm in team_memberships]
+        team_serializer = SiteWithTeamSerializer(
+            team_member_sites, 
+            many=True, 
+            context={'request': request}
+        )
+        
+        return Response({
+            'owned_sites': owned_serializer.data,
+            'team_member_sites': team_serializer.data
+        })
 
     def perform_create(self, serializer):
         """
@@ -2244,3 +2288,263 @@ class PublicBookingView(APIView):
 
         serializer = BookingSerializer(booking)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# Team Member Views
+class TeamMemberViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing team members (Owner only)."""
+    serializer_class = TeamMemberSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return team members for sites owned by current user."""
+        user = self.request.user
+        return TeamMember.objects.filter(site__owner=user).select_related('site', 'linked_user')
+    
+    def perform_create(self, serializer):
+        """Validate site ownership before creating team member."""
+        site = serializer.validated_data.get('site')
+        if site.owner != self.request.user:
+            raise PermissionDenied('You can only add team members to your own sites.')
+        
+        team_member = serializer.save()
+        
+        # Update site team_size
+        site.team_size = site.team_members.filter(is_active=True).count() + 1  # +1 for owner
+        site.save(update_fields=['team_size'])
+    
+    def perform_update(self, serializer):
+        """Validate site ownership before updating team member."""
+        team_member = self.get_object()
+        if team_member.site.owner != self.request.user:
+            raise PermissionDenied('You can only update team members of your own sites.')
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        """Validate site ownership before deleting team member."""
+        if instance.site.owner != self.request.user:
+            raise PermissionDenied('You can only delete team members from your own sites.')
+        
+        site = instance.site
+        instance.delete()
+        
+        # Update site team_size
+        site.team_size = site.team_members.filter(is_active=True).count() + 1  # +1 for owner
+        site.save(update_fields=['team_size'])
+    
+    @action(detail=True, methods=['post'], url_path='send-invitation')
+    def send_invitation(self, request, pk=None):
+        """Send invitation to team member."""
+        team_member = self.get_object()
+        
+        # Validate ownership
+        if team_member.site.owner != request.user:
+            raise PermissionDenied('You can only send invitations for your own team members.')
+        
+        # Validate email exists
+        if not team_member.email:
+            return Response(
+                {'error': 'Email is required to send invitation.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if user already has account
+        from .models import PlatformUser
+        existing_user = PlatformUser.objects.filter(email=team_member.email).first()
+        
+        if existing_user:
+            # User has account - set status to 'pending'
+            team_member.invitation_status = 'pending'
+            team_member.invited_at = timezone.now()
+            team_member.save(update_fields=['invitation_status', 'invited_at'])
+            
+            # TODO: Send 'pending' email notification
+            # Email should contain link to /studio/sites
+            
+            return Response({
+                'message': 'Invitation sent to existing user.',
+                'status': 'pending'
+            })
+        else:
+            # User doesn't have account - set status to 'invited'
+            team_member.invitation_status = 'invited'
+            team_member.invited_at = timezone.now()
+            team_member.save(update_fields=['invitation_status', 'invited_at'])
+            
+            # TODO: Send 'invited' email with registration link
+            # Email should contain link to /accept-invitation/{TOKEN}
+            
+            return Response({
+                'message': 'Invitation sent to new user.',
+                'status': 'invited'
+            })
+    
+    @action(detail=True, methods=['post'], url_path='leave')
+    def leave_team(self, request, pk=None):
+        """Allow team member to leave the team."""
+        team_member = self.get_object()
+        
+        # Validate user is the linked team member
+        if team_member.linked_user != request.user:
+            raise PermissionDenied('You can only leave teams you are a member of.')
+        
+        # Validate status is 'linked'
+        if team_member.invitation_status != 'linked':
+            return Response(
+                {'error': 'You are not an active member of this team.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update status and unlink user
+        team_member.invitation_status = 'rejected'
+        team_member.linked_user = None
+        team_member.save(update_fields=['invitation_status', 'linked_user'])
+        
+        return Response({
+            'message': 'You have left the team.'
+        })
+    
+    @action(detail=True, methods=['post'], url_path='accept')
+    def accept_invitation(self, request, pk=None):
+        """Accept invitation (for pending status)."""
+        team_member = self.get_object()
+        
+        # Validate user email matches
+        if team_member.email.lower() != request.user.email.lower():
+            raise PermissionDenied('This invitation is not for you.')
+        
+        # Validate status is 'pending'
+        if team_member.invitation_status != 'pending':
+            return Response(
+                {'error': 'This invitation cannot be accepted.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Link the account
+        team_member.linked_user = request.user
+        team_member.invitation_status = 'linked'
+        team_member.save(update_fields=['linked_user', 'invitation_status'])
+        
+        return Response({
+            'message': 'Invitation accepted successfully.',
+            'site_id': team_member.site.id
+        })
+    
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject_invitation(self, request, pk=None):
+        """Reject invitation (for pending status)."""
+        team_member = self.get_object()
+        
+        # Validate user email matches
+        if team_member.email.lower() != request.user.email.lower():
+            raise PermissionDenied('This invitation is not for you.')
+        
+        # Validate status is 'pending'
+        if team_member.invitation_status != 'pending':
+            return Response(
+                {'error': 'This invitation cannot be rejected.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Reject invitation
+        team_member.invitation_status = 'rejected'
+        team_member.save(update_fields=['invitation_status'])
+        
+        return Response({
+            'message': 'Invitation rejected.'
+        })
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def accept_invitation(request, token):
+    """Handle invitation acceptance via token link."""
+    from .models import TeamMember
+    
+    try:
+        team_member = TeamMember.objects.select_related('site').get(
+            invitation_token=token,
+            invitation_status='invited'
+        )
+    except TeamMember.DoesNotExist:
+        return Response(
+            {'error': 'Invalid or expired invitation.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # If user is not authenticated, save token in session and redirect to OAuth
+    if not request.user.is_authenticated:
+        request.session['invitation_token'] = str(token)
+        # TODO: Redirect to OAuth registration
+        return Response({
+            'message': 'Please login or register to accept invitation.',
+            'redirect': '/auth/google'  # Adjust based on OAuth setup
+        })
+    
+    # User is authenticated - link the account
+    team_member.linked_user = request.user
+    team_member.invitation_status = 'linked'
+    team_member.save(update_fields=['linked_user', 'invitation_status'])
+    
+    return Response({
+        'message': 'Invitation accepted successfully.',
+        'site_id': team_member.site.id,
+        'site_name': team_member.site.name
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_invitation_studio(request, token):
+    """Accept invitation from Studio (for pending status)."""
+    from .models import TeamMember
+    
+    try:
+        team_member = TeamMember.objects.get(
+            invitation_token=token,
+            invitation_status='pending',
+            email=request.user.email
+        )
+    except TeamMember.DoesNotExist:
+        return Response(
+            {'error': 'Invalid invitation or already processed.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Link the account
+    team_member.linked_user = request.user
+    team_member.invitation_status = 'linked'
+    team_member.save(update_fields=['linked_user', 'invitation_status'])
+    
+    return Response({
+        'message': 'Invitation accepted successfully.',
+        'site_id': team_member.site.id
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_invitation_studio(request, token):
+    """Reject invitation from Studio (for pending status)."""
+    from .models import TeamMember
+    
+    try:
+        team_member = TeamMember.objects.get(
+            invitation_token=token,
+            invitation_status='pending',
+            email=request.user.email
+        )
+    except TeamMember.DoesNotExist:
+        return Response(
+            {'error': 'Invalid invitation or already processed.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Reject invitation
+    team_member.invitation_status = 'rejected'
+    team_member.save(update_fields=['invitation_status'])
+    
+    return Response({
+        'message': 'Invitation rejected.'
+    })
+

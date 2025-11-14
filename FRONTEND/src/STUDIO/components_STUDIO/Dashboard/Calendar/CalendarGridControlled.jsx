@@ -101,7 +101,7 @@ const CalendarGridControlled = ({
     }, [availabilityBlocks]);
 
     const primarySites = useMemo(() => {
-        const allSites = sites || [];
+        const allSites = Array.isArray(sites) ? sites : [];
         // If we have more than 3 sites, limit to 5 total, otherwise show first 3
         if (allSites.length > 3) {
             return allSites.slice(0, 5);
