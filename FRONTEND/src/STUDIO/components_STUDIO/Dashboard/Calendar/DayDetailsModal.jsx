@@ -1018,6 +1018,66 @@ const DayDetailsModal = ({
                 );
             })}
 
+            {/* Current time indicator */}
+            {(() => {
+                // Check if the displayed date is today
+                const today = moment().format('YYYY-MM-DD');
+                const displayedDate = moment(date).format('YYYY-MM-DD');
+                const isToday = today === displayedDate;
+                
+                if (!isToday) return null;
+                
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                const currentHours = now.getHours();
+                const currentMins = now.getMinutes();
+                const currentTimeString = `${currentHours.toString().padStart(2, '0')}:${currentMins.toString().padStart(2, '0')}`;
+                
+                // Only show if current time is within the timeline range
+                if (currentMinutes >= dayStartMinutes && currentMinutes <= dayEndMinutes) {
+                    const relativeMinutes = currentMinutes - dayStartMinutes;
+                    const totalMinutes = dayEndMinutes - dayStartMinutes;
+                    const topPercent = (relativeMinutes / totalMinutes) * 100;
+                    
+                    return (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                left: 45,
+                                right: 0,
+                                top: `${topPercent}%`,
+                                zIndex: 1000,
+                                pointerEvents: 'none'
+                            }}
+                        >
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    position: 'absolute',
+                                    top: '-18px',
+                                    left: 0,
+                                    fontWeight: 700,
+                                    color: theme.palette.primary.main,
+                                    fontSize: '11px',
+                                    letterSpacing: '0.5px'
+                                }}
+                            >
+                                {currentTimeString}
+                            </Typography>
+                            <Box
+                                sx={{
+                                    width: '100%',
+                                    height: '2px',
+                                    backgroundColor: theme.palette.primary.main,
+                                    mr: 1
+                                }}
+                            />
+                        </Box>
+                    );
+                }
+                return null;
+            })()}
+
             {/* Availability blocks (rendered first, under events) */}
             {(() => {
                 const layoutedBlocks = calculateOverlapLayout(dayAvailability, dayStartMinutes, dayEndMinutes);
