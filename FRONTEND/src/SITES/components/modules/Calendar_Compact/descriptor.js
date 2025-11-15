@@ -10,5 +10,6 @@ export const CALENDAR_DESCRIPTOR = {
     calendarAccentColor: { t: 'color', d: 'Calendar accent color', category: 'content' },
     showCapacity: { t: 'boolean', d: 'Show available/total capacity', category: 'content', default: true }
   },
-  layouts: ['sidebar', 'inline', 'compact']
+  layouts: ['sidebar', 'inline', 'compact'],
+  defaultLayout: 'sidebar'
 };

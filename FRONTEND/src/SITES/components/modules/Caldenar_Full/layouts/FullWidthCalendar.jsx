@@ -65,6 +65,7 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
   const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedCreator, setSelectedCreator] = useState('all');
 
   const accent = content.highlightColor || style?.primary || '#920020';
   const headingColor = content.textColor || style?.text || '#1e1e1e';
@@ -79,62 +80,85 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
     : style?.background || '#ffffff');
   const emptyState = content.emptyStateMessage || 'Wybierz dzień z kalendarza, aby zobaczyć wydarzenia.';
 
-  // Fetch events from API
-  useEffect(() => {
+  const fetchEvents = useCallback(async () => {
     if (!siteId) {
-      setError('Brak ID witryny - wyświetlane są dane przykładowe');
+      setError('Brak ID witryny - nie można pobrać dostępności');
+      setLoading(false);
       return;
     }
 
-    const fetchEvents = async () => {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
+    
+    const start = currentMonth.clone().startOf('month').format('YYYY-MM-DD');
+    const end = currentMonth.clone().endOf('month').format('YYYY-MM-DD');
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/availability/?start_date=${start}&end_date=${end}`
+      );
       
-      const start = currentMonth.clone().startOf('month').format('YYYY-MM-DD');
-      const end = currentMonth.clone().endOf('month').format('YYYY-MM-DD');
-
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/availability/?start_date=${start}&end_date=${end}`
-        );
-        
-        if (!response.ok) {
-          throw new Error('Nie udało się pobrać wydarzeń');
-        }
-
-        const slots = await response.json();
-
-        // Transform API slots to event format
-        const events = slots.map((slot, index) => ({
-          id: slot.id || `event-${index}`,
-          title: slot.title || 'Termin dostępny',
-          start: slot.start,
-          end: slot.end,
-          date: slot.start.split('T')[0],
-          description: slot.description || '',
-          location: slot.location || '',
-          category: slot.event_type === 'group' ? 'Grupowe' : 'Indywidualne',
-          capacity: slot.capacity,
-          availableSpots: slot.available_spots ?? slot.capacity,
-          duration: slot.duration,
-          event_type: slot.event_type
-        }));
-
-        setApiEvents(events);
-      } catch (error) {
-        console.error('Error fetching events:', error);
-        setError('Backend nie zwrócił odpowiedzi – wyświetlane są dane przykładowe.');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Nie udało się pobrać dostępności. Spróbuj odświeżyć stronę.');
       }
-    };
 
-    fetchEvents();
+      const slots = await response.json();
+
+      // Transform API slots to event format
+      const events = slots.map((slot, index) => ({
+        id: slot.id || `event-${index}`,
+        title: slot.title || 'Termin dostępny',
+        start: slot.start,
+        end: slot.end,
+        date: slot.start.split('T')[0],
+        description: slot.description || '',
+        location: slot.location || '',
+        category: slot.event_type === 'group' ? 'Grupowe' : 'Indywidualne',
+        capacity: slot.capacity,
+        availableSpots: slot.available_spots ?? slot.capacity,
+        duration: slot.duration,
+        event_type: slot.event_type,
+        creator_name: slot.creator_name || 'Nieznany',
+        creator_id: slot.creator_id
+      }));
+
+      setApiEvents(events);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      setError(error.message || 'Nie udało się pobrać dostępności. Spróbuj odświeżyć stronę.');
+    } finally {
+      setLoading(false);
+    }
   }, [siteId, currentMonth]);
+
+  // Fetch events from API
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   // Use API events if available, otherwise fall back to content.events
   const eventsToDisplay = apiEvents.length > 0 ? apiEvents : (content.events || []);
-  const eventsByDate = useMemo(() => normalizeEvents(eventsToDisplay), [eventsToDisplay]);
+  
+  // Get unique creators for filtering
+  const uniqueCreators = useMemo(() => {
+    const creatorsMap = new Map();
+    eventsToDisplay.forEach(event => {
+      if (event.creator_id && event.creator_name) {
+        creatorsMap.set(event.creator_id, event.creator_name);
+      }
+    });
+    return Array.from(creatorsMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [eventsToDisplay]);
+
+  // Filter events by selected creator
+  const filteredEvents = useMemo(() => {
+    if (selectedCreator === 'all') {
+      return eventsToDisplay;
+    }
+    return eventsToDisplay.filter(event => event.creator_id === selectedCreator);
+  }, [eventsToDisplay, selectedCreator]);
+
+  const eventsByDate = useMemo(() => normalizeEvents(filteredEvents), [filteredEvents]);
 
   const handleDayClick = useCallback((dayMoment) => {
     setActiveDay(dayMoment);
@@ -155,36 +179,12 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
     setIsModalOpen(true);
   }, []);
 
-  const handleBookingSuccess = () => {
+  const handleBookingSuccess = useCallback(() => {
     setIsModalOpen(false);
     setSelectedSlot(null);
-    // Refresh events after successful booking
-    const start = currentMonth.clone().startOf('month').format('YYYY-MM-DD');
-    const end = currentMonth.clone().endOf('month').format('YYYY-MM-DD');
-    
-    if (siteId) {
-      fetch(`${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/availability/?start_date=${start}&end_date=${end}`)
-        .then(response => response.json())
-        .then(slots => {
-          const events = slots.map((slot, index) => ({
-            id: slot.id || `event-${index}`,
-            title: slot.title || 'Termin dostępny',
-            start: slot.start,
-            end: slot.end,
-            date: slot.start.split('T')[0],
-            description: slot.description || '',
-            location: slot.location || '',
-            category: slot.event_type === 'group' ? 'Grupowe' : 'Indywidualne',
-            capacity: slot.capacity,
-            availableSpots: slot.available_spots ?? slot.capacity,
-            duration: slot.duration,
-            event_type: slot.event_type
-          }));
-          setApiEvents(events);
-        })
-        .catch(error => console.error('Error refreshing events:', error));
-    }
-  };
+    // Refetch events to ensure full synchronization with backend
+    fetchEvents();
+  }, [fetchEvents]);
 
   const activeDayKey = useMemo(() => {
     if (!activeDay) {
@@ -219,7 +219,7 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
               </p>
             )}
             <p className="mt-2 text-sm" style={{ color: neutralText }}>
-              Źródło danych: {siteId ? (apiEvents.length > 0 ? 'API Backend' : 'dane przykładowe') : 'dane przykładowe (brak siteId)'}
+              Źródło danych: {siteId ? (apiEvents.length > 0 ? 'API Backend' : 'dane przykładowe (brak odpowiedzi API)') : 'dane przykładowe (brak siteId)'}
             </p>
           </header>
         )}
@@ -228,6 +228,34 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
         {error && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-sm text-amber-800">{error}</p>
+          </div>
+        )}
+
+        {/* Creator Filter */}
+        {uniqueCreators.length > 1 && (
+          <div className="mb-6 flex justify-center">
+            <div className="inline-flex items-center gap-3 bg-white rounded-lg shadow-sm border border-neutral-200 px-4 py-2">
+              <label htmlFor="creator-filter" className="text-sm font-medium" style={{ color: headingColor }}>
+                Filtruj według twórcy:
+              </label>
+              <select
+                id="creator-filter"
+                value={selectedCreator}
+                onChange={(e) => setSelectedCreator(e.target.value)}
+                className="text-sm border border-neutral-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2"
+                style={{
+                  color: headingColor,
+                  focusRingColor: accent
+                }}
+              >
+                <option value="all">Wszyscy</option>
+                {uniqueCreators.map(creator => (
+                  <option key={creator.id} value={creator.id}>
+                    {creator.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -291,6 +319,12 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
 
                     {event.location && (
                       <p className="mt-2 text-sm" style={{ color: neutralText }}>{event.location}</p>
+                    )}
+
+                    {event.creator_name && (
+                      <p className="mt-2 text-sm font-medium" style={{ color: neutralText }}>
+                        Prowadzący: {event.creator_name}
+                      </p>
                     )}
 
                     {event.description && (

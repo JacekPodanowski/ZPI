@@ -895,7 +895,12 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   
   // Get available layouts for this module
   const availableLayouts = moduleDef?.layouts || [];
-  const currentLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+  let rawLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+  
+  // Normalize layout: if current layout is not in available options, use default
+  const currentLayout = availableLayouts.includes(rawLayout) 
+    ? rawLayout 
+    : (moduleDef?.defaultLayout || availableLayouts[0] || 'sidebar');
 
   const panelMotionProps = {
     initial: { x: placement === 'right' ? 320 : -320 },
@@ -1073,8 +1078,8 @@ const PropertiesPanel = ({ placement = 'right' }) => {
             {/* Divider after calendar type if exists */}
             {module.type === 'calendar' && (availableLayouts.length > 1 || contentFields.length > 0) && <Divider />}
 
-            {/* LAYOUT SELECTOR - Only show if multiple layouts available */}
-            {availableLayouts.length > 1 && (
+            {/* LAYOUT SELECTOR - Only show if multiple layouts available and not Full calendar */}
+            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && (
               <Box>
                 <Typography
                   sx={{
@@ -1109,7 +1114,7 @@ const PropertiesPanel = ({ placement = 'right' }) => {
             )}
             
             {/* Divider after layout selector if content exists */}
-            {availableLayouts.length > 1 && contentFields.length > 0 && <Divider />}
+            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && contentFields.length > 0 && <Divider />}
             
             {/* CONTENT Section */}
             {contentFields.length > 0 && (

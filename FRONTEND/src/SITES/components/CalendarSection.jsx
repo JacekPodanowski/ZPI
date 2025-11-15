@@ -27,56 +27,57 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
   const effectiveAccentColor = calendarAccentColor || theme?.primary || '#146B3A';
   const effectiveTextColor = textColor || theme?.text || '#1a1a1a';
 
-  useEffect(() => {
+  const fetchAvailability = async () => {
     if (!siteId) {
       setError('Brak ID witryny - nie można pobrać dostępności');
+      setLoading(false);
       return;
     }
 
-    const fetchAvailability = async () => {
-      setLoading(true);
-      setError(null);
-      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+    setLoading(true);
+    setError(null);
+    const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+    const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/availability/?start_date=${start}&end_date=${end}`
-        );
-        
-        if (!response.ok) {
-          throw new Error('Nie udało się pobrać dostępności');
-        }
-
-        const slots = await response.json();
-
-        // Deduplicate slots by start time (in case API returns duplicates)
-        const uniqueSlots = slots.reduce((acc, slot) => {
-          const existing = acc.find(s => s.start === slot.start);
-          if (!existing) {
-            acc.push(slot);
-          }
-          return acc;
-        }, []);
-
-        const slotsByDay = uniqueSlots.reduce((acc, slot) => {
-          const day = slot.start.split('T')[0];
-          if (!acc[day]) {
-            acc[day] = [];
-          }
-          acc[day].push(slot);
-          return acc;
-        }, {});
-
-        setAvailableSlots(slotsByDay);
-      } catch (error) {
-        console.error('Error fetching availability:', error);
-        setError('Backend nie zwrócił odpowiedzi – interfejs pozostaje dostępny z ograniczoną funkcjonalnością.');
-      } finally {
-        setLoading(false);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/availability/?start_date=${start}&end_date=${end}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Nie udało się pobrać dostępności. Spróbuj odświeżyć stronę.');
       }
-    };
 
+      const slots = await response.json();
+
+      // Deduplicate slots by start time (in case API returns duplicates)
+      const uniqueSlots = slots.reduce((acc, slot) => {
+        const existing = acc.find(s => s.start === slot.start);
+        if (!existing) {
+          acc.push(slot);
+        }
+        return acc;
+      }, []);
+
+      const slotsByDay = uniqueSlots.reduce((acc, slot) => {
+        const day = slot.start.split('T')[0];
+        if (!acc[day]) {
+          acc[day] = [];
+        }
+        acc[day].push(slot);
+        return acc;
+      }, {});
+
+      setAvailableSlots(slotsByDay);
+    } catch (error) {
+      console.error('Error fetching availability:', error);
+      setError(error.message || 'Nie udało się pobrać dostępności. Spróbuj odświeżyć stronę.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAvailability();
   }, [currentMonth, siteId]);
 
@@ -101,13 +102,9 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
 
   const handleBookingSuccess = () => {
     setIsModalOpen(false);
-    setAvailableSlots((prev) => {
-      const dayStr = format(new Date(selectedSlot.start), 'yyyy-MM-dd');
-      const updatedSlots = { ...prev };
-      updatedSlots[dayStr] = updatedSlots[dayStr].filter((s) => s.start !== selectedSlot.start);
-      return updatedSlots;
-    });
     setSelectedDay(null);
+    // Refetch availability data to ensure full synchronization with backend
+    fetchAvailability();
   };
 
   // Render slot button with capacity info
@@ -259,8 +256,9 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
                 </h3>
 
                 {loading && (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex flex-col items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: effectiveAccentColor }}></div>
+                    <p className="mt-3 text-sm text-neutral-500">Ładowanie dostępnych terminów...</p>
                   </div>
                 )}
 

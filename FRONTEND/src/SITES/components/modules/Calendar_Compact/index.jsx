@@ -8,6 +8,9 @@ import BookingModal from '../../../../components/Calendar/BookingModal';
 import { CALENDAR_DESCRIPTOR } from './descriptor';
 
 const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) => {
+  // Normalize layout to handle legacy 'default' value
+  const normalizedLayout = ['sidebar', 'inline', 'compact'].includes(layout) ? layout : 'sidebar';
+  
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
   const [availableSlots, setAvailableSlots] = useState({});
@@ -326,9 +329,9 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
         )}
 
         {/* Render based on layout */}
-        {layout === 'inline' && renderInlineLayout()}
-        {layout === 'compact' && renderCompactLayout()}
-        {layout === 'sidebar' && renderSidebarLayout()}
+        {normalizedLayout === 'inline' && renderInlineLayout()}
+        {normalizedLayout === 'compact' && renderCompactLayout()}
+        {normalizedLayout === 'sidebar' && renderSidebarLayout()}
 
         {/* Info Footer */}
         <div className="mt-6 text-center">
