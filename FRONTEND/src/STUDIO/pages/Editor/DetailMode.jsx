@@ -9,7 +9,7 @@ import MockAIChatPanel from './MockAIChatPanel';
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const DetailMode = () => {
-  const { devicePreview, site, selectedPageId, setSelectedPage } = useNewEditorStore();
+  const { devicePreview, site, selectedPageId, setSelectedPage, canvasZoom } = useNewEditorStore();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('lg'));
   const layoutRef = useRef(null);
@@ -235,12 +235,13 @@ const DetailMode = () => {
               minHeight: devicePreview === 'mobile' ? 'auto' : '100%',
               bgcolor: 'white',
               borderRadius: devicePreview === 'mobile' ? { xs: '12px', sm: '24px' } : '0',
-              boxShadow: devicePreview === 'mobile'
-                ? '0 20px 60px rgba(0, 0, 0, 0.2)'
-                : 'none',
               overflow: 'visible',
+              mb: { xs: 2, md: 3 },
+              transform: `scale(${canvasZoom})`,
+              transformOrigin: 'top center',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              mb: { xs: 2, md: 3 }
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid rgba(0, 0, 0, 0.08)'
             }}
           >
             <DetailCanvas />

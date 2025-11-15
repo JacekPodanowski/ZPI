@@ -188,6 +188,14 @@ export const MODULE_REGISTRY = {
     defaultLayout: 'cards',
     category: 'content'
   },
+  servicesandpricing: {
+    component: ServicesAndPricingModule,
+    descriptor: ServicesAndPricingModule.descriptor,
+    layouts: ['cards', 'list', 'table'],
+    defaultLayout: 'cards',
+    category: 'content',
+    legacyAlias: true
+  },
   // Alias for backward compatibility with legacy configurations
   pricing: {
     component: ServicesAndPricingModule,

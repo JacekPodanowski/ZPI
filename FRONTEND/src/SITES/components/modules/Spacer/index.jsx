@@ -10,8 +10,9 @@ const LAYOUTS = {
   large: LargeSpacer
 };
 
-const SpacerModule = ({ layout = 'medium', content = {}, style }) => {
-  const defaults = SPACER_DEFAULTS[layout] || SPACER_DEFAULTS.medium;
+const SpacerModule = ({ size = 'medium', content = {}, style }) => {
+  const defaultOptions = SPACER_DEFAULTS[size] || SPACER_DEFAULTS.medium;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.medium;

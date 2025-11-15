@@ -11,7 +11,8 @@ const LAYOUTS = {
 };
 
 const ButtonModule = ({ layout = 'block', content = {}, style }) => {
-  const defaults = BUTTON_DEFAULTS[layout] || BUTTON_DEFAULTS.block;
+  const defaultOptions = BUTTON_DEFAULTS[layout] || BUTTON_DEFAULTS.block;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.block;

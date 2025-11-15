@@ -279,6 +279,7 @@ const createInitialState = () => ({
   selectedPageId: null,
   selectedModuleId: null,
   devicePreview: 'desktop',
+  canvasZoom: 1,
   isDragging: false,
   draggedItem: null,
   hasUnsavedChanges: false,
@@ -788,6 +789,73 @@ const useNewEditorStore = create((set, get) => ({
       return applyChangeWithHistory(state, 'detail', metadata, updates);
     }),
 
+  batchUpdateModuleContents: (updates = {}) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === state.selectedPageId);
+      if (!page) {
+        return {};
+      }
+
+      const moduleIds = Object.keys(updates);
+      if (moduleIds.length === 0) {
+        return {};
+      }
+
+      let totalChanges = 0;
+      const updatedModules = (page.modules || []).map((module) => {
+        if (updates[module.id]) {
+          const content = updates[module.id];
+          const incomingKeys = Object.keys(content);
+          
+          const changedKeys = incomingKeys.filter((key) => {
+            const previousValue = module.content?.[key];
+            const nextValue = content[key];
+            return JSON.stringify(previousValue) !== JSON.stringify(nextValue);
+          });
+
+          if (changedKeys.length > 0) {
+            totalChanges += changedKeys.length;
+            return {
+              ...module,
+              content: {
+                ...deepClone(module.content || {}),
+                ...deepClone(content)
+              }
+            };
+          }
+        }
+        return module;
+      });
+
+      if (totalChanges === 0) {
+        return {};
+      }
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === state.selectedPageId
+            ? { ...p, modules: updatedModules }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'batch_edit_content',
+        description: `Applied settings to ${moduleIds.length} modules`,
+        affectedModules: moduleIds,
+        changesCount: totalChanges
+      };
+
+      const updates_state = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates_state);
+    }),
+
   updateNavigationContent: (content = {}) =>
     set((state) => {
       const currentNavigation = state.site.navigation?.content || {};
@@ -1182,6 +1250,8 @@ const useNewEditorStore = create((set, get) => ({
     }),
 
   setDevicePreview: (device) => set({ devicePreview: device }),
+
+  setCanvasZoom: (zoom) => set({ canvasZoom: zoom }),
 
   loadSite: (siteData) => {
     const rawSite = deepClone(siteData.site || createInitialSite());

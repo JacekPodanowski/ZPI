@@ -1,25 +1,15 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Button, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import { getModuleDefinition, getDefaultModuleContent } from './moduleDefinitions';
+import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 
-// List of commonly used modules
-const QUICK_MODULES = [
-  'hero',
-  'about',
-  'services',
-  'servicesAndPricing',
-  'team',
-  'gallery',
-  'faq',
-  'contact',
-  'publicCalendarBig',
-  'publicCalendarSmall',
-  'text',
-  'button',
-  'spacer'
-];
+const formatCategoryLabel = (category) => {
+  if (!category) {
+    return 'General';
+  }
+  return category.charAt(0).toUpperCase() + category.slice(1);
+};
 
 const AddModuleButton = ({
   positioning = 'fixed',
@@ -31,6 +21,7 @@ const AddModuleButton = ({
   const { getSelectedPage, addModule } = useNewEditorStore();
   const [anchorEl, setAnchorEl] = useState(null);
   const page = getSelectedPage();
+  const modules = useMemo(() => getAvailableModules(), []);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -158,14 +149,14 @@ const AddModuleButton = ({
           </Typography>
         </Box>
         
-        {QUICK_MODULES.map((moduleType) => {
-          const definition = getModuleDefinition(moduleType);
-          const Icon = definition.icon;
-          
+        {modules.map((module) => {
+          const Icon = module.icon;
+          const categoryLabel = formatCategoryLabel(module.category);
+
           return (
             <MenuItem
-              key={moduleType}
-              onClick={() => handleAddModule(moduleType)}
+              key={module.type}
+              onClick={() => handleAddModule(module.type)}
               sx={{
                 px: 2,
                 py: 1.5,
@@ -182,7 +173,7 @@ const AddModuleButton = ({
                   width: 36,
                   height: 36,
                   borderRadius: '8px',
-                  bgcolor: definition.color,
+                  bgcolor: module.color,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -193,10 +184,10 @@ const AddModuleButton = ({
               </Box>
               <Box sx={{ flex: 1 }}>
                 <Typography sx={{ fontSize: '14px', fontWeight: 500, color: 'rgb(30, 30, 30)' }}>
-                  {definition.label}
+                  {module.label}
                 </Typography>
                 <Typography sx={{ fontSize: '11px', color: 'rgba(30, 30, 30, 0.5)' }}>
-                  {definition.category}
+                  {categoryLabel}
                 </Typography>
               </Box>
             </MenuItem>

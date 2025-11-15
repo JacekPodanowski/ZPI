@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -17,12 +18,13 @@ const formatDate = (dateString) => {
 };
 
 const ListEvents = ({ content, style }) => {
-  const { title, subtitle, events = [], bgColor, accentColor, textColor } = content;
+  const { title, subtitle, events = [], bgColor, accentColor, textColor, backgroundImage, backgroundOverlayColor } = content;
   const [activeEvent, setActiveEvent] = useState(null);
 
   return (
-    <section className={`${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || style.background }}>
-      <div className="max-w-5xl mx-auto space-y-10">
+    <section className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || style.background }}>
+      <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
+      <div className="relative z-10 max-w-5xl mx-auto space-y-10">
         {(title || subtitle) && (
           <div className="text-center space-y-3">
             {title && (

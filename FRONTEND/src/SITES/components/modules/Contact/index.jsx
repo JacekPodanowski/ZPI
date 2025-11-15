@@ -13,7 +13,8 @@ const LAYOUTS = {
 };
 
 const ContactSection = ({ layout = 'form', content = {}, style }) => {
-  const defaults = CONTACT_DEFAULTS[layout] || CONTACT_DEFAULTS.form;
+  const defaultOptions = CONTACT_DEFAULTS[layout] || CONTACT_DEFAULTS.form;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   

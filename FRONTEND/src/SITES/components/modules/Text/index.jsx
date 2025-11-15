@@ -10,8 +10,9 @@ const LAYOUTS = {
   centered: CenteredText
 };
 
-const TextModule = ({ layout = 'block', content = {}, style }) => {
-  const defaults = TEXT_DEFAULTS[layout] || TEXT_DEFAULTS.block;
+const TextModule = ({ layout = 'basic', content = {}, style }) => {
+  const defaultOptions = TEXT_DEFAULTS[layout] || TEXT_DEFAULTS.basic;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.block;

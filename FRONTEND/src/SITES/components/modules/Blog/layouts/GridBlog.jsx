@@ -2,9 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const GridBlog = ({ content, style }) => {
-  const { title, subtitle, posts = [], bgColor, textColor } = content;
+  const { title, subtitle, posts = [], bgColor, textColor, backgroundImage, backgroundOverlayColor } = content;
   const backgroundColor = bgColor || style?.background || '#f5f2eb';
   const headingColor = textColor || style?.text || '#1e1e1e';
   const subtitleColor = textColor || style?.neutral || '#4b5563';
@@ -17,10 +18,11 @@ const GridBlog = ({ content, style }) => {
 
   return (
     <section
-      className={`${style?.spacing || 'space-y-8 py-12 md:py-20 px-4 md:px-6'}`}
+      className={`relative ${style?.spacing || 'space-y-8 py-12 md:py-20 px-4 md:px-6'}`}
       style={{ backgroundColor }}
     >
-      <div className="max-w-6xl mx-auto space-y-8">
+      <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
+      <div className="relative z-10 max-w-6xl mx-auto space-y-8">
         {(title || subtitle) && (
           <div className="text-center space-y-2">
             {title && (

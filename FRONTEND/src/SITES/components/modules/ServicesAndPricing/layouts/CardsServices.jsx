@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const CardsServices = ({ content, style }) => {
   const {
@@ -11,14 +12,17 @@ const CardsServices = ({ content, style }) => {
     currency = 'PLN',
     bgColor = style?.background || '#FFFFFF',
     textColor = style?.text || 'rgb(30, 30, 30)',
-    accentColor = style?.primary || 'rgb(146, 0, 32)'
+    accentColor = style?.primary || 'rgb(146, 0, 32)',
+    backgroundImage,
+    backgroundOverlayColor
   } = content || {};
 
   const hasOffers = offers && offers.length > 0;
 
   return (
-    <section className={`${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor }}>
-      <div className="max-w-6xl mx-auto space-y-10">
+    <section className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor }}>
+      <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
+      <div className="relative z-10 max-w-6xl mx-auto space-y-10">
         {/* Header */}
         {(title || subtitle) && (
           <div className="text-center space-y-3">

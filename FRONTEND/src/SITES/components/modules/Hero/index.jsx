@@ -13,7 +13,9 @@ const LAYOUTS = {
 };
 
 const HeroSection = ({ layout = 'centered', content = {}, style }) => {
-  const defaults = HERO_DEFAULTS[layout] || HERO_DEFAULTS.centered;
+  // Use the first variant from defaults as fallback, but content from props should already be set
+  const defaultOptions = HERO_DEFAULTS[layout] || HERO_DEFAULTS.centered;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   
   const mergedContent = mergeWithDefaults(defaults, content);
   
