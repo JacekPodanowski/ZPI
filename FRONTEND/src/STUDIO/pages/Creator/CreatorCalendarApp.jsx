@@ -288,6 +288,13 @@ const CreatorCalendarApp = () => {
         setModalOpen(true);
     };
 
+    const handleEventClick = (event) => {
+        console.log('(DEBUGLOG) CreatorCalendarApp.eventClick', { event });
+        // Open the day modal for the event's date
+        setSelectedDate(new Date(event.date));
+        setModalOpen(true);
+    };
+
     const handleSiteSelect = (siteId, options = {}) => {
         const isClearingSelection = siteId === null || options?.reason === 'clear' || options?.clearSelection;
         if (isClearingSelection) {
@@ -512,12 +519,19 @@ const CreatorCalendarApp = () => {
                         await handleCreateEvent(eventData);
                     }
                 } else {
-                    // Apply week template - create events for the whole week
+                    // Apply week template - create events for the whole week (skip past days)
                     const startOfWeek = moment(targetDate).startOf('isoWeek');
+                    const today = moment().startOf('day');
                     
                     for (const templateEvent of template.events) {
                         // Calculate the actual date based on day_of_week
                         const eventDate = startOfWeek.clone().add(templateEvent.day_of_week - 1, 'days');
+                        
+                        // Skip if the event date is in the past
+                        if (eventDate.isBefore(today)) {
+                            console.log('Skipping past date:', eventDate.format('YYYY-MM-DD'));
+                            continue;
+                        }
                         
                         const eventData = {
                             title: templateEvent.title,
@@ -734,6 +748,7 @@ const CreatorCalendarApp = () => {
                             selectedSiteId={selectedSiteId}
                             currentMonth={currentMonth}
                             onDayClick={handleDayClick}
+                            onEventClick={handleEventClick}
                             onMonthChange={setCurrentMonth}
                             onSiteSelect={handleSiteSelect}
                             teamRoster={currentRoster}

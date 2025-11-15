@@ -4,7 +4,7 @@ import useDashboardStore from '../../../store/dashboardStore';
 import CalendarGridControlled from './CalendarGridControlled';
 
 // Connects the controlled calendar grid with the Zustand dashboard store.
-const CalendarGridContainer = ({ events, sites, onDayClick }) => {
+const CalendarGridContainer = ({ events, sites, onDayClick, onEventClick }) => {
     const mode = useDashboardStore((state) => state.mode);
     const selectedSiteId = useDashboardStore((state) => state.selectedSiteId);
     const currentMonth = useDashboardStore((state) => state.currentMonth);
@@ -48,6 +48,7 @@ const CalendarGridContainer = ({ events, sites, onDayClick }) => {
             selectedSiteId={selectedSiteId}
             currentMonth={currentMonth || new Date()}
             onDayClick={handleDayClick}
+            onEventClick={onEventClick}
             onMonthChange={handleMonthChange}
             onSiteSelect={handleSiteSelect}
         />
@@ -57,11 +58,13 @@ const CalendarGridContainer = ({ events, sites, onDayClick }) => {
 CalendarGridContainer.propTypes = {
     events: PropTypes.arrayOf(PropTypes.object).isRequired,
     sites: PropTypes.arrayOf(PropTypes.object).isRequired,
-    onDayClick: PropTypes.func
+    onDayClick: PropTypes.func,
+    onEventClick: PropTypes.func
 };
 
 CalendarGridContainer.defaultProps = {
-    onDayClick: () => {}
+    onDayClick: () => {},
+    onEventClick: () => {}
 };
 
 export default CalendarGridContainer;

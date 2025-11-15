@@ -43,6 +43,7 @@ import useTheme from '../../../../theme/useTheme';
 import BookingDetailsModal from './BookingDetailsModal';
 import * as eventService from '../../../../services/eventService';
 import { useToast } from '../../../../contexts/ToastContext';
+import { getSiteColorHex } from '../../../../theme/siteColors';
 
 const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
@@ -1083,11 +1084,12 @@ const DayDetailsModal = ({
                 const layoutedBlocks = calculateOverlapLayout(dayAvailability, dayStartMinutes, dayEndMinutes);
                 return layoutedBlocks.map((block) => {
                     const site = sites.find(s => s.id === (block.site_id || block.site));
+                    const siteColor = site ? getSiteColorHex(site.color_index ?? 0) : 'rgb(146, 0, 32)';
                     return (
                         <AvailabilityBlockDisplay
                             key={block.id}
                             block={block}
-                            siteColor={site?.color_tag || 'rgb(146, 0, 32)'}
+                            siteColor={siteColor}
                             siteName={site?.name}
                             onClick={handleAvailabilityClick}
                             dayStartMinutes={dayStartMinutes}
@@ -1102,23 +1104,27 @@ const DayDetailsModal = ({
             {/* Events */}
             {(() => {
                 const layoutedEvents = calculateOverlapLayout(dayEvents, dayStartMinutes, dayEndMinutes);
-                return layoutedEvents.map((event) => (
-                    <EventDisplay
-                        key={event.id}
-                        event={event}
-                        siteColor={sites.find(s => s.id === (event.site_id || event.site))?.color_tag || 'rgb(146, 0, 32)'}
-                        onHover={setHoveredEventId}
-                        onClick={handleEventClick}
-                        onBookingClick={(booking) => {
-                            setSelectedBooking(booking);
-                            setBookingModalOpen(true);
-                        }}
-                        dayStartMinutes={dayStartMinutes}
-                        dayEndMinutes={dayEndMinutes}
-                        column={event.column}
-                        totalColumns={event.totalColumns}
-                    />
-                ));
+                return layoutedEvents.map((event) => {
+                    const site = sites.find(s => s.id === (event.site_id || event.site));
+                    const siteColor = site ? getSiteColorHex(site.color_index ?? 0) : 'rgb(146, 0, 32)';
+                    return (
+                        <EventDisplay
+                            key={event.id}
+                            event={event}
+                            siteColor={siteColor}
+                            onHover={setHoveredEventId}
+                            onClick={handleEventClick}
+                            onBookingClick={(booking) => {
+                                setSelectedBooking(booking);
+                                setBookingModalOpen(true);
+                            }}
+                            dayStartMinutes={dayStartMinutes}
+                            dayEndMinutes={dayEndMinutes}
+                            column={event.column}
+                            totalColumns={event.totalColumns}
+                        />
+                    );
+                });
             })()}
                 </Box>
             </motion.div>

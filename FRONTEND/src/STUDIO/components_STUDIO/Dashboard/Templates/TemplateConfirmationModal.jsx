@@ -32,6 +32,33 @@ const TemplateConfirmationModal = ({
     const templateType = template.day_abbreviation ? 'day' : 'week';
     const willOverwrite = affectedEvents.length > 0;
     
+    // Check if target date is in the past
+    const targetMoment = moment(targetDate);
+    const isTargetPast = targetMoment.isBefore(moment(), 'day');
+    const isToday = targetMoment.isSame(moment(), 'day');
+    
+    // Calculate available (non-past) days for week templates
+    let availableDayCount = 0;
+    let allDaysInPast = false;
+    
+    if (templateType === 'week') {
+        const startOfWeek = targetMoment.clone().startOf('week');
+        const today = moment().startOf('day');
+        
+        // Count how many days in the week are today or in the future
+        for (let i = 0; i < 7; i++) {
+            const day = startOfWeek.clone().add(i, 'days');
+            if (day.isSameOrAfter(today, 'day')) {
+                availableDayCount++;
+            }
+        }
+        
+        allDaysInPast = availableDayCount === 0;
+    } else {
+        // For day template
+        allDaysInPast = isTargetPast;
+    }
+    
     // Format date based on template type
     let formattedDate;
     if (templateType === 'day') {
@@ -140,8 +167,49 @@ const TemplateConfirmationModal = ({
                         </Box>
                     </Box>
 
+                    {/* Warning if all days are in the past */}
+                    {allDaysInPast && (
+                        <Alert
+                            severity="error"
+                            icon={<WarningIcon />}
+                            sx={{
+                                borderRadius: 2,
+                                '& .MuiAlert-icon': {
+                                    color: 'error.main'
+                                }
+                            }}
+                        >
+                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                Nie można zastosować szablonu do przeszłych dni
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                {templateType === 'day' 
+                                    ? 'Ten dzień już minął. Wybierz dzisiejszy lub przyszły dzień.'
+                                    : 'Wszystkie dni w tym tygodniu już minęły. Wybierz przyszły tydzień.'}
+                            </Typography>
+                        </Alert>
+                    )}
+
+                    {/* Warning if some days will be skipped (for week templates) */}
+                    {!allDaysInPast && templateType === 'week' && availableDayCount < 7 && (
+                        <Alert
+                            severity="info"
+                            sx={{
+                                borderRadius: 2,
+                                backgroundColor: 'rgba(59, 130, 246, 0.08)'
+                            }}
+                        >
+                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                Szablon zostanie zastosowany do {availableDayCount} {availableDayCount === 1 ? 'dnia' : 'dni'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                Przeszłe dni zostaną pominięte. Szablon będzie zastosowany tylko do dzisiejszego i przyszłych dni.
+                            </Typography>
+                        </Alert>
+                    )}
+
                     {/* Warning if overwriting */}
-                    {willOverwrite && (
+                    {!allDaysInPast && willOverwrite && (
                         <Alert
                             severity="warning"
                             icon={<WarningIcon />}
@@ -162,7 +230,7 @@ const TemplateConfirmationModal = ({
                     )}
 
                     {/* Success message if no conflicts */}
-                    {!willOverwrite && (
+                    {!allDaysInPast && !willOverwrite && (
                         <Alert
                             severity="success"
                             sx={{
@@ -207,15 +275,19 @@ const TemplateConfirmationModal = ({
                 <Button
                     onClick={onConfirm}
                     variant="contained"
+                    disabled={allDaysInPast}
                     sx={{
-                        backgroundColor: 'primary.main',
-                        color: '#fff',
+                        backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'primary.main',
+                        color: allDaysInPast ? 'action.disabled' : '#fff',
                         fontWeight: 600,
                         px: 3,
-                        boxShadow: '0 4px 12px rgba(146, 0, 32, 0.25)',
+                        boxShadow: allDaysInPast ? 'none' : '0 4px 12px rgba(146, 0, 32, 0.25)',
                         '&:hover': {
-                            backgroundColor: 'rgb(114, 0, 21)',
-                            boxShadow: '0 6px 16px rgba(146, 0, 32, 0.35)'
+                            backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'rgb(114, 0, 21)',
+                            boxShadow: allDaysInPast ? 'none' : '0 6px 16px rgba(146, 0, 32, 0.35)'
+                        },
+                        '&.Mui-disabled': {
+                            color: 'action.disabled'
                         }
                     }}
                 >

@@ -19,6 +19,7 @@ const CalendarGridControlled = ({
     selectedSiteId,
     currentMonth,
     onDayClick,
+    onEventClick,
     onMonthChange,
     onSiteSelect,
     draggingTemplate, // NEW: receive dragging state from parent
@@ -769,10 +770,10 @@ const CalendarGridControlled = ({
                     const isPast = dayMoment.isBefore(moment(), 'day');
                     const isDimmed = selectedSiteId && !dayEvents.some((event) => event.site === selectedSiteId);
                     
-                    // Determine if this day is crowded (events won't fit at normal size)
+                    // Determine if this day should collapse events (more than 4 events)
                     const eventCount = dayEvents.length;
-                    const isDayCrowded = eventCount >= 4;
-                    const shouldCollapse = eventCount >= COLLAPSE_THRESHOLD;
+                    const shouldCollapse = eventCount > 4; // Collapse when 5+ events
+                    const visibleEvents = shouldCollapse ? dayEvents.slice(0, 3) : dayEvents; // Show first 3 if collapsing
 
                     // Past days with no events should not be clickable
                     const isClickable = !isPast || eventCount > 0;
@@ -919,7 +920,9 @@ const CalendarGridControlled = ({
                                                 ? 'primary.main' 
                                                 : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
-                                    p: isToday ? 0.75 : 0.85,
+                                    pt: isToday ? '4px' : '4.8px', // Reduced by ~2px to move header up
+                                    pb: isToday ? 0.75 : 0.85,
+                                    px: isToday ? 0.75 : 0.85,
                                     height: '100%',
                                     width: '100%',
                                     minWidth: 0,
@@ -978,7 +981,7 @@ const CalendarGridControlled = ({
                                 }}
                             >
                                 {/* Day number - unified with day tile hover */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0 }}>
                                     <Typography
                                         variant="body2"
                                         sx={{
@@ -1003,17 +1006,18 @@ const CalendarGridControlled = ({
                                         {dayMoment.date()}
                                     </Typography>
                                     
-                                    {/* Green availability indicator */}
-                                    {hasAvailability && (
+                                    {/* Green availability indicator - only show for today and future days */}
+                                    {hasAvailability && !isPast && (
                                         <Box
                                             sx={{
-                                                width: { xs: 6, sm: 7, md: 8 }, // Responsive size
-                                                height: { xs: 6, sm: 7, md: 8 }, // Responsive size
+                                                width: { xs: 8, sm: 9, md: 10 }, // Responsive size - increased
+                                                height: { xs: 8, sm: 9, md: 10 }, // Responsive size - increased
                                                 borderRadius: '50%',
                                                 backgroundColor: 'rgba(76, 175, 80, 0.8)',
                                                 flexShrink: 0,
                                                 transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                                                 boxShadow: '0 0 4px rgba(76, 175, 80, 0.6)',
+                                                marginRight: '2.5px',
                                                 ...(isDayHovered && isClickable && {
                                                     backgroundColor: 'rgba(76, 175, 80, 1)',
                                                     transform: 'scale(1.2)',
@@ -1025,18 +1029,66 @@ const CalendarGridControlled = ({
                                 </Box>
 
                                 {shouldCollapse ? (
-                                    // Collapsed view for 10+ events
+                                    // When we have more than 4 events: show first 3 + collapsed block
                                     <Box sx={{ 
                                         flex: 1, 
                                         display: 'flex', 
-                                        alignItems: 'center', 
+                                        flexDirection: 'column',
+                                        gap: 0.25,
                                         position: 'relative', 
                                         zIndex: 1,
                                         pointerEvents: 'auto'
                                     }}>
+                                        {/* Show first 3 events */}
+                                        {visibleEvents.map((event, index) => {
+                                            const isHovered = hoveredEventId === event.id;
+                                            const shouldShrink = hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
+
+                                            return (
+                                                <motion.div
+                                                    key={event.id}
+                                                    animate={{
+                                                        scale: shouldShrink ? 0.92 : 1,
+                                                        opacity: shouldShrink ? 0.7 : 1
+                                                    }}
+                                                    transition={{ 
+                                                        duration: 0.25, 
+                                                        ease: [0.25, 0.1, 0.25, 1]
+                                                    }}
+                                                    style={{ 
+                                                        zIndex: isHovered ? 50 : 10 + index,
+                                                        position: 'relative',
+                                                        pointerEvents: 'auto',
+                                                        overflow: 'visible'
+                                                    }}
+                                                    onMouseEnter={() => {
+                                                        setHoveredEventId(event.id);
+                                                        setHoveredEventDayKey(dateKey);
+                                                    }}
+                                                    onMouseLeave={() => {
+                                                        setHoveredEventId(null);
+                                                        setHoveredEventDayKey(null);
+                                                    }}
+                                                >
+                                                    <EventBlock
+                                                        event={event}
+                                                        isSelectedSite={event.isFromSelectedSite}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (onEventClick) {
+                                                                onEventClick(event);
+                                                            }
+                                                        }}
+                                                        isHovered={isHovered}
+                                                    />
+                                                </motion.div>
+                                            );
+                                        })}
+                                        
+                                        {/* Collapsed block showing remaining events */}
                                         <CollapsedEventsBlock
                                             eventCount={eventCount}
-                                            siteColors={dayEvents.map(e => e.site_color).filter(Boolean)}
+                                            siteColors={dayEvents.slice(3).map(e => e.site_color || getSiteColorHex(e.site?.color_index ?? 0))}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 onDayClick?.(dayMoment.toDate());
@@ -1103,19 +1155,18 @@ const CalendarGridControlled = ({
                                             minHeight: '30px' // Same as badge container
                                         }} />
 
-                                        {/* Desktop: Smart scaling view for 1-7 events */}
+                                        {/* Desktop: Show up to 3 events, rest in collapsed view */}
                                         <Box sx={{ 
                                             display: { xs: 'none', md: 'flex' }, // Hide on mobile, show on desktop
                                             flexDirection: 'column', 
-                                            gap: eventCount <= 3 ? 0.5 : eventCount <= 5 ? 0.375 : 0.3,
+                                            gap: 0.25,
                                             flex: 1, 
                                             overflow: 'visible', // Allow events to expand on hover
                                             position: 'relative',
                                             zIndex: 1,
-                                            // For 0-1 events, allow parent hover to work in empty areas
                                             pointerEvents: eventCount <= 1 ? 'none' : 'auto'
                                         }}>
-                                        {dayEvents.map((event, index) => {
+                                        {visibleEvents.map((event, index) => {
                                             const isHovered = hoveredEventId === event.id;
                                             // Only shrink events in the SAME day as the hovered event
                                             const shouldShrink = hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
@@ -1134,8 +1185,8 @@ const CalendarGridControlled = ({
                                                     style={{ 
                                                         zIndex: isHovered ? 50 : 10 + index,
                                                         position: 'relative',
-                                                        pointerEvents: 'auto', // Re-enable pointer events for the actual event block
-                                                        overflow: 'visible' // Allow hover expansion to go outside
+                                                        pointerEvents: 'auto',
+                                                        overflow: 'visible'
                                                     }}
                                                     onMouseEnter={() => {
                                                         setHoveredEventId(event.id);
@@ -1151,10 +1202,11 @@ const CalendarGridControlled = ({
                                                         isSelectedSite={event.isFromSelectedSite}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            if (onEventClick) {
+                                                                onEventClick(event);
+                                                            }
                                                         }}
-                                                        eventCount={eventCount}
                                                         isHovered={isHovered}
-                                                        isDayCrowded={isDayCrowded}
                                                     />
                                                 </motion.div>
                                             );
@@ -1227,6 +1279,7 @@ CalendarGridControlled.propTypes = {
     selectedSiteId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     currentMonth: PropTypes.instanceOf(Date).isRequired,
     onDayClick: PropTypes.func,
+    onEventClick: PropTypes.func,
     onMonthChange: PropTypes.func,
     onSiteSelect: PropTypes.func,
     draggingTemplate: PropTypes.object, // NEW: template being dragged
@@ -1250,6 +1303,7 @@ CalendarGridControlled.defaultProps = {
     availabilityBlocks: [],
     selectedSiteId: null,
     onDayClick: () => {},
+    onEventClick: () => {},
     onMonthChange: () => {},
     onSiteSelect: () => {},
     draggingTemplate: null,

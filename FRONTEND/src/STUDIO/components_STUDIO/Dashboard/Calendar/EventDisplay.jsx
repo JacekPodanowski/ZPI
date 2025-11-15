@@ -2,11 +2,12 @@ import React from 'react';
 import { Box, Typography, Tooltip } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PropTypes from 'prop-types';
-import { UnfoldMore as ExpandIcon } from '@mui/icons-material';
+import { KeyboardArrowDown as ExpandIcon } from '@mui/icons-material';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
 // Threshold for collapsing events into a single "show more" rectangle
-export const COLLAPSE_THRESHOLD = 8;
+// When we have MORE than 4 events (5+), show first 3 + collapsed block
+export const COLLAPSE_THRESHOLD = 4;
 
 // Dot view for Site Management mode
 export const EventDot = ({ event, siteColor }) => (
@@ -37,67 +38,26 @@ EventDot.propTypes = {
     siteColor: PropTypes.string.isRequired
 };
 
-// Calculate event display mode based on event count and available space
-const getEventDisplayMode = (eventCount) => {
-    if (eventCount <= 3) return 'normal'; // Show all with normal size
-    if (eventCount <= 5) return 'compact'; // Strip extra data, smaller
-    if (eventCount <= 7) return 'minimal'; // Just time + title, very small
-    return 'collapsed'; // Single rectangle with count
-};
-
-// Ethereal Minimalism Event Block
+// Simplified Event Block - max 3 events shown, rest collapsed
 export const EventBlock = ({ 
     event, 
     isSelectedSite, 
     onClick, 
-    eventCount = 1, 
-    isHovered = false, 
-    isDayCrowded = false 
+    isHovered = false 
 }) => {
     // Get site color from color_index - always use site color
     const baseColor = event.site_color || getSiteColorHex(event.site?.color_index ?? 0);
-    const displayMode = getEventDisplayMode(eventCount);
     
     // Always use site colors, filtering affects opacity not color
     const bgColor = alpha(baseColor, 0.15);
     const borderColor = baseColor;
     const textColor = baseColor;
 
-    // Calculate height based on density and hover state
-    // Normal height ensures events fit within ~90px available space (110px tile - 20px day number/padding)
-    const getHeight = () => {
-        let baseHeight;
-        if (displayMode === 'normal') baseHeight = isHovered ? 30 : 26; // 3 events: 3*26 + 2*4(gap) = 86px
-        else if (displayMode === 'compact') baseHeight = isHovered ? 22 : 18; // 5 events: 5*18 + 4*3(gap) = 102px
-        else if (displayMode === 'minimal') baseHeight = isHovered ? 18 : 14; // 7 events: 7*14 + 6*2.5(gap) = 113px
-        else baseHeight = 28;
-        
-        // Make non-selected site events 30% smaller
-        return isSelectedSite ? baseHeight : baseHeight * 0.7;
-    };
-
-    // Calculate font size based on density
-    const getFontSize = () => {
-        let baseFontSize;
-        if (displayMode === 'normal') baseFontSize = isHovered ? 11.5 : 11;
-        else if (displayMode === 'compact') baseFontSize = isHovered ? 10.5 : 10;
-        else baseFontSize = isHovered ? 9.5 : 9;
-        
-        // Make non-selected site events text slightly smaller
-        const fontSize = isSelectedSite ? baseFontSize : baseFontSize * 0.85;
-        return `${fontSize}px`;
-    };
-
-    // Calculate hover transform - can go out of bounds
-    const getHoverTransform = () => {
-        if (displayMode === 'normal') {
-            return 'translateY(-3px) scale(1.05)';
-        }
-        if (displayMode === 'compact') {
-            return 'translateY(-2px) scale(1.08)';
-        }
-        return 'translateY(-2px) scale(1.1)';
-    };
+    // Fixed height for all events - 18px with 1px gaps
+    // Available space: ~110px tile - 20px day header - 5px padding = ~85px
+    // 3 events (3×18) + 2 gaps (2×1) + collapsed (24px) = 54 + 2 + 24 = 80px ✓
+    const height = 18;
+    const fontSize = isSelectedSite ? (isHovered ? '10.5px' : '10px') : (isHovered ? '9px' : '8.5px');
 
     // Create tooltip content with booking information
     const getTooltipContent = () => {
@@ -126,30 +86,28 @@ export const EventBlock = ({
         <Box
             onClick={onClick}
             sx={{
-                height: getHeight(),
-                px: displayMode === 'minimal' ? 0.5 : 0.75,
-                py: displayMode === 'minimal' ? 0.25 : 0.5,
+                height: height,
+                px: 0.75,
+                py: 0.5,
                 borderRadius: 1.5,
                 borderLeft: `2px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 cursor: 'pointer',
-                transition: 'height 400ms cubic-bezier(0.34, 1.15, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.15, 0.64, 1), background-color 400ms ease, box-shadow 400ms ease, font-size 400ms ease, opacity 400ms ease, filter 400ms ease',
-                overflow: 'hidden', // Keep content inside
+                transition: 'all 250ms cubic-bezier(0.34, 1.15, 0.64, 1)',
+                overflow: 'hidden',
                 pointerEvents: isSelectedSite ? 'auto' : 'none',
-                filter: isSelectedSite ? 'none' : 'grayscale(40%)', // Lighter grayscale to preserve color
-                opacity: isSelectedSite ? 1 : 0.6, // Slightly higher opacity for filtered events
+                filter: isSelectedSite ? 'none' : 'grayscale(40%)',
+                opacity: isSelectedSite ? 1 : 0.6,
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 0.5,
                 '&:hover': {
                     backgroundColor: alpha(baseColor, 0.18),
-                    transform: getHoverTransform(),
-                    boxShadow: isDayCrowded 
-                        ? `0 3px 12px ${alpha(baseColor, 0.25)}` 
-                        : `0 4px 16px ${alpha(baseColor, 0.28)}`,
+                    transform: 'translateY(-2px) scale(1.03)',
+                    boxShadow: `0 3px 12px ${alpha(baseColor, 0.25)}`,
                     zIndex: 50,
-                    overflow: 'visible', // Allow hover effect to go outside
+                    overflow: 'visible',
                 }
             }}
         >
@@ -157,37 +115,34 @@ export const EventBlock = ({
                 variant="caption"
                 sx={{
                     fontWeight: isHovered ? 600 : 500,
-                    fontSize: getFontSize(),
+                    fontSize: fontSize,
                     color: textColor,
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     flex: 1,
                     lineHeight: 1.2,
-                    transition: 'font-size 400ms cubic-bezier(0.34, 1.15, 0.64, 1), font-weight 400ms ease'
+                    transition: 'all 250ms ease'
                 }}
             >
                 <Box component="span" sx={{ fontWeight: 600, mr: 0.5 }}>
                     {event.start_time || event.time}
                 </Box>
-                {displayMode !== 'minimal' && event.title}
-                {displayMode === 'minimal' && event.title.split(' ')[0]}
+                {event.title}
             </Typography>
             
-            {/* Show capacity/bookings only in normal mode */}
-            {displayMode === 'normal' && (
-                <Typography
-                    variant="caption"
-                    sx={{
-                        fontSize: '10px',
-                        color: textColor,
-                        opacity: 0.7,
-                        flexShrink: 0
-                    }}
-                >
-                    {event.bookings?.length || 0}/{event.capacity || 1}
-                </Typography>
-            )}
+            {/* Show capacity/bookings */}
+            <Typography
+                variant="caption"
+                sx={{
+                    fontSize: '10px',
+                    color: textColor,
+                    opacity: 0.7,
+                    flexShrink: 0
+                }}
+            >
+                {event.bookings?.length || 0}/{event.capacity || 1}
+            </Typography>
         </Box>
         </Tooltip>
     );
@@ -208,30 +163,28 @@ EventBlock.propTypes = {
     }).isRequired,
     isSelectedSite: PropTypes.bool.isRequired,
     onClick: PropTypes.func,
-    eventCount: PropTypes.number,
-    isHovered: PropTypes.bool,
-    isDayCrowded: PropTypes.bool
+    isHovered: PropTypes.bool
 };
 
 EventBlock.defaultProps = {
     onClick: () => {},
-    eventCount: 1,
-    isHovered: false,
-    isDayCrowded: false
+    isHovered: false
 };
 
-// Collapsed events display (10+ events)
-export const CollapsedEventsBlock = ({ eventCount, onClick, siteColors = [] }) => {
-    // Use first site color or default
-    const primaryColor = siteColors[0] || 'rgb(146, 0, 32)';
+// Collapsed events display (4+ events)
+export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, siteColors = [] }) => {
+    // Deduplicate site colors - only show unique colors
+    const uniqueColors = [...new Set(siteColors.filter(Boolean))];
+    const primaryColor = uniqueColors[0] || 'rgb(146, 0, 32)';
+    const additionalCount = eventCount - visibleCount;
     
     return (
         <Box
             onClick={onClick}
             sx={{
-                height: 36,
-                px: 1,
-                py: 0.75,
+                height: 18,
+                px: 0.75,
+                py: 0.25,
                 borderRadius: 1.5,
                 backgroundColor: 'rgba(248, 248, 245, 0.95)',
                 border: `1px solid ${alpha(primaryColor, 0.2)}`,
@@ -240,38 +193,72 @@ export const CollapsedEventsBlock = ({ eventCount, onClick, siteColors = [] }) =
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 1,
+                gap: 0.5,
                 '&:hover': {
                     backgroundColor: alpha(primaryColor, 0.08),
                     borderColor: alpha(primaryColor, 0.4),
-                    transform: 'translateY(-2px)',
-                    boxShadow: `0 4px 12px ${alpha(primaryColor, 0.2)}`,
+                    transform: 'translateY(-1px)',
+                    boxShadow: `0 2px 8px ${alpha(primaryColor, 0.2)}`,
                 }
             }}
         >
-            <Typography
-                variant="body2"
-                sx={{
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    color: primaryColor,
-                    letterSpacing: 0.2
-                }}
-            >
-                {eventCount} wydarzeń
-            </Typography>
-            <ExpandIcon sx={{ fontSize: 18, color: alpha(primaryColor, 0.6) }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
+                <Typography
+                    variant="body2"
+                    sx={{
+                        fontWeight: 600,
+                        fontSize: '10px',
+                        color: primaryColor,
+                        letterSpacing: 0,
+                        lineHeight: 1,
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    +{additionalCount} wydarzeń
+                </Typography>
+            </Box>
+            
+            {/* Color circles for unique sites */}
+            <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexShrink: 0 }}>
+                {uniqueColors.slice(0, 4).map((color, index) => (
+                    <Box
+                        key={index}
+                        sx={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: color,
+                            boxShadow: `0 0 3px ${alpha(color, 0.6)}, 0 0 6px ${alpha(color, 0.3)}`
+                        }}
+                    />
+                ))}
+                {uniqueColors.length > 4 && (
+                    <Typography
+                        sx={{
+                            fontSize: '7px',
+                            color: alpha(primaryColor, 0.6),
+                            ml: 0.125,
+                            fontWeight: 500,
+                            lineHeight: 1
+                        }}
+                    >
+                        +{uniqueColors.length - 4}
+                    </Typography>
+                )}
+            </Box>
         </Box>
     );
 };
 
 CollapsedEventsBlock.propTypes = {
     eventCount: PropTypes.number.isRequired,
+    visibleCount: PropTypes.number,
     onClick: PropTypes.func,
     siteColors: PropTypes.arrayOf(PropTypes.string)
 };
 
 CollapsedEventsBlock.defaultProps = {
+    visibleCount: 3,
     onClick: () => {},
     siteColors: []
 };
