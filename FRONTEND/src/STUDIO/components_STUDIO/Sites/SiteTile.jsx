@@ -809,17 +809,9 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     <PaletteIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Change Color
                 </MenuItem>
-                <MenuItem onClick={handleManageModules}>
-                    <ViewModuleIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
-                    Manage Modules
-                </MenuItem>
                 <MenuItem onClick={handleEdit}>
                     <EditIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Edit Site
-                </MenuItem>
-                <MenuItem onClick={handleOpenLab}>
-                    <SettingsIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
-                    Site Settings
                 </MenuItem>
                 <MenuItem onClick={() => {
                     handleMenuClose();
