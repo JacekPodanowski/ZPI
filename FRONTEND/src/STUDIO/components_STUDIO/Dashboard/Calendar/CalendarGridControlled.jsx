@@ -24,6 +24,8 @@ const CalendarGridControlled = ({
     onSiteSelect,
     draggingTemplate, // NEW: receive dragging state from parent
     onApplyTemplate, // NEW: callback for applying templates
+    creatingTemplateMode, // NEW: 'day' | 'week' | null - template creation mode
+    onTemplateSelection, // NEW: callback when day/week is selected for template
     operatingStartHour: propOperatingStartHour,
     operatingEndHour: propOperatingEndHour,
     onOperatingStartHourChange,
@@ -35,6 +37,7 @@ const CalendarGridControlled = ({
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [hoveredEventDayKey, setHoveredEventDayKey] = useState(null); // Track which day the hovered event is in
     const [hoveredDayKey, setHoveredDayKey] = useState(null); // Track which day is being hovered
+    const [hoveredWeekKey, setHoveredWeekKey] = useState(null); // Track which week is being hovered (for week template creation)
     const [draggedOverDay, setDraggedOverDay] = useState(null); // Track day being dragged over
     const [isDragging, setIsDragging] = useState(false); // Track if dragging is active
     const [isOverMonthName, setIsOverMonthName] = useState(false); // Track if dragging over month name
@@ -775,8 +778,39 @@ const CalendarGridControlled = ({
                     const shouldCollapse = eventCount > 4; // Collapse when 5+ events
                     const visibleEvents = shouldCollapse ? dayEvents.slice(0, 3) : dayEvents; // Show first 3 if collapsing
 
+                    // Template creation mode logic
+                    const isInTemplateCreationMode = creatingTemplateMode !== null;
+                    const hasEventsForTemplate = eventCount > 0;
+                    
+                    // Check if week has events (for week template mode)
+                    const weekStart = dayMoment.clone().startOf('isoWeek');
+                    const weekEnd = dayMoment.clone().endOf('isoWeek');
+                    const weekHasEvents = creatingTemplateMode === 'week' && (() => {
+                        for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
+                            const key = d.format('YYYY-MM-DD');
+                            if ((eventsByDate.get(key) || []).length > 0) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    })();
+                    
+                    // Check if this day is in a week with events (for highlighting entire week)
+                    const isInWeekWithEvents = creatingTemplateMode === 'week' && weekHasEvents;
+                    
+                    // Generate week key for week template mode
+                    const weekKey = weekStart.format('YYYY-[W]WW');
+                    const isWeekHovered = creatingTemplateMode === 'week' && hoveredWeekKey === weekKey;
+                    
+                    const isSelectableForTemplate = isInTemplateCreationMode && (
+                        (creatingTemplateMode === 'day' && hasEventsForTemplate) ||
+                        (creatingTemplateMode === 'week' && isInWeekWithEvents)
+                    );
+
                     // Past days with no events should not be clickable
-                    const isClickable = !isPast || eventCount > 0;
+                    const isClickable = isInTemplateCreationMode 
+                        ? isSelectableForTemplate 
+                        : (!isPast || eventCount > 0);
                     
                     // Day hover should be blocked when hovering an event
                     const isDayHovered = hoveredDayKey === dateKey && !hoveredEventId;
@@ -904,15 +938,39 @@ const CalendarGridControlled = ({
                             style={{ minHeight: 0, minWidth: 0, width: '100%' }}
                         >
                             <Box
-                                onClick={isClickable ? () => onDayClick?.(dayMoment.toDate()) : undefined}
-                                onMouseEnter={() => setHoveredDayKey(dateKey)}
-                                onMouseLeave={() => setHoveredDayKey(null)}
+                                onClick={isClickable ? () => {
+                                    if (isInTemplateCreationMode && isSelectableForTemplate) {
+                                        onTemplateSelection?.(dateKey);
+                                    } else if (!isInTemplateCreationMode) {
+                                        onDayClick?.(dayMoment.toDate());
+                                    }
+                                } : undefined}
+                                onMouseEnter={() => {
+                                    if (creatingTemplateMode === 'week' && isInWeekWithEvents) {
+                                        setHoveredWeekKey(weekKey);
+                                    } else if (creatingTemplateMode === 'day' && isSelectableForTemplate) {
+                                        setHoveredDayKey(dateKey);
+                                    } else if (!creatingTemplateMode) {
+                                        setHoveredDayKey(dateKey);
+                                    }
+                                }}
+                                onMouseLeave={() => {
+                                    if (creatingTemplateMode === 'week') {
+                                        setHoveredWeekKey(null);
+                                    } else {
+                                        setHoveredDayKey(null);
+                                    }
+                                }}
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
                                 sx={{
                                     border: isToday ? '2px solid' : '1px solid',
-                                    borderColor: isAffectedDay
+                                    borderColor: (isSelectableForTemplate && isWeekHovered)
+                                        ? 'primary.main'
+                                        : isSelectableForTemplate
+                                        ? 'rgba(146, 0, 32, 0.4)'
+                                        : isAffectedDay
                                         ? 'primary.main' 
                                         : (isBeingDraggedOver && !isWeekTemplate)
                                             ? 'primary.main'
@@ -973,7 +1031,28 @@ const CalendarGridControlled = ({
                                     ...(isToday && {
                                         boxShadow: '0 0 12px rgba(146, 0, 32, 0.25), 0 0 24px rgba(146, 0, 32, 0.1)',
                                     }),
-                                    ...(isDayHovered && isClickable && {
+                                    // Template creation mode hover - entire week highlighted
+                                    ...(isWeekHovered && isSelectableForTemplate && {
+                                        backgroundColor: 'rgba(146, 0, 32, 0.18)',
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2.5px',
+                                        boxShadow: '0 0 16px rgba(146, 0, 32, 0.3), 0 4px 12px rgba(146, 0, 32, 0.2)'
+                                    }),
+                                    // Template creation mode - single day selectable styling
+                                    ...(isSelectableForTemplate && !isWeekHovered && creatingTemplateMode === 'day' && {
+                                        backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                        borderWidth: '2px',
+                                        borderColor: 'rgba(146, 0, 32, 0.5)',
+                                        boxShadow: '0 0 12px rgba(146, 0, 32, 0.25)',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(146, 0, 32, 0.18)',
+                                            borderWidth: '2.5px',
+                                            borderColor: 'primary.main',
+                                            boxShadow: '0 0 16px rgba(146, 0, 32, 0.3), 0 4px 12px rgba(146, 0, 32, 0.2)'
+                                        }
+                                    }),
+                                    // Normal day hover (not in template creation mode)
+                                    ...(!isInTemplateCreationMode && isDayHovered && isClickable && {
                                         backgroundColor: 'rgba(146, 0, 32, 0.05)',
                                         transform: 'translateY(-2px)',
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -1041,8 +1120,8 @@ const CalendarGridControlled = ({
                                     }}>
                                         {/* Show first 3 events */}
                                         {visibleEvents.map((event, index) => {
-                                            const isHovered = hoveredEventId === event.id;
-                                            const shouldShrink = hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
+                                            const isHovered = !creatingTemplateMode && hoveredEventId === event.id;
+                                            const shouldShrink = !creatingTemplateMode && hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
 
                                             return (
                                                 <motion.div
@@ -1062,12 +1141,16 @@ const CalendarGridControlled = ({
                                                         overflow: 'visible'
                                                     }}
                                                     onMouseEnter={() => {
-                                                        setHoveredEventId(event.id);
-                                                        setHoveredEventDayKey(dateKey);
+                                                        if (!creatingTemplateMode) {
+                                                            setHoveredEventId(event.id);
+                                                            setHoveredEventDayKey(dateKey);
+                                                        }
                                                     }}
                                                     onMouseLeave={() => {
-                                                        setHoveredEventId(null);
-                                                        setHoveredEventDayKey(null);
+                                                        if (!creatingTemplateMode) {
+                                                            setHoveredEventId(null);
+                                                            setHoveredEventDayKey(null);
+                                                        }
                                                     }}
                                                 >
                                                     <EventBlock
@@ -1075,7 +1158,7 @@ const CalendarGridControlled = ({
                                                         isSelectedSite={event.isFromSelectedSite}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            if (onEventClick) {
+                                                            if (!creatingTemplateMode && onEventClick) {
                                                                 onEventClick(event);
                                                             }
                                                         }}
@@ -1284,6 +1367,8 @@ CalendarGridControlled.propTypes = {
     onSiteSelect: PropTypes.func,
     draggingTemplate: PropTypes.object, // NEW: template being dragged
     onApplyTemplate: PropTypes.func, // NEW: callback for applying templates
+    creatingTemplateMode: PropTypes.oneOf(['day', 'week', null]), // NEW: template creation mode
+    onTemplateSelection: PropTypes.func, // NEW: callback when day/week selected for template
     operatingStartHour: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     operatingEndHour: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     onOperatingStartHourChange: PropTypes.func,
@@ -1308,6 +1393,8 @@ CalendarGridControlled.defaultProps = {
     onSiteSelect: () => {},
     draggingTemplate: null,
     onApplyTemplate: () => {},
+    creatingTemplateMode: null,
+    onTemplateSelection: () => {},
     operatingStartHour: '06:00',
     operatingEndHour: '22:00',
     onOperatingStartHourChange: () => {},

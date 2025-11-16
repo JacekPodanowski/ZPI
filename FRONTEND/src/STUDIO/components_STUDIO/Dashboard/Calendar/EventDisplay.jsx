@@ -219,10 +219,11 @@ export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, si
             </Box>
 
             {/* Text: "+X wydarzeń" (positioned like event title) */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0, ml: -0.7 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0, ml: -0.5 }}>
                 <Typography
                     variant="caption"
                     sx={{
+                        fontWeight: 600,
                         fontSize: '11px',
                         color: 'rgb(30, 30, 30)',
                         letterSpacing: 0,

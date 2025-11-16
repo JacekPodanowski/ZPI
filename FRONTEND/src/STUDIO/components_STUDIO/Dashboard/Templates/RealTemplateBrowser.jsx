@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton, useTheme } from '@mui/material';
+import { Box, Typography, IconButton, useTheme, Button } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
-import { Add as AddIcon, Delete as DeleteIcon, ChevronRight, ExpandMore } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, ChevronRight, ExpandMore, Remove as RemoveIcon } from '@mui/icons-material';
 import DayTemplate from './DayTemplate';
 import WeekTemplate from './WeekTemplate';
 import Logo from '../../../../components/Logo/Logo';
@@ -12,7 +12,14 @@ import TemplateDeletionModal from './TemplateDeletionModal';
 
 //orginal color  rgba(228, 229, 218, 0.5)
 
-const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemplateDragStart, onTemplateDragEnd }) => {
+const RealTemplateBrowser = ({ 
+    onCreateDayTemplate, 
+    onCreateWeekTemplate, 
+    onTemplateDragStart, 
+    onTemplateDragEnd,
+    creatingTemplateMode, // NEW: 'day' | 'week' | null
+    onCancelTemplateCreation // NEW: callback to cancel template creation
+}) => {
     const theme = useTheme();
     const templateLibraryWidth = 230; // Fixed width for templates-only mode
     const [draggingTemplate, setDraggingTemplate] = useState(null);
@@ -202,34 +209,109 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                             {dayTemplates.length > 0 && (
                                 <IconButton
                                     size="small"
-                                    onClick={onCreateDayTemplate}
+                                    onClick={creatingTemplateMode === 'day' ? onCancelTemplateCreation : onCreateDayTemplate}
                                     sx={{
                                         p: 0.5,
                                         width: 24,
                                         height: 24,
-                                        color: 'primary.main',
+                                        color: creatingTemplateMode === 'day' ? 'error.main' : 'primary.main',
                                         '&:hover': {
-                                            backgroundColor: theme.palette.mode === 'dark'
+                                            backgroundColor: creatingTemplateMode === 'day'
+                                                ? 'rgba(211, 47, 47, 0.08)'
+                                                : theme.palette.mode === 'dark'
                                                 ? 'rgba(114, 0, 21, 0.15)'
                                                 : 'rgba(146, 0, 32, 0.08)'
                                         }
                                     }}
                                 >
-                                    <AddIcon sx={{ fontSize: 16 }} />
+                                    {creatingTemplateMode === 'day' ? (
+                                        <RemoveIcon sx={{ fontSize: 16 }} />
+                                    ) : (
+                                        <AddIcon sx={{ fontSize: 16 }} />
+                                    )}
                                 </IconButton>
                             )}
                         </Box>
 
-                        <AnimatePresence>
+                        <AnimatePresence mode="wait">
                             {dayTemplatesExpanded && (
                                 <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    style={{ overflow: 'visible', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                                    key={creatingTemplateMode === 'day' ? 'creating' : 'templates'}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative' }}
                                 >
-                                    {dayTemplates.length > 0 ? (
+                                    {creatingTemplateMode === 'day' ? (
+                                        <Box
+                                            sx={{
+                                                p: 1.5,
+                                                borderRadius: 2,
+                                                backgroundColor: theme.palette.mode === 'dark' 
+                                                    ? 'rgba(228, 229, 218, 0.05)' 
+                                                    : 'rgba(228, 229, 218, 0.7)',
+                                                border: '1px solid rgba(146, 0, 32, 0.15)',
+                                                flexShrink: 0,
+                                                mt: 0.75,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 1,
+                                                cursor: 'default'
+                                            }}
+                                        >
+                                            {/* Template Header */}
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between'
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="subtitle2"
+                                                    sx={{
+                                                        fontWeight: 700,
+                                                        fontSize: '0.75rem',
+                                                        color: 'primary.main',
+                                                        letterSpacing: '0.02em'
+                                                    }}
+                                                >
+                                                    Nowy
+                                                </Typography>
+                                            </Box>
+                                            
+                                            {/* Icon + Message */}
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: 1,
+                                                    py: 2
+                                                }}
+                                            >
+                                                <AddIcon 
+                                                    sx={{ 
+                                                        fontSize: 32, 
+                                                        color: 'primary.main',
+                                                        opacity: 0.7
+                                                    }} 
+                                                />
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        fontSize: '0.7rem',
+                                                        color: 'text.secondary',
+                                                        textAlign: 'center',
+                                                        lineHeight: 1.4
+                                                    }}
+                                                >
+                                                    Wybierz dzień aby utworzyć szablon
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    ) : dayTemplates.length > 0 ? (
                                         <Box
                                             sx={{
                                                 display: 'flex',
@@ -264,10 +346,11 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                     compact={false}
                                                     onDragStart={handleTemplateDragStart}
                                                     onDragEnd={handleTemplateDragEnd}
+                                                    isCollapsed={creatingTemplateMode === 'day'}
                                                 />
                                             ))}
                                         </Box>
-                                    ) : (
+                                    ) : (creatingTemplateMode !== 'day') ? (
                                         <Box
                                             sx={{
                                                 display: 'flex',
@@ -307,10 +390,10 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                     }
                                                 }}
                                             >
-                                                <AddIcon sx={{ fontSize: 20 }} />
+                                                <AddIcon fontSize="small" />
                                             </IconButton>
                                         </Box>
-                                    )}
+                                    ) : null}
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -381,34 +464,109 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                             {weekTemplates.length > 0 && (
                                 <IconButton
                                     size="small"
-                                    onClick={onCreateWeekTemplate}
+                                    onClick={creatingTemplateMode === 'week' ? onCancelTemplateCreation : onCreateWeekTemplate}
                                     sx={{
                                         p: 0.5,
                                         width: 24,
                                         height: 24,
-                                        color: 'primary.main',
+                                        color: creatingTemplateMode === 'week' ? 'error.main' : 'primary.main',
                                         '&:hover': {
-                                            backgroundColor: theme.palette.mode === 'dark'
+                                            backgroundColor: creatingTemplateMode === 'week'
+                                                ? 'rgba(211, 47, 47, 0.08)'
+                                                : theme.palette.mode === 'dark'
                                                 ? 'rgba(114, 0, 21, 0.15)'
                                                 : 'rgba(146, 0, 32, 0.08)'
                                         }
                                     }}
                                 >
-                                    <AddIcon sx={{ fontSize: 16 }} />
+                                    {creatingTemplateMode === 'week' ? (
+                                        <RemoveIcon sx={{ fontSize: 16 }} />
+                                    ) : (
+                                        <AddIcon sx={{ fontSize: 16 }} />
+                                    )}
                                 </IconButton>
                             )}
                         </Box>
 
-                        <AnimatePresence>
+                        <AnimatePresence mode="wait">
                             {weekTemplatesExpanded && (
                                 <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    style={{ overflow: 'visible', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                                    key={creatingTemplateMode === 'week' ? 'creating' : 'templates'}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative' }}
                                 >
-                                    {weekTemplates.length > 0 ? (
+                                    {creatingTemplateMode === 'week' ? (
+                                        <Box
+                                            sx={{
+                                                p: 1.5,
+                                                borderRadius: 2,
+                                                backgroundColor: theme.palette.mode === 'dark' 
+                                                    ? 'rgba(228, 229, 218, 0.05)' 
+                                                    : 'rgba(228, 229, 218, 0.7)',
+                                                border: '1px solid rgba(146, 0, 32, 0.15)',
+                                                flexShrink: 0,
+                                                mt: 0.75,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 1,
+                                                cursor: 'default'
+                                            }}
+                                        >
+                                            {/* Template Header */}
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between'
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="subtitle2"
+                                                    sx={{
+                                                        fontWeight: 700,
+                                                        fontSize: '0.75rem',
+                                                        color: 'primary.main',
+                                                        letterSpacing: '0.02em'
+                                                    }}
+                                                >
+                                                    Nowy
+                                                </Typography>
+                                            </Box>
+                                            
+                                            {/* Icon + Message */}
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: 1,
+                                                    py: 2
+                                                }}
+                                            >
+                                                <AddIcon 
+                                                    sx={{ 
+                                                        fontSize: 32, 
+                                                        color: 'primary.main',
+                                                        opacity: 0.7
+                                                    }} 
+                                                />
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        fontSize: '0.7rem',
+                                                        color: 'text.secondary',
+                                                        textAlign: 'center',
+                                                        lineHeight: 1.4
+                                                    }}
+                                                >
+                                                    Wybierz tydzień aby utworzyć szablon
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    ) : weekTemplates.length > 0 ? (
                                         <Box
                                             sx={{
                                                 display: 'flex',
@@ -443,10 +601,11 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                     compact={false}
                                                     onDragStart={handleTemplateDragStart}
                                                     onDragEnd={handleTemplateDragEnd}
+                                                    isCollapsed={creatingTemplateMode === 'week'}
                                                 />
                                             ))}
                                         </Box>
-                                    ) : (
+                                    ) : (creatingTemplateMode !== 'week') ? (
                                         <Box
                                             sx={{
                                                 display: 'flex',
@@ -489,7 +648,7 @@ const RealTemplateBrowser = ({ onCreateDayTemplate, onCreateWeekTemplate, onTemp
                                                 <AddIcon sx={{ fontSize: 20 }} />
                                             </IconButton>
                                         </Box>
-                                    )}
+                                    ) : null}
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -593,14 +752,18 @@ RealTemplateBrowser.propTypes = {
     onCreateDayTemplate: PropTypes.func,
     onCreateWeekTemplate: PropTypes.func,
     onTemplateDragStart: PropTypes.func,
-    onTemplateDragEnd: PropTypes.func
+    onTemplateDragEnd: PropTypes.func,
+    creatingTemplateMode: PropTypes.oneOf(['day', 'week', null]),
+    onCancelTemplateCreation: PropTypes.func
 };
 
 RealTemplateBrowser.defaultProps = {
     onCreateDayTemplate: () => console.log('Create day template'),
     onCreateWeekTemplate: () => console.log('Create week template'),
     onTemplateDragStart: () => {},
-    onTemplateDragEnd: () => {}
+    onTemplateDragEnd: () => {},
+    creatingTemplateMode: null,
+    onCancelTemplateCreation: () => {}
 };
 
 export default RealTemplateBrowser;

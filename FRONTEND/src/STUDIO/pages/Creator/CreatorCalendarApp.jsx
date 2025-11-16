@@ -8,6 +8,7 @@ import CalendarGridControlled from '../../components_STUDIO/Dashboard/Calendar/C
 import RealTemplateBrowser from '../../components_STUDIO/Dashboard/Templates/RealTemplateBrowser';
 import DayDetailsModal from '../../components_STUDIO/Dashboard/Calendar/DayDetailsModal';
 import BookingDetailsModal from '../../components_STUDIO/Dashboard/Calendar/BookingDetailsModal';
+import CreateTemplateModal from '../../components_STUDIO/Dashboard/Templates/CreateTemplateModal';
 import { getSiteColorHex } from '../../../theme/siteColors';
 import { usePreferences } from '../../../contexts/PreferencesContext';
 import { getCache, setCache, removeCache, CACHE_KEYS } from '../../../utils/cache';
@@ -106,6 +107,9 @@ const CreatorCalendarApp = () => {
     const [draggingTemplate, setDraggingTemplate] = useState(null);
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
+    const [creatingTemplateMode, setCreatingTemplateMode] = useState(null); // 'day' or 'week' or null
+    const [createTemplateModalOpen, setCreateTemplateModalOpen] = useState(false);
+    const [selectedTemplateDate, setSelectedTemplateDate] = useState(null);
     const rosterInFlightRef = useRef(new Set());
     const computePermissionsFromSites = useCallback((siteList) => {
         const map = {};
@@ -452,13 +456,43 @@ const CreatorCalendarApp = () => {
     };
 
     const handleCreateDayTemplate = () => {
-        console.log('Create day template');
-        // TODO: Implement day template creation
+        console.log('Create day template - entering selection mode');
+        setCreatingTemplateMode('day');
     };
 
     const handleCreateWeekTemplate = () => {
-        console.log('Create week template');
-        // TODO: Implement week template creation
+        console.log('Create week template - entering selection mode');
+        setCreatingTemplateMode('week');
+    };
+
+    const handleCancelTemplateCreation = () => {
+        setCreatingTemplateMode(null);
+        setSelectedTemplateDate(null);
+    };
+
+    const handleTemplateSelection = (date) => {
+        console.log('Template selection:', { date, mode: creatingTemplateMode });
+        setSelectedTemplateDate(date);
+        setCreateTemplateModalOpen(true);
+    };
+
+    const handleConfirmTemplateCreation = async (templateName) => {
+        console.log('Confirming template creation:', {
+            name: templateName,
+            type: creatingTemplateMode,
+            date: selectedTemplateDate
+        });
+        
+        // TODO: Implement API call to create template
+        // For now, just close modal and reset state
+        setCreateTemplateModalOpen(false);
+        setCreatingTemplateMode(null);
+        setSelectedTemplateDate(null);
+    };
+
+    const handleCloseCreateTemplateModal = () => {
+        setCreateTemplateModalOpen(false);
+        setSelectedTemplateDate(null);
     };
 
     const handleTemplateDragStart = (template) => {
@@ -709,6 +743,8 @@ const CreatorCalendarApp = () => {
                         onCreateWeekTemplate={handleCreateWeekTemplate}
                         onTemplateDragStart={handleTemplateDragStart}
                         onTemplateDragEnd={handleTemplateDragEnd}
+                        creatingTemplateMode={creatingTemplateMode}
+                        onCancelTemplateCreation={handleCancelTemplateCreation}
                     />
                 </Box>
 
@@ -757,6 +793,8 @@ const CreatorCalendarApp = () => {
                             currentSiteRole={currentSite?.calendarRole}
                             draggingTemplate={draggingTemplate}
                             onApplyTemplate={handleApplyTemplate}
+                            creatingTemplateMode={creatingTemplateMode}
+                            onTemplateSelection={handleTemplateSelection}
                             operatingStartHour={operatingStartHour}
                             operatingEndHour={operatingEndHour}
                             onOperatingStartHourChange={handleOperatingStartHourChange}
@@ -813,6 +851,17 @@ const CreatorCalendarApp = () => {
                     }}
                 />
             )}
+
+            {/* Create Template Modal */}
+            <CreateTemplateModal
+                open={createTemplateModalOpen}
+                onClose={handleCloseCreateTemplateModal}
+                onConfirm={handleConfirmTemplateCreation}
+                templateType={creatingTemplateMode}
+                selectedDate={selectedTemplateDate}
+                events={events}
+                sites={sites}
+            />
         </Box>
     );
 };

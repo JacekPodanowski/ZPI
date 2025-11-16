@@ -3,7 +3,7 @@ import { Box, Card, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 
-const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
+const WeekTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed }) => {
     // Generate mini calendar preview
     const days = ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Nie'];
     const activeDays = template.active_days || [];
@@ -112,7 +112,8 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                     </Box>
                 </Box>
 
-                {/* Mini Calendar Grid */}
+                {/* Mini Calendar Grid - hidden when collapsed */}
+                {!isCollapsed && (
                 <Box
                     sx={{
                         display: 'grid',
@@ -156,6 +157,7 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                         );
                     })}
                 </Box>
+                )}
 
                 {/* Subtle Drag Indicator */}
                 <Box
@@ -189,13 +191,15 @@ WeekTemplate.propTypes = {
     }).isRequired,
     compact: PropTypes.bool,
     onDragStart: PropTypes.func,
-    onDragEnd: PropTypes.func
+    onDragEnd: PropTypes.func,
+    isCollapsed: PropTypes.bool
 };
 
 WeekTemplate.defaultProps = {
     compact: false,
     onDragStart: null,
-    onDragEnd: null
+    onDragEnd: null,
+    isCollapsed: false
 };
 
 export default WeekTemplate;

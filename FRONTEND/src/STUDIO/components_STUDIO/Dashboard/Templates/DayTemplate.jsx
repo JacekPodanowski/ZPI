@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
-const DayTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
+const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed }) => {
     const [isDragging, setIsDragging] = useState(false);
 
     const handleDragStart = (e) => {
@@ -109,7 +109,8 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                     </Box>
                 </Box>
 
-                {/* Event List - styled like calendar EventBlocks */}
+                {/* Event List - styled like calendar EventBlocks (hidden when collapsed) */}
+                {!isCollapsed && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
                     {template.events?.slice(0, 3).map((event, idx) => {
                         // Get site color - prioritize site_color, fallback to color_index, then use red as default
@@ -171,6 +172,7 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd }) => {
                         </Typography>
                     )}
                 </Box>
+                )}
 
                 {/* Subtle Drag Indicator */}
                 <Box
