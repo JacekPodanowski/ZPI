@@ -22,6 +22,7 @@ import {
 import { deleteSite, updateSiteColor, updateSite } from '../../../services/siteService';
 import SiteColorPicker from './SiteColorPicker';
 import { getSiteColorHex } from '../../../theme/siteColors';
+import { getSiteUrl, getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
 
 const SiteTile = ({ site, index, onSiteDeleted }) => {
     const navigate = useNavigate();
@@ -136,7 +137,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
 
     const handleVisitSite = () => {
         handleMenuClose();
-        window.open(`https://${site.identifier}.youreasysite.com`, '_blank');
+        window.open(getSiteUrl(site.identifier), '_blank');
     };
 
     const handleDelete = () => {
@@ -595,7 +596,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     {/* URL - Clickable Link */}
                     <Box
                         component="a"
-                        href={`https://${site.identifier}.youreasysite.com`}
+                        href={getSiteUrl(site.identifier)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -623,7 +624,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                 fontWeight: 600
                             }}
                         >
-                            {site.identifier}.youreasysite.com
+                            {getSiteUrlDisplay(site.identifier)}
                         </Typography>
                     </Box>
 

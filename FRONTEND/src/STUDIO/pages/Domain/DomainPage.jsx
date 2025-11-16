@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchSiteById } from '../../../services/siteService';
 import { checkDomainAvailability } from '../../../services/domainService';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
+import { getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
 
 const DomainPage = () => {
     const { siteId } = useParams();
@@ -164,10 +165,14 @@ const DomainPage = () => {
                     sx={{ 
                         fontFamily: 'monospace',
                         color: 'primary.main',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        mb: 1
                     }}
                 >
-                    {site.identifier}.youreasysite.com
+                    {getSiteUrlDisplay(site.identifier)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Production URL: {site.identifier}.youreasysite.com
                 </Typography>
             </Paper>
 

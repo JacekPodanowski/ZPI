@@ -17,6 +17,7 @@ import { getSiteColorHex } from '../../../theme/siteColors';
 import SiteColorPicker from './SiteColorPicker';
 import { updateSiteColor, acceptTeamInvitation, rejectTeamInvitation } from '../../../services/siteService';
 import { getRoleInfo } from '../../../constants/teamRoles';
+import { getSiteUrl, getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
 
 const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate }) => {
     const navigate = useNavigate();
@@ -460,7 +461,7 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
                     {/* URL */}
                     <Box
                         component="a"
-                        href={`https://${site.identifier}.youreasysite.com`}
+                        href={getSiteUrl(site.identifier)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -488,7 +489,7 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
                                 fontWeight: 600
                             }}
                         >
-                            {site.identifier}.youreasysite.com
+                            {getSiteUrlDisplay(site.identifier)}
                         </Typography>
                     </Box>
 
