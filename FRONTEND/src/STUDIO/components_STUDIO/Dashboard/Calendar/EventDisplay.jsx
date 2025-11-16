@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Typography, Tooltip } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PropTypes from 'prop-types';
-import { KeyboardArrowDown as ExpandIcon } from '@mui/icons-material';
+import { KeyboardArrowDown as ExpandIcon, ExpandMore as ChevronDownIcon } from '@mui/icons-material';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
 // Threshold for collapsing events into a single "show more" rectangle
@@ -175,7 +175,6 @@ EventBlock.defaultProps = {
 export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, siteColors = [] }) => {
     // Deduplicate site colors - only show unique colors
     const uniqueColors = [...new Set(siteColors.filter(Boolean))];
-    const primaryColor = uniqueColors[0] || 'rgb(146, 0, 32)';
     const additionalCount = eventCount - visibleCount;
     
     return (
@@ -187,7 +186,7 @@ export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, si
                 py: 0.25,
                 borderRadius: 1.5,
                 backgroundColor: 'rgba(248, 248, 245, 0.95)',
-                border: `1px solid ${alpha(primaryColor, 0.2)}`,
+                border: `1px solid rgba(146, 0, 32, 0.3)`,
                 cursor: 'pointer',
                 transition: 'all 180ms cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
@@ -195,30 +194,50 @@ export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, si
                 justifyContent: 'space-between',
                 gap: 0.5,
                 '&:hover': {
-                    backgroundColor: alpha(primaryColor, 0.08),
-                    borderColor: alpha(primaryColor, 0.4),
+                    backgroundColor: 'rgba(240, 240, 235, 1)',
+                    borderColor: 'rgba(146, 0, 32, 0.5)',
                     transform: 'translateY(-1px)',
-                    boxShadow: `0 2px 8px ${alpha(primaryColor, 0.2)}`,
+                    boxShadow: `0 2px 8px rgba(0, 0, 0, 0.1)`,
                 }
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0 }}>
-                <Typography
-                    variant="body2"
+            {/* Expandable icon (like time in regular events) */}
+            <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                minWidth: '28px',
+                mr: 0.5
+            }}>
+                <ChevronDownIcon
                     sx={{
-                        fontWeight: 600,
-                        fontSize: '10px',
-                        color: primaryColor,
+                        fontSize: '18px',
+                        color: 'rgba(30, 30, 30, 0.5)',
+                    }}
+                />
+            </Box>
+
+            {/* Text: "+X wydarzeń" (positioned like event title) */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0, ml: -0.7 }}>
+                <Typography
+                    variant="caption"
+                    sx={{
+                        fontSize: '11px',
+                        color: 'rgb(30, 30, 30)',
                         letterSpacing: 0,
-                        lineHeight: 1,
+                        lineHeight: 1.2,
                         whiteSpace: 'nowrap'
                     }}
                 >
-                    +{additionalCount} wydarzeń
+                    <Box component="span" sx={{ fontWeight: 700 }}>
+                        +{additionalCount}
+                    </Box>
+                    {' '}wydarzeń
                 </Typography>
             </Box>
             
-            {/* Color circles for unique sites */}
+            {/* Color circles for unique sites (like capacity in regular events) */}
             <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexShrink: 0 }}>
                 {uniqueColors.slice(0, 4).map((color, index) => (
                     <Box
@@ -236,7 +255,7 @@ export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, si
                     <Typography
                         sx={{
                             fontSize: '7px',
-                            color: alpha(primaryColor, 0.6),
+                            color: 'rgba(30, 30, 30, 0.6)',
                             ml: 0.125,
                             fontWeight: 500,
                             lineHeight: 1
