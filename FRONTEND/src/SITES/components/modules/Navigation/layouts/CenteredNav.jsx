@@ -15,10 +15,28 @@ const CenteredNav = ({ content, style, onNavigate }) => {
   const textSizeClass = style?.textSize || 'text-base';
 
   const handleLinkClick = (event, link) => {
+    event.preventDefault();
+    
+    // Jeśli jest onNavigate (edytor), użyj go
     if (onNavigate && link.pageId) {
-      event.preventDefault();
-      onNavigate(link.pageId, link.href);
+      onNavigate(link.pageId);
+      setIsMenuOpen(false);
+      return;
     }
+    
+    // W przeciwnym razie użyj systemu eventów (publiczna strona)
+    if (typeof window !== 'undefined') {
+      const navigationEvent = new CustomEvent('site:navigate', {
+        detail: {
+          pageId: link.pageId,
+          path: link.href
+        }
+      });
+      window.dispatchEvent(navigationEvent);
+    }
+    
+    // Zamknij menu mobilne po kliknięciu
+    setIsMenuOpen(false);
   };
   
   return (
@@ -31,7 +49,18 @@ const CenteredNav = ({ content, style, onNavigate }) => {
     >
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Logo Centered */}
-        <a href="/" className="flex flex-col items-center gap-2 mb-6">
+        <a 
+          href="/" 
+          className="flex flex-col items-center gap-2 mb-6"
+          onClick={(e) => {
+            e.preventDefault();
+            // Znajdź link do strony głównej
+            const homeLink = content.links?.find(link => link.href === '/' || link.pageId === 'home');
+            if (homeLink) {
+              handleLinkClick(e, homeLink);
+            }
+          }}
+        >
           {content.logo?.src && (
             <img 
               src={content.logo.src} 

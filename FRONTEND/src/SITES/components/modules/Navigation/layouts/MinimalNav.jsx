@@ -11,10 +11,28 @@ const MinimalNav = ({ content, style, onNavigate }) => {
   const animationClass = style?.animations || '';
 
   const handleLinkClick = (event, link) => {
+    event.preventDefault();
+    
+    // Jeśli jest onNavigate (edytor), użyj go
     if (onNavigate && link.pageId) {
-      event.preventDefault();
-      onNavigate(link.pageId, link.href);
+      onNavigate(link.pageId);
+      setIsMenuOpen(false);
+      return;
     }
+    
+    // W przeciwnym razie użyj systemu eventów (publiczna strona)
+    if (typeof window !== 'undefined') {
+      const navigationEvent = new CustomEvent('site:navigate', {
+        detail: {
+          pageId: link.pageId,
+          path: link.href
+        }
+      });
+      window.dispatchEvent(navigationEvent);
+    }
+    
+    // Zamknij menu mobilne po kliknięciu
+    setIsMenuOpen(false);
   };
   
   return (
@@ -32,6 +50,14 @@ const MinimalNav = ({ content, style, onNavigate }) => {
               href="/" 
               className="text-lg md:text-xl font-light tracking-wider"
               style={{ color: activeColor }}
+              onClick={(e) => {
+                e.preventDefault();
+                // Znajdź link do strony głównej
+                const homeLink = content.links?.find(link => link.href === '/' || link.pageId === 'home');
+                if (homeLink) {
+                  handleLinkClick(e, homeLink);
+                }
+              }}
             >
               {content.logo.text}
             </a>

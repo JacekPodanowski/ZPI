@@ -13,11 +13,17 @@ import './index.css';
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const buildTarget = import.meta.env.VITE_BUILD_TARGET;
-
+const routingMode = import.meta.env.VITE_APP_ROUTING_MODE;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+// W trybie subdomeny, renderujemy bezpośrednio SiteApp, jeśli nie jesteśmy na domenie "studio" lub "localhost"
+// To pozwala uniknąć ładowania całego routera Studio dla stron publicznych.
+const hostname = window.location.hostname;
+const isStudioDomain = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('studio.');
+const renderSiteDirectly = routingMode === 'subdomain' && !isStudioDomain;
+
 // If the build target is 'SITE', render only the user's public site
-if (buildTarget === 'SITE') {
+if (buildTarget === 'SITE' || renderSiteDirectly) {
   root.render(
     <ErrorBoundary>
       <React.StrictMode>

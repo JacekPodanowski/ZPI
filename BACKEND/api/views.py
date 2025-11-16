@@ -1315,6 +1315,13 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @extend_schema(tags=['Public Sites'])
+class PublicSiteListView(generics.ListAPIView):
+    queryset = Site.objects.select_related('owner').order_by('name')
+    serializer_class = PublicSiteSerializer
+    permission_classes = [AllowAny]
+
+
+@extend_schema(tags=['Public Sites'])
 class PublicSiteView(generics.RetrieveAPIView):
     queryset = Site.objects.select_related('owner')
     serializer_class = PublicSiteSerializer

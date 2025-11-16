@@ -8,13 +8,13 @@ import composeSiteStyle, {
   extractStyleOverrides as extractStyleOverridesFromConfig
 } from './styles/utils.js';
 
-const fetchPublicSiteConfig = async (siteId) => {
-  const response = await apiClient.get(`/public-sites/by-id/${siteId}/`);
+const fetchPublicSiteConfig = async (identifier) => {
+  const response = await apiClient.get(`/public-sites/${identifier}/`);
   return response.data;
 };
 
 // NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
-const renderModule = (module, style, siteId) => {
+const renderModule = (module, style, siteId, activePageKey) => {
   if (module?.enabled === false) return null;
   
   const moduleType = (module.type || module.id || '').toLowerCase();
@@ -23,11 +23,17 @@ const renderModule = (module, style, siteId) => {
   if (moduleDef) {
     const Component = moduleDef.component;
     const layout = module.content?.layout || moduleDef.defaultLayout;
+    
+    // Dla nawigacji dodaj activePageId do contentu
+    const content = moduleType === 'navigation' 
+      ? { ...module.content, activePageId: activePageKey }
+      : module.content || {};
+    
     return (
       <Component
         key={module.id}
         layout={layout}
-        content={module.content || {}}
+        content={content}
         style={style}
         siteId={siteId}
       />
@@ -43,28 +49,69 @@ const renderModule = (module, style, siteId) => {
   }
 };
 
-const SiteApp = () => {
-  const siteId = import.meta.env.VITE_SITE_ID;
+// ZMIANA: Komponent teraz przyjmuje opcjonalny props `siteIdentifierFromPath`
+const SiteApp = ({ siteIdentifierFromPath }) => {
   const [config, setConfig] = useState(null);
+  const [siteId, setSiteId] = useState(null);
+  const [siteIdentifier, setSiteIdentifier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activePageKey, setActivePageKey] = useState(null);
 
   useEffect(() => {
-    if (!siteId) {
-      setError('VITE_SITE_ID is missing. Cannot render site.');
+    const routingMode = import.meta.env.VITE_APP_ROUTING_MODE;
+    const buildTarget = import.meta.env.VITE_BUILD_TARGET;
+    let identifier = null;
+
+    // Tryb SITE (dla Vercel deployments)
+    if (buildTarget === 'SITE') {
+      identifier = import.meta.env.VITE_SITE_ID;
+    } 
+    // Tryb path (deweloperski)
+    else if (routingMode === 'path') {
+      identifier = siteIdentifierFromPath;
+    } 
+    // Tryb subdomain (produkcyjny)
+    else {
+      const hostname = window.location.hostname;
+      const parts = hostname.split('.');
+      // Ignoruj "www" i "studio"
+      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'studio') {
+        identifier = parts[0];
+      } else if (parts[0] !== 'localhost' && parts[0] !== 'studio') {
+        // Dla prostych domen (bez subdomen)
+        identifier = parts[0];
+      }
+    }
+    
+    if (!identifier) {
+      setError('Nie można zidentyfikować strony na podstawie adresu URL.');
       setLoading(false);
       return;
     }
 
+    setSiteIdentifier(identifier);
+
     const loadSite = async () => {
       try {
-        const siteConfig = await fetchPublicSiteConfig(siteId);
-        // Only support new format: template_config.site
-        const templateConfig = siteConfig.template_config?.site || {};
+        const siteData = await fetchPublicSiteConfig(identifier);
+        setSiteId(siteData.id);
+        
+        // Obsługa dwóch struktur: template_config.site lub template_config bezpośrednio
+        let templateConfig;
+        if (siteData.template_config?.site) {
+          // Nowa struktura: { template_config: { site: { pages: [...] } } }
+          templateConfig = siteData.template_config.site;
+        } else if (siteData.template_config?.pages) {
+          // Stara struktura: { template_config: { pages: [...] } }
+          templateConfig = siteData.template_config;
+        } else {
+          templateConfig = {};
+        }
+        
         setConfig(templateConfig);
       } catch (err) {
-        setError('Could not load site configuration.');
+        setError(`Strona "${identifier}" nie została znaleziona lub wystąpił błąd ładowania.`);
         console.error(err);
       } finally {
         setLoading(false);
@@ -72,7 +119,7 @@ const SiteApp = () => {
     };
 
     loadSite();
-  }, [siteId]);
+  }, [siteIdentifierFromPath]);
 
   useEffect(() => {
     if (!config) return;
@@ -83,11 +130,41 @@ const SiteApp = () => {
           acc[page.id] = page;
           return acc;
         }, {})
-      : {};
+      : (config.pages || {});
+
+    // Funkcja pomocnicza do budowania pełnej ścieżki w zależności od trybu
+    const buildFullPath = (route) => {
+      const routingMode = import.meta.env.VITE_APP_ROUTING_MODE;
+      const buildTarget = import.meta.env.VITE_BUILD_TARGET;
+      
+      // W trybie SITE lub subdomain, używaj bezpośrednich ścieżek
+      if (buildTarget === 'SITE' || routingMode === 'subdomain') {
+        return route;
+      }
+      
+      // W trybie path, dodaj prefiks /viewer/:siteIdentifier
+      if (routingMode === 'path' && siteIdentifier) {
+        return `/viewer/${siteIdentifier}${route}`;
+      }
+      
+      return route;
+    };
 
     const getPageKeyFromPath = (path) => {
       if (!path) return null;
-      const entry = Object.entries(pages).find(([, page]) => page?.route === path);
+      
+      // W trybie path, usuń prefiks /viewer/:siteIdentifier
+      const routingMode = import.meta.env.VITE_APP_ROUTING_MODE;
+      let cleanPath = path;
+      
+      if (routingMode === 'path' && siteIdentifier) {
+        const prefix = `/viewer/${siteIdentifier}`;
+        if (path.startsWith(prefix)) {
+          cleanPath = path.substring(prefix.length) || '/';
+        }
+      }
+      
+      const entry = Object.entries(pages).find(([, page]) => page?.route === cleanPath);
       return entry ? entry[0] : null;
     };
 
@@ -102,7 +179,10 @@ const SiteApp = () => {
       return matchedFromLocation || defaultKey;
     };
 
-    setActivePageKey(determineInitialPage());
+    // Ustaw początkową stronę tylko raz przy załadowaniu konfiguracji
+    if (!activePageKey) {
+      setActivePageKey(determineInitialPage());
+    }
 
     const handlePopState = () => {
       if (typeof window === 'undefined') {
@@ -112,27 +192,6 @@ const SiteApp = () => {
       if (nextKey && pages[nextKey]) {
         setActivePageKey(nextKey);
       }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [config]);
-
-  useEffect(() => {
-    if (!config) return;
-
-    // Convert pages array to object for rendering
-    const pages = Array.isArray(config.pages)
-      ? config.pages.reduce((acc, page) => {
-          acc[page.id] = page;
-          return acc;
-        }, {})
-      : {};
-
-    const getPageKeyFromPath = (path) => {
-      if (!path) return null;
-      const entry = Object.entries(pages).find(([, page]) => page?.route === path);
-      return entry ? entry[0] : null;
     };
 
     const handleNavigation = (event) => {
@@ -145,6 +204,7 @@ const SiteApp = () => {
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        return;
       }
 
       let pageKey = target.pageId;
@@ -156,7 +216,8 @@ const SiteApp = () => {
       if (pageKey && pages[pageKey]) {
         setActivePageKey(pageKey);
         if (typeof window !== 'undefined') {
-          const nextPath = pages[pageKey].route || `/${pageKey}`;
+          const baseRoute = pages[pageKey].route || `/${pageKey}`;
+          const nextPath = buildFullPath(baseRoute);
           if (window.location.pathname !== nextPath) {
             window.history.pushState({}, '', nextPath);
           }
@@ -170,9 +231,13 @@ const SiteApp = () => {
       }
     };
 
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('site:navigate', handleNavigation);
-    return () => window.removeEventListener('site:navigate', handleNavigation);
-  }, [config]);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('site:navigate', handleNavigation);
+    };
+  }, [config, siteIdentifier, activePageKey]);
 
   const activePage = config?.pages
     ? (Array.isArray(config.pages) 
@@ -189,13 +254,49 @@ const SiteApp = () => {
   const styleOverrides = extractStyleOverridesFromConfig(config);
   const style = composeSiteStyle(styleId, styleOverrides);
 
+  // Renderuj globalne moduły (np. nawigacja) - są to moduły na poziomie site, nie strony
+  const globalModules = (config.modules || [])
+    .filter((module) => module?.enabled !== false)
+    .sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0));
+
+  // Automatycznie generuj nawigację z listy stron, jeśli nie ma zdefiniowanego modułu nawigacji
+  const hasNavigationModule = globalModules.some(m => m.type === 'navigation');
+  const autoNavigation = !hasNavigationModule && config.pages ? {
+    id: 'auto-navigation',
+    type: 'navigation',
+    order: -1000,
+    enabled: true,
+    content: {
+      layout: 'horizontal',
+      links: Array.isArray(config.pages) 
+        ? config.pages.map(page => ({
+            label: page.name || page.id,
+            href: page.route || `/${page.id}`,
+            pageId: page.id
+          }))
+        : Object.entries(config.pages).map(([pageId, page]) => ({
+            label: page.name || pageId,
+            href: page.route || `/${pageId}`,
+            pageId: pageId
+          }))
+    }
+  } : null;
+
+  // Renderuj moduły specyficzne dla aktywnej strony
   const modulesToRender = activePage.modules
     ?.filter((module) => module?.enabled !== false)
     ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0)) || [];
 
   return (
     <main>
-      {modulesToRender.map((module) => renderModule(module, style, siteId))}
+      {/* Renderuj automatyczną nawigację jeśli nie ma zdefiniowanej */}
+      {autoNavigation && renderModule(autoNavigation, style, siteId, activePageKey)}
+      
+      {/* Renderuj globalne moduły (nawigacja, stopka) */}
+      {globalModules.map((module) => renderModule(module, style, siteId, activePageKey))}
+      
+      {/* Następnie renderuj moduły specyficzne dla strony */}
+      {modulesToRender.map((module) => renderModule(module, style, siteId, activePageKey))}
     </main>
   );
 };
