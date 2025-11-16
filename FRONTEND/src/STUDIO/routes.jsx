@@ -7,7 +7,6 @@ import NewProjectPage from './pages/NewSite/NewProjectPage';
 import ManageModulesPage from './pages/NewSite/ManageModulesPage';
 import StyleSelectionPage from './pages/NewSite/StyleSelectionPage';
 import NewEditorPage from './pages/Editor/NewEditorPage';
-import CreatorDashboardPage from './pages/Creator/CreatorDashboardPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import StudioLayout from './layouts/StudioLayout';
@@ -21,8 +20,8 @@ import MailsPage from './pages/Settings/MailsPage';
 import ToastTestPage from './pages/Settings/ToastTestPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
-import EditorLabPage from './pages/Lab/EditorLabPage';
 import TeamPage from './pages/Team/TeamPage';
+import DomainPage from './pages/Domain/DomainPage';
 import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
 import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
 import MagicLoginPage from './pages/Auth/MagicLoginPage';
@@ -48,6 +47,9 @@ const StudioApp = () => (
   <Route path="new/style" element={<ProtectedRoute><StyleSelectionPage /></ProtectedRoute>} />
     <Route path="sites/modules/:siteId" element={<ProtectedRoute><ManageModulesPage /></ProtectedRoute>} />
 
+    {/* Domain management - OUTSIDE StudioLayout because REAL_DefaultLayout handles everything */}
+    <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
+
     <Route element={<StudioLayout />}>
       {/* Studio dashboard and site management */}
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
@@ -60,13 +62,11 @@ const StudioApp = () => (
 
       {/* Dev Lab */}
       <Route path="lab/components" element={<ProtectedRoute><ComponentLabPage /></ProtectedRoute>} />
-      <Route path="lab/editor" element={<EditorLabPage />} />
 
       {/* Admin area */}
       <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
       <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
 
-      <Route path="creator" element={<ProtectedRoute><CreatorDashboardPage /></ProtectedRoute>} />
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
     </Route>
 

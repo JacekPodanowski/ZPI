@@ -22,6 +22,9 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() in ['true', '1', 't', 'yes']
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 DISCORD_SERVER_URL = os.environ.get("DISCORD_SERVER_URL")
 
+# --- NameSilo API (for domain checking) ---
+NAMESILO_API_KEY = os.environ.get('NAMESILO_API_KEY')
+
 SUPABASE_URL = os.environ.get('supabase_url')
 SUPABASE_ANON_KEY = os.environ.get('supabase_api_key')
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')

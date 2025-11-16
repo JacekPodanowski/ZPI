@@ -2773,3 +2773,174 @@ def reject_invitation_studio(request, token):
         'message': 'Invitation rejected.'
     })
 
+
+# Domain availability checking with NameSilo API
+import xml.etree.ElementTree as ET
+from urllib.parse import urlencode
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_domain_availability(request):
+    """
+    Check domain availability across multiple TLDs using NameSilo API.
+    
+    Query params:
+        domain: str - Domain name without TLD (e.g., "mybusiness")
+    
+    Returns:
+        List of available domains with pricing information
+    """
+    domain = request.GET.get('domain', '').strip().lower()
+    
+    if not domain:
+        return Response(
+            {'error': 'Domain name is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate domain name (alphanumeric and hyphens only)
+    if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', domain):
+        return Response(
+            {'error': 'Invalid domain name. Use only letters, numbers, and hyphens.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # TLDs to check (sorted by popularity and price)
+    tlds = ['com', 'net', 'org', 'io', 'dev', 'app', 'tech', 'store', 'online']
+    
+    # Get API key from settings
+    api_key = getattr(settings, 'NAMESILO_API_KEY', None)
+    
+    if not api_key:
+        logger.error('NAMESILO_API_KEY not configured in settings')
+        return Response(
+            {'error': 'Domain service not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    results = []
+    
+    for tld in tlds:
+        full_domain = f"{domain}.{tld}"
+        
+        try:
+            # Call NameSilo API
+            params = {
+                'version': '1',
+                'type': 'xml',
+                'key': api_key,
+                'domains': full_domain
+            }
+            
+            url = f"https://www.namesilo.com/api/checkRegisterAvailability?{urlencode(params)}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code != 200:
+                logger.warning(f"NameSilo API returned status {response.status_code} for {full_domain}")
+                continue
+            
+            # Parse XML response
+            root = ET.fromstring(response.content)
+            
+            # Check if domain is available
+            available_elem = root.find('.//available')
+            if available_elem is not None and available_elem.text == 'yes':
+                # Get pricing
+                price_elem = root.find('.//price')
+                price = price_elem.text if price_elem is not None else 'N/A'
+                
+                results.append({
+                    'domain': full_domain,
+                    'tld': tld,
+                    'available': True,
+                    'price': price,
+                    'renewalPrice': price,  # NameSilo usually same price for renewal
+                    'purchaseUrl': f"https://www.namesilo.com/domain/search-domains?query={full_domain}"
+                })
+                
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout checking domain {full_domain}")
+            continue
+        except ET.ParseError as e:
+            logger.error(f"Failed to parse XML for {full_domain}: {e}")
+            continue
+        except Exception as e:
+            logger.error(f"Error checking domain {full_domain}: {e}")
+            continue
+    
+    # Sort by price (convert to float for sorting)
+    results.sort(key=lambda x: float(x['price']) if x['price'] != 'N/A' else float('inf'))
+    
+    return Response(results)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_domain_pricing(request):
+    """
+    Get pricing for specific TLD.
+    
+    Query params:
+        tld: str - Top-level domain (e.g., "com", "io")
+    """
+    tld = request.GET.get('tld', '').strip().lower()
+    
+    if not tld:
+        return Response(
+            {'error': 'TLD is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    api_key = getattr(settings, 'NAMESILO_API_KEY', None)
+    
+    if not api_key:
+        return Response(
+            {'error': 'Domain service not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    try:
+        params = {
+            'version': '1',
+            'type': 'xml',
+            'key': api_key,
+        }
+        
+        url = f"https://www.namesilo.com/api/getPrices?{urlencode(params)}"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code != 200:
+            return Response(
+                {'error': 'Failed to fetch pricing'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Parse XML response
+        root = ET.fromstring(response.content)
+        
+        # Find pricing for the specific TLD
+        for tld_elem in root.findall('.//tld'):
+            if tld_elem.get('extension') == tld:
+                registration = tld_elem.find('registration')
+                renewal = tld_elem.find('renewal')
+                
+                return Response({
+                    'tld': tld,
+                    'registration': registration.text if registration is not None else None,
+                    'renewal': renewal.text if renewal is not None else None
+                })
+        
+        return Response(
+            {'error': f'Pricing not found for TLD: {tld}'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+        
+    except Exception as e:
+        logger.error(f"Error fetching domain pricing: {e}")
+        return Response(
+            {'error': 'Failed to fetch pricing'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+

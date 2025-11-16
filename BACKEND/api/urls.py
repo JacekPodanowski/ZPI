@@ -41,6 +41,8 @@ from .views import (
     accept_invitation,
     accept_invitation_studio,
     reject_invitation_studio,
+    check_domain_availability,
+    get_domain_pricing,
 )
 
 
@@ -89,4 +91,7 @@ urlpatterns = [
     path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
     path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),
     path('team-invitations/<uuid:token>/reject/', reject_invitation_studio, name='reject-invitation-studio'),
+    # Domain checking endpoints
+    path('domains/check-availability/', check_domain_availability, name='check-domain-availability'),
+    path('domains/pricing/', get_domain_pricing, name='get-domain-pricing'),
 ]

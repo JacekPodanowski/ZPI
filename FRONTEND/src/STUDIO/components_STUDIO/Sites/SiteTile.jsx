@@ -16,7 +16,8 @@ import {
     ViewModule as ViewModuleIcon,
     Warning as WarningIcon,
     BugReport as BugReportIcon,
-    People as PeopleIcon
+    People as PeopleIcon,
+    Language as LanguageIcon
 } from '@mui/icons-material';
 import { deleteSite, updateSiteColor, updateSite } from '../../../services/siteService';
 import SiteColorPicker from './SiteColorPicker';
@@ -819,6 +820,13 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                 <MenuItem onClick={handleOpenLab}>
                     <SettingsIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Site Settings
+                </MenuItem>
+                <MenuItem onClick={() => {
+                    handleMenuClose();
+                    navigate(`/studio/domain/${site.id}`);
+                }}>
+                    <LanguageIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
+                    Change Domain
                 </MenuItem>
                 <MenuItem onClick={handleVisitSite}>
                     <LinkIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
