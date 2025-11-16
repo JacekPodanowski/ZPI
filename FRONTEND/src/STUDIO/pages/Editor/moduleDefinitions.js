@@ -12,9 +12,22 @@ import {
   AttachMoney,
   Help,
   Group,
-  Menu
+  Menu,
+  RequestQuote
 } from '@mui/icons-material';
 import { PUBLIC_CALENDAR_BIG_DEFAULTS } from '../../../SITES/components/modules/Caldenar_Full/defaults';
+import { HERO_DEFAULTS } from '../../../SITES/components/modules/Hero/defaults';
+import { ABOUT_DEFAULTS } from '../../../SITES/components/modules/About/defaults';
+import { BLOG_DEFAULTS } from '../../../SITES/components/modules/Blog/defaults';
+import { BUTTON_DEFAULTS } from '../../../SITES/components/modules/Button/defaults';
+import { CONTACT_DEFAULTS } from '../../../SITES/components/modules/Contact/defaults';
+import { EVENTS_DEFAULTS } from '../../../SITES/components/modules/Events/defaults';
+import { FAQ_DEFAULTS } from '../../../SITES/components/modules/FAQ/defaults';
+import { GALLERY_DEFAULTS } from '../../../SITES/components/modules/Gallery/defaults';
+import { SERVICES_AND_PRICING_DEFAULTS, SERVICES_DEFAULTS, TEAM_DEFAULTS } from '../../../SITES/components/modules/_descriptors';
+import { SPACER_DEFAULTS } from '../../../SITES/components/modules/Spacer/defaults';
+import { TEXT_DEFAULTS } from '../../../SITES/components/modules/Text/defaults';
+import { VIDEO_DEFAULTS } from '../../../SITES/components/modules/Video/defaults';
 
 const slugify = (value = '') => {
   return value
@@ -26,6 +39,19 @@ const slugify = (value = '') => {
     || 'page';
 };
 
+const MODULE_TYPE_ALIASES = {
+  servicesandpricing: 'servicesAndPricing'
+};
+
+const normalizeModuleType = (type = '') => {
+  const raw = (type || '').toString();
+  if (!raw) {
+    return '';
+  }
+  const alias = MODULE_TYPE_ALIASES[raw.toLowerCase()];
+  return alias || raw;
+};
+
 export const MODULE_DEFINITIONS = {
   navigation: {
     type: 'navigation',
@@ -33,8 +59,10 @@ export const MODULE_DEFINITIONS = {
     icon: Menu,
     color: '#333333',
     description: 'Add a navigation bar with logo and menu links. Essential for site structure and user navigation between pages.',
+    category: 'structure',
     special: true, // Special module - not draggable, always at top
-    defaultHeight: 60 // px - matches real Navigation component NAV_HEIGHT
+    defaultHeight: 60, // px - matches real Navigation component NAV_HEIGHT
+    quickAddOrder: 0
   },
   hero: {
     type: 'hero',
@@ -42,7 +70,9 @@ export const MODULE_DEFINITIONS = {
     icon: ViewColumn,
     color: '#FF6B6B',
     description: 'Create a powerful first impression with a hero section featuring headline, description, image, and call-to-action buttons.',
-    defaultHeight: 700 // px - large hero section
+    category: 'content',
+    defaultHeight: 700, // px - large hero section
+    quickAddOrder: 1
   },
   about: {
     type: 'about',
@@ -50,7 +80,9 @@ export const MODULE_DEFINITIONS = {
     icon: Info,
     color: '#4ECDC4',
     description: 'Share your story and build credibility with an about section featuring your background, mission, and values.',
-    defaultHeight: 600 // px - medium content section
+    category: 'content',
+    defaultHeight: 600, // px - medium content section
+    quickAddOrder: 2
   },
   services: {
     type: 'services',
@@ -58,7 +90,19 @@ export const MODULE_DEFINITIONS = {
     icon: GridView,
     color: '#45B7D1',
     description: 'Showcase your services or offerings in a clean grid or list layout with descriptions and pricing.',
-    defaultHeight: 800 // px - large section with cards
+    category: 'content',
+    defaultHeight: 800, // px - large section with cards
+    quickAddOrder: 3
+  },
+  servicesAndPricing: {
+    type: 'servicesAndPricing',
+    label: 'Services + Pricing',
+    icon: RequestQuote,
+    color: '#A66DD4',
+    description: 'Blend detailed service cards with transparent pricing tables and upsell callouts.',
+    category: 'content',
+    defaultHeight: 820,
+    quickAddOrder: 4
   },
   gallery: {
     type: 'gallery',
@@ -66,7 +110,9 @@ export const MODULE_DEFINITIONS = {
     icon: Image,
     color: '#FFA07A',
     description: 'Display your visual work in an elegant image gallery with multiple layout options including grid, masonry, and carousel.',
-    defaultHeight: 900 // px - large gallery grid
+    category: 'media',
+    defaultHeight: 900, // px - large gallery grid
+    quickAddOrder: 5
   },
   calendar: {
     type: 'calendar',
@@ -74,7 +120,9 @@ export const MODULE_DEFINITIONS = {
     icon: CalendarMonth,
     color: '#98D8C8',
     description: 'Enable appointment booking with an integrated calendar. Choose between compact view for quick booking or full calendar with detailed event information.',
-    defaultHeight: 750 // px - calendar widget height (can change based on type)
+    category: 'interactive',
+    defaultHeight: 750, // px - calendar widget height (can change based on type)
+    quickAddOrder: 6
   },
   contact: {
     type: 'contact',
@@ -82,7 +130,9 @@ export const MODULE_DEFINITIONS = {
     icon: ContactMail,
     color: '#FFD93D',
     description: 'Make it easy for visitors to reach you with a contact form including email, phone, and optional location information.',
-    defaultHeight: 500 // px - contact form section
+    category: 'interactive',
+    defaultHeight: 500, // px - contact form section
+    quickAddOrder: 7
   },
   text: {
     type: 'text',
@@ -90,7 +140,9 @@ export const MODULE_DEFINITIONS = {
     icon: Article,
     color: '#A8E6CF',
     description: 'Add rich text content with flexible formatting. Perfect for articles, announcements, or any written content.',
-    defaultHeight: 400 // px - flexible text section
+    category: 'content',
+    defaultHeight: 400, // px - flexible text section
+    quickAddOrder: 8
   },
   video: {
     type: 'video',
@@ -98,7 +150,9 @@ export const MODULE_DEFINITIONS = {
     icon: VideoLibrary,
     color: '#C7CEEA',
     description: 'Embed videos from files, YouTube, or other platforms to showcase your work or share multimedia content.',
-    defaultHeight: 600 // px - 16:9 video player
+    category: 'media',
+    defaultHeight: 600, // px - 16:9 video player
+    quickAddOrder: 9
   },
   testimonials: {
     type: 'testimonials',
@@ -106,15 +160,21 @@ export const MODULE_DEFINITIONS = {
     icon: RateReview,
     color: '#F8B195',
     description: 'Build trust by displaying client reviews and testimonials. Social proof that validates your expertise and service quality.',
-    defaultHeight: 550 // px - testimonial cards
+    category: 'content',
+    defaultHeight: 550, // px - testimonial cards
+    quickAddOrder: 10
   },
   pricing: {
     type: 'pricing',
-    label: 'Pricing',
+    label: 'Pricing (Legacy)',
     icon: AttachMoney,
     color: '#88D8B0',
-    description: 'Present your pricing plans in clear, attractive cards with features and call-to-action buttons for easy comparison.',
-    defaultHeight: 700 // px - pricing cards section
+    description: 'Legacy pricing tables kept for backward compatibility. Prefer the Services + Pricing module.',
+    category: 'content',
+    defaultHeight: 700,
+    deprecated: true,
+    hidden: true,
+    quickAddOrder: 98
   },
   faq: {
     type: 'faq',
@@ -122,7 +182,9 @@ export const MODULE_DEFINITIONS = {
     icon: Help,
     color: '#FFEAA7',
     description: 'Answer common questions in an organized accordion format. Helps reduce support inquiries and inform visitors.',
-    defaultHeight: 650 // px - accordion section
+    category: 'content',
+    defaultHeight: 650, // px - accordion section
+    quickAddOrder: 11
   },
   team: {
     type: 'team',
@@ -130,15 +192,20 @@ export const MODULE_DEFINITIONS = {
     icon: Group,
     color: '#DFE6E9',
     description: 'Introduce your team members with photos, names, roles, and short bios. Perfect for building personal connections.',
-    defaultHeight: 700 // px - team member cards
+    category: 'content',
+    defaultHeight: 700, // px - team member cards
+    quickAddOrder: 12
   }
 };
 
 // Get module definition by type
 export const getModuleDefinition = (type) => {
-  return MODULE_DEFINITIONS[type] || {
-    type,
-    label: type.charAt(0).toUpperCase() + type.slice(1),
+  const resolvedType = normalizeModuleType(type);
+  return MODULE_DEFINITIONS[resolvedType] || {
+    type: resolvedType,
+    label: resolvedType
+      ? resolvedType.charAt(0).toUpperCase() + resolvedType.slice(1)
+      : 'Custom Module',
     icon: Article,
     color: '#B0B0B0',
     description: 'Custom module for specialized content and functionality.',
@@ -148,7 +215,9 @@ export const getModuleDefinition = (type) => {
 
 // Get all available module types for toolbar (excludes special modules)
 export const getAvailableModules = () => {
-  return Object.values(MODULE_DEFINITIONS).filter(module => !module.special);
+  return Object.values(MODULE_DEFINITIONS)
+    .filter((module) => !module.special && !module.hidden)
+    .sort((a, b) => (a.quickAddOrder ?? 999) - (b.quickAddOrder ?? 999));
 };
 
 // Color mapping for backward compatibility
@@ -159,11 +228,36 @@ export const MODULE_COLORS = Object.keys(MODULE_DEFINITIONS).reduce((acc, key) =
 
 // Default content factory for each module type
 export const getDefaultModuleContent = (moduleType) => {
+  const resolvedType = normalizeModuleType(moduleType);
+  // Helper to pick random variant from defaults array
+  const pickRandom = (defaults, layoutKey = null) => {
+    if (!defaults) return {};
+    
+    if (layoutKey && defaults[layoutKey]) {
+      const variants = defaults[layoutKey];
+      if (Array.isArray(variants) && variants.length > 0) {
+        return variants[Math.floor(Math.random() * variants.length)];
+      }
+      return variants;
+    }
+    
+    // If defaults is an object with layout keys, pick first layout's random variant
+    const firstLayoutKey = Object.keys(defaults)[0];
+    if (firstLayoutKey) {
+      const variants = defaults[firstLayoutKey];
+      if (Array.isArray(variants) && variants.length > 0) {
+        return variants[Math.floor(Math.random() * variants.length)];
+      }
+    }
+    
+    return {};
+  };
+
   const defaults = {
     navigation: {
       logo: {
         text: 'Logo',
-        type: 'text' // or 'image' in the future
+        type: 'text'
       },
       links: [
         { label: 'Home', route: '/' },
@@ -173,49 +267,22 @@ export const getDefaultModuleContent = (moduleType) => {
       bgColor: '#ffffff',
       textColor: 'rgb(30, 30, 30)'
     },
-    hero: {
-      layout: 'imageRight', // 'imageRight', 'imageLeft', 'centered', 'fullImage'
-      heading: 'Transform Your Vision Into Reality',
-      subheading: 'Discover excellence through personalized service and dedication',
-      description: 'Experience the perfect blend of innovation and tradition. We bring your ideas to life with passion and expertise.',
-      image: {
-        url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800',
-        alt: 'Hero background'
-      },
-      cta: {
-        primary: { text: 'Get Started', link: '#contact' },
-        secondary: { text: 'Learn More', link: '#about' }
-      },
-      bgColor: 'rgb(228, 229, 218)',
-      textColor: 'rgb(30, 30, 30)',
-      accentColor: 'rgb(146, 0, 32)'
-    },
-    about: {
-      title: 'About Me',
-      description: 'Tell your story here...',
-      bgColor: 'white'
-    },
-    services: {
-      title: 'Our Services',
-      subtitle: 'What we offer',
-      services: [
-        { name: 'Service 1', description: 'Description here', price: '100' },
-        { name: 'Service 2', description: 'Description here', price: '150' },
-        { name: 'Service 3', description: 'Description here', price: '200' }
-      ],
-      currency: 'PLN',
-      bgColor: 'white'
-    },
-    gallery: {
-      title: 'Gallery',
-      images: [],
-      columns: 3,
-      gap: 16,
-      style: 'grid',
-      bgColor: 'rgb(228, 229, 218)'
-    },
-    calendar: {
-      type: 'compact', // 'compact' or 'full'
+    hero: pickRandom(HERO_DEFAULTS, 'centered'),
+    about: pickRandom(ABOUT_DEFAULTS, 'imageRight'),
+    services: pickRandom(SERVICES_DEFAULTS, 'cards'),
+    servicesAndPricing: pickRandom(SERVICES_AND_PRICING_DEFAULTS, 'cards'),
+    team: pickRandom(TEAM_DEFAULTS, 'grid'),
+    gallery: pickRandom(GALLERY_DEFAULTS, 'grid'),
+    blog: pickRandom(BLOG_DEFAULTS, 'grid'),
+    events: pickRandom(EVENTS_DEFAULTS, 'list'),
+    faq: pickRandom(FAQ_DEFAULTS, 'accordion'),
+    contact: pickRandom(CONTACT_DEFAULTS, 'centered'),
+    text: pickRandom(TEXT_DEFAULTS, 'basic'),
+    button: pickRandom(BUTTON_DEFAULTS, 'primary'),
+    video: pickRandom(VIDEO_DEFAULTS, 'embedded'),
+    spacer: pickRandom(SPACER_DEFAULTS, 'medium'),
+    publicCalendarBig: pickRandom(PUBLIC_CALENDAR_BIG_DEFAULTS, 'full'),
+    publicCalendarSmall: {
       title: 'Book an Appointment',
       color: 'rgb(146, 0, 32)',
       allowIndividual: true,
@@ -223,21 +290,14 @@ export const getDefaultModuleContent = (moduleType) => {
       bgColor: 'white',
       events: []
     },
-    contact: {
-      title: 'Get in Touch',
-      email: 'contact@example.com',
-      phone: '',
-      bgColor: 'rgb(228, 229, 218)'
-    },
-    text: {
-      heading: '',
-      text: 'Add your text content here...',
-      bgColor: 'white'
-    },
-    video: {
-      title: '',
-      videoUrl: '',
-      bgColor: 'rgb(12, 12, 12)'
+    calendar: {
+      type: 'compact',
+      title: 'Book an Appointment',
+      color: 'rgb(146, 0, 32)',
+      allowIndividual: true,
+      allowGroup: true,
+      bgColor: 'white',
+      events: []
     },
     testimonials: {
       title: 'What People Say',
@@ -249,20 +309,10 @@ export const getDefaultModuleContent = (moduleType) => {
       plans: [],
       currency: 'PLN',
       bgColor: 'white'
-    },
-    faq: {
-      title: 'Frequently Asked Questions',
-      questions: [],
-      bgColor: 'white'
-    },
-    team: {
-      title: 'Our Team',
-      members: [],
-      bgColor: 'white'
     }
   };
 
-  return defaults[moduleType] || {};
+  return defaults[resolvedType] || {};
 };
 
 export const buildNavigationContent = (site, overrides = {}, entryPointPageId = null, activePageId = null) => {

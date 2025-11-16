@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Box, Stack, Typography, TextField, IconButton, Collapse, Divider, Switch, FormControlLabel, Select, MenuItem, FormControl, InputLabel, Button } from '@mui/material';
-import { ExpandMore, ExpandLess, Add, Delete, ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { ExpandMore, ExpandLess, Add, Delete, ArrowUpward, ArrowDownward, Settings } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry';
 import ColorPicker from '../../../components/ColorPicker';
 import ImageUploader from '../../../components/ImageUploader';
+import SitePropertiesPanel from './SitePropertiesPanel';
 
 // Component to render a single field based on its type
 export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentChange }) => {
@@ -102,7 +103,7 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
             {fieldDef.d || fieldKey}
           </InputLabel>
           <Select
-            value={value || fieldDef.vals[0]}
+            value={value || (fieldDef.options && fieldDef.options[0])}
             label={fieldDef.d || fieldKey}
             onChange={(e) => onContentChange(fieldKey, e.target.value)}
             sx={{
@@ -111,7 +112,7 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
             }}
           >
-            {(fieldDef.vals || []).map(option => (
+            {(fieldDef.options || []).map(option => (
               <MenuItem key={option} value={option}>{option}</MenuItem>
             ))}
           </Select>
@@ -153,7 +154,7 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
             textAlign: 'center'
           }}
         >
-          {fieldDef.d} - Editor coming soon
+          {fieldDef.d} - Complex object editor
         </Box>
       );
     
@@ -180,6 +181,10 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
       defaultItem = { ...defaultItem, name: 'New Member', role: 'Role', image: '' };
     } else if (fieldKey === 'offers') {
       defaultItem = { ...defaultItem, name: 'New Offer', price: '0', description: '' };
+    } else if (fieldKey === 'items' && module.type === 'services') {
+      defaultItem = { ...defaultItem, name: 'New Service', description: 'Service description', image: '', details: '' };
+    } else if (fieldKey === 'serviceItems') {
+      defaultItem = { ...defaultItem, name: 'New Service', description: 'Service description', image: '', details: '' };
     } else if (fieldKey === 'items') {
       defaultItem = { ...defaultItem, question: 'New Question', answer: '<p>New Answer</p>' };
     } else if (fieldKey === 'images') {
@@ -785,6 +790,256 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     );
   }
   
+  // Service items - for services module
+  if (fieldKey === 'items' && module.type === 'services') {
+    return (
+      <Box key={fieldKey}>
+        <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
+          {fieldDef.d || 'Service Items'} ({items.length})
+        </Typography>
+        <Stack spacing={2}>
+          {(items || []).map((item, index) => (
+            <Box
+              key={item.id || index}
+              sx={{
+                p: 2,
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: '8px',
+                position: 'relative'
+              }}
+            >
+              <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', top: 8, right: 8 }}>
+                <IconButton
+                  size="small"
+                  disabled={index === 0}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowUpward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  disabled={index === items.length - 1}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowDownward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const newItems = items.filter((_, i) => i !== index);
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Stack>
+              
+              <TextField
+                label="Service Name"
+                fullWidth
+                size="small"
+                value={item.name || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], name: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2, mt: 1 }}
+              />
+              
+              <TextField
+                label="Description"
+                fullWidth
+                size="small"
+                multiline
+                rows={3}
+                value={item.description || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], description: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+              />
+              
+              <ImageUploader
+                label="Service Image"
+                value={item.image || ''}
+                onChange={(url) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], image: url };
+                  onContentChange(fieldKey, newItems);
+                }}
+                siteId={pageId}
+              />
+              
+              {item.details !== undefined && (
+                <TextField
+                  label="Additional Details (Optional)"
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={2}
+                  value={item.details || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...newItems[index], details: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ mt: 2 }}
+                />
+              )}
+            </Box>
+          ))}
+        </Stack>
+        <Button
+          startIcon={<Add />}
+          onClick={handleAddItem}
+          sx={{
+            mt: 2,
+            color: 'rgb(146, 0, 32)',
+            '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
+          }}
+        >
+          Add Service
+        </Button>
+      </Box>
+    );
+  }
+  
+  // Service items - for servicesAndPricing module (serviceItems field)
+  if (fieldKey === 'serviceItems') {
+    return (
+      <Box key={fieldKey}>
+        <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
+          {fieldDef.d || 'Service Items'} ({items.length})
+        </Typography>
+        <Stack spacing={2}>
+          {(items || []).map((item, index) => (
+            <Box
+              key={item.id || index}
+              sx={{
+                p: 2,
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: '8px',
+                position: 'relative'
+              }}
+            >
+              <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', top: 8, right: 8 }}>
+                <IconButton
+                  size="small"
+                  disabled={index === 0}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowUpward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  disabled={index === items.length - 1}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowDownward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const newItems = items.filter((_, i) => i !== index);
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Stack>
+              
+              <TextField
+                label="Service Name"
+                fullWidth
+                size="small"
+                value={item.name || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], name: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2, mt: 1 }}
+              />
+              
+              <TextField
+                label="Description"
+                fullWidth
+                size="small"
+                multiline
+                rows={3}
+                value={item.description || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], description: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+              />
+              
+              <ImageUploader
+                label="Service Image"
+                value={item.image || ''}
+                onChange={(url) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], image: url };
+                  onContentChange(fieldKey, newItems);
+                }}
+                siteId={pageId}
+              />
+              
+              <TextField
+                label="Additional Details (Optional)"
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+                value={item.details || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], details: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mt: 2 }}
+              />
+            </Box>
+          ))}
+        </Stack>
+        <Button
+          startIcon={<Add />}
+          onClick={handleAddItem}
+          sx={{
+            mt: 2,
+            color: 'rgb(146, 0, 32)',
+            '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
+          }}
+        >
+          Add Service
+        </Button>
+      </Box>
+    );
+  }
+  
   // FAQ items
   if (fieldKey === 'items' && module.type === 'faq') {
     return (
@@ -863,26 +1118,58 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     );
   }
   
-  // Generic array fallback
+  // Generic array fallback - simple list with add/remove
   return (
-    <Box
-      key={fieldKey}
-      sx={{
-        p: 2,
-        bgcolor: 'rgba(146, 0, 32, 0.05)',
-        borderRadius: '8px',
-        fontSize: '13px',
-        color: 'rgba(30, 30, 30, 0.6)',
-        textAlign: 'center'
-      }}
-    >
-      {fieldDef.d || fieldKey} ({items.length} items) - Specific editor coming soon
+    <Box key={fieldKey}>
+      <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
+        {fieldDef.d || fieldKey} ({items.length})
+      </Typography>
+      <Stack spacing={1.5}>
+        {(items || []).map((item, index) => (
+          <Box
+            key={index}
+            sx={{
+              p: 1.5,
+              border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}
+          >
+            <Typography sx={{ flex: 1, fontSize: '13px' }}>
+              Item {index + 1}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => {
+                const newItems = items.filter((_, i) => i !== index);
+                onContentChange(fieldKey, newItems);
+              }}
+              sx={{ color: 'error.main' }}
+            >
+              <Delete fontSize="small" />
+            </IconButton>
+          </Box>
+        ))}
+      </Stack>
+      <Button
+        startIcon={<Add />}
+        onClick={handleAddItem}
+        sx={{
+          mt: 2,
+          color: 'rgb(146, 0, 32)',
+          '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
+        }}
+      >
+        Add Item
+      </Button>
     </Box>
   );
 };
 
 const PropertiesPanel = ({ placement = 'right' }) => {
-  const { selectedModuleId, selectedPageId, updateModuleContent } = useNewEditorStore();
+  const { selectedModuleId, selectedPageId, updateModuleContent, deselectModule } = useNewEditorStore();
   
   // Subscribe to pages array so component re-renders when modules change
   const pages = useNewEditorStore(state => state.site.pages);
@@ -895,7 +1182,12 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   
   // Get available layouts for this module
   const availableLayouts = moduleDef?.layouts || [];
-  const currentLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+  let rawLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+  
+  // Normalize layout: if current layout is not in available options, use default
+  const currentLayout = availableLayouts.includes(rawLayout) 
+    ? rawLayout 
+    : (moduleDef?.defaultLayout || availableLayouts[0] || 'sidebar');
 
   const panelMotionProps = {
     initial: { x: placement === 'right' ? 320 : -320 },
@@ -943,32 +1235,7 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   const advancedFields = Object.entries(fields).filter(([, def]) => def.category === 'advanced');
 
   if (!selectedModuleId || !module) {
-    return (
-      <motion.div
-        {...panelMotionProps}
-        style={panelStyle}
-      >
-        <Box
-          sx={{
-            ...containerSx,
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 3
-          }}
-        >
-          <Typography
-            sx={{
-              textAlign: 'center',
-              color: 'rgba(30, 30, 30, 0.4)',
-              fontSize: '14px',
-              fontWeight: 500
-            }}
-          >
-            Select a module to edit properties
-          </Typography>
-        </Box>
-      </motion.div>
-    );
+    return <SitePropertiesPanel placement={placement} />;
   }
 
   if (!moduleDef) {
@@ -1010,29 +1277,47 @@ const PropertiesPanel = ({ placement = 'right' }) => {
         <Box
           sx={{
             p: 2,
-            borderBottom: '1px solid rgba(30, 30, 30, 0.06)'
+            borderBottom: '1px solid rgba(30, 30, 30, 0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}
         >
-          <Typography
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              sx={{
+                fontSize: '16px',
+                fontWeight: 600,
+                color: 'rgb(30, 30, 30)',
+                mb: 0.5
+              }}
+            >
+              {module.name || module.type}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: '12px',
+                color: 'rgba(30, 30, 30, 0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+            >
+              {module.type}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={deselectModule}
+            size="small"
             sx={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: 'rgb(30, 30, 30)',
-              mb: 0.5
+              color: 'rgba(30, 30, 30, 0.6)',
+              '&:hover': {
+                bgcolor: 'rgba(146, 0, 32, 0.08)',
+                color: 'rgb(146, 0, 32)'
+              }
             }}
           >
-            {module.name || module.type}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: '12px',
-              color: 'rgba(30, 30, 30, 0.5)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
-          >
-            {module.type}
-          </Typography>
+            <Settings />
+          </IconButton>
         </Box>
 
         {/* Content Sections */}
@@ -1073,8 +1358,8 @@ const PropertiesPanel = ({ placement = 'right' }) => {
             {/* Divider after calendar type if exists */}
             {module.type === 'calendar' && (availableLayouts.length > 1 || contentFields.length > 0) && <Divider />}
 
-            {/* LAYOUT SELECTOR - Only show if multiple layouts available */}
-            {availableLayouts.length > 1 && (
+            {/* LAYOUT SELECTOR - Only show if multiple layouts available and not Full calendar */}
+            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && (
               <Box>
                 <Typography
                   sx={{
@@ -1109,7 +1394,7 @@ const PropertiesPanel = ({ placement = 'right' }) => {
             )}
             
             {/* Divider after layout selector if content exists */}
-            {availableLayouts.length > 1 && contentFields.length > 0 && <Divider />}
+            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && contentFields.length > 0 && <Divider />}
             
             {/* CONTENT Section */}
             {contentFields.length > 0 && (

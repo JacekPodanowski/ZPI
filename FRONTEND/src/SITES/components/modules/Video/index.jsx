@@ -10,8 +10,9 @@ const LAYOUTS = {
   compact: CompactVideo
 };
 
-const VideoModule = ({ layout = 'standard', content = {}, style }) => {
-  const defaults = VIDEO_DEFAULTS[layout] || VIDEO_DEFAULTS.standard;
+const VideoModule = ({ layout = 'embedded', content = {}, style }) => {
+  const defaultOptions = VIDEO_DEFAULTS[layout] || VIDEO_DEFAULTS.embedded;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.standard;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert } from '@mui/icons-material';
+import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, Menu, MenuItem, ListItemIcon, ListItemText, Slider, alpha } from '@mui/material';
+import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert, ZoomIn, ZoomOut } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import { renameSite, updateSiteTemplate, createSiteVersion, fetchSiteVersions } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
@@ -43,6 +43,8 @@ const EditorTopBar = () => {
   const exitDetailMode = useNewEditorStore((state) => state.exitDetailMode);
   const devicePreview = useNewEditorStore((state) => state.devicePreview);
   const setDevicePreview = useNewEditorStore((state) => state.setDevicePreview);
+  const canvasZoom = useNewEditorStore((state) => state.canvasZoom);
+  const setCanvasZoom = useNewEditorStore((state) => state.setCanvasZoom);
   const hasUnsavedChanges = useNewEditorStore((state) => state.hasUnsavedChanges);
   const getSelectedPage = useNewEditorStore((state) => state.getSelectedPage);
   const siteId = useNewEditorStore((state) => state.siteId);
@@ -303,8 +305,11 @@ const EditorTopBar = () => {
           formData.append('site_id', siteId);
         }
 
+        // Remove Content-Type header to let browser set it with boundary for multipart/form-data
         const response = await apiClient.post('/upload/', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+          headers: {
+            'Content-Type': undefined
+          }
         });
 
         const uploadedUrl = response?.data?.url;
@@ -786,6 +791,48 @@ const EditorTopBar = () => {
             </IconButton>
           </Tooltip>
         </Stack>
+
+        {/* Zoom Controls */}
+        {!isMobile && (
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: 200 }}>
+            <Tooltip title="Zoom Out">
+              <IconButton size="small" onClick={() => setCanvasZoom(Math.max(0.25, canvasZoom - 0.1))}>
+                <ZoomOut fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Slider
+              value={canvasZoom}
+              onChange={(e, newValue) => setCanvasZoom(newValue)}
+              min={0.25}
+              max={1}
+              step={0.05}
+              aria-labelledby="zoom-slider"
+              sx={{
+                color: interactiveMain,
+                '& .MuiSlider-thumb': {
+                  width: 16,
+                  height: 16,
+                  transition: '0.2s ease-in-out',
+                  '&:hover, &.Mui-active': {
+                    boxShadow: `0px 0px 0px 8px ${alpha(interactiveMain, 0.16)}`,
+                  },
+                },
+              }}
+            />
+            <Tooltip title="Zoom In">
+              <IconButton size="small" onClick={() => setCanvasZoom(Math.min(1, canvasZoom + 0.1))}>
+                <ZoomIn fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Typography 
+              variant="caption" 
+              sx={{ fontWeight: 600, minWidth: '40px', textAlign: 'right', color: textMuted, cursor: 'pointer' }}
+              onClick={() => setCanvasZoom(1)}
+            >
+              {Math.round(canvasZoom * 100)}%
+            </Typography>
+          </Stack>
+        )}
 
         {/* Separator */}
         <Box

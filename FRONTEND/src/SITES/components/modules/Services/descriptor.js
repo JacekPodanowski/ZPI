@@ -8,8 +8,14 @@ export const SERVICES_DESCRIPTOR = {
     items: { 
       t: 'array', 
       req: true, 
-      d: 'Service items (name, description, icon, image, details)', 
-      category: 'content' 
+      d: 'Service items', 
+      category: 'content'
+    },
+    flipStyle: {
+      t: 'enum',
+      d: 'Card flip animation style',
+      options: ['flip', 'slide', 'fade', 'rotate3d', 'cube'],
+      category: 'appearance'
     },
     bgColor: { t: 'color', d: 'Background color', category: 'appearance' },
     backgroundImage: { t: 'image', d: 'Background image', category: 'appearance' },

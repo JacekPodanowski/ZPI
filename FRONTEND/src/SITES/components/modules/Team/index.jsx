@@ -8,13 +8,14 @@ const LAYOUTS = {
   list: GridTeam
 };
 
-const TeamModule = ({ layout = 'grid', content = {}, style }) => {
-  const defaults = TEAM_DEFAULTS[layout] || TEAM_DEFAULTS.grid;
+const TeamSection = ({ layout = 'grid', content = {}, style }) => {
+  const defaultOptions = TEAM_DEFAULTS[layout] || TEAM_DEFAULTS.grid;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
   return <LayoutComponent content={mergedContent} style={style} />;
 };
 
-TeamModule.descriptor = TEAM_DESCRIPTOR;
-export default TeamModule;
+TeamSection.descriptor = TEAM_DESCRIPTOR;
+export default TeamSection;

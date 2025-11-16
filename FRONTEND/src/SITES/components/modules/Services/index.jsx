@@ -13,7 +13,8 @@ const LAYOUTS = {
 };
 
 const ServicesSection = ({ layout = 'cards', content = {}, style }) => {
-  const defaults = SERVICES_DEFAULTS[layout] || SERVICES_DEFAULTS.cards;
+  const defaultOptions = SERVICES_DEFAULTS[layout] || SERVICES_DEFAULTS.cards;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   

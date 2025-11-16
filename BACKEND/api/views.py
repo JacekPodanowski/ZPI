@@ -23,6 +23,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
@@ -1333,6 +1334,7 @@ class PublicSiteByIdView(generics.RetrieveAPIView):
 class FileUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]  # Only JWT auth, no session auth = no CSRF needed
 
     @extend_schema(
         tags=['Media'],
@@ -1360,9 +1362,19 @@ class FileUploadView(APIView):
             if not site_id:
                 return Response({'error': 'site_id is required for site uploads'}, status=status.HTTP_400_BAD_REQUEST)
             try:
-                site = Site.objects.get(pk=site_id, owner=request.user)
+                site = Site.objects.get(pk=site_id)
             except Site.DoesNotExist as exc:
                 raise PermissionDenied('Site not found or access denied') from exc
+
+            if not request.user.is_staff:
+                role, _membership = resolve_site_role(request.user, site)
+                allowed_roles = {
+                    'owner',
+                    TeamMember.PermissionRole.MANAGER,
+                    TeamMember.PermissionRole.CONTRIBUTOR,
+                }
+                if role not in allowed_roles:
+                    raise PermissionDenied('Site not found or access denied')
 
         storage = get_media_storage()
         safe_name = sanitize_filename(getattr(file_obj, 'name', ''))

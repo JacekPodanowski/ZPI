@@ -11,6 +11,14 @@ const BookingModal = ({ isOpen, onClose, onSuccess, slot, siteId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate siteId before making request
+    if (!siteId) {
+      setStatus('error');
+      setError('Brak identyfikatora witryny. Nie można dokonać rezerwacji.');
+      return;
+    }
+
     setStatus('loading');
     setError('');
 
@@ -28,15 +36,16 @@ const BookingModal = ({ isOpen, onClose, onSuccess, slot, siteId }) => {
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.error || 'Wystąpił błąd podczas rezerwacji.');
+        throw new Error(errData.error || 'Wystąpił błąd podczas rezerwacji. Spróbuj ponownie.');
       }
+      
       setStatus('success');
       if (onSuccess) {
         setTimeout(() => onSuccess(), 2000);
       }
     } catch (err) {
       setStatus('error');
-      setError(err.message);
+      setError(err.message || 'Nie udało się połączyć z serwerem. Sprawdź połączenie internetowe.');
     }
   };
 

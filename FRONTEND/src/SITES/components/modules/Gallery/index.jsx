@@ -15,13 +15,14 @@ const LAYOUTS = {
   fade: FadeGallery
 };
 
-const GalleryModule = ({ layout = 'grid', content = {}, style }) => {
-  const defaults = GALLERY_DEFAULTS[layout] || GALLERY_DEFAULTS.grid;
+const GallerySection = ({ layout = 'grid', content = {}, style }) => {
+  const defaultOptions = GALLERY_DEFAULTS[layout] || GALLERY_DEFAULTS.grid;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
   return <LayoutComponent content={mergedContent} style={style} />;
 };
 
-GalleryModule.descriptor = GALLERY_DESCRIPTOR;
-export default GalleryModule;
+GallerySection.descriptor = GALLERY_DESCRIPTOR;
+export default GallerySection;

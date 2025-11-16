@@ -13,7 +13,8 @@ const LAYOUTS = {
 };
 
 const AboutSection = ({ layout = 'grid', content = {}, style }) => {
-  const defaults = ABOUT_DEFAULTS[layout] || ABOUT_DEFAULTS.grid;
+  const defaultOptions = ABOUT_DEFAULTS[layout] || ABOUT_DEFAULTS.grid;
+  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
