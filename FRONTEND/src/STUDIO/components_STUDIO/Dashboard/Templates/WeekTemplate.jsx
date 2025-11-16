@@ -119,7 +119,7 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed }
                         display: 'grid',
                         gridTemplateColumns: 'repeat(7, 1fr)',
                         gap: 0.5,
-                        mb: 0.75
+                        mb: 0.5
                     }}
                 >
                     {days.map((day, index) => {

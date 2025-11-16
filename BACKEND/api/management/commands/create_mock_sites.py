@@ -206,6 +206,20 @@ class Command(BaseCommand):
                 if target_date.weekday() >= 5:  # Saturday = 5, Sunday = 6
                     continue
                 
+                # Different meeting length patterns for each site
+                if site.name == 'Pracownia Jogi':
+                    # Site 1: Single duration (60 min)
+                    morning_lengths = [60]
+                    afternoon_lengths = [90]
+                elif site.name == 'Studio Oddechu':
+                    # Site 2: Two durations
+                    morning_lengths = [45, 60]
+                    afternoon_lengths = [30, 60]
+                else:
+                    # Site 3 (Gabinet Psychoterapii): Three durations
+                    morning_lengths = [30, 45, 60]
+                    afternoon_lengths = [45, 60, 90]
+                
                 # Morning availability block
                 morning_block = AvailabilityBlock.objects.create(
                     site=site,
@@ -214,7 +228,7 @@ class Command(BaseCommand):
                     date=target_date,
                     start_time='09:00',
                     end_time='12:00',
-                    meeting_lengths=[30, 45, 60],
+                    meeting_lengths=morning_lengths,
                     time_snapping=30,
                     buffer_time=15
                 )
@@ -227,7 +241,7 @@ class Command(BaseCommand):
                     date=target_date,
                     start_time='14:00',
                     end_time='17:00',
-                    meeting_lengths=[30, 60, 90],
+                    meeting_lengths=afternoon_lengths,
                     time_snapping=30,
                     buffer_time=10
                 )

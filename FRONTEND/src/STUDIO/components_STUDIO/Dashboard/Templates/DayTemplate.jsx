@@ -86,14 +86,15 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                     </Typography>
                     <Box
                         sx={{
-                            minWidth: 28,
-                            height: 28,
+                            minWidth: 32,
+                            height: 22,
                             borderRadius: 1,
                             backgroundColor: 'rgba(146, 0, 32, 0.08)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            ml: 1
+                            ml: 1,
+                            px: 0.5
                         }}
                     >
                         <Typography
@@ -124,9 +125,9 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                             <Box
                                 key={idx}
                                 sx={{
-                                    height: 24,
+                                    height: 20,
                                     px: 0.75,
-                                    py: 0.5,
+                                    py: 0.4,
                                     borderRadius: 1.5,
                                     borderLeft: `2px solid ${borderColor}`,
                                     backgroundColor: bgColor,
@@ -140,13 +141,13 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                                     variant="caption"
                                     sx={{
                                         fontWeight: 500,
-                                        fontSize: '11px',
+                                        fontSize: '10px',
                                         color: borderColor,
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         flex: 1,
-                                        lineHeight: 1.2
+                                        lineHeight: 1.1
                                     }}
                                 >
                                     <Box component="span" sx={{ fontWeight: 600, mr: 0.5 }}>

@@ -59,30 +59,7 @@ export const EventBlock = ({
     const height = 18;
     const fontSize = isSelectedSite ? (isHovered ? '10.5px' : '10px') : (isHovered ? '9px' : '8.5px');
 
-    // Create tooltip content with booking information
-    const getTooltipContent = () => {
-        if (!event.bookings || event.bookings.length === 0) {
-            return `${event.title} - Brak rezerwacji`;
-        }
-        
-        const bookingsList = event.bookings.map(b => b.client_name).join(', ');
-        return (
-            <Box>
-                <Typography variant="caption" fontWeight={600} sx={{ display: 'block', mb: 0.5 }}>
-                    {event.title}
-                </Typography>
-                <Typography variant="caption" sx={{ display: 'block', fontSize: '11px' }}>
-                    Zapisani ({event.bookings.length}/{event.capacity || 1}):
-                </Typography>
-                <Typography variant="caption" sx={{ fontSize: '10px' }}>
-                    {bookingsList}
-                </Typography>
-            </Box>
-        );
-    };
-
     return (
-        <Tooltip title={getTooltipContent()} arrow placement="top">
         <Box
             onClick={onClick}
             sx={{
@@ -144,7 +121,6 @@ export const EventBlock = ({
                 {event.bookings?.length || 0}/{event.capacity || 1}
             </Typography>
         </Box>
-        </Tooltip>
     );
 };
 

@@ -653,13 +653,23 @@ const CreatorCalendarApp = () => {
     }, [events, selectedSiteId, selectedAssigneeFilter, siteTeamSizeMap]);
 
     const availabilityForCalendar = useMemo(() => {
+        // Get IDs of all sites the user has access to
+        const accessibleSiteIds = new Set(sites.map(site => String(site.id)));
+        
+        // Filter to only show blocks from accessible sites
+        const filteredBlocks = availabilityBlocks.filter((block) => {
+            const blockSiteId = String(block.site_id ?? block.site);
+            return accessibleSiteIds.has(blockSiteId);
+        });
+        
+        // If a site is selected, further filter to only that site
         if (!selectedSiteId) {
-            return availabilityBlocks;
+            return filteredBlocks;
         }
-        return availabilityBlocks.filter((block) => (
+        return filteredBlocks.filter((block) => (
             String(block.site_id ?? block.site) === String(selectedSiteId)
         ));
-    }, [availabilityBlocks, selectedSiteId]);
+    }, [availabilityBlocks, selectedSiteId, sites]);
 
     const handleBookingRemoved = useCallback(({ eventId, bookingId }) => {
         if (!eventId || !bookingId) {
