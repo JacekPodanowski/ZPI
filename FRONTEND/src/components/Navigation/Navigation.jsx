@@ -22,6 +22,7 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../Logo/Logo';
 import useTheme from '../../theme/useTheme';
@@ -99,7 +100,7 @@ const Navigation = () => {
 
         // Admin-specific navigation items
         const admin = [];
-        if (isAdminPage && user?.is_staff) {
+        if (user?.is_staff && isAdminPage) {
             admin.push(
                 { label: 'Dashboard', to: '/studio/admin' },
                 { label: 'Terms', to: '/studio/admin/terms' }
@@ -267,16 +268,20 @@ const Navigation = () => {
                     </Box>
 
                     <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
-                        {/* Show admin navigation if on admin pages, otherwise show primary navigation */}
-                        {isAdminPage && navGroups.admin.length > 0 ? (
-                            navGroups.admin.map((item) => (
+                        {/* Primary navigation */}
+                        {navGroups.primary.map((item, index) => (
+                            <motion.div
+                                key={item.label}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.3, delay: index * 0.1 }}
+                            >
                                 <Button
-                                    key={item.label}
                                     component={NavLink}
                                     to={item.to}
-                                    end={item.to === '/studio/admin'}
                                     sx={{
                                         color: 'text.secondary',
+                                        transition: 'all 0.3s ease',
                                         '&.active': {
                                             color: 'primary.main',
                                             backgroundColor: 'rgba(160, 0, 22, 0.08)'
@@ -285,36 +290,61 @@ const Navigation = () => {
                                 >
                                     {item.label}
                                 </Button>
-                            ))
-                        ) : (
-                            navGroups.primary.map((item) => (
-                                <Button
-                                    key={item.label}
-                                    component={NavLink}
-                                    to={item.to}
-                                    sx={{
-                                        color: 'text.secondary',
-                                        '&.active': {
-                                            color: 'primary.main',
-                                            backgroundColor: 'rgba(160, 0, 22, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {item.label}
-                                </Button>
-                            ))
-                        )}
+                            </motion.div>
+                        ))}
+                        
+                        {/* Separator and Admin routes when on admin pages */}
+                        <AnimatePresence>
+                            {isAdminPage && navGroups.admin.length > 0 && (
+                                <>
+                                    <motion.div
+                                        initial={{ opacity: 0, scaleX: 0 }}
+                                        animate={{ opacity: 1, scaleX: 1 }}
+                                        exit={{ opacity: 0, scaleX: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <Divider orientation="vertical" flexItem sx={{ mx: 1, height: 30, alignSelf: 'center' }} />
+                                    </motion.div>
+                                    {navGroups.admin.map((item, index) => (
+                                        <motion.div
+                                            key={item.label}
+                                            initial={{ opacity: 0, x: 10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 10 }}
+                                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                                        >
+                                            <Button
+                                                component={NavLink}
+                                                to={item.to}
+                                                end={item.to === '/studio/admin'}
+                                                sx={{
+                                                    color: 'text.secondary',
+                                                    transition: 'all 0.3s ease',
+                                                    '&.active': {
+                                                        color: 'primary.main',
+                                                        backgroundColor: 'rgba(160, 0, 22, 0.08)'
+                                                    }
+                                                }}
+                                            >
+                                                {item.label}
+                                            </Button>
+                                        </motion.div>
+                                    ))}
+                                </>
+                            )}
+                        </AnimatePresence>
                     </Box>
 
                     <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
                         {/* Admin link button (only for staff users, only on non-admin pages) */}
                         {user?.is_staff && !isAdminPage && (
                             <Button
-                                component={NavLink}
+                                component={RouterLink}
                                 to="/studio/admin"
                                 sx={{
                                     color: 'text.secondary',
-                                    '&.active': {
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
                                         color: 'primary.main',
                                         backgroundColor: 'rgba(160, 0, 22, 0.08)'
                                     }

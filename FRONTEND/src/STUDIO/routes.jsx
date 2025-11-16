@@ -44,29 +44,20 @@ const StudioApp = () => (
     {/* Site creation flow - OUTSIDE StudioLayout to avoid layout padding/footer */}
     <Route path="new" element={<ProtectedRoute><CategorySelectionPage /></ProtectedRoute>} />
     <Route path="new_project" element={<ProtectedRoute><NewProjectPage /></ProtectedRoute>} />
-  <Route path="new/style" element={<ProtectedRoute><StyleSelectionPage /></ProtectedRoute>} />
+    <Route path="new/style" element={<ProtectedRoute><StyleSelectionPage /></ProtectedRoute>} />
     <Route path="sites/modules/:siteId" element={<ProtectedRoute><ManageModulesPage /></ProtectedRoute>} />
 
-    {/* Domain management - OUTSIDE StudioLayout because REAL_DefaultLayout handles everything */}
+    {/* Pages using REAL_DefaultLayout - OUTSIDE StudioLayout */}
     <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
+    <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+    <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
+    <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
 
+    {/* LEGACY LAYOUT - USE REAL_DefaultLayout for new pages !!! */}
     <Route element={<StudioLayout />}>
-      {/* Studio dashboard and site management */}
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
-      
-      {/* Team management */}
-      <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
-
-  {/* Calendar previews for development */}
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
-
-      {/* Dev Lab */}
       <Route path="lab/components" element={<ProtectedRoute><ComponentLabPage /></ProtectedRoute>} />
-
-      {/* Admin area */}
-      <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
-      <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
-
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
     </Route>
 

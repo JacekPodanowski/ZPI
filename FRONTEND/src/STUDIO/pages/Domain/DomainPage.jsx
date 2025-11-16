@@ -10,7 +10,7 @@ import {
     Chip, 
     Alert,
     InputAdornment,
-    Grid2 as Grid
+    Grid
 } from '@mui/material';
 import { 
     Search as SearchIcon, 
@@ -229,7 +229,7 @@ const DomainPage = () => {
                             </Typography>
                             <Grid container spacing={2}>
                                 {domainResults.map((domain, index) => (
-                                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={domain.domain}>
+                                    <Grid item xs={12} sm={6} md={4} key={domain.domain}>
                                         <motion.div
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}

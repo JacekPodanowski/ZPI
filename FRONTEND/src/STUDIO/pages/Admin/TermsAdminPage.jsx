@@ -30,6 +30,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import apiClient from '../../../services/apiClient';
 import useTheme from '../../../theme/useTheme';
+import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 
 const TermsAdminPage = () => {
     const [versions, setVersions] = useState([]);
@@ -137,68 +138,23 @@ const TermsAdminPage = () => {
     const syntaxTheme = theme.mode === 'dark' ? vscDarkPlus : vs;
 
     return (
-        <Box
-            sx={{
-                height: 'calc(100vh - 60px)',
-                background: (theme) => theme.palette.mode === 'light'
-                    ? 'linear-gradient(180deg, rgba(228, 229, 218, 0.4) 0%, rgba(228, 229, 218, 1) 100%)'
-                    : 'linear-gradient(180deg, rgba(12, 12, 12, 0.4) 0%, rgba(12, 12, 12, 1) 100%)',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden'
-            }}
+        <REAL_DefaultLayout
+            title="Terms Management"
+            subtitle="Zarządzaj różnymi wersjami regulaminu platformy"
+            maxWidth={1600}
         >
-            <Box 
+            {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+
+            <Stack 
+                direction={{ xs: 'column', lg: 'row' }} 
+                spacing={3}
                 sx={{ 
-                    maxWidth: 1600, 
-                    mx: 'auto',
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    py: { xs: 2, md: 3 },
-                    px: { xs: 2, md: 4, lg: 6 }
+                    height: 'calc(100vh - 280px)',
+                    minHeight: '580px',
+                    overflow: 'hidden'
                 }}
             >
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                >
-                    <Typography
-                        variant="h3"
-                        sx={{
-                            fontWeight: 600,
-                            letterSpacing: '-0.02em',
-                            background: (theme) => theme.palette.mode === 'light'
-                                ? 'linear-gradient(135deg, rgb(146, 0, 32) 0%, rgb(30, 30, 30) 100%)'
-                                : 'linear-gradient(135deg, rgb(114, 0, 21) 0%, rgb(220, 220, 220) 100%)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            mb: 0.5
-                        }}
-                    >
-                        Terms of Service
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
-                        Manage and version your Terms of Service documents
-                    </Typography>
-                </motion.div>
-
-                {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-                {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
-
-                <Stack 
-                    direction={{ xs: 'column', lg: 'row' }} 
-                    spacing={3}
-                    sx={{ 
-                        flex: 1,
-                        minHeight: 0,
-                        overflow: 'hidden'
-                    }}
-                >
                     {/* Lista wersji */}
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -551,8 +507,7 @@ const TermsAdminPage = () => {
                         </Card>
                     </motion.div>
                 </Stack>
-            </Box>
-        </Box>
+        </REAL_DefaultLayout>
     );
 };
 

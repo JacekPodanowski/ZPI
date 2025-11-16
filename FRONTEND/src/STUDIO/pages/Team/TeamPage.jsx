@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers } from '../../../services/siteService';
 import Avatar from '../../../components/Avatar/Avatar';
 import AddTeamMemberDialog from '../../components_STUDIO/Team/AddTeamMemberDialog';
+import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 
 const TeamPage = () => {
     const { siteId } = useParams();
@@ -106,59 +107,22 @@ const TeamPage = () => {
 
     if (loading) {
         return (
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: '60vh'
-                }}
+            <REAL_DefaultLayout
+                title="Zespół"
+                subtitle="Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia"
             >
-                <CircularProgress />
-            </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+                    <CircularProgress />
+                </Box>
+            </REAL_DefaultLayout>
         );
     }
 
     return (
-        <Box
-            sx={{
-                minHeight: 'calc(100vh - 60px)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 3
-            }}
+        <REAL_DefaultLayout
+            title="Zespół"
+            subtitle="Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia"
         >
-            {/* Header with gradient title */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-            >
-                <Typography
-                    variant="h3"
-                    sx={{
-                        fontWeight: 600,
-                        letterSpacing: '-0.02em',
-                        background: (theme) => theme.palette.mode === 'light'
-                            ? 'linear-gradient(135deg, rgb(146, 0, 32) 0%, rgb(30, 30, 30) 100%)'
-                            : 'linear-gradient(135deg, rgb(114, 0, 21) 0%, rgb(220, 220, 220) 100%)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        mb: 0.5
-                    }}
-                >
-                    Zespół
-                </Typography>
-                <Typography
-                    variant="body1"
-                    sx={{
-                        color: 'text.secondary'
-                    }}
-                >
-                    Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia.
-                </Typography>
-                </motion.div>
 
             {/* Team Members List */}
             <Box
@@ -407,7 +371,7 @@ const TeamPage = () => {
                 onClose={handleDialogClose}
                 onAdd={handleDialogAdd}
             />
-        </Box>
+        </REAL_DefaultLayout>
     );
 };
 

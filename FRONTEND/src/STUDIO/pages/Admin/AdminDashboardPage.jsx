@@ -4,7 +4,6 @@ import {
 	Card,
 	CardContent,
 	Chip,
-	Container,
 	Divider,
 	Grid,
 	Stack,
@@ -23,6 +22,7 @@ import {
 } from '@mui/material';
 import { People as PeopleIcon, Web as WebIcon } from '@mui/icons-material';
 import apiClient from '../../../services/apiClient';
+import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 
 const AdminDashboardPage = () => {
 	const [activeTab, setActiveTab] = useState(0);
@@ -71,37 +71,30 @@ const AdminDashboardPage = () => {
 
 	if (loading) {
 		return (
-			<Container maxWidth="xl">
+			<REAL_DefaultLayout
+				title="Admin Dashboard"
+				subtitle="Zarządzaj platformą YourEasySite"
+			>
 				<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
 					<CircularProgress />
 				</Box>
-			</Container>
+			</REAL_DefaultLayout>
 		);
 	}
 
 	return (
-		<Container maxWidth="xl" sx={{ py: 4 }}>
-			<Stack spacing={4}>
-				<Stack spacing={1.5}>
-					<Typography variant="overline" sx={{ letterSpacing: 3, color: 'secondary.main' }}>
-						PANEL ADMINISTRACYJNY
-					</Typography>
-					<Typography variant="h3" sx={{ fontWeight: 600 }}>
-						Zarządzaj platformą YourEasySite
-					</Typography>
-					<Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 720 }}>
-						Pełny podgląd wszystkich użytkowników i stron w systemie.
-					</Typography>
-				</Stack>
+		<REAL_DefaultLayout
+			title="Admin Dashboard"
+			subtitle="Pełny podgląd wszystkich użytkowników i stron w systemie"
+		>
+			{error && (
+				<Alert severity="error" onClose={() => setError('')} sx={{ mb: 3 }}>
+					{error}
+				</Alert>
+			)}
 
-				{error && (
-					<Alert severity="error" onClose={() => setError('')}>
-						{error}
-					</Alert>
-				)}
-
-				{/* Summary Cards */}
-				<Grid container spacing={3}>
+			{/* Summary Cards */}
+			<Grid container spacing={3} sx={{ mb: 4 }}>
 					<Grid item xs={12} md={6}>
 						<Card elevation={0} sx={{ borderRadius: 4, border: '1px solid rgba(160, 0, 22, 0.18)' }}>
 							<CardContent>
@@ -298,8 +291,7 @@ const AdminDashboardPage = () => {
 						)}
 					</CardContent>
 				</Card>
-			</Stack>
-		</Container>
+		</REAL_DefaultLayout>
 	);
 };
 
