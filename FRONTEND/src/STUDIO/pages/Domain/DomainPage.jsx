@@ -60,7 +60,9 @@ const DomainPage = () => {
         }
 
         // Remove any TLD if user entered it
-        const cleanQuery = searchQuery.trim().toLowerCase().replace(/\.(com|pl|io|net|dev|app|tech|store|online)$/i, '');
+        const cleanQuery = searchQuery.trim().toLowerCase().replace(/\.(com|pl|io|net|app|store|online)$/i, '');
+
+        console.log('[DomainPage] Starting domain search for:', cleanQuery);
 
         try {
             setSearching(true);
@@ -68,19 +70,32 @@ const DomainPage = () => {
             setDomainResults([]);
 
             const results = await checkDomainAvailability(cleanQuery);
+            console.log('[DomainPage] Search results:', results);
             
-            // Filter only available domains and sort by price
-            const available = results
-                .filter(domain => domain.available)
-                .sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+            // Sort: available first (by price), then unavailable (alphabetically)
+            const sortedResults = results.sort((a, b) => {
+                if (a.available && !b.available) return -1;
+                if (!a.available && b.available) return 1;
+                if (a.available && b.available) {
+                    return parseFloat(a.price) - parseFloat(b.price);
+                }
+                return a.domain.localeCompare(b.domain);
+            });
             
-            setDomainResults(available);
+            console.log('[DomainPage] Sorted results:', sortedResults);
+            setDomainResults(sortedResults);
 
-            if (available.length === 0) {
+            const availableCount = sortedResults.filter(d => d.available).length;
+            if (availableCount === 0) {
                 setSearchError('No available domains found. Try a different name.');
             }
         } catch (err) {
-            console.error('Domain search failed:', err);
+            console.error('[DomainPage] Domain search failed:', err);
+            console.error('[DomainPage] Error details:', {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
             setSearchError(err.message || 'Failed to search domains. Please try again.');
         } finally {
             setSearching(false);
@@ -225,7 +240,7 @@ const DomainPage = () => {
                             transition={{ duration: 0.3 }}
                         >
                             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mt: 4, mb: 2 }}>
-                                Available Domains ({domainResults.length})
+                                Domain Results ({domainResults.filter(d => d.available).length} available, {domainResults.filter(d => !d.available).length} taken)
                             </Typography>
                             <Grid container spacing={2}>
                                 {domainResults.map((domain, index) => (
@@ -244,13 +259,21 @@ const DomainPage = () => {
                                                     gap: 2,
                                                     borderRadius: 2,
                                                     border: '1px solid',
-                                                    borderColor: 'divider',
+                                                    borderColor: domain.available ? 'divider' : 'error.light',
+                                                    opacity: domain.available ? 1 : 0.7,
                                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                    '&:hover': {
-                                                        boxShadow: '0 8px 30px rgba(146, 0, 32, 0.15)',
-                                                        transform: 'translateY(-4px)',
-                                                        borderColor: 'primary.main'
-                                                    }
+                                                    ...(!domain.available && {
+                                                        backgroundColor: (theme) => theme.palette.mode === 'light' 
+                                                            ? 'rgba(211, 47, 47, 0.05)' 
+                                                            : 'rgba(211, 47, 47, 0.1)'
+                                                    }),
+                                                    ...(domain.available && {
+                                                        '&:hover': {
+                                                            boxShadow: '0 8px 30px rgba(146, 0, 32, 0.15)',
+                                                            transform: 'translateY(-4px)',
+                                                            borderColor: 'primary.main'
+                                                        }
+                                                    })
                                                 }}
                                             >
                                                 <Box>
@@ -266,48 +289,72 @@ const DomainPage = () => {
                                                         {domain.domain}
                                                     </Typography>
                                                     <Chip
-                                                        icon={<CheckCircleIcon />}
-                                                        label="Available"
-                                                        color="success"
+                                                        icon={domain.available ? <CheckCircleIcon /> : <Box component="span" sx={{ fontSize: '1rem' }}>✕</Box>}
+                                                        label={domain.available ? "Available" : "Taken"}
+                                                        color={domain.available ? "success" : "error"}
                                                         size="small"
                                                         sx={{ fontWeight: 600 }}
                                                     />
                                                 </Box>
 
                                                 <Box sx={{ flex: 1 }}>
-                                                    <Typography 
-                                                        variant="h4" 
-                                                        color="primary" 
-                                                        sx={{ fontWeight: 700, mb: 0.5 }}
-                                                    >
-                                                        ${domain.price}
-                                                    </Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        Registration
-                                                    </Typography>
-                                                    {domain.renewalPrice && (
-                                                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                            Renewal: ${domain.renewalPrice}/year
-                                                        </Typography>
+                                                    {domain.available ? (
+                                                        <>
+                                                            <Typography 
+                                                                variant="h4" 
+                                                                color="primary" 
+                                                                sx={{ fontWeight: 700, mb: 0.5 }}
+                                                            >
+                                                                ${domain.price}
+                                                            </Typography>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                Registration
+                                                            </Typography>
+                                                            {domain.renewalPrice && (
+                                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                                    Renewal: ${domain.renewalPrice}/year
+                                                                </Typography>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Typography 
+                                                                variant="h5" 
+                                                                color="error" 
+                                                                sx={{ fontWeight: 700, mb: 0.5 }}
+                                                            >
+                                                                Registered
+                                                            </Typography>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                This domain is taken
+                                                            </Typography>
+                                                            {domain.expiryDate && (
+                                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                                    Expires: {domain.expiryDate}
+                                                                </Typography>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </Box>
 
-                                                <Button
-                                                    variant="contained"
-                                                    fullWidth
-                                                    endIcon={<OpenInNewIcon />}
-                                                    href={domain.purchaseUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    sx={{
-                                                        borderRadius: 2,
-                                                        textTransform: 'none',
-                                                        fontWeight: 600,
-                                                        py: 1.5
-                                                    }}
-                                                >
-                                                    Buy Now
-                                                </Button>
+                                                {domain.available && (
+                                                    <Button
+                                                        variant="contained"
+                                                        fullWidth
+                                                        endIcon={<OpenInNewIcon />}
+                                                        href={domain.purchaseUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        sx={{
+                                                            borderRadius: 2,
+                                                            textTransform: 'none',
+                                                            fontWeight: 600,
+                                                            py: 1.5
+                                                        }}
+                                                    >
+                                                        Buy Now
+                                                    </Button>
+                                                )}
                                             </Paper>
                                         </motion.div>
                                     </Grid>

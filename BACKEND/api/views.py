@@ -2793,7 +2793,10 @@ def check_domain_availability(request):
     """
     domain = request.GET.get('domain', '').strip().lower()
     
+    logger.info(f"[check_domain_availability] Checking domain: {domain}")
+    
     if not domain:
+        logger.warning("[check_domain_availability] No domain provided")
         return Response(
             {'error': 'Domain name is required'},
             status=status.HTTP_400_BAD_REQUEST
@@ -2801,24 +2804,26 @@ def check_domain_availability(request):
     
     # Validate domain name (alphanumeric and hyphens only)
     if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', domain):
+        logger.warning(f"[check_domain_availability] Invalid domain format: {domain}")
         return Response(
             {'error': 'Invalid domain name. Use only letters, numbers, and hyphens.'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
     # TLDs to check (sorted by popularity and price)
-    tlds = ['com', 'net', 'org', 'io', 'dev', 'app', 'tech', 'store', 'online']
+    tlds = ['com', 'net', 'org', 'io', 'app', 'store', 'online']
     
     # Get API key from settings
     api_key = getattr(settings, 'NAMESILO_API_KEY', None)
     
     if not api_key:
-        logger.error('NAMESILO_API_KEY not configured in settings')
+        logger.error('[check_domain_availability] NAMESILO_API_KEY not configured in settings')
         return Response(
             {'error': 'Domain service not configured'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
+    logger.info(f"[check_domain_availability] API key found, checking {len(tlds)} TLDs")
     results = []
     
     for tld in tlds:
@@ -2834,44 +2839,90 @@ def check_domain_availability(request):
             }
             
             url = f"https://www.namesilo.com/api/checkRegisterAvailability?{urlencode(params)}"
+            logger.debug(f"[check_domain_availability] Checking {full_domain}")
             response = requests.get(url, timeout=10)
             
             if response.status_code != 200:
-                logger.warning(f"NameSilo API returned status {response.status_code} for {full_domain}")
+                logger.warning(f"[check_domain_availability] NameSilo API returned status {response.status_code} for {full_domain}")
                 continue
             
             # Parse XML response
+            logger.debug(f"[check_domain_availability] Raw XML response: {response.content[:500]}")
             root = ET.fromstring(response.content)
             
-            # Check if domain is available
-            available_elem = root.find('.//available')
-            if available_elem is not None and available_elem.text == 'yes':
-                # Get pricing
-                price_elem = root.find('.//price')
-                price = price_elem.text if price_elem is not None else 'N/A'
-                
-                results.append({
-                    'domain': full_domain,
-                    'tld': tld,
-                    'available': True,
-                    'price': price,
-                    'renewalPrice': price,  # NameSilo usually same price for renewal
-                    'purchaseUrl': f"https://www.namesilo.com/domain/search-domains?query={full_domain}"
-                })
+            # Check response code (should be 300 for success)
+            code_elem = root.find('.//code')
+            if code_elem is not None and code_elem.text != '300':
+                detail_elem = root.find('.//detail')
+                detail = detail_elem.text if detail_elem is not None else 'Unknown error'
+                logger.warning(f"[check_domain_availability] NameSilo API error for {full_domain}: {detail}")
+                continue
+            
+            # Check if domain is in available list (correct XML structure per docs)
+            # Format: <available><domain price="X" renew="Y">domain.com</domain></available>
+            domain_found = False
+            for domain_elem in root.findall('.//available/domain'):
+                if domain_elem.text == full_domain:
+                    price = domain_elem.get('price', 'N/A')
+                    renew_price = domain_elem.get('renew', price)
+                    
+                    logger.info(f"[check_domain_availability] {full_domain} available at ${price}")
+                    
+                    results.append({
+                        'domain': full_domain,
+                        'tld': tld,
+                        'available': True,
+                        'price': price,
+                        'renewalPrice': renew_price,
+                        'purchaseUrl': f"https://www.namesilo.com/domain/search-domains?query={full_domain}"
+                    })
+                    domain_found = True
+                    break
+            
+            # Check if domain is in unavailable list
+            if not domain_found:
+                for domain_elem in root.findall('.//unavailable/domain'):
+                    if domain_elem.text == full_domain:
+                        logger.debug(f"[check_domain_availability] {full_domain} not available (taken)")
+                        results.append({
+                            'domain': full_domain,
+                            'tld': tld,
+                            'available': False,
+                            'price': None,
+                            'renewalPrice': None,
+                            'purchaseUrl': None
+                        })
+                        domain_found = True
+                        break
+            
+            if not domain_found:
+                logger.debug(f"[check_domain_availability] {full_domain} status unknown")
                 
         except requests.exceptions.Timeout:
-            logger.warning(f"Timeout checking domain {full_domain}")
+            logger.warning(f"[check_domain_availability] Timeout checking domain {full_domain}")
             continue
         except ET.ParseError as e:
-            logger.error(f"Failed to parse XML for {full_domain}: {e}")
+            logger.error(f"[check_domain_availability] Failed to parse XML for {full_domain}: {e}")
             continue
         except Exception as e:
-            logger.error(f"Error checking domain {full_domain}: {e}")
+            logger.error(f"[check_domain_availability] Error checking domain {full_domain}: {e}")
             continue
     
-    # Sort by price (convert to float for sorting)
-    results.sort(key=lambda x: float(x['price']) if x['price'] != 'N/A' else float('inf'))
+    # Sort: available domains first (by price), then unavailable domains
+    def sort_key(domain):
+        if not domain['available']:
+            return (1, domain['domain'])  # Unavailable domains last, sorted by name
+        price = domain.get('price')
+        if price is None or price == 'N/A':
+            return (0, float('inf'), domain['domain'])
+        try:
+            return (0, float(price), domain['domain'])
+        except (ValueError, TypeError):
+            return (0, float('inf'), domain['domain'])
     
+    results.sort(key=sort_key)
+    
+    logger.info(f"[check_domain_availability] Found {len(results)} domains for '{domain}' ({len([r for r in results if r['available']])} available)")
     return Response(results)
 
 
