@@ -121,29 +121,6 @@ services:
     depends_on:
       - backend
 
-  # --- Serwis Viewer Frontend (Public Sites Tests) ---
-  # Launch with: docker-compose --profile viewer up
-  viewer-frontend:
-    profiles: ["viewer"]
-    build:
-      context: ./VIEWER_FRONTEND
-      dockerfile: Dockerfile
-    container_name: ${COMPOSE_PROJECT_NAME:-site777}_viewer_frontend_app
-    restart: unless-stopped
-    volumes:
-      - ./VIEWER_FRONTEND:/app
-      - ./FRONTEND:/app/frontend
-      - /app/node_modules
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-      - SHARED_FRONTEND_PATH=/app/frontend/src
-    depends_on:
-      - backend
-
 volumes:
   # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.
   site_db_data: {}

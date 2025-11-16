@@ -94,7 +94,8 @@ const Navigation = () => {
         if (isAuthenticated) {
             primary.push(
                 { label: 'Sites', to: '/studio/sites', requiresAuth: true },
-                { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true }
+                { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true },
+                { label: 'Viewer', to: '/viewer', requiresAuth: true }
             );
         }
 
