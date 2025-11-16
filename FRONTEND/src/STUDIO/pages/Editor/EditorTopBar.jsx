@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, Menu, MenuItem, ListItemIcon, ListItemText, Slider, alpha } from '@mui/material';
 import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert, ZoomIn, ZoomOut } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import { renameSite, updateSiteTemplate, createSiteVersion, fetchSiteVersions } from '../../../services/siteService';
+import { renameSite, updateSiteTemplate, createSiteVersion } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
@@ -49,6 +49,10 @@ const EditorTopBar = () => {
   const getSelectedPage = useNewEditorStore((state) => state.getSelectedPage);
   const siteId = useNewEditorStore((state) => state.siteId);
   const siteName = useNewEditorStore((state) => state.siteName);
+  const undo = useNewEditorStore((state) => state.undo);
+  const redo = useNewEditorStore((state) => state.redo);
+  const structureHistory = useNewEditorStore((state) => state.structureHistory);
+  const detailHistory = useNewEditorStore((state) => state.detailHistory);
   const setSiteName = useNewEditorStore((state) => state.setSiteName);
   const site = useNewEditorStore((state) => state.site);
   const lastSavedAt = useNewEditorStore((state) => state.lastSavedAt);
@@ -91,73 +95,22 @@ const EditorTopBar = () => {
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [versions, setVersions] = useState([]);
-  const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const fileInputRef = useRef(null);
   const isMobile = useMediaQuery('(max-width:900px)');
 
-  // Load entire version history once per site / after new save
-  useEffect(() => {
-    const loadVersions = async () => {
-      if (!siteId) {
-        setVersions([]);
-        return;
-      }
-      try {
-        const versionsData = await fetchSiteVersions(siteId);
-        setVersions(Array.isArray(versionsData) ? versionsData : []);
-      } catch (error) {
-        console.error('Failed to load versions:', error);
-        setVersions([]);
-      }
-    };
-    loadVersions();
-  }, [siteId]);
+  // Check local history for undo/redo availability
+  const currentHistory = editorMode === 'structure' ? structureHistory : detailHistory;
+  const canUndoLocal = currentHistory?.past?.length > 0;
+  const canRedoLocal = currentHistory?.future?.length > 0;
 
-  const sortedVersions = useMemo(() => {
-    if (!versions?.length) {
-      return [];
-    }
-    return [...versions].sort((a, b) => a.version_number - b.version_number);
-  }, [versions]);
-
-  const totalVersions = sortedVersions.length;
-  const rawVersionIndex = sortedVersions.findIndex((version) => version.version_number === currentVersionNumber);
-  const effectiveVersionIndex = rawVersionIndex === -1 ? totalVersions : rawVersionIndex;
-  const previousVersion = effectiveVersionIndex > 0 ? sortedVersions[effectiveVersionIndex - 1] : null;
-  const nextVersion =
-    effectiveVersionIndex >= 0 && effectiveVersionIndex < totalVersions - 1
-      ? sortedVersions[effectiveVersionIndex + 1]
-      : null;
-
-  const canUndoVersion = Boolean(previousVersion);
-  const canRedoVersion = Boolean(nextVersion);
-
-  const describeVersion = (version) => {
-    if (!version) {
-      return '';
-    }
-    const baseLabel = `v${version.version_number}`;
-    if (version.change_summary && version.change_summary.trim()) {
-      return `${baseLabel} • ${version.change_summary.trim()}`;
-    }
-    return baseLabel;
-  };
-
-  const undoTooltip = canUndoVersion
-    ? `Undo to ${describeVersion(previousVersion)}`
-    : 'No earlier version available';
-  const redoTooltip = canRedoVersion
-    ? `Redo to ${describeVersion(nextVersion)}`
-    : 'No later version available';
+  const undoTooltip = canUndoLocal
+    ? `Undo last change (Ctrl+Z)`
+    : 'No changes to undo';
+  const redoTooltip = canRedoLocal
+    ? `Redo last change (Ctrl+Y)`
+    : 'No changes to redo';
 
   const selectedPage = getSelectedPage();
-  const versionLabel = currentVersionNumber ? `Version ${currentVersionNumber}` : 'Draft';
-  const versionPositionLabel = totalVersions > 0
-    ? rawVersionIndex >= 0
-      ? ` (${rawVersionIndex + 1}/${totalVersions})`
-      : ` (${totalVersions} saved)`
-    : '';
   const savedStatusText = isSaving
     ? 'Saving...'
     : hasUnsavedChanges
@@ -165,66 +118,43 @@ const EditorTopBar = () => {
       : lastSavedAt
         ? `Saved ${formatRelativeTime(lastSavedAt)}`
         : 'Never saved';
-  const undoLabel = canUndoVersion ? `Undo (${describeVersion(previousVersion)})` : 'Undo';
-  const redoLabel = canRedoVersion ? `Redo (${describeVersion(nextVersion)})` : 'Redo';
+  const undoLabel = canUndoLocal ? 'Undo (Ctrl+Z)' : 'Undo';
+  const redoLabel = canRedoLocal ? 'Redo (Ctrl+Y)' : 'Redo';
 
-  const handleLoadVersion = async (targetVersionNumber) => {
-    if (isLoadingVersion || !siteId) {
-      return;
+  const handleUndo = () => {
+    if (canUndoLocal) {
+      undo();
     }
+  };
 
-    const targetVersion = sortedVersions.find((version) => version.version_number === targetVersionNumber);
-    if (!targetVersion) {
-      addToast('Selected version could not be found', { variant: 'error' });
-      return;
+  const handleRedo = () => {
+    if (canRedoLocal) {
+      redo();
     }
+  };
 
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. We will save them before loading the selected version. Continue?'
-      );
-      if (!confirmed) {
-        return;
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Z or Cmd+Z for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndoLocal) {
+          undo();
+        }
       }
-
-      await handleSave();
-
-      const { hasUnsavedChanges: stillUnsaved } = useNewEditorStore.getState();
-      if (stillUnsaved) {
-        addToast('Could not save current changes. Version loading cancelled.', { variant: 'error' });
-        return;
+      // Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z for redo
+      else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        if (canRedoLocal) {
+          redo();
+        }
       }
-    }
+    };
 
-    setIsLoadingVersion(true);
-    try {
-      loadSite({
-        id: siteId,
-        name: siteName,
-        site: targetVersion.template_config,
-        currentVersionNumber: targetVersion.version_number,
-        lastSavedAt: targetVersion.created_at
-      });
-      addToast(`Loaded ${describeVersion(targetVersion)}`, { variant: 'success' });
-    } catch (error) {
-      console.error('Failed to apply cached version:', error);
-      addToast('Failed to load version', { variant: 'error' });
-    } finally {
-      setIsLoadingVersion(false);
-    }
-  };
-
-  const handlePreviousVersion = () => {
-    if (previousVersion) {
-      handleLoadVersion(previousVersion.version_number);
-    }
-  };
-
-  const handleNextVersion = () => {
-    if (nextVersion) {
-      handleLoadVersion(nextVersion.version_number);
-    }
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndoLocal, canRedoLocal, undo, redo]); // Include all dependencies
 
   // Update titleValue when siteName changes (after loading from API)
   useEffect(() => {
@@ -873,16 +803,16 @@ const EditorTopBar = () => {
               }}
             >
               <MenuItem 
-                onClick={() => { handlePreviousVersion(); setAnchorEl(null); }}
-                disabled={!canUndoVersion || isLoadingVersion}
+                onClick={() => { handleUndo(); setAnchorEl(null); }}
+                disabled={!canUndoLocal}
                 sx={{ color: textPrimary }}
               >
                 <ListItemIcon><Undo fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
                 <ListItemText>{undoLabel}</ListItemText>
               </MenuItem>
               <MenuItem 
-                onClick={() => { handleNextVersion(); setAnchorEl(null); }}
-                disabled={!canRedoVersion || isLoadingVersion}
+                onClick={() => { handleRedo(); setAnchorEl(null); }}
+                disabled={!canRedoLocal}
                 sx={{ color: textPrimary }}
               >
                 <ListItemIcon><Redo fontSize="small" sx={{ color: textPrimary }} /></ListItemIcon>
@@ -915,15 +845,15 @@ const EditorTopBar = () => {
           </>
         )}
 
-        {/* Version Navigation */}
-        {!isMobile && totalVersions > 0 && (
+        {/* Undo/Redo Controls */}
+        {!isMobile && (
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Tooltip title={undoTooltip}>
               <span>
                 <IconButton
                   size="small"
-                  onClick={handlePreviousVersion}
-                  disabled={!canUndoVersion || isLoadingVersion}
+                  onClick={handleUndo}
+                  disabled={!canUndoLocal}
                   aria-label={undoLabel}
                   sx={{
                     color: textPrimary,
@@ -939,8 +869,8 @@ const EditorTopBar = () => {
               <span>
                 <IconButton
                   size="small"
-                  onClick={handleNextVersion}
-                  disabled={!canRedoVersion || isLoadingVersion}
+                  onClick={handleRedo}
+                  disabled={!canRedoLocal}
                   aria-label={redoLabel}
                   sx={{
                     color: textPrimary,
@@ -956,17 +886,6 @@ const EditorTopBar = () => {
         )}
 
         <Stack spacing={0.25} alignItems="flex-end" sx={{ mr: 0.5 }}>
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 600,
-              color: textHint,
-              letterSpacing: '0.02em'
-            }}
-          >
-            {versionLabel}
-            {versionPositionLabel}
-          </Typography>
           <Typography
             variant="caption"
             sx={{
