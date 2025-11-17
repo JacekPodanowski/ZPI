@@ -75,6 +75,21 @@ export const fetchSiteCalendarRoster = async (siteId) => {
     return response.data;
 };
 
+export const fetchSiteCalendarData = async (siteId, startDate = null, endDate = null) => {
+    let url = `/sites/${siteId}/calendar-data/`;
+    const params = new URLSearchParams();
+    
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    if (params.toString()) {
+        url += `?${params.toString()}`;
+    }
+    
+    const response = await apiClient.get(url);
+    return response.data;
+};
+
 export const addTeamMember = async (memberData) => {
     const response = await apiClient.post('/team-members/', memberData);
     return response.data;

@@ -720,6 +720,57 @@ class SiteViewSet(viewsets.ModelViewSet):
             'permissions': get_role_permissions(role, request.user.is_staff),
         })
 
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated], url_path='calendar-data')
+    def calendar_data(self, request, pk=None):
+        """
+        Return all calendar data (events + availability blocks) for a specific site.
+        This endpoint is used by the Studio to load calendar data per site.
+        No filtering needed - if user has access to site, they see all its calendar data.
+        
+        Optional query params:
+        - start_date: Filter events/blocks from this date (YYYY-MM-DD)
+        - end_date: Filter events/blocks to this date (YYYY-MM-DD)
+        """
+        site = self.get_object()
+        role, membership = resolve_site_role(request.user, site)
+
+        if role is None and not request.user.is_staff:
+            raise PermissionDenied('You do not have access to this site.')
+
+        # Get query params for date filtering
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        # Fetch events for this site
+        events_qs = Event.objects.filter(site=site).select_related(
+            'site', 'site__owner', 'creator'
+        ).prefetch_related('bookings', 'bookings__client')
+        
+        if start_date:
+            events_qs = events_qs.filter(date__gte=start_date)
+        if end_date:
+            events_qs = events_qs.filter(date__lte=end_date)
+        
+        # Fetch availability blocks for this site
+        blocks_qs = AvailabilityBlock.objects.filter(site=site).select_related(
+            'site', 'site__owner', 'creator'
+        )
+        
+        if start_date:
+            blocks_qs = blocks_qs.filter(date__gte=start_date)
+        if end_date:
+            blocks_qs = blocks_qs.filter(date__lte=end_date)
+
+        # Serialize the data
+        events_data = EventSerializer(events_qs, many=True, context={'request': request}).data
+        blocks_data = AvailabilityBlockSerializer(blocks_qs, many=True, context={'request': request}).data
+
+        return Response({
+            'site_id': site.id,
+            'events': events_data,
+            'availability_blocks': blocks_data,
+        })
+
     def perform_create(self, serializer):
         """
         Auto-assign the next available color index when creating a new site.
@@ -955,6 +1006,18 @@ class ClientViewSet(SiteScopedMixin, viewsets.ModelViewSet):
 class EventViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
+    
+    # Disable bulk list endpoint - use Site.calendar_data instead for fetching events
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Bulk event listing is disabled for security and performance.
+        Use /api/v1/sites/{site_id}/calendar-data/ to fetch events for a specific site.
+        """
+        return Response({
+            'error': 'Bulk event listing is not available. Use /api/v1/sites/{site_id}/calendar-data/ instead.'
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     def _get_site_roles(self):
         if hasattr(self, '_site_role_cache'):
@@ -1305,6 +1368,18 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
 class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     serializer_class = AvailabilityBlockSerializer
     permission_classes = [IsAuthenticated]
+    
+    # Disable bulk list endpoint - use Site.calendar_data instead for fetching availability blocks
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Bulk availability block listing is disabled for security and performance.
+        Use /api/v1/sites/{site_id}/calendar-data/ to fetch availability blocks for a specific site.
+        """
+        return Response({
+            'error': 'Bulk availability listing is not available. Use /api/v1/sites/{site_id}/calendar-data/ instead.'
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     def get_queryset(self):
         qs = AvailabilityBlock.objects.select_related('site', 'site__owner', 'creator')
@@ -1314,18 +1389,19 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             return self._filter_by_site_param(qs)
         
         # Get sites where user is owner or linked team member
-        owned_site_ids = Site.objects.filter(owner=user).values_list('id', flat=True)
-        team_member_site_ids = TeamMember.objects.filter(
+        owned_site_ids = list(Site.objects.filter(owner=user).values_list('id', flat=True))
+        team_member_site_ids = list(TeamMember.objects.filter(
             linked_user=user,
             invitation_status='linked'
-        ).values_list('site_id', flat=True)
+        ).values_list('site_id', flat=True))
         
-        accessible_site_ids = list(owned_site_ids) + list(team_member_site_ids)
+        accessible_site_ids = owned_site_ids + team_member_site_ids
         
         if not accessible_site_ids:
             return qs.none()
         
         qs = qs.filter(site_id__in=accessible_site_ids)
+        
         return self._filter_by_site_param(qs)
 
     def perform_create(self, serializer):
@@ -2385,57 +2461,58 @@ class PublicAvailabilityView(APIView):
         
         # Generuj sloty na podstawie bloków dostępności
         for block in availability_blocks:
-            for meeting_length in block.meeting_lengths:
-                tz = timezone.get_current_timezone()
-                current_time = timezone.make_aware(datetime.combine(block.date, block.start_time), tz)
-                end_time = timezone.make_aware(datetime.combine(block.date, block.end_time), tz)
+            # meeting_length is a single integer, not a list
+            meeting_length = block.meeting_length
+            tz = timezone.get_current_timezone()
+            current_time = timezone.make_aware(datetime.combine(block.date, block.start_time), tz)
+            end_time = timezone.make_aware(datetime.combine(block.date, block.end_time), tz)
+            
+            while current_time + timedelta(minutes=meeting_length) <= end_time:
+                slot_start = current_time
+                slot_end = slot_start + timedelta(minutes=meeting_length)
                 
-                while current_time + timedelta(minutes=meeting_length) <= end_time:
-                    slot_start = current_time
-                    slot_end = slot_start + timedelta(minutes=meeting_length)
-                    
-                    slot_key = slot_start.isoformat()
+                slot_key = slot_start.isoformat()
 
-                    # Znajdź istniejące wydarzenie dla tego slotu (jeśli istnieje)
-                    matching_event = next(
-                        (e for e in existing_events if e.start_time == slot_start and e.end_time == slot_end),
-                        None
+                # Znajdź istniejące wydarzenie dla tego slotu (jeśli istnieje)
+                matching_event = next(
+                    (e for e in existing_events if e.start_time == slot_start and e.end_time == slot_end),
+                    None
+                )
+                
+                # Sprawdź, czy slot nie jest już zajęty
+                if slot_start not in booked_slots:
+                     # Dodatkowa, bardziej precyzyjna weryfikacja kolizji
+                    is_conflicting = any(
+                        (e.start_time < slot_end and e.end_time > slot_start)
+                        for e in existing_events if e.bookings.count() >= e.capacity
                     )
-                    
-                    # Sprawdź, czy slot nie jest już zajęty
-                    if slot_start not in booked_slots:
-                         # Dodatkowa, bardziej precyzyjna weryfikacja kolizji
-                        is_conflicting = any(
-                            (e.start_time < slot_end and e.end_time > slot_start)
-                            for e in existing_events if e.bookings.count() >= e.capacity
-                        )
-                        if not is_conflicting:
-                            # Oblicz capacity i available_spots
-                            if matching_event:
-                                capacity = matching_event.capacity
-                                booked_count = matching_event.bookings.count()
-                                available_spots = max(capacity - booked_count, 0)
-                                event_type = matching_event.event_type
-                                event_id = matching_event.id
-                            else:
-                                # Domyślne wartości dla nowych slotów (bez utworzonego eventu)
-                                capacity = 1
-                                available_spots = 1
-                                event_type = 'individual'
-                                event_id = None
-                            
-                            slot_map[slot_key] = {
-                                'start': slot_key,
-                                'end': slot_end.isoformat(),
-                                'duration': meeting_length,
-                                'capacity': capacity,
-                                'available_spots': available_spots,
-                                'event_type': event_type,
-                                'event_id': event_id
-                            }
+                    if not is_conflicting:
+                        # Oblicz capacity i available_spots
+                        if matching_event:
+                            capacity = matching_event.capacity
+                            booked_count = matching_event.bookings.count()
+                            available_spots = max(capacity - booked_count, 0)
+                            event_type = matching_event.event_type
+                            event_id = matching_event.id
+                        else:
+                            # Domyślne wartości dla nowych slotów (bez utworzonego eventu)
+                            capacity = 1
+                            available_spots = 1
+                            event_type = 'individual'
+                            event_id = None
+                        
+                        slot_map[slot_key] = {
+                            'start': slot_key,
+                            'end': slot_end.isoformat(),
+                            'duration': meeting_length,
+                            'capacity': capacity,
+                            'available_spots': available_spots,
+                            'event_type': event_type,
+                            'event_id': event_id
+                        }
 
-                    # Przesuń czas o interwał "przyciągania" (time_snapping)
-                    current_time += timedelta(minutes=block.time_snapping)
+                # Przesuń czas o interwał "przyciągania" (time_snapping)
+                current_time += timedelta(minutes=block.time_snapping)
 
         # Dodaj istniejące wydarzenia, które nie były objęte blokami dostępności
         for event in existing_events:

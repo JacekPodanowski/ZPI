@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import moment from 'moment';
-import { fetchSites, fetchSiteCalendarRoster } from '../../../services/siteService';
-import { fetchEvents, createEvent, fetchAvailabilityBlocks, createAvailabilityBlock, deleteEvent } from '../../../services/eventService';
+import { fetchSites, fetchSiteCalendarRoster, fetchSiteCalendarData } from '../../../services/siteService';
+import { createEvent, createAvailabilityBlock, deleteEvent } from '../../../services/eventService';
 import { fetchTemplates, createTemplate } from '../../../services/templateService';
 import CalendarGridControlled from '../../components_STUDIO/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components_STUDIO/Dashboard/Templates/RealTemplateBrowser';
@@ -190,7 +190,7 @@ const CreatorCalendarApp = () => {
         updateCalendarPreferences({ operating_end_hour: newHour });
     };
 
-    // Fetch sites and events from API
+    // Fetch sites and calendar data from API
     useEffect(() => {
         let active = true;
 
@@ -198,25 +198,10 @@ const CreatorCalendarApp = () => {
             const userId = user?.id;
 
             try {
-                const cachedSitesRaw = userId ? getCache(`${CACHE_KEYS.SITES}_${userId}`) : null;
-                const cachedEvents = userId ? getCache(`${CACHE_KEYS.EVENTS}_${userId}`) : null;
-                const cachedAvailability = userId ? getCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`) : null;
-
-                if (cachedSitesRaw && cachedEvents && active) {
-                    const normalizedCachedSites = ensureNormalizedSites(cachedSitesRaw);
-                    setSites(normalizedCachedSites);
-                    setSitePermissions(computePermissionsFromSites(normalizedCachedSites));
-                    setEvents(cachedEvents);
-                    if (cachedAvailability) {
-                        setAvailabilityBlocks(cachedAvailability);
-                    }
-                    setLoading(false);
-                }
-
+                // Always fetch sites first to know which ones user has access to
                 const sitesResponse = await fetchSites();
-                if (!active) {
-                    return;
-                }
+                if (!active) return;
+                
                 const normalizedSites = ensureNormalizedSites(sitesResponse);
                 setSites(normalizedSites);
                 setSitePermissions(computePermissionsFromSites(normalizedSites));
@@ -225,49 +210,52 @@ const CreatorCalendarApp = () => {
                     setCache(`${CACHE_KEYS.SITES}_${userId}`, normalizedSites, 1000 * 60 * 5);
                 }
 
-                const eventsResponse = await fetchEvents();
-                if (active) {
-                    const transformedEvents = eventsResponse.map((event) => {
-                        const siteEntry = normalizedSites.find((s) => s.id === event.site) || {};
-                        const startDate = new Date(event.start_time);
-                        const endDate = new Date(event.end_time);
-                        return {
-                            ...event,
-                            site_id: event.site,
-                            site_color: getSiteColorHex(siteEntry.color_index ?? 0),
-                            date: startDate.toISOString().split('T')[0],
-                            start_time: startDate.toTimeString().substring(0, 5),
-                            end_time: endDate.toTimeString().substring(0, 5),
-                            assignment_type: event.assignment_type,
-                            assignment_label: event.assignment_label,
-                            assigned_to_owner: event.assigned_to_owner,
-                            assigned_to_team_member: event.assigned_to_team_member,
-                        };
-                    });
-                    setEvents(transformedEvents);
-                    if (userId) {
-                        setCache(`${CACHE_KEYS.EVENTS}_${userId}`, transformedEvents, 1000 * 60 * 5);
+                // Fetch calendar data for each accessible site
+                const allEvents = [];
+                const allAvailabilityBlocks = [];
+                
+                for (const site of normalizedSites) {
+                    try {
+                        const calendarData = await fetchSiteCalendarData(site.id);
+                        
+                        // Transform events
+                        const transformedEvents = calendarData.events.map((event) => {
+                            const startDate = new Date(event.start_time);
+                            const endDate = new Date(event.end_time);
+                            return {
+                                ...event,
+                                site_id: site.id,
+                                site_color: getSiteColorHex(site.color_index ?? 0),
+                                date: startDate.toISOString().split('T')[0],
+                                start_time: startDate.toTimeString().substring(0, 5),
+                                end_time: endDate.toTimeString().substring(0, 5),
+                                assignment_type: event.assignment_type,
+                                assignment_label: event.assignment_label,
+                                assigned_to_owner: event.assigned_to_owner,
+                                assigned_to_team_member: event.assigned_to_team_member,
+                            };
+                        });
+                        
+                        // Transform availability blocks
+                        const transformedBlocks = calendarData.availability_blocks.map((block) => ({
+                            ...block,
+                            site_color: getSiteColorHex(site.color_index ?? 0),
+                        }));
+                        
+                        allEvents.push(...transformedEvents);
+                        allAvailabilityBlocks.push(...transformedBlocks);
+                    } catch (siteError) {
+                        console.warn(`Could not fetch calendar data for site ${site.id}:`, siteError);
                     }
                 }
-
-                try {
-                    const availabilityResponse = await fetchAvailabilityBlocks();
-                    if (active) {
-                        const transformedAvailability = availabilityResponse.map((block) => ({
-                            ...block,
-                            site_color: getSiteColorHex(
-                                normalizedSites.find((s) => s.id === block.site)?.color_index ?? 0
-                            ),
-                        }));
-                        setAvailabilityBlocks(transformedAvailability);
-                        if (userId) {
-                            setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, transformedAvailability, 1000 * 60 * 5);
-                        }
-                    }
-                } catch (availError) {
-                    console.warn('Could not fetch availability blocks:', availError);
-                    if (active) {
-                        setAvailabilityBlocks([]);
+                
+                if (active) {
+                    setEvents(allEvents);
+                    setAvailabilityBlocks(allAvailabilityBlocks);
+                    
+                    if (userId) {
+                        setCache(`${CACHE_KEYS.EVENTS}_${userId}`, allEvents, 1000 * 60 * 5);
+                        setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, allAvailabilityBlocks, 1000 * 60 * 5);
                     }
                 }
 
@@ -310,42 +298,56 @@ const CreatorCalendarApp = () => {
         if (!userId) return;
         
         try {
+            // Fetch sites first
             const sitesResponse = await fetchSites();
             const normalizedSites = ensureNormalizedSites(sitesResponse);
             setSites(normalizedSites);
             setSitePermissions(computePermissionsFromSites(normalizedSites));
             setCache(`${CACHE_KEYS.SITES}_${userId}`, normalizedSites, 1000 * 60 * 5);
 
-            const eventsResponse = await fetchEvents();
-            const transformedEvents = eventsResponse.map((event) => {
-                const siteEntry = normalizedSites.find((s) => s.id === event.site) || {};
-                const startDate = new Date(event.start_time);
-                const endDate = new Date(event.end_time);
-                return {
-                    ...event,
-                    site_id: event.site,
-                    site_color: getSiteColorHex(siteEntry.color_index ?? 0),
-                    date: startDate.toISOString().split('T')[0],
-                    start_time: startDate.toTimeString().substring(0, 5),
-                    end_time: endDate.toTimeString().substring(0, 5),
-                    assignment_type: event.assignment_type,
-                    assignment_label: event.assignment_label,
-                    assigned_to_owner: event.assigned_to_owner,
-                    assigned_to_team_member: event.assigned_to_team_member,
-                };
-            });
-            setEvents(transformedEvents);
-            setCache(`${CACHE_KEYS.EVENTS}_${userId}`, transformedEvents, 1000 * 60 * 5);
-
-            const availabilityResponse = await fetchAvailabilityBlocks();
-            const transformedAvailability = availabilityResponse.map((block) => ({
-                ...block,
-                site_color: getSiteColorHex(
-                    normalizedSites.find((s) => s.id === block.site)?.color_index ?? 0
-                ),
-            }));
-            setAvailabilityBlocks(transformedAvailability);
-            setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, transformedAvailability, 1000 * 60 * 5);
+            // Fetch calendar data for each accessible site
+            const allEvents = [];
+            const allAvailabilityBlocks = [];
+            
+            for (const site of normalizedSites) {
+                try {
+                    const calendarData = await fetchSiteCalendarData(site.id);
+                    
+                    // Transform events
+                    const transformedEvents = calendarData.events.map((event) => {
+                        const startDate = new Date(event.start_time);
+                        const endDate = new Date(event.end_time);
+                        return {
+                            ...event,
+                            site_id: site.id,
+                            site_color: getSiteColorHex(site.color_index ?? 0),
+                            date: startDate.toISOString().split('T')[0],
+                            start_time: startDate.toTimeString().substring(0, 5),
+                            end_time: endDate.toTimeString().substring(0, 5),
+                            assignment_type: event.assignment_type,
+                            assignment_label: event.assignment_label,
+                            assigned_to_owner: event.assigned_to_owner,
+                            assigned_to_team_member: event.assigned_to_team_member,
+                        };
+                    });
+                    
+                    // Transform availability blocks
+                    const transformedBlocks = calendarData.availability_blocks.map((block) => ({
+                        ...block,
+                        site_color: getSiteColorHex(site.color_index ?? 0),
+                    }));
+                    
+                    allEvents.push(...transformedEvents);
+                    allAvailabilityBlocks.push(...transformedBlocks);
+                } catch (siteError) {
+                    console.warn(`Could not fetch calendar data for site ${site.id}:`, siteError);
+                }
+            }
+            
+            setEvents(allEvents);
+            setAvailabilityBlocks(allAvailabilityBlocks);
+            setCache(`${CACHE_KEYS.EVENTS}_${userId}`, allEvents, 1000 * 60 * 5);
+            setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, allAvailabilityBlocks, 1000 * 60 * 5);
 
             const templatesResponse = await fetchTemplates();
             setTemplates(templatesResponse);
@@ -854,15 +856,9 @@ const CreatorCalendarApp = () => {
     }, [sites]);
 
     const eventsForCalendar = useMemo(() => {
-        // Get IDs of all sites the user has access to (only linked team sites)
-        const accessibleSiteIds = new Set(sites.map(site => String(site.id)));
-        
+        // Backend already filters events by user access (owner + linked team members)
+        // Here we only apply UI filters (selected site, assignee filter, team size)
         return events
-            .filter((event) => {
-                // Filter out events from sites user doesn't have access to
-                const eventSiteId = String(event.site_id ?? event.site);
-                return accessibleSiteIds.has(eventSiteId);
-            })
             .map((event) => {
                 const siteKey = String(event.site_id);
                 const isFromSelectedSite = !selectedSiteId || siteKey === String(selectedSiteId);
@@ -897,26 +893,20 @@ const CreatorCalendarApp = () => {
                 };
             })
             .filter(Boolean);
-    }, [events, selectedSiteId, selectedAssigneeFilter, siteTeamSizeMap, sites]);
+    }, [events, selectedSiteId, selectedAssigneeFilter, siteTeamSizeMap]);
 
     const availabilityForCalendar = useMemo(() => {
-        // Get IDs of all sites the user has access to
-        const accessibleSiteIds = new Set(sites.map(site => String(site.id)));
+        // Backend already filters availability blocks by user access (owner + linked team members)
+        // Here we only apply UI filters (selected site)
         
-        // Filter to only show blocks from accessible sites
-        const filteredBlocks = availabilityBlocks.filter((block) => {
-            const blockSiteId = String(block.site_id ?? block.site);
-            return accessibleSiteIds.has(blockSiteId);
-        });
-        
-        // If a site is selected, further filter to only that site
+        // If a site is selected, filter to only that site
         if (!selectedSiteId) {
-            return filteredBlocks;
+            return availabilityBlocks;
         }
-        return filteredBlocks.filter((block) => (
+        return availabilityBlocks.filter((block) => (
             String(block.site_id ?? block.site) === String(selectedSiteId)
         ));
-    }, [availabilityBlocks, selectedSiteId, sites]);
+    }, [availabilityBlocks, selectedSiteId]);
 
     const handleBookingRemoved = useCallback(({ eventId, bookingId }) => {
         if (!eventId || !bookingId) {
@@ -1119,8 +1109,8 @@ const CreatorCalendarApp = () => {
                 onConfirm={handleConfirmTemplateCreation}
                 templateType={creatingTemplateMode}
                 selectedDate={selectedTemplateDate}
-                events={events}
-                availabilityBlocks={availabilityBlocks}
+                events={eventsForCalendar}
+                availabilityBlocks={availabilityForCalendar}
                 sites={sites}
             />
         </Box>

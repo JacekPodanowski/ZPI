@@ -2,27 +2,24 @@ import apiClient from './apiClient';
 
 /**
  * Event management service for the calendar
+ * 
+ * NOTE: Bulk fetching (fetchEvents, fetchAvailabilityBlocks) is deprecated.
+ * Use fetchSiteCalendarData from siteService.js instead to fetch calendar data per site.
  */
 
-// Events API
+// DEPRECATED: Use fetchSiteCalendarData from siteService instead
 export const fetchEvents = async () => {
-    try {
-        const response = await apiClient.get('/events/');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching events:', error);
-        throw error;
-    }
+    throw new Error('fetchEvents is deprecated. Use fetchSiteCalendarData from siteService instead.');
 };
 
+// DEPRECATED: Use fetchSiteCalendarData from siteService instead
 export const fetchEventsBySite = async (siteId) => {
-    try {
-        const response = await apiClient.get(`/events/?site=${siteId}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching events by site:', error);
-        throw error;
-    }
+    throw new Error('fetchEventsBySite is deprecated. Use fetchSiteCalendarData from siteService instead.');
+};
+
+// DEPRECATED: Use fetchSiteCalendarData from siteService instead  
+export const fetchAvailabilityBlocks = async () => {
+    throw new Error('fetchAvailabilityBlocks is deprecated. Use fetchSiteCalendarData from siteService instead.');
 };
 
 export const createEvent = async (eventData) => {
@@ -79,19 +76,6 @@ export const deleteEvent = async (eventId) => {
     } catch (error) {
         console.error('Error deleting event:', error);
         throw error;
-    }
-};
-
-// Availability Blocks API (these might need to be created in the backend)
-export const fetchAvailabilityBlocks = async () => {
-    try {
-        // Assuming we need to create an availability endpoint
-        const response = await apiClient.get('/availability-blocks/');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching availability blocks:', error);
-        // For now, return empty array if endpoint doesn't exist
-        return [];
     }
 };
 
