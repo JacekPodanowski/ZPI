@@ -656,13 +656,11 @@ class SiteViewSet(viewsets.ModelViewSet):
         qs = Site.objects.select_related('owner').all()
         if self.request.user.is_staff:
             return qs
-        # Return both owned sites and sites where user is a team member
+        # Return both owned sites and sites where user is a linked team member
         from .models import TeamMember
         team_member_site_ids = TeamMember.objects.filter(
-            invitation_status__in=['pending', 'linked']
-        ).filter(
-            models.Q(linked_user=self.request.user) |
-            models.Q(linked_user__isnull=True, email__iexact=self.request.user.email)
+            invitation_status='linked',
+            linked_user=self.request.user
         ).values_list('site_id', flat=True)
         
         return qs.filter(
@@ -680,12 +678,10 @@ class SiteViewSet(viewsets.ModelViewSet):
         owned_sites = Site.objects.filter(owner=user).select_related('owner')
         owned_serializer = SiteSerializer(owned_sites, many=True, context={'request': request})
         
-        # Get sites where user is a team member
+        # Get sites where user is a linked team member
         team_memberships = TeamMember.objects.filter(
-            invitation_status__in=['pending', 'linked']
-        ).filter(
-            models.Q(linked_user=user) |
-            models.Q(linked_user__isnull=True, email__iexact=user.email)
+            invitation_status='linked',
+            linked_user=user
         ).select_related('site', 'site__owner')
         
         team_member_sites = [tm.site for tm in team_memberships]
@@ -920,8 +916,24 @@ class ClientViewSet(SiteScopedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Client.objects.select_related('site', 'site__owner')
-        if not self.request.user.is_staff:
-            qs = qs.filter(site__owner=self.request.user)
+        user = self.request.user
+        
+        if user.is_staff:
+            return self._filter_by_site_param(qs)
+        
+        # Get sites where user is owner or linked team member
+        owned_site_ids = Site.objects.filter(owner=user).values_list('id', flat=True)
+        team_member_site_ids = TeamMember.objects.filter(
+            linked_user=user,
+            invitation_status='linked'
+        ).values_list('site_id', flat=True)
+        
+        accessible_site_ids = list(owned_site_ids) + list(team_member_site_ids)
+        
+        if not accessible_site_ids:
+            return qs.none()
+        
+        qs = qs.filter(site_id__in=accessible_site_ids)
         return self._filter_by_site_param(qs)
 
     def perform_create(self, serializer):
@@ -1084,8 +1096,24 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Booking.objects.select_related('site', 'site__owner', 'event', 'client')
-        if not self.request.user.is_staff:
-            qs = qs.filter(site__owner=self.request.user)
+        user = self.request.user
+        
+        if user.is_staff:
+            return self._filter_by_site_param(qs)
+        
+        # Get sites where user is owner or linked team member
+        owned_site_ids = Site.objects.filter(owner=user).values_list('id', flat=True)
+        team_member_site_ids = TeamMember.objects.filter(
+            linked_user=user,
+            invitation_status='linked'
+        ).values_list('site_id', flat=True)
+        
+        accessible_site_ids = list(owned_site_ids) + list(team_member_site_ids)
+        
+        if not accessible_site_ids:
+            return qs.none()
+        
+        qs = qs.filter(site_id__in=accessible_site_ids)
         return self._filter_by_site_param(qs)
 
     def perform_create(self, serializer):
@@ -1280,8 +1308,24 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = AvailabilityBlock.objects.select_related('site', 'site__owner', 'creator')
-        if not self.request.user.is_staff:
-            qs = qs.filter(site__owner=self.request.user)
+        user = self.request.user
+        
+        if user.is_staff:
+            return self._filter_by_site_param(qs)
+        
+        # Get sites where user is owner or linked team member
+        owned_site_ids = Site.objects.filter(owner=user).values_list('id', flat=True)
+        team_member_site_ids = TeamMember.objects.filter(
+            linked_user=user,
+            invitation_status='linked'
+        ).values_list('site_id', flat=True)
+        
+        accessible_site_ids = list(owned_site_ids) + list(team_member_site_ids)
+        
+        if not accessible_site_ids:
+            return qs.none()
+        
+        qs = qs.filter(site_id__in=accessible_site_ids)
         return self._filter_by_site_param(qs)
 
     def perform_create(self, serializer):
@@ -1307,11 +1351,29 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         instance.delete()
 
 
-@tag_viewset('Templates', operations=['list', 'retrieve'])
-class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Template.objects.filter(is_public=True)
+@tag_viewset('Templates')
+class TemplateViewSet(viewsets.ModelViewSet):
     serializer_class = TemplateSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Template.objects.all()
+        # Only return templates owned by the user
+        return Template.objects.filter(owner=user).select_related('owner')
+
+    def perform_create(self, serializer):
+        template = serializer.save(owner=self.request.user)
+        template_config = template.template_config or {}
+        events = template_config.get('events', [])
+        availability_blocks = template_config.get('availability_blocks', [])
+        logger.info(
+            f"Template created: '{template.name}' (ID: {template.id}) by user {self.request.user.email}. "
+            f"Contains {len(events)} events and {len(availability_blocks)} availability blocks. "
+            f"Type: {template_config.get('template_type', 'unknown')}"
+        )
+        logger.debug(f"Template config: {template_config}")
 
 
 @extend_schema(tags=['Public Sites'])
@@ -2515,6 +2577,29 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             Q(linked_user=user) |
             Q(email__iexact=user.email, invitation_status__in=['pending', 'invited'])
         ).select_related('site', 'linked_user')
+    
+    @action(detail=False, methods=['get'], url_path='pending-invitations')
+    def pending_invitations(self, request):
+        """Return all pending invitations for the current user with full site details."""
+        user = request.user
+        
+        # Get pending invitations where the user's email matches
+        pending_invites = TeamMember.objects.filter(
+            email__iexact=user.email,
+            invitation_status='pending'
+        ).select_related('site', 'site__owner')
+        
+        # Serialize with full site details
+        from .serializers import SiteWithTeamSerializer
+        result = []
+        for invite in pending_invites:
+            site_data = SiteWithTeamSerializer(invite.site, context={'request': request}).data
+            site_data['team_member_id'] = invite.id
+            site_data['permission_role'] = invite.permission_role
+            site_data['invited_at'] = invite.invited_at
+            result.append(site_data)
+        
+        return Response(result)
     
     def perform_create(self, serializer):
         """Validate site ownership before creating team member."""

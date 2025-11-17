@@ -99,3 +99,8 @@ export const fetchTeamMembers = async (siteId) => {
     const response = await apiClient.get(`/team-members/?site=${siteId}`);
     return response.data;
 };
+
+export const fetchPendingInvitations = async () => {
+    const response = await apiClient.get('/team-members/pending-invitations/');
+    return response.data;
+};

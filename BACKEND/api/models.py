@@ -165,14 +165,23 @@ class SiteVersion(models.Model):
 
 
 class Template(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    owner = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='calendar_templates')
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     template_config = models.JSONField(default=dict)
     thumbnail_url = models.URLField(blank=True, null=True)
-    is_public = models.BooleanField(default=True)
+    is_public = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('owner', 'name')]
+        indexes = [
+            models.Index(fields=['owner']),
+        ]
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.owner.email})"
 
 
 class Client(models.Model):
@@ -300,7 +309,7 @@ class Event(models.Model):
 class AvailabilityBlock(models.Model):
     """
     Represents a time window where clients can book appointments.
-    The creator defines meeting lengths, time snapping, and buffer time.
+    The creator defines meeting length, time snapping, and buffer time.
     """
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='availability_blocks')
     creator = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='created_availability_blocks')
@@ -308,9 +317,9 @@ class AvailabilityBlock(models.Model):
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
-    meeting_lengths = models.JSONField(
-        default=list,
-        help_text='List of allowed meeting durations in minutes, e.g., [30, 45, 60]'
+    meeting_length = models.IntegerField(
+        default=60,
+        help_text='Meeting duration in minutes (e.g., 30, 45, 60)'
     )
     time_snapping = models.IntegerField(
         default=30,

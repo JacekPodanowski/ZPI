@@ -24,6 +24,7 @@ const CreateTemplateModal = ({
     templateType, // 'day' or 'week'
     selectedDate,
     events,
+    availabilityBlocks = [],
     sites
 }) => {
     const [templateName, setTemplateName] = useState('');
@@ -55,6 +56,15 @@ const CreateTemplateModal = ({
                    eventMoment.isSameOrBefore(moment(selectedDate).endOf('isoWeek'));
         });
 
+    // Get availability blocks for display
+    const displayAvailability = templateType === 'day'
+        ? availabilityBlocks.filter(block => moment(block.date).isSame(selectedDate, 'day'))
+        : availabilityBlocks.filter(block => {
+            const blockMoment = moment(block.date);
+            return blockMoment.isSameOrAfter(moment(selectedDate).startOf('isoWeek')) &&
+                   blockMoment.isSameOrBefore(moment(selectedDate).endOf('isoWeek'));
+        });
+
     // Group events by day for week templates
     const eventsByDay = templateType === 'week'
         ? displayEvents.reduce((acc, event) => {
@@ -65,10 +75,22 @@ const CreateTemplateModal = ({
         }, {})
         : null;
 
+    // Group availability blocks by day for week templates
+    const availabilityByDay = templateType === 'week'
+        ? displayAvailability.reduce((acc, block) => {
+            const dayKey = moment(block.date).format('YYYY-MM-DD');
+            if (!acc[dayKey]) acc[dayKey] = [];
+            acc[dayKey].push(block);
+            return acc;
+        }, {})
+        : null;
+
     const getSiteColor = (siteId) => {
         const site = sites.find(s => s.id === siteId);
         return site ? getSiteColorHex(site.color_index ?? 0) : 'rgb(146, 0, 32)';
     };
+
+    const hasContent = displayEvents.length > 0 || displayAvailability.length > 0;
 
     return (
         <Dialog
@@ -89,12 +111,11 @@ const CreateTemplateModal = ({
                     pt: 3,
                     px: 3,
                     borderBottom: '1px solid',
-                    borderColor: 'divider'
+                    borderColor: 'divider',
+                    fontWeight: 600
                 }}
             >
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Utwórz szablon {templateType === 'day' ? 'dnia' : 'tygodnia'}
-                </Typography>
+                Utwórz szablon {templateType === 'day' ? 'dnia' : 'tygodnia'}
                 <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
                     {formattedDate}
                 </Typography>
@@ -117,104 +138,204 @@ const CreateTemplateModal = ({
                         }}
                     />
 
-                    {/* Events preview */}
+                    {/* Events and Availability preview */}
                     <Box>
                         <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600 }}>
-                            Wydarzenia do zapisania:
+                            Zawartość szablonu:
                         </Typography>
 
-                        {displayEvents.length === 0 ? (
+                        {!hasContent ? (
                             <Alert severity="warning" sx={{ borderRadius: 2 }}>
-                                Brak wydarzeń w wybranym {templateType === 'day' ? 'dniu' : 'tygodniu'}
+                                Brak wydarzeń ani bloków dostępności w wybranym {templateType === 'day' ? 'dniu' : 'tygodniu'}
                             </Alert>
                         ) : templateType === 'day' ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {displayEvents.map((event) => (
-                                    <Box
-                                        key={event.id}
-                                        sx={{
-                                            p: 1.5,
-                                            borderRadius: 2,
-                                            border: '1px solid',
-                                            borderColor: 'divider',
-                                            borderLeft: `3px solid ${getSiteColor(event.site_id)}`,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 1.5
-                                        }}
-                                    >
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                fontWeight: 600,
-                                                color: 'text.secondary',
-                                                minWidth: '80px'
-                                            }}
-                                        >
-                                            {event.start_time} - {event.end_time}
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {/* Day - Events Section */}
+                                {displayEvents.length > 0 && (
+                                    <Box>
+                                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'block' }}>
+                                            Wydarzenia ({displayEvents.length})
                                         </Typography>
-                                        <Box sx={{ flex: 1 }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                {event.title}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                                {event.event_type === 'group' ? 'Grupowe' : 'Indywidualne'}
-                                                {event.capacity > 1 && ` • ${event.capacity} miejsc`}
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-                                ))}
-                            </Box>
-                        ) : (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                {Object.entries(eventsByDay).sort().map(([dayKey, dayEvents]) => (
-                                    <Box key={dayKey}>
-                                        <Typography
-                                            variant="caption"
-                                            sx={{
-                                                fontWeight: 600,
-                                                color: 'text.secondary',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px',
-                                                mb: 0.75,
-                                                display: 'block'
-                                            }}
-                                        >
-                                            {moment(dayKey).format('dddd, DD MMMM')}
-                                        </Typography>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                                            {dayEvents.map((event) => (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                            {displayEvents.map((event) => (
                                                 <Box
                                                     key={event.id}
                                                     sx={{
-                                                        p: 1,
-                                                        borderRadius: 1.5,
+                                                        p: 1.5,
+                                                        borderRadius: 2,
                                                         border: '1px solid',
                                                         borderColor: 'divider',
                                                         borderLeft: `3px solid ${getSiteColor(event.site_id)}`,
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: 1
+                                                        gap: 1.5
                                                     }}
                                                 >
                                                     <Typography
-                                                        variant="caption"
+                                                        variant="body2"
                                                         sx={{
                                                             fontWeight: 600,
                                                             color: 'text.secondary',
-                                                            minWidth: '70px'
+                                                            minWidth: '80px'
                                                         }}
                                                     >
                                                         {event.start_time} - {event.end_time}
                                                     </Typography>
-                                                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                                                        {event.title}
-                                                    </Typography>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                            {event.title}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                            {event.event_type === 'group' ? 'Grupowe' : 'Indywidualne'}
+                                                            {event.capacity > 1 && ` • ${event.capacity} miejsc`}
+                                                        </Typography>
+                                                    </Box>
                                                 </Box>
                                             ))}
                                         </Box>
                                     </Box>
-                                ))}
+                                )}
+
+                                {/* Day - Availability Blocks Section */}
+                                {displayAvailability.length > 0 && (
+                                    <Box>
+                                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1, display: 'block' }}>
+                                            Bloki dostępności ({displayAvailability.length})
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                            {displayAvailability.map((block) => (
+                                                <Box
+                                                    key={block.id}
+                                                    sx={{
+                                                        p: 1.5,
+                                                        borderRadius: 2,
+                                                        border: '1px solid',
+                                                        borderColor: 'divider',
+                                                        borderLeft: `3px solid ${getSiteColor(block.site)}`,
+                                                        backgroundColor: 'rgba(146, 0, 32, 0.03)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1.5
+                                                    }}
+                                                >
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{
+                                                            fontWeight: 600,
+                                                            color: 'text.secondary',
+                                                            minWidth: '80px'
+                                                        }}
+                                                    >
+                                                        {block.start_time} - {block.end_time}
+                                                    </Typography>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                            Dostępność
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                            Blok czasowy
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    </Box>
+                                )}
+                            </Box>
+                        ) : (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                {/* Week - Events and Availability by Day */}
+                                {[...new Set([
+                                    ...Object.keys(eventsByDay || {}),
+                                    ...Object.keys(availabilityByDay || {})
+                                ])].sort().map((dayKey) => {
+                                    const dayEvents = eventsByDay?.[dayKey] || [];
+                                    const dayAvailability = availabilityByDay?.[dayKey] || [];
+                                    
+                                    if (dayEvents.length === 0 && dayAvailability.length === 0) return null;
+                                    
+                                    return (
+                                        <Box key={dayKey}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 600,
+                                                    color: 'text.secondary',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px',
+                                                    mb: 0.75,
+                                                    display: 'block'
+                                                }}
+                                            >
+                                                {moment(dayKey).format('dddd, DD MMMM')}
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                                                {/* Events for this day */}
+                                                {dayEvents.map((event) => (
+                                                    <Box
+                                                        key={`event-${event.id}`}
+                                                        sx={{
+                                                            p: 1,
+                                                            borderRadius: 1.5,
+                                                            border: '1px solid',
+                                                            borderColor: 'divider',
+                                                            borderLeft: `3px solid ${getSiteColor(event.site_id)}`,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1
+                                                        }}
+                                                    >
+                                                        <Typography
+                                                            variant="caption"
+                                                            sx={{
+                                                                fontWeight: 600,
+                                                                color: 'text.secondary',
+                                                                minWidth: '70px'
+                                                            }}
+                                                        >
+                                                            {event.start_time} - {event.end_time}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                                            {event.title}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                                
+                                                {/* Availability blocks for this day */}
+                                                {dayAvailability.map((block) => (
+                                                    <Box
+                                                        key={`avail-${block.id}`}
+                                                        sx={{
+                                                            p: 1,
+                                                            borderRadius: 1.5,
+                                                            border: '1px solid',
+                                                            borderColor: 'divider',
+                                                            borderLeft: `3px solid ${getSiteColor(block.site)}`,
+                                                            backgroundColor: 'rgba(146, 0, 32, 0.03)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1
+                                                        }}
+                                                    >
+                                                        <Typography
+                                                            variant="caption"
+                                                            sx={{
+                                                                fontWeight: 600,
+                                                                color: 'text.secondary',
+                                                                minWidth: '70px'
+                                                            }}
+                                                        >
+                                                            {block.start_time} - {block.end_time}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ fontWeight: 600, fontStyle: 'italic' }}>
+                                                            Dostępność
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
                             </Box>
                         )}
                     </Box>
@@ -250,7 +371,7 @@ const CreateTemplateModal = ({
                 <Button
                     onClick={handleConfirm}
                     variant="contained"
-                    disabled={!templateName.trim() || displayEvents.length === 0}
+                    disabled={!templateName.trim() || !hasContent}
                     sx={{
                         backgroundColor: 'primary.main',
                         color: '#fff',
@@ -281,6 +402,7 @@ CreateTemplateModal.propTypes = {
     templateType: PropTypes.oneOf(['day', 'week']),
     selectedDate: PropTypes.string,
     events: PropTypes.array.isRequired,
+    availabilityBlocks: PropTypes.array,
     sites: PropTypes.array.isRequired
 };
 

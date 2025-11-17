@@ -124,12 +124,12 @@ class Command(BaseCommand):
                         'invitation_status': 'pending',
                         'invitation_token': str(uuid.uuid4()),
                         'invited_at': timezone.now(),
-                        'linked_user': admin_user
+                        'linked_user': None  # Don't link until invitation is accepted
                     }
                 )
-                if not tm_created and team_member.linked_user is None:
-                    team_member.linked_user = admin_user
-                    team_member.save(update_fields=['linked_user'])
+                
+                # If invitation already exists and is still pending, don't link the user
+                # User should accept the invitation first
                 
                 if tm_created:
                     # Update team_size
@@ -167,6 +167,7 @@ class Command(BaseCommand):
         # Create/update templates in catalog
         for template_data in template_catalog:
             template, created = Template.objects.update_or_create(
+                owner=admin_user,
                 name=template_data['name'],
                 defaults={
                     'description': template_data['description'],
@@ -209,16 +210,16 @@ class Command(BaseCommand):
                 # Different meeting length patterns for each site
                 if site.name == 'Pracownia Jogi':
                     # Site 1: Single duration (60 min)
-                    morning_lengths = [60]
-                    afternoon_lengths = [90]
+                    morning_length = 60
+                    afternoon_length = 90
                 elif site.name == 'Studio Oddechu':
-                    # Site 2: Two durations
-                    morning_lengths = [45, 60]
-                    afternoon_lengths = [30, 60]
+                    # Site 2: Different duration
+                    morning_length = 45
+                    afternoon_length = 60
                 else:
-                    # Site 3 (Gabinet Psychoterapii): Three durations
-                    morning_lengths = [30, 45, 60]
-                    afternoon_lengths = [45, 60, 90]
+                    # Site 3 (Gabinet Psychoterapii): Different duration
+                    morning_length = 30
+                    afternoon_length = 45
                 
                 # Morning availability block
                 morning_block = AvailabilityBlock.objects.create(
@@ -228,7 +229,7 @@ class Command(BaseCommand):
                     date=target_date,
                     start_time='09:00',
                     end_time='12:00',
-                    meeting_lengths=morning_lengths,
+                    meeting_length=morning_length,
                     time_snapping=30,
                     buffer_time=15
                 )
@@ -241,7 +242,7 @@ class Command(BaseCommand):
                     date=target_date,
                     start_time='14:00',
                     end_time='17:00',
-                    meeting_lengths=afternoon_lengths,
+                    meeting_length=afternoon_length,
                     time_snapping=30,
                     buffer_time=10
                 )

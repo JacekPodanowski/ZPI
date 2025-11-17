@@ -110,20 +110,27 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                     </Box>
                 </Box>
 
-                {/* Event List - styled like calendar EventBlocks (hidden when collapsed) */}
+                {/* Event and Availability List - styled like calendar blocks (hidden when collapsed) */}
                 {!isCollapsed && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
-                    {template.events?.slice(0, 3).map((event, idx) => {
+                    {/* Combine events and availability blocks, then slice first 3 */}
+                    {[
+                        ...(template.events || []).map(event => ({ ...event, isAvailability: false })),
+                        ...(template.availability_blocks || []).map(block => ({ ...block, isAvailability: true }))
+                    ]
+                    .sort((a, b) => a.start_time?.localeCompare(b.start_time))
+                    .slice(0, 3)
+                    .map((item, idx) => {
                         // Get site color - prioritize site_color, fallback to color_index, then use red as default
-                        const siteColor = event.site_color || 
-                                         (event.site?.color_index !== undefined ? getSiteColorHex(event.site.color_index) : null) ||
+                        const siteColor = item.site_color || 
+                                         (item.site?.color_index !== undefined ? getSiteColorHex(item.site.color_index) : null) ||
                                          getSiteColorHex(0); // Default to red
-                        const bgColor = alpha(siteColor, 0.15);
+                        const bgColor = alpha(siteColor, item.isAvailability ? 0.08 : 0.15);
                         const borderColor = siteColor;
 
                         return (
                             <Box
-                                key={idx}
+                                key={`${item.isAvailability ? 'avail' : 'event'}-${idx}`}
                                 sx={{
                                     height: 20,
                                     px: 0.75,
@@ -147,18 +154,19 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         flex: 1,
-                                        lineHeight: 1.1
+                                        lineHeight: 1.1,
+                                        fontStyle: item.isAvailability ? 'italic' : 'normal'
                                     }}
                                 >
                                     <Box component="span" sx={{ fontWeight: 600, mr: 0.5 }}>
-                                        {event.start_time}
+                                        {item.start_time?.substring(0, 5) || item.start_time}
                                     </Box>
-                                    {event.title || 'Event'}
+                                    {item.isAvailability ? 'Dostępność' : (item.title || 'Event')}
                                 </Typography>
                             </Box>
                         );
                     })}
-                    {template.events?.length > 3 && (
+                    {((template.events?.length || 0) + (template.availability_blocks?.length || 0)) > 3 && (
                         <Typography
                             variant="caption"
                             sx={{
@@ -169,7 +177,7 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                                 mt: 0.25
                             }}
                         >
-                            +{template.events.length - 3} więcej
+                            +{(template.events?.length || 0) + (template.availability_blocks?.length || 0) - 3} więcej
                         </Typography>
                     )}
                 </Box>
@@ -208,6 +216,13 @@ DayTemplate.propTypes = {
                 start_time: PropTypes.string,
                 end_time: PropTypes.string,
                 title: PropTypes.string,
+                site_color: PropTypes.string
+            })
+        ),
+        availability_blocks: PropTypes.arrayOf(
+            PropTypes.shape({
+                start_time: PropTypes.string,
+                end_time: PropTypes.string,
                 site_color: PropTypes.string
             })
         )

@@ -35,7 +35,7 @@ import {
     Person as PersonIcon,
     ZoomIn as ZoomInIcon,
     ZoomOut as ZoomOutIcon,
-    Mop as MopIcon
+    CleaningServices as MopIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
@@ -193,10 +193,7 @@ const createDefaultFormState = (siteId = null) => ({
     location: '',
     meetingType: 'individual',
     capacity: 1,
-    meetingDurations: ['60'],
-    customDuration1: '',
-    customDuration2: '',
-    customDuration3: '',
+    meetingDuration: '60',
     timeSnapping: '30',
     bufferTime: '0',
     siteId: siteId || null,
@@ -816,7 +813,7 @@ const DayDetailsModal = ({
             location: event.location || '',
             meetingType: event.event_type || 'individual',
             capacity: event.capacity || event.max_capacity || 1,
-            meetingLengths: ['30', '60'],
+            meetingDuration: '60',
             timeSnapping: '30',
             bufferTime: '0',
             siteId: event.site || selectedSiteId || null,
@@ -828,23 +825,8 @@ const DayDetailsModal = ({
 
     const handleAvailabilityClick = (block) => {
         setEditingItem(block);
-        // Get durations from meeting_durations or legacy meeting_lengths
-        const storedDurations = block.meeting_durations || block.meeting_lengths || ['60'];
-        const durations = storedDurations.slice(0, 3); // Max 3 durations
-        
-        // Convert to form format
-        const formDurations = [];
-        const customValues = { customDuration1: '', customDuration2: '', customDuration3: '' };
-        
-        durations.forEach((dur, idx) => {
-            const standardOptions = ['30', '45', '60', '90'];
-            if (standardOptions.includes(dur)) {
-                formDurations.push(dur);
-            } else {
-                formDurations.push('custom');
-                customValues[`customDuration${idx + 1}`] = dur;
-            }
-        });
+        // Get single duration from meeting_length field
+        const duration = String(block.meeting_length || 60);
         
         setFormData({
             title: block.title || 'Dostępny',
@@ -854,10 +836,9 @@ const DayDetailsModal = ({
             location: '',
             meetingType: 'individual',
             capacity: 1,
-            meetingDurations: formDurations.length > 0 ? formDurations : ['60'],
-            ...customValues,
-            timeSnapping: block.time_snapping || '30',
-            bufferTime: block.buffer_time || '0',
+            meetingDuration: duration,
+            timeSnapping: String(block.time_snapping || 30),
+            bufferTime: String(block.buffer_time || 0),
             siteId: block.site || selectedSiteId || null
         });
         setView('editAvailability');
@@ -954,16 +935,8 @@ const DayDetailsModal = ({
     }, [editingItem, onBookingRemoved, selectedBooking, setSelectedBooking, setBookingModalOpen]);
 
     const handleSubmit = () => {
-        const { assigneeType, assigneeId, meetingDurations, customDuration1, customDuration2, customDuration3, ...restFormData } = formData;
+        const { assigneeType, assigneeId, meetingDuration, ...restFormData } = formData;
         
-        // Calculate actual meeting durations
-        const actualDurations = meetingDurations.map((dur, idx) => {
-            if (dur === 'custom') {
-                const customVal = idx === 0 ? customDuration1 : idx === 1 ? customDuration2 : customDuration3;
-                return customVal || '60';
-            }
-            return dur;
-        }).filter(Boolean);
         const targetSiteId = restFormData.siteId || activeSiteId;
 
         if (!targetSiteId) {
@@ -981,7 +954,6 @@ const DayDetailsModal = ({
                 : { type: 'owner', id: ownerIdForSite };
             onCreateEvent?.({
                 ...restFormData,
-                meetingDurations: actualDurations,
                 siteId: targetSiteId,
                 date: dateKey,
                 assignee: assigneePayload
@@ -993,7 +965,9 @@ const DayDetailsModal = ({
             }
             onCreateAvailability?.({
                 ...restFormData,
-                meetingDurations: actualDurations,
+                meeting_length: parseInt(meetingDuration) || 60,
+                time_snapping: parseInt(restFormData.timeSnapping) || 30,
+                buffer_time: parseInt(restFormData.bufferTime) || 0,
                 siteId: targetSiteId,
                 date: dateKey
             });
@@ -1385,57 +1359,20 @@ const DayDetailsModal = ({
 
                 {!isEvent && (
                     <>
-                        <Typography variant="subtitle2" sx={{ mt: 1, mb: 1, fontWeight: 600 }}>
-                            Długości spotkań (max 3)
-                        </Typography>
-                        
-                        {[0, 1, 2].map((index) => (
-                            <Box key={index}>
-                                {(index === 0 || formData.meetingDurations[index - 1]) && (
-                                    <>
-                                        <FormControl fullWidth sx={{ mb: 1 }}>
-                                            <InputLabel>Długość #{index + 1}</InputLabel>
-                                            <Select
-                                                value={formData.meetingDurations[index] || ''}
-                                                label={`Długość #${index + 1}`}
-                                                onChange={(e) => {
-                                                    const newDurations = [...formData.meetingDurations];
-                                                    if (e.target.value) {
-                                                        newDurations[index] = e.target.value;
-                                                    } else {
-                                                        newDurations.splice(index, 1);
-                                                    }
-                                                    setFormData({ ...formData, meetingDurations: newDurations });
-                                                }}
-                                            >
-                                                {index > 0 && <MenuItem value="">Usuń</MenuItem>}
-                                                <MenuItem value="30">30 minut</MenuItem>
-                                                <MenuItem value="45">45 minut</MenuItem>
-                                                <MenuItem value="60">1 godzina</MenuItem>
-                                                <MenuItem value="90">1,5 godziny</MenuItem>
-                                                <MenuItem value="custom">Inna</MenuItem>
-                                            </Select>
-                                        </FormControl>
-
-                                        {formData.meetingDurations[index] === 'custom' && (
-                                            <TextField
-                                                fullWidth
-                                                type="number"
-                                                label="Minuty"
-                                                value={index === 0 ? formData.customDuration1 : index === 1 ? formData.customDuration2 : formData.customDuration3}
-                                                onChange={(e) => setFormData({ 
-                                                    ...formData, 
-                                                    [`customDuration${index + 1}`]: e.target.value 
-                                                })}
-                                                placeholder="np. 120"
-                                                sx={{ mb: 1 }}
-                                                inputProps={{ min: 5, max: 480 }}
-                                            />
-                                        )}
-                                    </>
-                                )}
-                            </Box>
-                        ))}
+                        <FormControl fullWidth sx={{ mb: 2 }}>
+                            <InputLabel>Długość spotkania</InputLabel>
+                            <Select
+                                value={formData.meetingDuration || '60'}
+                                label="Długość spotkania"
+                                onChange={(e) => setFormData({ ...formData, meetingDuration: e.target.value })}
+                            >
+                                <MenuItem value="30">30 minut</MenuItem>
+                                <MenuItem value="45">45 minut</MenuItem>
+                                <MenuItem value="60">1 godzina</MenuItem>
+                                <MenuItem value="90">1,5 godziny</MenuItem>
+                                <MenuItem value="120">2 godziny</MenuItem>
+                            </Select>
+                        </FormControl>
 
                         <FormControl fullWidth>
                             <InputLabel>Spotkania mogą zaczynać się co</InputLabel>

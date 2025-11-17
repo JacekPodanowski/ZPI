@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import moment from 'moment';
 import { fetchSites, fetchSiteCalendarRoster } from '../../../services/siteService';
 import { fetchEvents, createEvent, fetchAvailabilityBlocks, createAvailabilityBlock, deleteEvent } from '../../../services/eventService';
+import { fetchTemplates, createTemplate } from '../../../services/templateService';
 import CalendarGridControlled from '../../components_STUDIO/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components_STUDIO/Dashboard/Templates/RealTemplateBrowser';
 import DayDetailsModal from '../../components_STUDIO/Dashboard/Calendar/DayDetailsModal';
@@ -13,6 +14,7 @@ import { getSiteColorHex } from '../../../theme/siteColors';
 import { usePreferences } from '../../../contexts/PreferencesContext';
 import { getCache, setCache, removeCache, CACHE_KEYS } from '../../../utils/cache';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useToast } from '../../../contexts/ToastContext';
 
 const ROLE_PERMISSIONS = {
     owner: {
@@ -61,17 +63,15 @@ const normalizeSitesPayload = (payload = {}) => {
     const ownedSites = Array.isArray(payload?.owned_sites) ? payload.owned_sites : [];
     const teamSites = Array.isArray(payload?.team_member_sites) ? payload.team_member_sites : [];
 
+    // Backend now filters to only return linked sites, no need to filter here
     const normalized = [
         ...ownedSites.map((site) => enhanceSitePayload(site, 'owner', null, true)),
-        // Only include linked team sites, not pending invitations
-        ...teamSites
-            .filter((site) => site?.team_member_info?.invitation_status === 'linked')
-            .map((site) => enhanceSitePayload(
-                site,
-                site?.team_member_info?.permission_role ?? 'viewer',
-                site?.team_member_info?.id ?? null,
-                false
-            )),
+        ...teamSites.map((site) => enhanceSitePayload(
+            site,
+            site?.team_member_info?.permission_role ?? 'viewer',
+            site?.team_member_info?.id ?? null,
+            false
+        )),
     ];
 
     if (!normalized.length && Array.isArray(payload?.results)) {
@@ -91,11 +91,13 @@ const ensureNormalizedSites = (data) => {
 const CreatorCalendarApp = () => {
     const { calendar, updateCalendarPreferences } = usePreferences();
     const { user } = useAuth();
+    const addToast = useToast();
     const [sites, setSites] = useState([]);
     const [sitePermissions, setSitePermissions] = useState({});
     const [siteRosters, setSiteRosters] = useState({});
     const [events, setEvents] = useState([]);
     const [availabilityBlocks, setAvailabilityBlocks] = useState([]);
+    const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedSiteId, setSelectedSiteId] = useState(null);
@@ -268,6 +270,22 @@ const CreatorCalendarApp = () => {
                         setAvailabilityBlocks([]);
                     }
                 }
+
+                // Fetch templates
+                try {
+                    const templatesResponse = await fetchTemplates();
+                    if (active) {
+                        setTemplates(templatesResponse);
+                        if (userId) {
+                            setCache(`${CACHE_KEYS.TEMPLATES}_${userId}`, templatesResponse, 1000 * 60 * 5);
+                        }
+                    }
+                } catch (templError) {
+                    console.warn('Could not fetch templates:', templError);
+                    if (active) {
+                        setTemplates([]);
+                    }
+                }
             } catch (err) {
                 if (active) {
                     console.error('Error loading calendar data:', err);
@@ -328,14 +346,16 @@ const CreatorCalendarApp = () => {
             }));
             setAvailabilityBlocks(transformedAvailability);
             setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, transformedAvailability, 1000 * 60 * 5);
+
+            const templatesResponse = await fetchTemplates();
+            setTemplates(templatesResponse);
+            setCache(`${CACHE_KEYS.TEMPLATES}_${userId}`, templatesResponse, 1000 * 60 * 5);
         } catch (err) {
             console.error('Error refreshing calendar data:', err);
         }
     }, [user?.id, computePermissionsFromSites]);
 
     const handleDayClick = (date) => {
-        console.log('(DEBUGLOG) CreatorCalendarApp.dayClick', { date, selectedSiteId, creatingTemplateMode });
-        
         // If in template creation mode, cancel it when clicking non-selectable day
         if (creatingTemplateMode) {
             setCreatingTemplateMode(null);
@@ -348,7 +368,6 @@ const CreatorCalendarApp = () => {
     };
 
     const handleEventClick = (event) => {
-        console.log('(DEBUGLOG) CreatorCalendarApp.eventClick', { event });
         // Open the day modal for the event's date
         setSelectedDate(new Date(event.date));
         setModalOpen(true);
@@ -357,7 +376,6 @@ const CreatorCalendarApp = () => {
     const handleSiteSelect = (siteId, options = {}) => {
         const isClearingSelection = siteId === null || options?.reason === 'clear' || options?.clearSelection;
         if (isClearingSelection) {
-            console.log('(DEBUGLOG) CreatorCalendarApp.siteSelect.clear');
             setAllowAllSitesView(true);
             setSelectedSiteId(null);
             setSelectedAssigneeFilter(null);
@@ -365,7 +383,6 @@ const CreatorCalendarApp = () => {
         }
 
         const normalizedId = typeof siteId === 'number' ? siteId : Number(siteId) || siteId;
-        console.log('(DEBUGLOG) CreatorCalendarApp.siteSelect', { siteId: normalizedId });
         setAllowAllSitesView(false);
         setSelectedSiteId(normalizedId);
     };
@@ -381,7 +398,6 @@ const CreatorCalendarApp = () => {
     };
 
     const handleCreateEvent = async (eventData) => {
-        console.log('Create event:', eventData);
         try {
             const siteId = eventData.siteId || selectedSiteId || sites[0]?.id;
 
@@ -460,7 +476,6 @@ const CreatorCalendarApp = () => {
     };
 
     const handleCreateAvailability = async (availabilityData) => {
-        console.log('Create availability:', availabilityData);
         try {
             // Use siteId from form data, or fall back to selectedSiteId or first site
             const siteId = availabilityData.siteId || selectedSiteId || sites[0]?.id;
@@ -511,12 +526,10 @@ const CreatorCalendarApp = () => {
     };
 
     const handleCreateDayTemplate = () => {
-        console.log('Create day template - entering selection mode');
         setCreatingTemplateMode('day');
     };
 
     const handleCreateWeekTemplate = () => {
-        console.log('Create week template - entering selection mode');
         setCreatingTemplateMode('week');
     };
 
@@ -526,27 +539,42 @@ const CreatorCalendarApp = () => {
     };
 
     const handleTemplateSelection = (date) => {
-        console.log('Template selection:', { date, mode: creatingTemplateMode });
         setSelectedTemplateDate(date);
         setCreateTemplateModalOpen(true);
     };
 
     const handleConfirmTemplateCreation = async (templateName) => {
-        console.log('Confirming template creation:', {
-            name: templateName,
-            type: creatingTemplateMode,
-            date: selectedTemplateDate
-        });
-        
         try {
-            // Collect events for the template
+            // Check for duplicate names and auto-number if needed
+            let finalTemplateName = templateName;
+            const existingNames = templates.map(t => t.name);
+            
+            if (existingNames.includes(finalTemplateName)) {
+                let counter = 2;
+                while (existingNames.includes(`${templateName} ${counter}`)) {
+                    counter++;
+                }
+                finalTemplateName = `${templateName} ${counter}`;
+            }
+            
+            // Collect events and availability blocks for the template
             const templateType = creatingTemplateMode; // 'day' or 'week'
             let templateEvents = [];
+            let templateAvailability = [];
+            
+            // Use filtered calendar data (only visible to user) instead of raw state
+            const visibleEvents = eventsForCalendar;
+            const visibleAvailability = availabilityForCalendar;
             
             if (templateType === 'day') {
                 // Get events from the selected day
-                const dayEvents = events.filter(e => 
+                const dayEvents = visibleEvents.filter(e => 
                     moment(e.date).format('YYYY-MM-DD') === selectedTemplateDate
+                );
+                
+                // Get availability blocks from the selected day
+                const dayAvailability = visibleAvailability.filter(block => 
+                    moment(block.date).format('YYYY-MM-DD') === selectedTemplateDate
                 );
                 
                 templateEvents = dayEvents.map(event => ({
@@ -557,16 +585,35 @@ const CreatorCalendarApp = () => {
                     event_type: event.event_type || event.meetingType || 'individual',
                     capacity: event.capacity || 1,
                     type: event.type || 'online',
-                    location: event.location || ''
+                    location: event.location || '',
+                    assignment_type: event.assignment_type || 'owner',
+                    assigned_to_owner: event.assigned_to_owner || false,
+                    assigned_to_team_member: event.assigned_to_team_member || null
+                }));
+                
+                templateAvailability = dayAvailability.map(block => ({
+                    start_time: block.start_time,
+                    end_time: block.end_time,
+                    assignment_type: block.assignment_type || 'owner',
+                    assigned_to_owner: block.assigned_to_owner || false,
+                    assigned_to_team_member: block.assigned_to_team_member || null,
+                    meeting_length: block.meeting_length || 60,
+                    time_snapping: block.time_snapping || 30,
+                    buffer_time: block.buffer_time || 0
                 }));
             } else if (templateType === 'week') {
                 // Get events from the entire week
                 const weekStart = moment(selectedTemplateDate).startOf('isoWeek');
                 const weekEnd = moment(selectedTemplateDate).endOf('isoWeek');
                 
-                const weekEvents = events.filter(e => {
+                const weekEvents = visibleEvents.filter(e => {
                     const eventMoment = moment(e.date);
                     return eventMoment.isSameOrAfter(weekStart) && eventMoment.isSameOrBefore(weekEnd);
+                });
+                
+                const weekAvailability = visibleAvailability.filter(block => {
+                    const blockMoment = moment(block.date);
+                    return blockMoment.isSameOrAfter(weekStart) && blockMoment.isSameOrBefore(weekEnd);
                 });
                 
                 templateEvents = weekEvents.map(event => {
@@ -582,41 +629,97 @@ const CreatorCalendarApp = () => {
                         capacity: event.capacity || 1,
                         type: event.type || 'online',
                         location: event.location || '',
+                        assignment_type: event.assignment_type || 'owner',
+                        assigned_to_owner: event.assigned_to_owner || false,
+                        assigned_to_team_member: event.assigned_to_team_member || null,
+                        day_of_week: dayOfWeek
+                    };
+                });
+                
+                templateAvailability = weekAvailability.map(block => {
+                    const blockMoment = moment(block.date);
+                    const dayOfWeek = blockMoment.isoWeekday(); // 1=Monday, 7=Sunday
+                    
+                    return {
+                        start_time: block.start_time,
+                        end_time: block.end_time,
+                        assignment_type: block.assignment_type || 'owner',
+                        assigned_to_owner: block.assigned_to_owner || false,
+                        assigned_to_team_member: block.assigned_to_team_member || null,
+                        meeting_length: block.meeting_length || 60,
+                        time_snapping: block.time_snapping || 30,
+                        buffer_time: block.buffer_time || 0,
                         day_of_week: dayOfWeek
                     };
                 });
             }
             
-            // Prepare template data
+            // Validate that template has at least one event or availability block
+            if (templateEvents.length === 0 && templateAvailability.length === 0) {
+                const errorMessage = 'Szablon musi zawierać co najmniej jedno wydarzenie lub blok dostępności';
+                setError(errorMessage);
+                addToast(errorMessage, { variant: 'error' });
+                return;
+            }
+            
+            // Prepare template data (without site field, as templates can work with multiple sites)
             const templateData = {
-                name: templateName,
-                template_type: templateType,
-                events: templateEvents,
-                site: selectedSiteId || sites[0]?.id,
-                ...(templateType === 'day' ? {
-                    day_abbreviation: moment(selectedTemplateDate).format('ddd')
-                } : {
-                    day_count: templateEvents.reduce((acc, e) => {
-                        if (!acc.includes(e.day_of_week)) acc.push(e.day_of_week);
-                        return acc;
-                    }, []).length,
-                    active_days: [...new Set(templateEvents.map(e => e.day_of_week - 1))], // Convert to 0-based
-                    total_events: templateEvents.length
-                })
+                name: finalTemplateName,
+                template_config: {
+                    template_type: templateType,
+                    events: templateEvents,
+                    availability_blocks: templateAvailability,
+                    ...(templateType === 'day' ? {
+                        day_abbreviation: moment(selectedTemplateDate).format('ddd')
+                    } : {
+                        day_count: [...new Set([...templateEvents, ...templateAvailability].map(item => item.day_of_week))].length,
+                        active_days: [...new Set([...templateEvents, ...templateAvailability].map(item => item.day_of_week - 1))], // Convert to 0-based
+                        total_events: templateEvents.length,
+                        total_availability_blocks: templateAvailability.length
+                    })
+                }
             };
             
-            console.log('Template data prepared:', templateData);
+            // Call API to save template
+            const createdTemplate = await createTemplate(templateData);
             
-            // TODO: Call API to save template
-            // await createTemplate(templateData);
+            // Log the complete template data with all events and availability blocks
+            console.log('=== TEMPLATE CREATED ===');
+            console.log('Name:', finalTemplateName);
+            console.log('Type:', templateType);
+            console.log('\nEvents:', JSON.stringify(templateEvents, null, 2));
+            console.log('\nAvailability Blocks:', JSON.stringify(templateAvailability, null, 2));
+            console.log('\nFull Template Config:', JSON.stringify(templateData.template_config, null, 2));
+            console.log('========================');
             
-            // For now, just show success message
-            console.log('Template created successfully (mock)');
+            addToast(`Szablon "${finalTemplateName}" został utworzony`, { variant: 'success' });
+            
+            // Refresh templates list
+            const userId = user?.id;
+            if (userId) {
+                removeCache(`${CACHE_KEYS.TEMPLATES}_${userId}`);
+                const updatedTemplates = await fetchTemplates();
+                setTemplates(updatedTemplates);
+            }
+            
             setError(null);
             
         } catch (error) {
             console.error('Error creating template:', error);
-            setError('Nie udało się utworzyć szablonu. Spróbuj ponownie.');
+            
+            // Check for duplicate name constraint violation
+            let errorMessage = 'Nie udało się utworzyć szablonu. Spróbuj ponownie.';
+            if (error?.response?.status === 500) {
+                const errorDetail = JSON.stringify(error?.response?.data || '');
+                if (errorDetail.includes('duplicate key') || errorDetail.includes('already exists')) {
+                    errorMessage = `Szablon o nazwie "${templateName}" już istnieje. Wybierz inną nazwę.`;
+                }
+            } else if (error?.response?.data?.detail || error?.response?.data?.message) {
+                errorMessage = error.response.data.detail || error.response.data.message;
+            }
+            
+            setError(errorMessage);
+            addToast(errorMessage, { variant: 'error' });
         } finally {
             // Close modal and reset state
             setCreateTemplateModalOpen(false);
@@ -631,18 +734,14 @@ const CreatorCalendarApp = () => {
     };
 
     const handleTemplateDragStart = (template) => {
-        console.log('Template drag started:', template);
         setDraggingTemplate(template);
     };
 
     const handleTemplateDragEnd = () => {
-        console.log('Template drag ended');
         setDraggingTemplate(null);
     };
 
     const handleApplyTemplate = async (template, targetDate, affectedEvents, action = 'apply') => {
-        console.log('Applying template:', { template, targetDate, affectedEvents, action });
-        
         try {
             const templateType = template.day_abbreviation ? 'day' : 'week';
             
@@ -897,12 +996,14 @@ const CreatorCalendarApp = () => {
                     }}
                 >
                     <RealTemplateBrowser
+                        templates={templates}
                         onCreateDayTemplate={handleCreateDayTemplate}
                         onCreateWeekTemplate={handleCreateWeekTemplate}
                         onTemplateDragStart={handleTemplateDragStart}
                         onTemplateDragEnd={handleTemplateDragEnd}
                         creatingTemplateMode={creatingTemplateMode}
                         onCancelTemplateCreation={handleCancelTemplateCreation}
+                        onTemplatesRefresh={handleDataRefresh}
                     />
                 </Box>
 
@@ -1019,6 +1120,7 @@ const CreatorCalendarApp = () => {
                 templateType={creatingTemplateMode}
                 selectedDate={selectedTemplateDate}
                 events={events}
+                availabilityBlocks={availabilityBlocks}
                 sites={sites}
             />
         </Box>

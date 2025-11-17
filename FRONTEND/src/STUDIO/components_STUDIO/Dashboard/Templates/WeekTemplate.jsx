@@ -107,7 +107,7 @@ const WeekTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed }
                                 whiteSpace: 'nowrap'
                             }}
                         >
-                            {template.total_events || 0} Events
+                            {(template.total_events || 0) + (template.total_availability_blocks || 0)}
                         </Typography>
                     </Box>
                 </Box>
@@ -187,7 +187,8 @@ WeekTemplate.propTypes = {
         name: PropTypes.string.isRequired,
         day_count: PropTypes.number,
         active_days: PropTypes.arrayOf(PropTypes.number),
-        total_events: PropTypes.number
+        total_events: PropTypes.number,
+        total_availability_blocks: PropTypes.number
     }).isRequired,
     compact: PropTypes.bool,
     onDragStart: PropTypes.func,

@@ -344,9 +344,12 @@ class BookingSerializer(serializers.ModelSerializer):
 
 
 class TemplateSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    
     class Meta:
         model = Template
-        fields = ['id', 'name', 'description', 'template_config', 'thumbnail_url']
+        fields = ['id', 'owner', 'name', 'description', 'template_config', 'thumbnail_url', 'is_public', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'owner', 'created_at', 'updated_at']
 
 
 class CustomReactComponentSerializer(serializers.ModelSerializer):
@@ -369,7 +372,7 @@ class AvailabilityBlockSerializer(serializers.ModelSerializer):
         model = AvailabilityBlock
         fields = [
             'id', 'site', 'creator', 'title', 'date', 'start_time', 'end_time',
-            'meeting_lengths', 'time_snapping', 'buffer_time', 'created_at', 'updated_at'
+            'meeting_length', 'time_snapping', 'buffer_time', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
 

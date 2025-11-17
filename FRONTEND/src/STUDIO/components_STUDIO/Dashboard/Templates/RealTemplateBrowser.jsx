@@ -13,12 +13,14 @@ import TemplateDeletionModal from './TemplateDeletionModal';
 //orginal color  rgba(228, 229, 218, 0.5)
 
 const RealTemplateBrowser = ({ 
+    templates = [],
     onCreateDayTemplate, 
     onCreateWeekTemplate, 
     onTemplateDragStart, 
     onTemplateDragEnd,
     creatingTemplateMode, // NEW: 'day' | 'week' | null
-    onCancelTemplateCreation // NEW: callback to cancel template creation
+    onCancelTemplateCreation, // NEW: callback to cancel template creation
+    onTemplatesRefresh // NEW: callback to refresh templates after deletion
 }) => {
     const theme = useTheme();
     const templateLibraryWidth = 230; // Fixed width for templates-only mode
@@ -41,61 +43,29 @@ const RealTemplateBrowser = ({
         onTemplateDragEnd?.(); // Notify parent
     };
 
-    // Mock templates - replace with actual data from store/API
-    const dayTemplates = [
-        {
-            id: 'day-1',
-            name: 'Poranny',
-            day_abbreviation: 'Pon',
-            events: [
-                { 
-                    type: 'individual', 
-                    start_time: '09:00', 
-                    end_time: '11:00',
-                    title: 'Morning Session',
-                    site_color: getSiteColorHex(0) // Red
-                },
-                { 
-                    type: 'group', 
-                    start_time: '14:00', 
-                    end_time: '16:00',
-                    title: 'Group Class',
-                    site_color: getSiteColorHex(0) // Red
-                }
-            ]
-        },
-        {
-            id: 'day-2',
-            name: 'Wieczorny',
-            day_abbreviation: 'Wt',
-            events: [
-                { 
-                    type: 'group', 
-                    start_time: '17:00', 
-                    end_time: '19:00',
-                    title: 'Evening Session',
-                    site_color: getSiteColorHex(1) // Blue
-                }
-            ]
-        }
-    ];
-
-    const weekTemplates = [
-        {
-            id: 'week-1',
-            name: 'Standardowy',
-            day_count: 5,
-            active_days: [0, 1, 2, 3, 4],
-            total_events: 12
-        },
-        {
-            id: 'week-2',
-            name: 'Intensywny',
-            day_count: 6,
-            active_days: [0, 1, 2, 3, 4, 5],
-            total_events: 18
-        }
-    ];
+    // Separate templates by type and transform to expected format
+    const dayTemplates = templates
+        .filter(t => t.template_config?.template_type === 'day')
+        .map(t => ({
+            id: t.id,
+            name: t.name,
+            day_abbreviation: t.template_config?.day_abbreviation || '—',
+            events: t.template_config?.events || [],
+            availability_blocks: t.template_config?.availability_blocks || [],
+            template_config: t.template_config
+        }));
+    
+    const weekTemplates = templates
+        .filter(t => t.template_config?.template_type === 'week')
+        .map(t => ({
+            id: t.id,
+            name: t.name,
+            day_count: t.template_config?.day_count || 0,
+            active_days: t.template_config?.active_days || [],
+            total_events: t.template_config?.total_events || 0,
+            total_availability_blocks: t.template_config?.total_availability_blocks || 0,
+            template_config: t.template_config
+        }));
 
     return (
         <motion.div
@@ -206,31 +176,29 @@ const RealTemplateBrowser = ({
                             >
                                 Szablony dnia
                             </Typography>
-                            {dayTemplates.length > 0 && (
-                                <IconButton
-                                    size="small"
-                                    onClick={creatingTemplateMode === 'day' ? onCancelTemplateCreation : onCreateDayTemplate}
-                                    sx={{
-                                        p: 0.5,
-                                        width: 24,
-                                        height: 24,
-                                        color: creatingTemplateMode === 'day' ? 'error.main' : 'primary.main',
-                                        '&:hover': {
-                                            backgroundColor: creatingTemplateMode === 'day'
-                                                ? 'rgba(211, 47, 47, 0.08)'
-                                                : theme.palette.mode === 'dark'
-                                                ? 'rgba(114, 0, 21, 0.15)'
-                                                : 'rgba(146, 0, 32, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {creatingTemplateMode === 'day' ? (
-                                        <RemoveIcon sx={{ fontSize: 16 }} />
-                                    ) : (
-                                        <AddIcon sx={{ fontSize: 16 }} />
-                                    )}
-                                </IconButton>
-                            )}
+                            <IconButton
+                                size="small"
+                                onClick={creatingTemplateMode === 'day' ? onCancelTemplateCreation : onCreateDayTemplate}
+                                sx={{
+                                    p: 0.5,
+                                    width: 24,
+                                    height: 24,
+                                    color: creatingTemplateMode === 'day' ? 'error.main' : 'primary.main',
+                                    '&:hover': {
+                                        backgroundColor: creatingTemplateMode === 'day'
+                                            ? 'rgba(211, 47, 47, 0.08)'
+                                            : theme.palette.mode === 'dark'
+                                            ? 'rgba(114, 0, 21, 0.15)'
+                                            : 'rgba(146, 0, 32, 0.08)'
+                                    }
+                                }}
+                            >
+                                {creatingTemplateMode === 'day' ? (
+                                    <RemoveIcon sx={{ fontSize: 16 }} />
+                                ) : (
+                                    <AddIcon sx={{ fontSize: 16 }} />
+                                )}
+                            </IconButton>
                         </Box>
 
                         <AnimatePresence mode="wait">
@@ -353,44 +321,24 @@ const RealTemplateBrowser = ({
                                         <Box
                                             sx={{
                                                 display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: 1.5,
-                                                flexShrink: 0
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                flexShrink: 0,
+                                                mt: 1,
+                                                py: 2
                                             }}
                                         >
-                                            <Box
+                                            <Typography
+                                                variant="caption"
                                                 sx={{
-                                                    p: 2,
+                                                    fontSize: '0.7rem',
+                                                    color: 'text.secondary',
                                                     textAlign: 'center',
-                                                    border: '1px dashed',
-                                                    borderColor: 'divider',
-                                                    borderRadius: 2,
-                                                    backgroundColor: 'action.hover'
+                                                    lineHeight: 1.4
                                                 }}
                                             >
-                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                                    Brak szablonów
-                                                </Typography>
-                                            </Box>
-                                            <IconButton
-                                                onClick={onCreateDayTemplate}
-                                                sx={{
-                                                    alignSelf: 'center',
-                                                    width: 36,
-                                                    height: 36,
-                                                    backgroundColor: theme.palette.mode === 'dark'
-                                                        ? 'rgba(114, 0, 21, 0.15)'
-                                                        : 'rgba(146, 0, 32, 0.08)',
-                                                    color: 'primary.main',
-                                                    '&:hover': {
-                                                        backgroundColor: theme.palette.mode === 'dark'
-                                                            ? 'rgba(114, 0, 21, 0.25)'
-                                                            : 'rgba(146, 0, 32, 0.15)'
-                                                    }
-                                                }}
-                                            >
-                                                <AddIcon fontSize="small" />
-                                            </IconButton>
+                                                Kliknij + aby utworzyć szablon
+                                            </Typography>
                                         </Box>
                                     ) : null}
                                 </motion.div>
@@ -460,31 +408,29 @@ const RealTemplateBrowser = ({
                             >
                                 Szablony tygodnia
                             </Typography>
-                            {weekTemplates.length > 0 && (
-                                <IconButton
-                                    size="small"
-                                    onClick={creatingTemplateMode === 'week' ? onCancelTemplateCreation : onCreateWeekTemplate}
-                                    sx={{
-                                        p: 0.5,
-                                        width: 24,
-                                        height: 24,
-                                        color: creatingTemplateMode === 'week' ? 'error.main' : 'primary.main',
-                                        '&:hover': {
-                                            backgroundColor: creatingTemplateMode === 'week'
-                                                ? 'rgba(211, 47, 47, 0.08)'
-                                                : theme.palette.mode === 'dark'
-                                                ? 'rgba(114, 0, 21, 0.15)'
-                                                : 'rgba(146, 0, 32, 0.08)'
-                                        }
-                                    }}
-                                >
-                                    {creatingTemplateMode === 'week' ? (
-                                        <RemoveIcon sx={{ fontSize: 16 }} />
-                                    ) : (
-                                        <AddIcon sx={{ fontSize: 16 }} />
-                                    )}
-                                </IconButton>
-                            )}
+                            <IconButton
+                                size="small"
+                                onClick={creatingTemplateMode === 'week' ? onCancelTemplateCreation : onCreateWeekTemplate}
+                                sx={{
+                                    p: 0.5,
+                                    width: 24,
+                                    height: 24,
+                                    color: creatingTemplateMode === 'week' ? 'error.main' : 'primary.main',
+                                    '&:hover': {
+                                        backgroundColor: creatingTemplateMode === 'week'
+                                            ? 'rgba(211, 47, 47, 0.08)'
+                                            : theme.palette.mode === 'dark'
+                                            ? 'rgba(114, 0, 21, 0.15)'
+                                            : 'rgba(146, 0, 32, 0.08)'
+                                    }
+                                }}
+                            >
+                                {creatingTemplateMode === 'week' ? (
+                                    <RemoveIcon sx={{ fontSize: 16 }} />
+                                ) : (
+                                    <AddIcon sx={{ fontSize: 16 }} />
+                                )}
+                            </IconButton>
                         </Box>
 
                         <AnimatePresence mode="wait">
@@ -607,44 +553,24 @@ const RealTemplateBrowser = ({
                                         <Box
                                             sx={{
                                                 display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: 1.5,
-                                                flexShrink: 0
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                flexShrink: 0,
+                                                mt: 1,
+                                                py: 2
                                             }}
                                         >
-                                            <Box
+                                            <Typography
+                                                variant="caption"
                                                 sx={{
-                                                    p: 2,
+                                                    fontSize: '0.7rem',
+                                                    color: 'text.secondary',
                                                     textAlign: 'center',
-                                                    border: '1px dashed',
-                                                    borderColor: 'divider',
-                                                    borderRadius: 2,
-                                                    backgroundColor: 'action.hover'
+                                                    lineHeight: 1.4
                                                 }}
                                             >
-                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: 11 }}>
-                                                    Brak szablonów
-                                                </Typography>
-                                            </Box>
-                                            <IconButton
-                                                onClick={onCreateWeekTemplate}
-                                                sx={{
-                                                    alignSelf: 'center',
-                                                    width: 36,
-                                                    height: 36,
-                                                    backgroundColor: theme.palette.mode === 'dark'
-                                                        ? 'rgba(114, 0, 21, 0.15)'
-                                                        : 'rgba(146, 0, 32, 0.08)',
-                                                    color: 'primary.main',
-                                                    '&:hover': {
-                                                        backgroundColor: theme.palette.mode === 'dark'
-                                                            ? 'rgba(114, 0, 21, 0.25)'
-                                                            : 'rgba(146, 0, 32, 0.15)'
-                                                    }
-                                                }}
-                                            >
-                                                <AddIcon sx={{ fontSize: 20 }} />
-                                            </IconButton>
+                                                Kliknij + aby utworzyć szablon
+                                            </Typography>
                                         </Box>
                                     ) : null}
                                 </motion.div>
@@ -734,11 +660,23 @@ const RealTemplateBrowser = ({
                     setDeletionModalOpen(false);
                     setTemplateToDelete(null);
                 }}
-                onConfirm={() => {
-                    // TODO: Actually delete the template from store/API
-                    console.log('Confirmed deletion of template:', templateToDelete);
-                    setDeletionModalOpen(false);
-                    setTemplateToDelete(null);
+                onConfirm={async () => {
+                    if (!templateToDelete?.id) return;
+                    
+                    try {
+                        // Import deleteTemplate from services
+                        const { deleteTemplate } = await import('../../../../services/templateService');
+                        await deleteTemplate(templateToDelete.id);
+                        
+                        // Refresh templates list
+                        onTemplatesRefresh?.();
+                        
+                        setDeletionModalOpen(false);
+                        setTemplateToDelete(null);
+                    } catch (error) {
+                        console.error('Error deleting template:', error);
+                        // Could show an error toast here
+                    }
                 }}
                 template={templateToDelete}
             />
@@ -747,21 +685,29 @@ const RealTemplateBrowser = ({
 };
 
 RealTemplateBrowser.propTypes = {
+    templates: PropTypes.arrayOf(PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+        name: PropTypes.string.isRequired,
+        template_config: PropTypes.object
+    })),
     onCreateDayTemplate: PropTypes.func,
     onCreateWeekTemplate: PropTypes.func,
     onTemplateDragStart: PropTypes.func,
     onTemplateDragEnd: PropTypes.func,
     creatingTemplateMode: PropTypes.oneOf(['day', 'week', null]),
-    onCancelTemplateCreation: PropTypes.func
+    onCancelTemplateCreation: PropTypes.func,
+    onTemplatesRefresh: PropTypes.func
 };
 
 RealTemplateBrowser.defaultProps = {
+    templates: [],
     onCreateDayTemplate: () => console.log('Create day template'),
     onCreateWeekTemplate: () => console.log('Create week template'),
     onTemplateDragStart: () => {},
     onTemplateDragEnd: () => {},
     creatingTemplateMode: null,
-    onCancelTemplateCreation: () => {}
+    onCancelTemplateCreation: () => {},
+    onTemplatesRefresh: () => {}
 };
 
 export default RealTemplateBrowser;

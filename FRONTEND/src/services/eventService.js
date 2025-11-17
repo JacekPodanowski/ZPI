@@ -102,16 +102,16 @@ export const createAvailabilityBlock = async (availabilityData) => {
             date: availabilityData.date,
             start_time: availabilityData.startTime,
             end_time: availabilityData.endTime,
-            meeting_lengths: availabilityData.meetingLengths.map(Number),
-            time_snapping: parseInt(availabilityData.timeSnapping),
-            buffer_time: parseInt(availabilityData.bufferTime),
+            meeting_length: availabilityData.meeting_length || parseInt(availabilityData.meetingDuration) || 60,
+            time_snapping: availabilityData.time_snapping || parseInt(availabilityData.timeSnapping) || 30,
+            buffer_time: availabilityData.buffer_time || parseInt(availabilityData.bufferTime) || 0,
             site: availabilityData.site_id,
         };
         
         const response = await apiClient.post('/availability-blocks/', apiAvailabilityData);
         return response.data;
     } catch (error) {
-        console.error('Error deleting availability block:', error);
+        console.error('Error creating availability block:', error);
         throw error;
     }
 };

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Button, CircularProgress, Alert } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Add as AddIcon } from '@mui/icons-material';
-import { fetchSites } from '../../../services/siteService';
+import { Add as AddIcon, People as PeopleIcon } from '@mui/icons-material';
+import { fetchSites, fetchPendingInvitations } from '../../../services/siteService';
 import SiteTile from '../../components_STUDIO/Sites/SiteTile';
 import TeamMemberSiteTile from '../../components_STUDIO/Sites/TeamMemberSiteTile';
 
@@ -11,8 +11,10 @@ const SitesPage = () => {
     const navigate = useNavigate();
     const [ownedSites, setOwnedSites] = useState([]);
     const [teamMemberSites, setTeamMemberSites] = useState([]);
+    const [pendingInvitations, setPendingInvitations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showTeamSites, setShowTeamSites] = useState(true);
 
     useEffect(() => {
         let active = true;
@@ -20,11 +22,16 @@ const SitesPage = () => {
         const loadSites = async () => {
             try {
                 setLoading(true);
-                const response = await fetchSites();
+                const [sitesResponse, pendingResponse] = await Promise.all([
+                    fetchSites(),
+                    fetchPendingInvitations()
+                ]);
+                
                 if (active) {
-                    // Backend should return { owned_sites: [...], team_member_sites: [...] }
-                    setOwnedSites(response.owned_sites || response);
-                    setTeamMemberSites(response.team_member_sites || []);
+                    // Backend returns { owned_sites: [...], team_member_sites: [...] }
+                    setOwnedSites(sitesResponse.owned_sites || sitesResponse);
+                    setTeamMemberSites(sitesResponse.team_member_sites || []);
+                    setPendingInvitations(pendingResponse || []);
                 }
             } catch (err) {
                 if (active) {
@@ -43,6 +50,24 @@ const SitesPage = () => {
             active = false;
         };
     }, []);
+
+    const handleInvitationUpdate = async () => {
+        try {
+            const [sitesResponse, pendingResponse] = await Promise.all([
+                fetchSites(),
+                fetchPendingInvitations()
+            ]);
+            setOwnedSites(sitesResponse.owned_sites || sitesResponse);
+            setTeamMemberSites(sitesResponse.team_member_sites || []);
+            setPendingInvitations(pendingResponse || []);
+        } catch (err) {
+            console.error('Failed to refresh sites:', err);
+        }
+    };
+
+    const handleToggleTeamSites = () => {
+        setShowTeamSites(prev => !prev);
+    };
 
     const handleCreateSite = () => {
         navigate('/studio/new');
@@ -135,7 +160,35 @@ const SitesPage = () => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
+                    style={{ display: 'flex', gap: '12px' }}
                 >
+                    {teamMemberSites.length > 0 && (
+                        <Button
+                            variant="contained"
+                            onClick={handleToggleTeamSites}
+                            sx={{
+                                bgcolor: showTeamSites ? 'primary.main' : 'grey.400',
+                                color: 'white',
+                                minWidth: 'auto',
+                                px: 2,
+                                py: 1.5,
+                                borderRadius: 2,
+                                boxShadow: showTeamSites 
+                                    ? '0 4px 20px rgba(146, 0, 32, 0.25)' 
+                                    : '0 4px 20px rgba(0, 0, 0, 0.1)',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    bgcolor: showTeamSites ? 'primary.dark' : 'grey.500',
+                                    boxShadow: showTeamSites 
+                                        ? '0 6px 30px rgba(146, 0, 32, 0.35)' 
+                                        : '0 6px 30px rgba(0, 0, 0, 0.15)',
+                                    transform: 'translateY(-2px)'
+                                }
+                            }}
+                        >
+                            <PeopleIcon />
+                        </Button>
+                    )}
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
@@ -170,7 +223,7 @@ const SitesPage = () => {
                     mx: 'auto'
                 }}
             >
-                {(ownedSites.length === 0 && teamMemberSites.length === 0) ? (
+                {(ownedSites.length === 0 && teamMemberSites.length === 0 && pendingInvitations.length === 0) ? (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -232,12 +285,22 @@ const SitesPage = () => {
                             gridTemplateColumns: {
                                 xs: '1fr',
                                 sm: 'repeat(2, 1fr)',
-                                lg: (ownedSites.length + teamMemberSites.length) > 3 
-                                    ? 'repeat(auto-fit, minmax(300px, 1fr))' 
-                                    : 'repeat(3, 1fr)'
+                                lg: (() => {
+                                    const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
+                                    const totalVisible = ownedSites.length + visibleTeamCount;
+                                    return totalVisible > 3 ? 'repeat(auto-fit, minmax(300px, 1fr))' : 'repeat(3, 1fr)';
+                                })()
                             },
-                            gap: (ownedSites.length + teamMemberSites.length) > 3 ? 2 : 3,
-                            maxWidth: (ownedSites.length + teamMemberSites.length) > 3 ? '100%' : 1400,
+                            gap: (() => {
+                                const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
+                                const totalVisible = ownedSites.length + visibleTeamCount;
+                                return totalVisible > 3 ? 2 : 3;
+                            })(),
+                            maxWidth: (() => {
+                                const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
+                                const totalVisible = ownedSites.length + visibleTeamCount;
+                                return totalVisible > 3 ? '100%' : 1400;
+                            })(),
                             mx: 'auto',
                             '& > *': {
                                 minWidth: 0
@@ -255,13 +318,29 @@ const SitesPage = () => {
                                 />
                             ))}
                             
-                            {/* Team Member Sites */}
-                            {teamMemberSites.map((teamSite, index) => (
+                            {/* Pending Invitations - shown as special tiles */}
+                            {showTeamSites && pendingInvitations.map((inviteSite, index) => (
+                                <TeamMemberSiteTile
+                                    key={`pending-${inviteSite.id}`}
+                                    site={inviteSite}
+                                    teamMemberInfo={{
+                                        id: inviteSite.team_member_id,
+                                        invitation_status: 'pending',
+                                        permission_role: inviteSite.permission_role
+                                    }}
+                                    index={ownedSites.length + index}
+                                    onInvitationUpdate={handleInvitationUpdate}
+                                />
+                            ))}
+                            
+                            {/* Team Member Sites (linked) */}
+                            {showTeamSites && teamMemberSites.map((teamSite, index) => (
                                 <TeamMemberSiteTile
                                     key={teamSite.id}
                                     site={teamSite}
                                     teamMemberInfo={teamSite.team_member_info}
-                                    index={ownedSites.length + index}
+                                    index={ownedSites.length + pendingInvitations.length + index}
+                                    onInvitationUpdate={handleInvitationUpdate}
                                 />
                             ))}
                         </AnimatePresence>
