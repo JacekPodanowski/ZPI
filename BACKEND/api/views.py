@@ -720,22 +720,23 @@ class SiteViewSet(viewsets.ModelViewSet):
             'permissions': get_role_permissions(role, request.user.is_staff),
         })
 
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated], url_path='calendar-data')
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny], url_path='calendar-data')
     def calendar_data(self, request, pk=None):
         """
         Return all calendar data (events + availability blocks) for a specific site.
-        This endpoint is used by the Studio to load calendar data per site.
-        No filtering needed - if user has access to site, they see all its calendar data.
+        This endpoint is used by both Studio (authenticated) and public sites (no auth needed).
+        
+        No user-based filtering - returns all calendar data for the site.
+        Public sites need this data to show availability to potential clients.
         
         Optional query params:
         - start_date: Filter events/blocks from this date (YYYY-MM-DD)
         - end_date: Filter events/blocks to this date (YYYY-MM-DD)
         """
         site = self.get_object()
-        role, membership = resolve_site_role(request.user, site)
-
-        if role is None and not request.user.is_staff:
-            raise PermissionDenied('You do not have access to this site.')
+        
+        # No permission check - this is public data
+        # Public sites need to show all events and availability blocks
 
         # Get query params for date filtering
         start_date = request.query_params.get('start_date')
@@ -2410,6 +2411,7 @@ from datetime import datetime, time, timedelta
 @extend_schema(
     tags=['Public Calendar'],
     summary='Get available booking slots for a site',
+    description='Returns computed time slots based on availability blocks and existing events. Uses the unified calendar-data endpoint internally.',
     parameters=[
         OpenApiParameter('site_id', OpenApiTypes.INT, location=OpenApiParameter.PATH, description='ID of the site'),
         OpenApiParameter('start_date', OpenApiTypes.DATE, location=OpenApiParameter.QUERY, description='Start date (YYYY-MM-DD)'),
@@ -2438,18 +2440,22 @@ class PublicAvailabilityView(APIView):
         except ValueError:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Pobierz wszystkie bloki dostępności i istniejące wydarzenia w zadanym zakresie
-        availability_blocks = AvailabilityBlock.objects.filter(
+        # Fetch data using the unified calendar-data endpoint logic
+        # This ensures consistent data source across Studio and public calendars
+        events_qs = Event.objects.filter(
+            site=site,
+            start_time__date__gte=start_date,
+            start_time__date__lte=end_date
+        ).select_related('site', 'site__owner', 'creator').prefetch_related('bookings', 'bookings__client')
+        
+        blocks_qs = AvailabilityBlock.objects.filter(
             site=site,
             date__gte=start_date,
             date__lte=end_date
-        )
+        ).select_related('site', 'site__owner', 'creator')
         
-        existing_events = Event.objects.filter(
-            site=site,
-            start_time__date__gte=start_date,
-            end_time__date__lte=end_date
-        )
+        availability_blocks = list(blocks_qs)
+        existing_events = list(events_qs)
 
         booked_slots = set()
         for event in existing_events:
@@ -2464,8 +2470,11 @@ class PublicAvailabilityView(APIView):
             # meeting_length is a single integer, not a list
             meeting_length = block.meeting_length
             tz = timezone.get_current_timezone()
-            current_time = timezone.make_aware(datetime.combine(block.date, block.start_time), tz)
-            end_time = timezone.make_aware(datetime.combine(block.date, block.end_time), tz)
+            # Use datetime.combine to create datetime objects from date and time
+            block_start = datetime.combine(block.date, block.start_time)
+            block_end = datetime.combine(block.date, block.end_time)
+            current_time = timezone.make_aware(block_start, tz)
+            end_time = timezone.make_aware(block_end, tz)
             
             while current_time + timedelta(minutes=meeting_length) <= end_time:
                 slot_start = current_time

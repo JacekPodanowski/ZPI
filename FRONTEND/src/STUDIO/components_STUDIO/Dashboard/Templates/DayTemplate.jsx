@@ -125,8 +125,11 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                         const siteColor = item.site_color || 
                                          (item.site?.color_index !== undefined ? getSiteColorHex(item.site.color_index) : null) ||
                                          getSiteColorHex(0); // Default to red
-                        const bgColor = alpha(siteColor, item.isAvailability ? 0.08 : 0.15);
-                        const borderColor = siteColor;
+                        
+                        // Different styling for availability blocks - match DayDetailsModal colors
+                        const bgColor = item.isAvailability ? 'rgba(76, 175, 80, 0.15)' : alpha(siteColor, 0.15);
+                        const borderColor = item.isAvailability ? 'rgba(76, 175, 80, 0.4)' : siteColor;
+                        const borderStyle = item.isAvailability ? '2px dashed' : '2px solid';
 
                         return (
                             <Box
@@ -136,12 +139,14 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                                     px: 0.75,
                                     py: 0.4,
                                     borderRadius: 1.5,
-                                    borderLeft: `2px solid ${borderColor}`,
+                                    border: item.isAvailability ? `${borderStyle} ${borderColor}` : 'none',
+                                    borderLeft: item.isAvailability ? `${borderStyle} ${borderColor}` : `2px solid ${borderColor}`,
                                     backgroundColor: bgColor,
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 0.5,
-                                    transition: 'all 200ms ease'
+                                    transition: 'all 200ms ease',
+                                    position: 'relative'
                                 }}
                             >
                                 <Typography
@@ -149,7 +154,7 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                                     sx={{
                                         fontWeight: 500,
                                         fontSize: '10px',
-                                        color: borderColor,
+                                        color: item.isAvailability ? 'rgba(76, 175, 80, 0.85)' : borderColor,
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
@@ -163,6 +168,19 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                                     </Box>
                                     {item.isAvailability ? 'Dostępność' : (item.title || 'Event')}
                                 </Typography>
+                                
+                                {/* Site color circle for availability blocks */}
+                                {item.isAvailability && (
+                                    <Box
+                                        sx={{
+                                            width: 8,
+                                            height: 8,
+                                            borderRadius: '50%',
+                                            backgroundColor: siteColor,
+                                            flexShrink: 0
+                                        }}
+                                    />
+                                )}
                             </Box>
                         );
                     })}

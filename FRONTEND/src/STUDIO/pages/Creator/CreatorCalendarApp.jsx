@@ -685,15 +685,6 @@ const CreatorCalendarApp = () => {
             // Call API to save template
             const createdTemplate = await createTemplate(templateData);
             
-            // Log the complete template data with all events and availability blocks
-            console.log('=== TEMPLATE CREATED ===');
-            console.log('Name:', finalTemplateName);
-            console.log('Type:', templateType);
-            console.log('\nEvents:', JSON.stringify(templateEvents, null, 2));
-            console.log('\nAvailability Blocks:', JSON.stringify(templateAvailability, null, 2));
-            console.log('\nFull Template Config:', JSON.stringify(templateData.template_config, null, 2));
-            console.log('========================');
-            
             addToast(`Szablon "${finalTemplateName}" został utworzony`, { variant: 'success' });
             
             // Refresh templates list
@@ -749,7 +740,6 @@ const CreatorCalendarApp = () => {
             
             // First, delete affected events if action is 'replace'
             if (action === 'replace' && affectedEvents.length > 0) {
-                console.log(`Deleting ${affectedEvents.length} affected events for 'replace' action`);
                 for (const event of affectedEvents) {
                     try {
                         await deleteEvent(event.id);
@@ -770,6 +760,52 @@ const CreatorCalendarApp = () => {
             // For 'add' action, we don't delete affected events, we just add new ones
             // For 'apply' action, there are no affected events to delete
             
+            // Create availability blocks from template
+            if (template.availability_blocks && template.availability_blocks.length > 0) {
+                if (templateType === 'day') {
+                    // Apply day template - create blocks for the specific date
+                    for (const templateBlock of template.availability_blocks) {
+                        const blockData = {
+                            date: targetDate,
+                            startTime: templateBlock.start_time,
+                            endTime: templateBlock.end_time,
+                            meeting_length: templateBlock.meeting_length,
+                            time_snapping: templateBlock.time_snapping,
+                            buffer_time: templateBlock.buffer_time,
+                            site_id: selectedSiteId || sites[0]?.id
+                        };
+                        
+                        await handleCreateAvailability(blockData);
+                    }
+                } else {
+                    // Apply week template - create blocks for the whole week (skip past days)
+                    const startOfWeek = moment(targetDate).startOf('isoWeek');
+                    const today = moment().startOf('day');
+                    
+                    for (const templateBlock of template.availability_blocks) {
+                        // Calculate the actual date based on day_of_week
+                        const blockDate = startOfWeek.clone().add(templateBlock.day_of_week - 1, 'days');
+                        
+                        // Skip if the block date is in the past
+                        if (blockDate.isBefore(today)) {
+                            continue;
+                        }
+                        
+                        const blockData = {
+                            date: blockDate.format('YYYY-MM-DD'),
+                            startTime: templateBlock.start_time,
+                            endTime: templateBlock.end_time,
+                            meeting_length: templateBlock.meeting_length,
+                            time_snapping: templateBlock.time_snapping,
+                            buffer_time: templateBlock.buffer_time,
+                            site_id: selectedSiteId || sites[0]?.id
+                        };
+                        
+                        await handleCreateAvailability(blockData);
+                    }
+                }
+            }
+            
             // Then create new events from template
             if (template.events && template.events.length > 0) {
                 if (templateType === 'day') {
@@ -788,7 +824,6 @@ const CreatorCalendarApp = () => {
                             siteId: selectedSiteId || sites[0]?.id
                         };
                         
-                        console.log('Creating event from template:', eventData);
                         await handleCreateEvent(eventData);
                     }
                 } else {
@@ -802,7 +837,6 @@ const CreatorCalendarApp = () => {
                         
                         // Skip if the event date is in the past
                         if (eventDate.isBefore(today)) {
-                            console.log('Skipping past date:', eventDate.format('YYYY-MM-DD'));
                             continue;
                         }
                         
@@ -819,15 +853,11 @@ const CreatorCalendarApp = () => {
                             siteId: selectedSiteId || sites[0]?.id
                         };
                         
-                        console.log('Creating event from template:', eventData);
                         await handleCreateEvent(eventData);
                     }
                 }
             }
-            
-            console.log('Template applied successfully');
         } catch (error) {
-            console.error('Error applying template:', error);
             setError('Nie udało się zastosować szablonu. Spróbuj ponownie.');
         }
     };
