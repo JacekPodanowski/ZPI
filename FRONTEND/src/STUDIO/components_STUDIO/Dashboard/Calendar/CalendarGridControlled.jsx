@@ -105,7 +105,6 @@ const CalendarGridControlled = ({
             }
             map.get(dateKey).push(block);
         });
-        console.log('Availability blocks by date:', Object.fromEntries(map));
         return map;
     }, [availabilityBlocks]);
 

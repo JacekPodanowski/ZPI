@@ -14,6 +14,7 @@ import TemplateDeletionModal from './TemplateDeletionModal';
 
 const RealTemplateBrowser = ({ 
     templates = [],
+    sites = [],
     onCreateDayTemplate, 
     onCreateWeekTemplate, 
     onTemplateDragStart, 
@@ -309,7 +310,8 @@ const RealTemplateBrowser = ({
                                             {dayTemplates.map((template) => (
                                                 <DayTemplate 
                                                     key={template.id} 
-                                                    template={template} 
+                                                    template={template}
+                                                    sites={sites}
                                                     compact={false}
                                                     onDragStart={handleTemplateDragStart}
                                                     onDragEnd={handleTemplateDragEnd}

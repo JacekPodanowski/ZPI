@@ -95,7 +95,7 @@ const TemplateConfirmationModal = ({
             >
                 <EventIcon sx={{ color: 'primary.main', fontSize: 28 }} />
                 <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: '1.25rem' }}>
                         Zastosować szablon "{template.name}"?
                     </Typography>
                 </Box>

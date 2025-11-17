@@ -590,7 +590,8 @@ const CreatorCalendarApp = () => {
                     location: event.location || '',
                     assignment_type: event.assignment_type || 'owner',
                     assigned_to_owner: event.assigned_to_owner || false,
-                    assigned_to_team_member: event.assigned_to_team_member || null
+                    assigned_to_team_member: event.assigned_to_team_member || null,
+                    site: event.site
                 }));
                 
                 templateAvailability = dayAvailability.map(block => ({
@@ -601,7 +602,8 @@ const CreatorCalendarApp = () => {
                     assigned_to_team_member: block.assigned_to_team_member || null,
                     meeting_length: block.meeting_length || 60,
                     time_snapping: block.time_snapping || 30,
-                    buffer_time: block.buffer_time || 0
+                    buffer_time: block.buffer_time || 0,
+                    site: block.site
                 }));
             } else if (templateType === 'week') {
                 // Get events from the entire week
@@ -634,7 +636,8 @@ const CreatorCalendarApp = () => {
                         assignment_type: event.assignment_type || 'owner',
                         assigned_to_owner: event.assigned_to_owner || false,
                         assigned_to_team_member: event.assigned_to_team_member || null,
-                        day_of_week: dayOfWeek
+                        day_of_week: dayOfWeek,
+                        site: event.site
                     };
                 });
                 
@@ -651,7 +654,8 @@ const CreatorCalendarApp = () => {
                         meeting_length: block.meeting_length || 60,
                         time_snapping: block.time_snapping || 30,
                         buffer_time: block.buffer_time || 0,
-                        day_of_week: dayOfWeek
+                        day_of_week: dayOfWeek,
+                        site: block.site
                     };
                 });
             }
@@ -1017,6 +1021,7 @@ const CreatorCalendarApp = () => {
                 >
                     <RealTemplateBrowser
                         templates={templates}
+                        sites={sites}
                         onCreateDayTemplate={handleCreateDayTemplate}
                         onCreateWeekTemplate={handleCreateWeekTemplate}
                         onTemplateDragStart={handleTemplateDragStart}

@@ -54,7 +54,7 @@ const TemplateDeletionModal = ({
                 }}
             >
                 <DeleteIcon sx={{ color: 'error.main', fontSize: 28 }} />
-                <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+                <Typography sx={{ fontWeight: 600, flex: 1, fontSize: '1.25rem' }}>
                     Usuń szablon
                 </Typography>
             </DialogTitle>

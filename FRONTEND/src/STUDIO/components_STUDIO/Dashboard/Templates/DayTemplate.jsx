@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
-const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed }) => {
+const DayTemplate = ({ template, sites = [], compact, onDragStart, onDragEnd, isCollapsed }) => {
     const [isDragging, setIsDragging] = useState(false);
 
     const handleDragStart = (e) => {
@@ -121,10 +121,9 @@ const DayTemplate = ({ template, compact, onDragStart, onDragEnd, isCollapsed })
                     .sort((a, b) => a.start_time?.localeCompare(b.start_time))
                     .slice(0, 3)
                     .map((item, idx) => {
-                        // Get site color - prioritize site_color, fallback to color_index, then use red as default
-                        const siteColor = item.site_color || 
-                                         (item.site?.color_index !== undefined ? getSiteColorHex(item.site.color_index) : null) ||
-                                         getSiteColorHex(0); // Default to red
+                        // Get site color dynamically from sites array
+                        const site = sites.find(s => s.id === item.site);
+                        const siteColor = site ? getSiteColorHex(site.color_index ?? 0) : getSiteColorHex(0);
                         
                         // Different styling for availability blocks - match DayDetailsModal colors
                         const bgColor = item.isAvailability ? 'rgba(76, 175, 80, 0.15)' : alpha(siteColor, 0.15);
@@ -234,20 +233,27 @@ DayTemplate.propTypes = {
                 start_time: PropTypes.string,
                 end_time: PropTypes.string,
                 title: PropTypes.string,
-                site_color: PropTypes.string
+                site: PropTypes.number
             })
         ),
         availability_blocks: PropTypes.arrayOf(
             PropTypes.shape({
                 start_time: PropTypes.string,
                 end_time: PropTypes.string,
-                site_color: PropTypes.string
+                site: PropTypes.number
             })
         )
     }).isRequired,
+    sites: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.number,
+            color_index: PropTypes.number
+        })
+    ),
     compact: PropTypes.bool,
     onDragStart: PropTypes.func,
-    onDragEnd: PropTypes.func
+    onDragEnd: PropTypes.func,
+    isCollapsed: PropTypes.bool
 };
 
 DayTemplate.defaultProps = {
