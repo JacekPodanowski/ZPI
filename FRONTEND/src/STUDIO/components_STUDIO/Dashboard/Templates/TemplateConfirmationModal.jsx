@@ -42,7 +42,7 @@ const TemplateConfirmationModal = ({
     let allDaysInPast = false;
     
     if (templateType === 'week') {
-        const startOfWeek = targetMoment.clone().startOf('week');
+        const startOfWeek = targetMoment.clone().startOf('isoWeek');
         const today = moment().startOf('day');
         
         // Count how many days in the week are today or in the future
@@ -65,8 +65,8 @@ const TemplateConfirmationModal = ({
         formattedDate = moment(targetDate).format('DD MMMM YYYY');
     } else {
         // For week template, show date range
-        const startOfWeek = moment(targetDate).startOf('week');
-        const endOfWeek = moment(targetDate).endOf('week');
+        const startOfWeek = moment(targetDate).startOf('isoWeek');
+        const endOfWeek = moment(targetDate).endOf('isoWeek');
         formattedDate = `${startOfWeek.format('DD MMMM')} - ${endOfWeek.format('DD MMMM YYYY')}`;
     }
 
@@ -221,10 +221,16 @@ const TemplateConfirmationModal = ({
                             }}
                         >
                             <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                Nadpisane zostaną {affectedEvents.length} wydarzeń
+                                {templateType === 'week' 
+                                    ? `Znaleziono ${affectedEvents.length} ${affectedEvents.length === 1 ? 'wydarzenie' : affectedEvents.length < 5 ? 'wydarzenia' : 'wydarzeń'} w tym tygodniu`
+                                    : `Nadpisane zostaną ${affectedEvents.length} ${affectedEvents.length === 1 ? 'wydarzenie' : affectedEvents.length < 5 ? 'wydarzenia' : 'wydarzeń'}`
+                                }
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                Istniejące wydarzenia w tym dniu zostaną zastąpione szablonem
+                                {templateType === 'week'
+                                    ? 'Możesz je zastąpić szablonem lub dodać wydarzenia z szablonu do istniejących'
+                                    : 'Możesz je zastąpić szablonem lub dodać wydarzenia z szablonu do istniejących'
+                                }
                             </Typography>
                         </Alert>
                     )}
@@ -272,27 +278,80 @@ const TemplateConfirmationModal = ({
                 >
                     Anuluj
                 </Button>
-                <Button
-                    onClick={onConfirm}
-                    variant="contained"
-                    disabled={allDaysInPast}
-                    sx={{
-                        backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'primary.main',
-                        color: allDaysInPast ? 'action.disabled' : '#fff',
-                        fontWeight: 600,
-                        px: 3,
-                        boxShadow: allDaysInPast ? 'none' : '0 4px 12px rgba(146, 0, 32, 0.25)',
-                        '&:hover': {
-                            backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'rgb(114, 0, 21)',
-                            boxShadow: allDaysInPast ? 'none' : '0 6px 16px rgba(146, 0, 32, 0.35)'
-                        },
-                        '&.Mui-disabled': {
-                            color: 'action.disabled'
-                        }
-                    }}
-                >
-                    Zastosuj szablon
-                </Button>
+                
+                {/* Show different buttons based on whether there are conflicts */}
+                {willOverwrite ? (
+                    <>
+                        {/* Add button - adds template events without removing existing ones */}
+                        <Button
+                            onClick={() => onConfirm('add')}
+                            variant="outlined"
+                            disabled={allDaysInPast}
+                            sx={{
+                                borderColor: 'rgba(59, 130, 246, 0.4)',
+                                color: 'rgb(59, 130, 246)',
+                                fontWeight: 600,
+                                px: 3,
+                                '&:hover': {
+                                    borderColor: 'rgb(59, 130, 246)',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.08)'
+                                },
+                                '&.Mui-disabled': {
+                                    borderColor: 'action.disabledBackground',
+                                    color: 'action.disabled'
+                                }
+                            }}
+                        >
+                            Dodaj
+                        </Button>
+                        
+                        {/* Replace button - removes existing events and adds template events */}
+                        <Button
+                            onClick={() => onConfirm('replace')}
+                            variant="contained"
+                            disabled={allDaysInPast}
+                            sx={{
+                                backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'primary.main',
+                                color: allDaysInPast ? 'action.disabled' : '#fff',
+                                fontWeight: 600,
+                                px: 3,
+                                boxShadow: allDaysInPast ? 'none' : '0 4px 12px rgba(146, 0, 32, 0.25)',
+                                '&:hover': {
+                                    backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'rgb(114, 0, 21)',
+                                    boxShadow: allDaysInPast ? 'none' : '0 6px 16px rgba(146, 0, 32, 0.35)'
+                                },
+                                '&.Mui-disabled': {
+                                    color: 'action.disabled'
+                                }
+                            }}
+                        >
+                            Zamień
+                        </Button>
+                    </>
+                ) : (
+                    /* Apply button - no conflicts, just apply */
+                    <Button
+                        onClick={() => onConfirm('apply')}
+                        variant="contained"
+                        disabled={allDaysInPast}
+                        sx={{
+                            backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'primary.main',
+                            color: allDaysInPast ? 'action.disabled' : '#fff',
+                            fontWeight: 600,
+                            px: 3,
+                            boxShadow: allDaysInPast ? 'none' : '0 4px 12px rgba(146, 0, 32, 0.25)',
+                            '&:hover': {
+                                backgroundColor: allDaysInPast ? 'action.disabledBackground' : 'rgb(114, 0, 21)',
+                                boxShadow: allDaysInPast ? 'none' : '0 6px 16px rgba(146, 0, 32, 0.35)'
+                            },
+                            '&.Mui-disabled': {
+                                color: 'action.disabled'
+                            }
+                        }}
+                    >
+                        Zastosuj szablon
+                    </Button>
+                )}
             </DialogActions>
         </Dialog>
     );

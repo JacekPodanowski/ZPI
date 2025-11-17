@@ -246,14 +246,14 @@ const RealTemplateBrowser = ({
                                     {creatingTemplateMode === 'day' ? (
                                         <Box
                                             sx={{
-                                                p: 1.5,
+                                                p: 1.25,
                                                 borderRadius: 2,
                                                 backgroundColor: theme.palette.mode === 'dark' 
                                                     ? 'rgba(228, 229, 218, 0.05)' 
                                                     : 'rgba(228, 229, 218, 0.7)',
                                                 border: '1px solid rgba(146, 0, 32, 0.15)',
                                                 flexShrink: 0,
-                                                mt: 0.75,
+                                                mt: 0.5,
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 gap: 1,
@@ -272,7 +272,7 @@ const RealTemplateBrowser = ({
                                                     variant="subtitle2"
                                                     sx={{
                                                         fontWeight: 700,
-                                                        fontSize: '0.75rem',
+                                                        fontSize: '0.8rem',
                                                         color: 'primary.main',
                                                         letterSpacing: '0.02em'
                                                     }}
@@ -288,7 +288,6 @@ const RealTemplateBrowser = ({
                                                     flexDirection: 'column',
                                                     alignItems: 'center',
                                                     gap: 1,
-                                                    py: 2
                                                 }}
                                             >
                                                 <AddIcon 
@@ -307,7 +306,7 @@ const RealTemplateBrowser = ({
                                                         lineHeight: 1.4
                                                     }}
                                                 >
-                                                    Wybierz dzień aby utworzyć szablon
+                                                    Kliknij dzień w kalendarzu aby utworzyć szablon
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -501,7 +500,7 @@ const RealTemplateBrowser = ({
                                     {creatingTemplateMode === 'week' ? (
                                         <Box
                                             sx={{
-                                                p: 1.5,
+                                                p: 1.25,
                                                 borderRadius: 2,
                                                 backgroundColor: theme.palette.mode === 'dark' 
                                                     ? 'rgba(228, 229, 218, 0.05)' 
@@ -527,7 +526,7 @@ const RealTemplateBrowser = ({
                                                     variant="subtitle2"
                                                     sx={{
                                                         fontWeight: 700,
-                                                        fontSize: '0.75rem',
+                                                        fontSize: '0.8rem',
                                                         color: 'primary.main',
                                                         letterSpacing: '0.02em'
                                                     }}
@@ -543,7 +542,6 @@ const RealTemplateBrowser = ({
                                                     flexDirection: 'column',
                                                     alignItems: 'center',
                                                     gap: 1,
-                                                    py: 2
                                                 }}
                                             >
                                                 <AddIcon 
@@ -562,7 +560,7 @@ const RealTemplateBrowser = ({
                                                         lineHeight: 1.4
                                                     }}
                                                 >
-                                                    Wybierz tydzień aby utworzyć szablon
+                                                    Kliknij tydzień w kalendarzu aby utworzyć szablon
                                                 </Typography>
                                             </Box>
                                         </Box>

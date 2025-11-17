@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase, useMediaQuery } from '@mui/material';
-import { GridView, Visibility, RemoveRedEye, Search } from '@mui/icons-material';
+import { GridView, Visibility, RemoveRedEye, Edit } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
@@ -471,7 +471,6 @@ const StructureMode = () => {
                 >
                   <EditablePageTitle page={focusedPage} variant="focused" />
                   <IconButton
-                    size="small"
                     onClick={() => enterDetailMode(focusedPage.id)}
                     sx={{
                       color: editorColors.interactive.main,
@@ -480,7 +479,7 @@ const StructureMode = () => {
                       }
                     }}
                   >
-                    <Search sx={{ fontSize: 20 }} />
+                    <Edit sx={{ fontSize: 20 }} />
                   </IconButton>
                 </Box>
 
@@ -601,7 +600,7 @@ const StructureMode = () => {
                             }
                           }}
                         >
-                          <Search sx={{ fontSize: 18 }} />
+                          <Edit sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Stack>
                     </Box>

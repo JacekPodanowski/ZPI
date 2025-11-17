@@ -34,7 +34,8 @@ import {
     Delete as DeleteIcon,
     Person as PersonIcon,
     ZoomIn as ZoomInIcon,
-    ZoomOut as ZoomOutIcon
+    ZoomOut as ZoomOutIcon,
+    Mop as MopIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
@@ -482,7 +483,8 @@ const DayDetailsModal = ({
     sitePermissions,
     rolePermissionMap,
     siteRosters,
-    ensureSiteRoster
+    ensureSiteRoster,
+    onDataRefresh
 }) => {
     const theme = useTheme();
         const addToast = useToast();
@@ -1604,6 +1606,43 @@ const DayDetailsModal = ({
                     <Stack direction="row" spacing={1} alignItems="center">
                         {view === 'timeline' && (
                             <>
+                                <Tooltip title="Usuń wszystkie wydarzenia z tego dnia">
+                                    <IconButton
+                                        onClick={async () => {
+                                            if (window.confirm(`Czy na pewno chcesz usunąć wszystkie wydarzenia i bloki dostępności z dnia ${moment(date).format('DD MMMM YYYY')}?`)) {
+                                                try {
+                                                    // Delete all events from this day
+                                                    for (const event of dayEvents) {
+                                                        await eventService.deleteEvent(event.id);
+                                                    }
+                                                    // Delete all availability blocks from this day
+                                                    for (const block of dayAvailability) {
+                                                        await eventService.deleteAvailabilityBlock(block.id);
+                                                    }
+                                                    addToast('Usunięto wszystkie elementy z tego dnia', { variant: 'success' });
+                                                    // Refresh calendar data
+                                                    if (onDataRefresh) {
+                                                        await onDataRefresh();
+                                                    }
+                                                    handleClose();
+                                                } catch (error) {
+                                                    console.error('Error clearing day:', error);
+                                                    addToast('Nie udało się usunąć wszystkich elementów', { variant: 'error' });
+                                                }
+                                            }
+                                        }}
+                                        sx={{
+                                            color: 'error.main',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                                                transform: 'scale(1.1) rotate(-5deg)'
+                                            }
+                                        }}
+                                    >
+                                        <MopIcon sx={{ transform: 'rotate(15deg)' }} />
+                                    </IconButton>
+                                </Tooltip>
                                 <Tooltip title={isZoomedTimeline ? "Pokaż pełną oś czasu" : "Przybliż do wydarzeń"}>
                                     <IconButton
                                         onClick={() => setIsZoomedTimeline(!isZoomedTimeline)}
@@ -1862,7 +1901,8 @@ DayDetailsModal.propTypes = {
     sitePermissions: PropTypes.object,
     rolePermissionMap: PropTypes.object,
     siteRosters: PropTypes.object,
-    ensureSiteRoster: PropTypes.func
+    ensureSiteRoster: PropTypes.func,
+    onDataRefresh: PropTypes.func
 };
 
 DayDetailsModal.defaultProps = {

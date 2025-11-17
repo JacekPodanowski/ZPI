@@ -285,9 +285,64 @@ const CreatorCalendarApp = () => {
             active = false;
         };
     }, [user?.id, computePermissionsFromSites]);
+    
+    // Refresh data function for manual refresh
+    const handleDataRefresh = useCallback(async () => {
+        const userId = user?.id;
+        if (!userId) return;
+        
+        try {
+            const sitesResponse = await fetchSites();
+            const normalizedSites = ensureNormalizedSites(sitesResponse);
+            setSites(normalizedSites);
+            setSitePermissions(computePermissionsFromSites(normalizedSites));
+            setCache(`${CACHE_KEYS.SITES}_${userId}`, normalizedSites, 1000 * 60 * 5);
+
+            const eventsResponse = await fetchEvents();
+            const transformedEvents = eventsResponse.map((event) => {
+                const siteEntry = normalizedSites.find((s) => s.id === event.site) || {};
+                const startDate = new Date(event.start_time);
+                const endDate = new Date(event.end_time);
+                return {
+                    ...event,
+                    site_id: event.site,
+                    site_color: getSiteColorHex(siteEntry.color_index ?? 0),
+                    date: startDate.toISOString().split('T')[0],
+                    start_time: startDate.toTimeString().substring(0, 5),
+                    end_time: endDate.toTimeString().substring(0, 5),
+                    assignment_type: event.assignment_type,
+                    assignment_label: event.assignment_label,
+                    assigned_to_owner: event.assigned_to_owner,
+                    assigned_to_team_member: event.assigned_to_team_member,
+                };
+            });
+            setEvents(transformedEvents);
+            setCache(`${CACHE_KEYS.EVENTS}_${userId}`, transformedEvents, 1000 * 60 * 5);
+
+            const availabilityResponse = await fetchAvailabilityBlocks();
+            const transformedAvailability = availabilityResponse.map((block) => ({
+                ...block,
+                site_color: getSiteColorHex(
+                    normalizedSites.find((s) => s.id === block.site)?.color_index ?? 0
+                ),
+            }));
+            setAvailabilityBlocks(transformedAvailability);
+            setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${userId}`, transformedAvailability, 1000 * 60 * 5);
+        } catch (err) {
+            console.error('Error refreshing calendar data:', err);
+        }
+    }, [user?.id, computePermissionsFromSites]);
 
     const handleDayClick = (date) => {
-        console.log('(DEBUGLOG) CreatorCalendarApp.dayClick', { date, selectedSiteId });
+        console.log('(DEBUGLOG) CreatorCalendarApp.dayClick', { date, selectedSiteId, creatingTemplateMode });
+        
+        // If in template creation mode, cancel it when clicking non-selectable day
+        if (creatingTemplateMode) {
+            setCreatingTemplateMode(null);
+            setSelectedTemplateDate(null);
+            return;
+        }
+        
         setSelectedDate(date);
         setModalOpen(true);
     };
@@ -483,11 +538,91 @@ const CreatorCalendarApp = () => {
             date: selectedTemplateDate
         });
         
-        // TODO: Implement API call to create template
-        // For now, just close modal and reset state
-        setCreateTemplateModalOpen(false);
-        setCreatingTemplateMode(null);
-        setSelectedTemplateDate(null);
+        try {
+            // Collect events for the template
+            const templateType = creatingTemplateMode; // 'day' or 'week'
+            let templateEvents = [];
+            
+            if (templateType === 'day') {
+                // Get events from the selected day
+                const dayEvents = events.filter(e => 
+                    moment(e.date).format('YYYY-MM-DD') === selectedTemplateDate
+                );
+                
+                templateEvents = dayEvents.map(event => ({
+                    title: event.title,
+                    description: event.description || '',
+                    start_time: event.start_time,
+                    end_time: event.end_time,
+                    event_type: event.event_type || event.meetingType || 'individual',
+                    capacity: event.capacity || 1,
+                    type: event.type || 'online',
+                    location: event.location || ''
+                }));
+            } else if (templateType === 'week') {
+                // Get events from the entire week
+                const weekStart = moment(selectedTemplateDate).startOf('isoWeek');
+                const weekEnd = moment(selectedTemplateDate).endOf('isoWeek');
+                
+                const weekEvents = events.filter(e => {
+                    const eventMoment = moment(e.date);
+                    return eventMoment.isSameOrAfter(weekStart) && eventMoment.isSameOrBefore(weekEnd);
+                });
+                
+                templateEvents = weekEvents.map(event => {
+                    const eventMoment = moment(event.date);
+                    const dayOfWeek = eventMoment.isoWeekday(); // 1=Monday, 7=Sunday
+                    
+                    return {
+                        title: event.title,
+                        description: event.description || '',
+                        start_time: event.start_time,
+                        end_time: event.end_time,
+                        event_type: event.event_type || event.meetingType || 'individual',
+                        capacity: event.capacity || 1,
+                        type: event.type || 'online',
+                        location: event.location || '',
+                        day_of_week: dayOfWeek
+                    };
+                });
+            }
+            
+            // Prepare template data
+            const templateData = {
+                name: templateName,
+                template_type: templateType,
+                events: templateEvents,
+                site: selectedSiteId || sites[0]?.id,
+                ...(templateType === 'day' ? {
+                    day_abbreviation: moment(selectedTemplateDate).format('ddd')
+                } : {
+                    day_count: templateEvents.reduce((acc, e) => {
+                        if (!acc.includes(e.day_of_week)) acc.push(e.day_of_week);
+                        return acc;
+                    }, []).length,
+                    active_days: [...new Set(templateEvents.map(e => e.day_of_week - 1))], // Convert to 0-based
+                    total_events: templateEvents.length
+                })
+            };
+            
+            console.log('Template data prepared:', templateData);
+            
+            // TODO: Call API to save template
+            // await createTemplate(templateData);
+            
+            // For now, just show success message
+            console.log('Template created successfully (mock)');
+            setError(null);
+            
+        } catch (error) {
+            console.error('Error creating template:', error);
+            setError('Nie udało się utworzyć szablonu. Spróbuj ponownie.');
+        } finally {
+            // Close modal and reset state
+            setCreateTemplateModalOpen(false);
+            setCreatingTemplateMode(null);
+            setSelectedTemplateDate(null);
+        }
     };
 
     const handleCloseCreateTemplateModal = () => {
@@ -505,12 +640,15 @@ const CreatorCalendarApp = () => {
         setDraggingTemplate(null);
     };
 
-    const handleApplyTemplate = async (template, targetDate, affectedEvents) => {
-        console.log('Applying template:', { template, targetDate, affectedEvents });
+    const handleApplyTemplate = async (template, targetDate, affectedEvents, action = 'apply') => {
+        console.log('Applying template:', { template, targetDate, affectedEvents, action });
         
         try {
-            // First, delete affected events if any
-            if (affectedEvents.length > 0) {
+            const templateType = template.day_abbreviation ? 'day' : 'week';
+            
+            // First, delete affected events if action is 'replace'
+            if (action === 'replace' && affectedEvents.length > 0) {
+                console.log(`Deleting ${affectedEvents.length} affected events for 'replace' action`);
                 for (const event of affectedEvents) {
                     try {
                         await deleteEvent(event.id);
@@ -528,11 +666,11 @@ const CreatorCalendarApp = () => {
                     }
                 }
             }
+            // For 'add' action, we don't delete affected events, we just add new ones
+            // For 'apply' action, there are no affected events to delete
             
             // Then create new events from template
             if (template.events && template.events.length > 0) {
-                const templateType = template.day_abbreviation ? 'day' : 'week';
-                
                 if (templateType === 'day') {
                     // Apply day template - create events for the specific date
                     for (const templateEvent of template.events) {
@@ -546,7 +684,7 @@ const CreatorCalendarApp = () => {
                             capacity: templateEvent.capacity || 1,
                             type: templateEvent.type || 'online',
                             location: templateEvent.location || '',
-                            site_id: selectedSiteId || sites[0]?.id
+                            siteId: selectedSiteId || sites[0]?.id
                         };
                         
                         console.log('Creating event from template:', eventData);
@@ -577,7 +715,7 @@ const CreatorCalendarApp = () => {
                             capacity: templateEvent.capacity || 1,
                             type: templateEvent.type || 'online',
                             location: templateEvent.location || '',
-                            site_id: selectedSiteId || sites[0]?.id
+                            siteId: selectedSiteId || sites[0]?.id
                         };
                         
                         console.log('Creating event from template:', eventData);
@@ -617,40 +755,50 @@ const CreatorCalendarApp = () => {
     }, [sites]);
 
     const eventsForCalendar = useMemo(() => {
-        return events.map((event) => {
-            const siteKey = String(event.site_id);
-            const isFromSelectedSite = !selectedSiteId || siteKey === String(selectedSiteId);
-            const siteTeamSize = siteTeamSizeMap.get(siteKey) ?? 1;
-            
-            // Hide team member events if site doesn't have team
-            if (siteTeamSize <= 1 && event.assigned_to_team_member) {
-                return null;
-            }
-            
-            // Apply assignee filter if set
-            if (selectedAssigneeFilter && isFromSelectedSite) {
-                if (selectedAssigneeFilter.type === 'owner') {
-                    if (selectedAssigneeFilter.id) {
-                        if (String(event.assigned_to_owner) !== String(selectedAssigneeFilter.id)) {
+        // Get IDs of all sites the user has access to (only linked team sites)
+        const accessibleSiteIds = new Set(sites.map(site => String(site.id)));
+        
+        return events
+            .filter((event) => {
+                // Filter out events from sites user doesn't have access to
+                const eventSiteId = String(event.site_id ?? event.site);
+                return accessibleSiteIds.has(eventSiteId);
+            })
+            .map((event) => {
+                const siteKey = String(event.site_id);
+                const isFromSelectedSite = !selectedSiteId || siteKey === String(selectedSiteId);
+                const siteTeamSize = siteTeamSizeMap.get(siteKey) ?? 1;
+                
+                // Hide team member events if site doesn't have team
+                if (siteTeamSize <= 1 && event.assigned_to_team_member) {
+                    return null;
+                }
+                
+                // Apply assignee filter if set
+                if (selectedAssigneeFilter && isFromSelectedSite) {
+                    if (selectedAssigneeFilter.type === 'owner') {
+                        if (selectedAssigneeFilter.id) {
+                            if (String(event.assigned_to_owner) !== String(selectedAssigneeFilter.id)) {
+                                return null;
+                            }
+                        } else if (!event.assigned_to_owner) {
                             return null;
                         }
-                    } else if (!event.assigned_to_owner) {
-                        return null;
-                    }
-                } else if (selectedAssigneeFilter.type === 'team_member') {
-                    if (String(event.assigned_to_team_member) !== String(selectedAssigneeFilter.id)) {
-                        return null;
+                    } else if (selectedAssigneeFilter.type === 'team_member') {
+                        if (String(event.assigned_to_team_member) !== String(selectedAssigneeFilter.id)) {
+                            return null;
+                        }
                     }
                 }
-            }
-            
-            // Mark events from selected site for visual distinction
-            return {
-                ...event,
-                isFromSelectedSite
-            };
-        }).filter(Boolean);
-    }, [events, selectedSiteId, selectedAssigneeFilter, siteTeamSizeMap]);
+                
+                // Mark events from selected site for visual distinction
+                return {
+                    ...event,
+                    isFromSelectedSite
+                };
+            })
+            .filter(Boolean);
+    }, [events, selectedSiteId, selectedAssigneeFilter, siteTeamSizeMap, sites]);
 
     const availabilityForCalendar = useMemo(() => {
         // Get IDs of all sites the user has access to
@@ -831,6 +979,7 @@ const CreatorCalendarApp = () => {
                 rolePermissionMap={ROLE_PERMISSIONS}
                 siteRosters={siteRosters}
                 ensureSiteRoster={ensureSiteRoster}
+                onDataRefresh={handleDataRefresh}
             />
             
             {/* Booking Details Modal */}

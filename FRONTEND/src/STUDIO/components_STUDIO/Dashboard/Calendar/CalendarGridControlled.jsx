@@ -10,6 +10,7 @@ import { getSiteColorHex } from '../../../../theme/siteColors';
 import TemplateConfirmationModal from '../Templates/TemplateConfirmationModal';
 import TimeInput from '../../../../components/TimeInput';
 import { useToast } from '../../../../contexts/ToastContext';
+import { getTemplateSelectionStyles } from './TemplateSelectingStyles';
 
 // Controlled-only view of the calendar grid; all state comes from props.
 const CalendarGridControlled = ({
@@ -48,6 +49,7 @@ const CalendarGridControlled = ({
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [pendingTemplate, setPendingTemplate] = useState(null);
     const [pendingTargetDate, setPendingTargetDate] = useState(null);
+    const [pendingAffectedEvents, setPendingAffectedEvents] = useState([]);
     
     // Operating hours - use props if provided, otherwise use defaults
     const operatingStartHour = propOperatingStartHour ?? '06:00';
@@ -771,6 +773,9 @@ const CalendarGridControlled = ({
                     const isCurrentMonth = dayMoment.month() === currentMonthMoment.month();
                     const isToday = dayMoment.isSame(moment(), 'day');
                     const isPast = dayMoment.isBefore(moment(), 'day');
+                    const isTodayEmpty = dayEvents.length === 0 && dayAvailability.length === 0;
+                    // Show today border unless in template creation mode and day is empty
+                    const shouldShowTodayBorder = isToday && (!creatingTemplateMode || !isTodayEmpty);
                     const isDimmed = selectedSiteId && !dayEvents.some((event) => event.site === selectedSiteId);
                     
                     // Determine if this day should collapse events (more than 4 events)
@@ -781,6 +786,8 @@ const CalendarGridControlled = ({
                     // Template creation mode logic
                     const isInTemplateCreationMode = creatingTemplateMode !== null;
                     const hasEventsForTemplate = eventCount > 0;
+                    const hasAvailabilityForTemplate = dayAvailability.length > 0;
+                    const hasContentForTemplate = hasEventsForTemplate || hasAvailabilityForTemplate;
                     
                     // Check if week has events (for week template mode)
                     const weekStart = dayMoment.clone().startOf('isoWeek');
@@ -788,7 +795,9 @@ const CalendarGridControlled = ({
                     const weekHasEvents = creatingTemplateMode === 'week' && (() => {
                         for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
                             const key = d.format('YYYY-MM-DD');
-                            if ((eventsByDate.get(key) || []).length > 0) {
+                            const dayEventsCount = (eventsByDate.get(key) || []).length;
+                            const dayAvailabilityCount = (availabilityByDate.get(key) || []).length;
+                            if (dayEventsCount > 0 || dayAvailabilityCount > 0) {
                                 return true;
                             }
                         }
@@ -803,18 +812,51 @@ const CalendarGridControlled = ({
                     const isWeekHovered = creatingTemplateMode === 'week' && hoveredWeekKey === weekKey;
                     
                     const isSelectableForTemplate = isInTemplateCreationMode && (
-                        (creatingTemplateMode === 'day' && hasEventsForTemplate) ||
+                        (creatingTemplateMode === 'day' && hasContentForTemplate) ||
                         (creatingTemplateMode === 'week' && isInWeekWithEvents)
                     );
+                    
+                    // Unified hover state for template selection
+                    const isDayHoveredInTemplateMode = creatingTemplateMode === 'day' && hoveredDayKey === dateKey;
+                    const isTemplateSelectionHovered = isWeekHovered || isDayHoveredInTemplateMode;
 
                     // Past days with no events should not be clickable
                     const isClickable = isInTemplateCreationMode 
                         ? isSelectableForTemplate 
                         : (!isPast || eventCount > 0);
                     
-                    // Day hover should be blocked when hovering an event
-                    const isDayHovered = hoveredDayKey === dateKey && !hoveredEventId;
+                    // Define isBeingDraggedOver first
                     const isBeingDraggedOver = draggedOverDay === dateKey;
+                    
+                    // Block hover and drag effects for past days (except week templates with future days)
+                    let allowDragInteraction = true;
+                    if (isPast && !isToday && (draggedTemplate || draggingTemplate || isBeingDraggedOver)) {
+                        const templateType = draggedTemplateType || draggingTemplate?.type;
+                        
+                        if (templateType === 'week') {
+                            // Check if week has future days
+                            const weekStart = dayMoment.clone().startOf('isoWeek');
+                            const weekEnd = dayMoment.clone().endOf('isoWeek');
+                            const today = moment().startOf('day');
+                            
+                            let hasFutureDays = false;
+                            for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
+                                if (d.isSameOrAfter(today, 'day')) {
+                                    hasFutureDays = true;
+                                    break;
+                                }
+                            }
+                            
+                            allowDragInteraction = hasFutureDays;
+                        } else {
+                            // Day template - no interaction with past days
+                            allowDragInteraction = false;
+                        }
+                    }
+                    
+                    // Day hover should be blocked when hovering an event or when drag interaction is blocked
+                    const isDayHovered = hoveredDayKey === dateKey && !hoveredEventId;
+                    const isBeingDraggedOverWithEffect = isBeingDraggedOver && allowDragInteraction;
                     
                     // Week template logic - Use draggingTemplate from parent to determine type
                     const isWeekTemplate = draggingTemplate?.type === 'week' || draggedTemplateType === 'week';
@@ -824,7 +866,7 @@ const CalendarGridControlled = ({
                     let isAffectedDay = false; // Red highlight - day will receive events
                     let isUnaffectedDay = false; // Gray overlay - day won't receive events
                     
-                    if (isWeekTemplate && draggedOverDay) {
+                    if (isWeekTemplate && draggedOverDay && allowDragInteraction) {
                         const hoveredDayMoment = moment(draggedOverDay);
                         
                         // Find which row this day is in the calendar grid
@@ -875,11 +917,42 @@ const CalendarGridControlled = ({
                     }
                     
                     // For day templates, gray out past days
-                    if (!isWeekTemplate && (draggedTemplate || draggingTemplate) && isBeingDraggedOver && isPast && !isToday) {
+                    if (!isWeekTemplate && (draggedTemplate || draggingTemplate) && isBeingDraggedOverWithEffect && isPast && !isToday) {
                         isUnaffectedDay = true;
                     }
 
                     const handleDragOver = (e) => {
+                        // Block drag over for past days, except for week templates with future days
+                        if (isPast && !isToday) {
+                            const templateType = e.dataTransfer.getData('templateType');
+                            
+                            // If it's a week template, check if week has future days
+                            if (templateType === 'week') {
+                                const weekStart = dayMoment.clone().startOf('isoWeek');
+                                const weekEnd = dayMoment.clone().endOf('isoWeek');
+                                const today = moment().startOf('day');
+                                
+                                let hasFutureDays = false;
+                                for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
+                                    if (d.isSameOrAfter(today, 'day')) {
+                                        hasFutureDays = true;
+                                        break;
+                                    }
+                                }
+                                
+                                // If week has no future days, block drag
+                                if (!hasFutureDays) {
+                                    e.dataTransfer.dropEffect = 'none';
+                                    return;
+                                }
+                                // Week has future days, allow drag over
+                            } else {
+                                // Day template on past day - block completely
+                                e.dataTransfer.dropEffect = 'none';
+                                return;
+                            }
+                        }
+                        
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
                         
@@ -912,7 +985,40 @@ const CalendarGridControlled = ({
                         e.preventDefault();
                         const templateType = e.dataTransfer.getData('templateType');
                         const templateId = e.dataTransfer.getData('templateId');
-                        const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
+                        const templateDataStr = e.dataTransfer.getData('templateData');
+                        
+                        // Block drop on past days, except for week templates with future days
+                        if (isPast && !isToday) {
+                            if (templateType === 'week') {
+                                const weekStart = dayMoment.clone().startOf('isoWeek');
+                                const weekEnd = dayMoment.clone().endOf('isoWeek');
+                                const today = moment().startOf('day');
+                                
+                                let hasFutureDays = false;
+                                for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
+                                    if (d.isSameOrAfter(today, 'day')) {
+                                        hasFutureDays = true;
+                                        break;
+                                    }
+                                }
+                                
+                                // If week has no future days, block drop
+                                if (!hasFutureDays) {
+                                    setDraggedOverDay(null);
+                                    setDraggedTemplate(null);
+                                    setDraggedTemplateType(null);
+                                    return;
+                                }
+                            } else {
+                                // Day template on past day - block drop
+                                setDraggedOverDay(null);
+                                setDraggedTemplate(null);
+                                setDraggedTemplateType(null);
+                                return;
+                            }
+                        }
+                        
+                        const templateData = JSON.parse(templateDataStr);
                         
                         console.log('Template dropped on day:', {
                             date: dateKey,
@@ -921,9 +1027,42 @@ const CalendarGridControlled = ({
                             templateData
                         });
                         
-                        // Open confirmation modal
+                        // Calculate affected events for week templates
+                        let affectedEvents = [];
+                        if (templateType === 'week') {
+                            const weekStart = dayMoment.clone().startOf('isoWeek');
+                            const weekEnd = dayMoment.clone().endOf('isoWeek');
+                            const today = moment().startOf('day');
+                            
+                            // Collect events from all future days in the week
+                            for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
+                                if (d.isSameOrAfter(today, 'day')) {
+                                    const dayKey = d.format('YYYY-MM-DD');
+                                    const dayEvents = eventsByDate.get(dayKey) || [];
+                                    affectedEvents = [...affectedEvents, ...dayEvents];
+                                }
+                            }
+                        } else {
+                            // For day templates, only events on this day
+                            affectedEvents = eventsByDate.get(dateKey) || [];
+                        }
+                        
+                        // If no conflicts, apply template immediately
+                        if (affectedEvents.length === 0) {
+                            console.log('No conflicts detected - applying template immediately');
+                            if (onApplyTemplate) {
+                                onApplyTemplate(templateData, dateKey, []);
+                            }
+                            setDraggedOverDay(null);
+                            setDraggedTemplate(null);
+                            setDraggedTemplateType(null);
+                            return;
+                        }
+                        
+                        // If conflicts exist, show confirmation modal
                         setPendingTemplate(templateData);
                         setPendingTargetDate(dateKey);
+                        setPendingAffectedEvents(affectedEvents);
                         setConfirmModalOpen(true);
                         setDraggedOverDay(null);
                         setDraggedTemplate(null);
@@ -965,7 +1104,7 @@ const CalendarGridControlled = ({
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
                                 sx={{
-                                    border: isToday ? '2px solid' : '1px solid',
+                                    border: shouldShowTodayBorder ? '2px solid' : '1px solid',
                                     borderColor: (isSelectableForTemplate && isWeekHovered)
                                         ? 'primary.main'
                                         : isSelectableForTemplate
@@ -974,13 +1113,13 @@ const CalendarGridControlled = ({
                                         ? 'primary.main' 
                                         : (isBeingDraggedOver && !isWeekTemplate)
                                             ? 'primary.main'
-                                            : isToday 
+                                            : shouldShowTodayBorder 
                                                 ? 'primary.main' 
                                                 : 'rgba(146, 0, 32, 0.12)',
                                     borderRadius: 2,
-                                    pt: isToday ? '4px' : '4.8px', // Reduced by ~2px to move header up
-                                    pb: isToday ? 0.75 : 0.85,
-                                    px: isToday ? 0.75 : 0.85,
+                                    pt: shouldShowTodayBorder ? '4px' : '4.8px', // Reduced by ~2px to move header up
+                                    pb: shouldShowTodayBorder ? 0.75 : 0.85,
+                                    px: shouldShowTodayBorder ? 0.75 : 0.85,
                                     height: '100%',
                                     width: '100%',
                                     minWidth: 0,
@@ -1022,35 +1161,21 @@ const CalendarGridControlled = ({
                                         animation: 'pulse 1.5s ease-in-out infinite'
                                     }),
                                     // Day template single day highlight
-                                    ...((isBeingDraggedOver && !isWeekTemplate) && !isUnaffectedDay && {
+                                    ...((isBeingDraggedOverWithEffect && !isWeekTemplate) && !isUnaffectedDay && {
                                         borderStyle: 'dashed',
                                         borderWidth: '2px',
                                         backgroundColor: 'rgba(146, 0, 32, 0.05)',
                                         animation: 'pulse 1.5s ease-in-out infinite'
                                     }),
-                                    ...(isToday && {
+                                    ...(shouldShowTodayBorder && {
                                         boxShadow: '0 0 12px rgba(146, 0, 32, 0.25), 0 0 24px rgba(146, 0, 32, 0.1)',
                                     }),
-                                    // Template creation mode hover - entire week highlighted
-                                    ...(isWeekHovered && isSelectableForTemplate && {
-                                        backgroundColor: 'rgba(146, 0, 32, 0.18)',
-                                        borderColor: 'primary.main',
-                                        borderWidth: '2.5px',
-                                        boxShadow: '0 0 16px rgba(146, 0, 32, 0.3), 0 4px 12px rgba(146, 0, 32, 0.2)'
-                                    }),
-                                    // Template creation mode - single day selectable styling
-                                    ...(isSelectableForTemplate && !isWeekHovered && creatingTemplateMode === 'day' && {
-                                        backgroundColor: 'rgba(146, 0, 32, 0.08)',
-                                        borderWidth: '2px',
-                                        borderColor: 'rgba(146, 0, 32, 0.5)',
-                                        boxShadow: '0 0 12px rgba(146, 0, 32, 0.25)',
-                                        '&:hover': {
-                                            backgroundColor: 'rgba(146, 0, 32, 0.18)',
-                                            borderWidth: '2.5px',
-                                            borderColor: 'primary.main',
-                                            boxShadow: '0 0 16px rgba(146, 0, 32, 0.3), 0 4px 12px rgba(146, 0, 32, 0.2)'
-                                        }
-                                    }),
+                                    // Unified template selection styles for both day and week modes
+                                    ...(isSelectableForTemplate && getTemplateSelectionStyles({
+                                        isSelectable: true,
+                                        isHovered: isTemplateSelectionHovered,
+                                        mode: creatingTemplateMode
+                                    })),
                                     // Normal day hover (not in template creation mode)
                                     ...(!isInTemplateCreationMode && isDayHovered && isClickable && {
                                         backgroundColor: 'rgba(146, 0, 32, 0.05)',
@@ -1064,16 +1189,16 @@ const CalendarGridControlled = ({
                                     <Typography
                                         variant="body2"
                                         sx={{
-                                            fontWeight: isToday ? 700 : 600,
+                                            fontWeight: shouldShowTodayBorder ? 700 : 600,
                                             fontSize: { xs: '13px', sm: '14px', md: '15px' }, // Responsive font size
-                                            color: isToday ? 'primary.main' : 'text.primary',
+                                            color: shouldShowTodayBorder ? 'primary.main' : 'text.primary',
                                             flexShrink: 0,
                                             transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
                                             position: 'relative',
                                             zIndex: 5,
                                             pointerEvents: 'none', // Let parent handle clicks
                                             transformOrigin: 'center center', // Expand from center
-                                            ...(isToday && {
+                                            ...(shouldShowTodayBorder && {
                                                 textShadow: '0 0 8px rgba(146, 0, 32, 0.3)',
                                             }),
                                             ...(isDayHovered && isClickable && {
@@ -1310,23 +1435,26 @@ const CalendarGridControlled = ({
                     setConfirmModalOpen(false);
                     setPendingTemplate(null);
                     setPendingTargetDate(null);
+                    setPendingAffectedEvents([]);
                 }}
-                onConfirm={() => {
-                    // Apply template logic
+                onConfirm={(action) => {
+                    // Apply template logic with action (add, replace, or apply)
                     if (onApplyTemplate && pendingTemplate && pendingTargetDate) {
                         onApplyTemplate(
                             pendingTemplate,
                             pendingTargetDate,
-                            eventsByDate.get(pendingTargetDate) || []
+                            pendingAffectedEvents,
+                            action // Pass action: 'add', 'replace', or 'apply'
                         );
                     }
                     setConfirmModalOpen(false);
                     setPendingTemplate(null);
                     setPendingTargetDate(null);
+                    setPendingAffectedEvents([]);
                 }}
                 template={pendingTemplate}
                 targetDate={pendingTargetDate}
-                affectedEvents={pendingTargetDate ? (eventsByDate.get(pendingTargetDate) || []) : []}
+                affectedEvents={pendingAffectedEvents}
             />
         </Box>
     );
