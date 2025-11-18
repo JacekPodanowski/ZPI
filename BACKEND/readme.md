@@ -11,19 +11,44 @@ pip install -r requirements.txt
 python manage.py makemigrations
 python manage.py migrate
 
-# Utwórz domyślną stronę pokazową (ID=1: YourEasySite_Demo)
+# BULLETPROOF BUILD: Tworzy showcase i mocki z automatyczną naprawą sekwencji
 python manage.py create_initial_superuser
-python manage.py create_default_site
-
-# Opcjonalnie: dodaj mockowe strony i eventy
-python manage.py create_mock_sites
+python manage.py create_default_site  # Tworzy showcase (ID=1)
+python manage.py create_mock_sites    # Tworzy mocki (IDs 2-99) i naprawia sekwencję dla user sites (100+)
 ```
+
+## Site ID Range Convention
+
+System używa **zarezerwowanych zakresów ID** dla różnych typów stron:
+
+```
+ID 1:       "YourEasySite Demo" (showcase/preview site) - is_mock=True
+IDs 2-99:   Mock/demo sites dla development i testów - is_mock=True
+IDs 100+:   Prawdziwe user sites (auto-increment od 100) - is_mock=False
+```
+
+**Korzyści:**
+- Łatwa identyfikacja typu strony po samym ID
+- Proste filtrowanie (np. `id >= 100` dla user sites, `is_mock=True` dla test sites)
+- Brak kolizji między mockami a prawdziwymi stronami
+- Pierwsze 100 ID zarezerwowane dla deweloperów
+
+**BULLETPROOF BUILD - jak to działa:**
+
+`create_mock_sites` automatycznie wykonuje:
+1. Czyści wszystkie mock sites (`is_mock=True`) i resetuje sekwencję do 1
+2. Tworzy showcase site (ID=1) - patrz: `create_default_site`
+3. Tworzy mock sites (dostaną IDs 2, 3, 4...)
+4. Sprawdza najwyższe ID wśród user sites i ustawia sekwencję na max(100, last_user_id + 1)
+5. Wyświetla podsumowanie dystrybucji
+
+**Nigdy więcej ręcznych napraw sekwencji** - system jest bulletproof!
 
 ## Management Commands
 
 - **create_initial_superuser** – tworzy superusera z danych środowiskowych
-- **create_default_site** – tworzy profesjonalną stronę pokazową "YourEasySite_Demo" (ID=1)
-- **create_mock_sites** – tworzy mockowe strony testowe (Pracownia Jogi, Studio Oddechu, Gabinet Psychoterapii) i dodaje mockowe eventy do wszystkich stron
+- **create_default_site** – tworzy profesjonalną stronę pokazową "YourEasySite_Demo" (ID=1, is_mock=True)
+- **create_mock_sites** – **BULLETPROOF**: czyści mocki, tworzy showcase i mocki, naprawia sekwencję dla user sites (100+), wyświetla podsumowanie
 
 ## API w pigułce
 

@@ -1,7 +1,7 @@
 # api/management/commands/create_mock_sites.py
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import transaction, connection
 from django.utils import timezone
 import json
 import os
@@ -15,9 +15,17 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Creates mock sites (starting from ID=2) and adds mock events to all sites including the showcase site (ID=1).'
+    help = 'Creates mock sites and adds mock events. Automatically manages ID sequence for bulletproof operation.'
 
     def handle(self, *args, **options):
+        """
+        BULLETPROOF BUILD PROCESS:
+        1. Clear all mock sites (is_mock=True) and reset sequence to 1
+        2. Create showcase site (ID=1)
+        3. Create mock sites (IDs 2-99)
+        4. Find last user site ID and set sequence to continue after it (or 100 if no user sites)
+        5. Print distribution summary
+        """
         user_email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
         if not user_email:
             self.stdout.write(self.style.ERROR('DJANGO_SUPERUSER_EMAIL environment variable not set. Cannot create mock sites.'))
@@ -45,26 +53,29 @@ class Command(BaseCommand):
 
         # Load site configurations from JSON files
         current_dir = Path(__file__).parent
-        # Note: ID=1 is reserved for Pokazowa (our showcase site - YourEasySite Demo)
-        # These mock sites will get IDs starting from 2
+        
+        # ====================================================================================
+        # ID RANGE CONVENTION:
+        # - ID 1: Reserved for "YourEasySite Demo" (showcase/preview site)
+        # - IDs 2-99: Mock/demo sites for development and testing
+        # - IDs 100+: Real user sites (auto-incremented by Django/PostgreSQL)
+        # ====================================================================================
+        
         demo_sites = [
             {
                 'name': 'Pracownia Jogi',
                 'json_file': 'mock_pracownia_jogi_new.json',
                 'owner': admin_user,
-                'force_id': 2
             },
             {
                 'name': 'Studio Oddechu',
                 'json_file': 'mock_studio_oddechu_new.json',
                 'owner': admin_user,
-                'force_id': 3
             },
             {
                 'name': 'Gabinet Psychoterapii',
                 'json_file': 'mock_gabinet_psychoterapii.json',
                 'owner': random_user,  # This site will invite admin as contributor
-                'force_id': 4
             }
         ]
 
@@ -78,7 +89,6 @@ class Command(BaseCommand):
                         'name': site_info['name'],
                         'template_config': template_config,
                         'owner': site_info['owner'],
-                        'force_id': site_info.get('force_id')  # Pass force_id to loaded_sites
                     })
                     self.stdout.write(self.style.SUCCESS(f'Loaded config from {site_info["json_file"]}'))
             except FileNotFoundError:
@@ -87,22 +97,37 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'Invalid JSON in {json_path}: {e}'))
 
         with transaction.atomic():
-            # Delete only mock sites (preserve showcase site and real user sites)
-            # This must be done inside transaction, right before creating new mock sites
-            deleted_count = Site.objects.filter(is_mock=True).delete()[0]
-            self.stdout.write(self.style.SUCCESS(f'Cleared {deleted_count} existing mock sites'))
+            # ====================================================================================
+            # STEP 1: Clear all mock sites (including showcase) and reset sequence to 1
+            # ====================================================================================
+            Site.objects.filter(is_mock=True).delete()
+            self.stdout.write(self.style.SUCCESS('✓ Step 1: Cleared all existing mock sites (including showcase)'))
             
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT setval('api_site_id_seq', 1, false);")
+            self.stdout.write(self.style.SUCCESS('✓ Step 1: Reset sequence to 1'))
+            
+            # ====================================================================================
+            # STEP 2: Create showcase site (ID=1) - using create_default_site command
+            # ====================================================================================
+            from django.core.management import call_command
+            call_command('create_default_site')
+            self.stdout.write(self.style.SUCCESS('✓ Step 2: Created showcase site (ID=1)'))
+            
+            # After creating showcase with ID=1, set sequence to 2 for mock sites
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT setval('api_site_id_seq', 2, false);")
+            
+            # ====================================================================================
+            # STEP 3: Create mock sites (will get IDs 2, 3, 4...)
+            # ====================================================================================
             created_sites = []
             for idx, site_data in enumerate(loaded_sites):
                 # Set color_index: different color for each site
                 color_index = (idx + 1) % 12  # Cycle through 12 available colors, starting from 1
                 
-                # Use force_id to ensure consistent IDs (2, 3, 4)
-                force_id = site_data.get('force_id')
-                
-                # Create fresh mock site
+                # Create fresh mock site - Django will auto-assign ID from sequence (2, 3, 4...)
                 site = Site.objects.create(
-                    id=force_id,
                     owner=site_data['owner'],
                     name=site_data['name'],
                     template_config=site_data['template_config'],
@@ -113,7 +138,7 @@ class Command(BaseCommand):
                 
                 created_sites.append(site)
                 
-                self.stdout.write(self.style.SUCCESS(f'Created mock site "{site.name}" (ID={site.id}) for {site_data["owner"].email}'))
+                self.stdout.write(self.style.SUCCESS(f'✓ Step 3: Created mock site "{site.name}" (ID={site.id}) for {site_data["owner"].email}'))
             
             # Create team member invitation for third site (Gabinet Psychoterapii)
             # Random user invites admin as contributor
@@ -336,3 +361,44 @@ class Command(BaseCommand):
                     f'{Event.objects.filter(site=site).count()} events'
                 )
             )
+        
+        # ====================================================================================
+        # STEP 4: Fix sequence to continue after last user site (or start at 100)
+        # ====================================================================================
+        with connection.cursor() as cursor:
+            # Find the max ID among user sites (is_mock=False)
+            cursor.execute("SELECT MAX(id) FROM api_site WHERE is_mock = false;")
+            max_user_id = cursor.fetchone()[0] or 0
+            
+            # Next sequence value should be max(100, max_user_id + 1)
+            next_val = max(100, max_user_id + 1)
+            
+            # Set sequence to next_val
+            cursor.execute(f"SELECT setval('api_site_id_seq', {next_val}, false);")
+            
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'✓ Step 4: Set sequence to {next_val} (next user site will have ID: {next_val})'
+                )
+            )
+        
+        # ====================================================================================
+        # STEP 5: Print distribution summary
+        # ====================================================================================
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM api_site WHERE id = 1;")
+            has_showcase = cursor.fetchone()[0] > 0
+            
+            cursor.execute("SELECT COUNT(*) FROM api_site WHERE id >= 2 AND id < 100;")
+            mock_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM api_site WHERE id >= 100;")
+            user_count = cursor.fetchone()[0]
+        
+        self.stdout.write('\n' + '='*70)
+        self.stdout.write(self.style.SUCCESS('SITE DISTRIBUTION SUMMARY:'))
+        self.stdout.write('='*70)
+        self.stdout.write(f'  ID 1 (Showcase): {"Yes" if has_showcase else "No"}')
+        self.stdout.write(f'  IDs 2-99 (Mocks): {mock_count} sites')
+        self.stdout.write(f'  IDs 100+ (Users): {user_count} sites')
+        self.stdout.write('='*70)

@@ -3,51 +3,26 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Alert,
     Box,
+    Button,
     CircularProgress,
     Stack,
     Typography
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import Navigation from '../../../components/Navigation/Navigation';
 import { STYLE_LIST, DEFAULT_STYLE_ID } from '../../../SITES/styles';
 import composeSiteStyle from '../../../SITES/styles/utils';
 import { createSite } from '../../../services/siteService';
 import { buildTemplateFromModules } from '../../utils/templateBuilder';
 import { WIZARD_STORAGE_KEYS } from './wizardConstants';
 import StylePreviewRenderer from '../../components/StylePreview/StylePreviewRenderer';
-
-const deriveWizardData = (state) => {
-    if (state?.name && Array.isArray(state.modules)) {
-        return {
-            name: state.name,
-            category: state.category || 'default',
-            modules: state.modules
-        };
-    }
-
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    try {
-        const stored = window.localStorage.getItem(WIZARD_STORAGE_KEYS.ACTIVE_DRAFT);
-        if (!stored) {
-            return null;
-        }
-        const parsed = JSON.parse(stored);
-        if (!parsed?.name || !Array.isArray(parsed.modules)) {
-            return null;
-        }
-        return {
-            name: parsed.name,
-            category: parsed.category || 'default',
-            modules: parsed.modules
-        };
-    } catch (error) {
-        console.warn('[StyleSelectionPage] Unable to read wizard draft:', error);
-        return null;
-    }
-};
+import {
+    WIZARD_STAGES,
+    validateStageAccess,
+    getWizardData,
+    completeStage,
+    clearStageAndFollowing,
+    getStageRoute
+} from './wizardStageManager';
 
 const StyleStrip = ({ styleDefinition, index, onSelect, isPending }) => {
     const motionDelay = 0.15 + index * 0.07;
@@ -149,7 +124,34 @@ const StyleSelectionPage = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [pendingStyle, setPendingStyle] = useState(null);
     const [error, setError] = useState(null);
-    const [wizardData, setWizardData] = useState(() => deriveWizardData(location.state));
+    const [wizardData, setWizardData] = useState(null);
+
+    // Validate stage access on mount
+    useEffect(() => {
+        const validation = validateStageAccess(WIZARD_STAGES.STYLE);
+        
+        if (!validation.canAccess) {
+            // Redirect to the appropriate stage
+            navigate(validation.redirectTo, { replace: true });
+            return;
+        }
+
+        // Load wizard data
+        const data = getWizardData();
+        if (data) {
+            setWizardData(data);
+        } else {
+            // Should not happen due to validation, but redirect just in case
+            navigate(getStageRoute(WIZARD_STAGES.CATEGORY), { replace: true });
+        }
+    }, [navigate]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setPageVisible(true), 80);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const styles = STYLE_LIST;
 
     const pendingStyleLabel = useMemo(() => {
         if (!pendingStyle) {
@@ -163,29 +165,11 @@ const StyleSelectionPage = () => {
         return match?.name || pendingStyle;
     }, [pendingStyle]);
 
-    useEffect(() => {
-        const derived = deriveWizardData(location.state);
-        if (derived) {
-            setWizardData(derived);
-        }
-    }, [location.state]);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setPageVisible(true), 80);
-        return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        if (!wizardData) {
-            navigate('/studio/new_project', { replace: true });
-        }
-    }, [wizardData, navigate]);
-
-    const styles = STYLE_LIST;
-
     const handleBack = useCallback(() => {
-        navigate('/studio/new_project', { state: wizardData || undefined });
-    }, [navigate, wizardData]);
+        // Clear this stage and following stages when going back
+        clearStageAndFollowing(WIZARD_STAGES.PROJECT);
+        navigate(getStageRoute(WIZARD_STAGES.PROJECT));
+    }, [navigate]);
 
     const handleSelectStyle = useCallback(async (styleDefinition) => {
         if (!wizardData || isCreating) {
@@ -204,70 +188,56 @@ const StyleSelectionPage = () => {
         const styleId = styleDefinition.id || DEFAULT_STYLE_ID;
         const styleSnapshot = composeSiteStyle(styleId);
 
-    templateConfig.styleId = styleId;
-    templateConfig.styleOverrides = {};
-    templateConfig.style = styleSnapshot;
-    delete templateConfig.vibe;
-    delete templateConfig.vibeId;
-    delete templateConfig.theme;
-    delete templateConfig.themeId;
-    delete templateConfig.themeOverrides;
+        templateConfig.styleId = styleId;
+        templateConfig.styleOverrides = {};
+        templateConfig.style = styleSnapshot;
+        delete templateConfig.vibe;
+        delete templateConfig.vibeId;
+        delete templateConfig.theme;
+        delete templateConfig.themeId;
+        delete templateConfig.themeOverrides;
 
-        try {
-            const newSite = await createSite({
-                name: wizardData.name,
-                template_config: templateConfig
-            });
+        // Complete this stage
+        completeStage(WIZARD_STAGES.STYLE, {
+            templateConfig: templateConfig
+        });
 
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem(
-                    'editor:pendingTemplateConfig',
-                    JSON.stringify({
-                        templateConfig,
-                        enabledModules,
-                        category: wizardData.category
-                    })
-                );
-                window.localStorage.setItem(
-                    'editor:pendingSiteMeta',
-                    JSON.stringify({
-                        meta: {
-                            name: wizardData.name,
-                            id: newSite.id
-                        }
-                    })
-                );
-                window.localStorage.removeItem(WIZARD_STORAGE_KEYS.ACTIVE_DRAFT);
-            }
-
-            navigate(`/studio/editor/${newSite.id}`);
-        } catch (creationError) {
-            console.error('[StyleSelectionPage] Failed to create site:', creationError);
-            setError(creationError.message || 'Nie udało się utworzyć strony. Spróbuj ponownie.');
-            setIsCreating(false);
-            setPendingStyle(null);
-        }
+        // Redirect to login page
+        navigate(getStageRoute(WIZARD_STAGES.LOGIN));
     }, [wizardData, isCreating, navigate]);
 
+    // Show loading state while validating
     if (!wizardData) {
-        return null;
-    }
-
-    return (
-        <>
-            <Navigation />
+        return (
             <Box
                 sx={{
                     minHeight: 'calc(100vh - 60px)',
                     width: '100%',
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: 'background.default',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    backgroundColor: 'background.default'
                 }}
             >
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    return (
+        <Box
+            sx={{
+                minHeight: 'calc(100vh - 60px)',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                backgroundColor: 'background.default',
+                position: 'relative',
+                overflow: 'auto',
+                py: 4
+            }}
+        >
                 <Box
                     sx={{
                         position: 'absolute',
@@ -317,7 +287,7 @@ const StyleSelectionPage = () => {
                 <Box
                     sx={{
                         position: 'relative',
-                        zIndex: 1,
+                        zIndex: 10,
                         width: '100%',
                         maxWidth: '1400px',
                         opacity: pageVisible ? 1 : 0,
@@ -392,7 +362,7 @@ const StyleSelectionPage = () => {
                             </Box>
                         )}
 
-                        <Stack spacing={3} sx={{ width: '100%' }}>
+                        <Stack spacing={3} sx={{ width: '100%', px: { xs: 3, md: 5 }, py: 2 }}>
                             {styles.map((styleDefinition, index) => (
                                 <StyleStrip
                                     key={styleDefinition.id || styleDefinition.name || index}
@@ -478,8 +448,7 @@ const StyleSelectionPage = () => {
                         </Stack>
                     </Box>
                 )}
-            </Box>
-        </>
+        </Box>
     );
 };
 

@@ -100,17 +100,27 @@ const SitesPage = () => {
         );
     }
 
+    // Calculate total visible sites and number of rows
+    const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
+    const totalSites = ownedSites.length + visibleTeamCount;
+    const numberOfRows = Math.ceil(totalSites / 3);
+    const gradientEnd = Math.min(30 + (numberOfRows * 20), 100); // Start at 30%, add 20% per row, max 100%
+
     return (
         <Box
             sx={{
-                minHeight: 'calc(100vh - 60px)',
-                background: (theme) => theme.palette.mode === 'light'
-                    ? 'linear-gradient(180deg, rgba(228, 229, 218, 0.4) 0%, rgba(228, 229, 218, 1) 100%)'
-                    : 'linear-gradient(180deg, rgba(12, 12, 12, 0.4) 0%, rgba(12, 12, 12, 1) 100%)',
-                py: { xs: 1.5, md: 2 },
-                px: { xs: 2, md: 4, lg: 6 }
-            }}
-        >
+                    minHeight: 'calc(100vh - 60px)',
+                    background: (theme) => theme.palette.mode === 'light'
+                        ? `linear-gradient(180deg, rgba(228, 229, 218, 0.4) 0%, rgba(228, 229, 218, 1) ${gradientEnd}%)`
+                        : `linear-gradient(180deg, rgba(12, 12, 12, 0.4) 0%, rgba(12, 12, 12, 1) ${gradientEnd}%)`,
+                    backgroundColor: (theme) => theme.palette.mode === 'light' 
+                        ? 'rgb(228, 229, 218)' 
+                        : 'rgb(12, 12, 12)',
+                    py: { xs: 1.5, md: 2 },
+                    px: { xs: 2, md: 4, lg: 6 },
+                    pb: 6
+                }}
+            >
             {/* Header */}
             <Box
                 sx={{
@@ -285,22 +295,10 @@ const SitesPage = () => {
                             gridTemplateColumns: {
                                 xs: '1fr',
                                 sm: 'repeat(2, 1fr)',
-                                lg: (() => {
-                                    const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
-                                    const totalVisible = ownedSites.length + visibleTeamCount;
-                                    return totalVisible > 3 ? 'repeat(auto-fit, minmax(300px, 1fr))' : 'repeat(3, 1fr)';
-                                })()
+                                lg: 'repeat(3, 1fr)'
                             },
-                            gap: (() => {
-                                const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
-                                const totalVisible = ownedSites.length + visibleTeamCount;
-                                return totalVisible > 3 ? 2 : 3;
-                            })(),
-                            maxWidth: (() => {
-                                const visibleTeamCount = showTeamSites ? (teamMemberSites.length + pendingInvitations.length) : 0;
-                                const totalVisible = ownedSites.length + visibleTeamCount;
-                                return totalVisible > 3 ? '100%' : 1400;
-                            })(),
+                            gap: 3,
+                            maxWidth: 1400,
                             mx: 'auto',
                             '& > *': {
                                 minWidth: 0

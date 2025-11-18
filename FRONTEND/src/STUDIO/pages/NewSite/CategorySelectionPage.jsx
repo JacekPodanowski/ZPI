@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Container, Stack, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
@@ -7,7 +7,12 @@ import SchoolIcon from '@mui/icons-material/School';
 import BrushIcon from '@mui/icons-material/Brush';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import Navigation from '../../../components/Navigation/Navigation';
+import {
+    WIZARD_STAGES,
+    clearStageAndFollowing,
+    completeStage,
+    getStageRoute
+} from './wizardStageManager';
 
 const categories = [
     {
@@ -136,6 +141,12 @@ const CategorySelectionPage = () => {
     const [selectedCategory, setSelectedCategory] = React.useState(null);
     const [pageVisible, setPageVisible] = React.useState(false);
 
+    // Clear wizard data when entering this stage (stage 1)
+    // This resets the flow from the beginning
+    useEffect(() => {
+        clearStageAndFollowing(WIZARD_STAGES.CATEGORY);
+    }, []);
+
     React.useEffect(() => {
         const timer = setTimeout(() => setPageVisible(true), 80);
         return () => clearTimeout(timer);
@@ -143,19 +154,23 @@ const CategorySelectionPage = () => {
 
     const handleSelect = (categoryId) => {
         setSelectedCategory(categoryId);
+        
+        // Save category selection
+        completeStage(WIZARD_STAGES.CATEGORY, { category: categoryId });
+        
         setTimeout(() => {
-            navigate('/studio/new_project', { state: { category: categoryId } });
+            navigate(getStageRoute(WIZARD_STAGES.PROJECT), { state: { category: categoryId } });
         }, 400);
     };
 
     const handleSkip = () => {
-        navigate('/studio/new_project');
+        // Save default category
+        completeStage(WIZARD_STAGES.CATEGORY, { category: 'default' });
+        navigate(getStageRoute(WIZARD_STAGES.PROJECT));
     };
 
     return (
-        <>
-            <Navigation />
-            <Box
+        <Box
                 sx={{
                     minHeight: 'calc(100vh - 60px)',
                     width: '100%',
@@ -358,7 +373,6 @@ const CategorySelectionPage = () => {
                 </Stack>
             </Container>
         </Box>
-        </>
     );
 };
 

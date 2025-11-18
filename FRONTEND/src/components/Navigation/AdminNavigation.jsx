@@ -96,6 +96,7 @@ const AdminNavigation = () => {
     const handleLogout = () => {
         logout();
         setMobileOpen(false);
+        navigate('/');
     };
 
     const drawer = (

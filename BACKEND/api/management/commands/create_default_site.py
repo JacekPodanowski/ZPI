@@ -44,7 +44,8 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
-            # Delete existing showcase site if it exists
+            # Force delete existing showcase site if it exists (bypass API protection)
+            # This is allowed for management commands but protected at API level
             Site.objects.filter(id=1).delete()
             self.stdout.write(self.style.SUCCESS('Cleared existing showcase site (ID=1)'))
             
@@ -56,7 +57,7 @@ class Command(BaseCommand):
                 template_config=template_config,
                 color_index=0,
                 team_size=1,
-                is_mock=False  # This is our official showcase site, not a mock
+                is_mock=True  # Mark as mock for development/demo purposes
             )
             self.stdout.write(self.style.SUCCESS(f'Created showcase site "Pokazowa" (ID=1)'))
             

@@ -115,12 +115,25 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
 
 
 class Site(models.Model):
+    """
+    Represents a personal website in the platform.
+    
+    ID RANGE CONVENTION:
+    - ID 1: Reserved for "YourEasySite Demo" (showcase/preview site)
+    - IDs 2-99: Mock/demo sites for development and testing
+    - IDs 100+: Real user sites (auto-incremented by Django/PostgreSQL)
+    
+    This convention allows:
+    - Easy identification of site types by ID alone
+    - Simple filtering (e.g., id >= 100 for user sites, is_mock=True for test sites)
+    - Reserved space for development without conflicts
+    """
     owner = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='sites')
     name = models.CharField(max_length=255)
     identifier = models.SlugField(max_length=255, unique=True, editable=False, blank=True, null=True)
     color_index = models.IntegerField(default=0, help_text='Index of the site color in the palette (0-11)')
     team_size = models.IntegerField(default=1, help_text='Cached count of team members for calendar optimization')
-    is_mock = models.BooleanField(default=False, help_text='Flag indicating if this is a mock/demo site for testing')
+    is_mock = models.BooleanField(default=False, help_text='Flag indicating if this is a mock/demo site for testing (includes showcase)')
     template_config = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

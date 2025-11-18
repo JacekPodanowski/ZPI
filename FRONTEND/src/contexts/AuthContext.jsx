@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     }, [loadCurrentUser]);
 
     const handlePostAuthNavigation = useCallback(
-        (fallbackPath = '/admin') => {
+        (fallbackPath = '/studio/sites') => {
             navigate(fallbackPath, { replace: true });
         },
         [navigate]

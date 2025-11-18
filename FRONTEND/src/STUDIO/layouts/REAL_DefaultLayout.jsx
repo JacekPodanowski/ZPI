@@ -2,13 +2,11 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
-import Navigation from '../../components/Navigation/Navigation';
 
 /**
  * REAL_DefaultLayout - The standard layout for Studio pages
  * 
  * Features:
- * - Navigation bar at the top
  * - Gradient title with animation
  * - Subtitle/description below title
  * - Optional action button (top right)
@@ -17,6 +15,7 @@ import Navigation from '../../components/Navigation/Navigation';
  * - Full viewport height
  * 
  * Based on the /sites page design (SitesPage.jsx)
+ * Note: Navigation should be provided by NavigationLayout wrapper
  */
 const REAL_DefaultLayout = ({
     title,
@@ -26,13 +25,17 @@ const REAL_DefaultLayout = ({
     maxWidth = 1400,
     contentGap = 3,
     showBackground = true,
-    showNavigation = true
+    contentPadding
 }) => {
+    const defaultPadding = {
+        py: { xs: 1.5, md: 2 },
+        px: { xs: 2, md: 4, lg: 6 }
+    };
+    
+    const effectivePadding = contentPadding !== undefined ? contentPadding : defaultPadding;
+    
     return (
-        <>
-            {showNavigation && <Navigation />}
-            
-            <Box
+        <Box
                 sx={{
                     minHeight: 'calc(100vh - 60px)',
                     background: showBackground
@@ -40,8 +43,7 @@ const REAL_DefaultLayout = ({
                             ? 'linear-gradient(180deg, rgba(228, 229, 218, 0.4) 0%, rgba(228, 229, 218, 1) 100%)'
                             : 'linear-gradient(180deg, rgba(12, 12, 12, 0.4) 0%, rgba(12, 12, 12, 1) 100%)'
                         : 'transparent',
-                    py: { xs: 1.5, md: 2 },
-                    px: { xs: 2, md: 4, lg: 6 }
+                    ...effectivePadding
                 }}
             >
             {/* Header with Gradient Title */}
@@ -112,7 +114,6 @@ const REAL_DefaultLayout = ({
                 {children}
             </Box>
         </Box>
-        </>
     );
 };
 
@@ -124,7 +125,7 @@ REAL_DefaultLayout.propTypes = {
     maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     contentGap: PropTypes.number,
     showBackground: PropTypes.bool,
-    showNavigation: PropTypes.bool
+    contentPadding: PropTypes.oneOfType([PropTypes.object, PropTypes.number])
 };
 
 export default REAL_DefaultLayout;
