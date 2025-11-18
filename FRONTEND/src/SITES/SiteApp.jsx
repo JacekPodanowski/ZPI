@@ -49,16 +49,24 @@ const renderModule = (module, style, siteId, activePageKey) => {
   }
 };
 
-// ZMIANA: Komponent teraz przyjmuje opcjonalny props `siteIdentifierFromPath`
-const SiteApp = ({ siteIdentifierFromPath }) => {
-  const [config, setConfig] = useState(null);
+// ZMIANA: Komponent teraz przyjmuje opcjonalny props `siteIdentifierFromPath` lub `previewConfig`
+const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) => {
+  const [config, setConfig] = useState(previewConfig || null);
   const [siteId, setSiteId] = useState(null);
   const [siteIdentifier, setSiteIdentifier] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!previewConfig);
   const [error, setError] = useState(null);
   const [activePageKey, setActivePageKey] = useState(null);
 
   useEffect(() => {
+    // Jeśli to preview z gotowym configiem, pomijamy ładowanie
+    if (previewConfig) {
+      setConfig(previewConfig);
+      setLoading(false);
+      setSiteId('preview');
+      return;
+    }
+
     const routingMode = import.meta.env.VITE_APP_ROUTING_MODE;
     const buildTarget = import.meta.env.VITE_BUILD_TARGET;
     let identifier = null;
@@ -119,7 +127,7 @@ const SiteApp = ({ siteIdentifierFromPath }) => {
     };
 
     loadSite();
-  }, [siteIdentifierFromPath]);
+  }, [siteIdentifierFromPath, previewConfig]);
 
   useEffect(() => {
     if (!config) return;

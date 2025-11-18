@@ -4,7 +4,6 @@ import {
     Alert,
     Box,
     CircularProgress,
-    Container,
     Stack,
     Typography
 } from '@mui/material';
@@ -15,6 +14,7 @@ import composeSiteStyle from '../../../SITES/styles/utils';
 import { createSite } from '../../../services/siteService';
 import { buildTemplateFromModules } from '../../utils/templateBuilder';
 import { WIZARD_STORAGE_KEYS } from './wizardConstants';
+import StylePreviewRenderer from '../../components/StylePreview/StylePreviewRenderer';
 
 const deriveWizardData = (state) => {
     if (state?.name && Array.isArray(state.modules)) {
@@ -51,6 +51,7 @@ const deriveWizardData = (state) => {
 
 const StyleStrip = ({ styleDefinition, index, onSelect, isPending }) => {
     const motionDelay = 0.15 + index * 0.07;
+    const isReversed = index % 2 === 1; // Co drugi kafelek odwrócony
 
     const handleClick = useCallback(() => {
         if (!isPending) {
@@ -63,101 +64,77 @@ const StyleStrip = ({ styleDefinition, index, onSelect, isPending }) => {
             initial={{ opacity: 0, translateY: 24 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ delay: motionDelay, duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+            style={{ width: '100%' }}
         >
             <Box
-                onClick={handleClick}
                 sx={{
                     position: 'relative',
                     width: '100%',
-                    minHeight: { xs: 220, md: 300, lg: 340 },
-                    overflow: 'hidden',
-                    cursor: isPending ? 'wait' : 'pointer',
                     display: 'flex',
-                    alignItems: 'flex-end',
-                    justifyContent: 'flex-end',
-                    backgroundColor: styleDefinition.backgroundColor || 'rgba(245, 242, 235, 1)',
-                    transition: 'transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.45s ease, filter 0.45s ease',
-                    '&:hover': !isPending ? {
-                        transform: 'scale(1.015)',
-                        boxShadow: '0 24px 60px rgba(0, 0, 0, 0.18)',
-                        filter: 'brightness(1.03)'
-                    } : {},
-                    '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        inset: 0,
-                        background: styleDefinition.overlayGradient || 'linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.45) 100%)',
-                        zIndex: 1,
-                        pointerEvents: 'none'
-                    }
+                    flexDirection: isReversed ? 'row-reverse' : 'row',
+                    gap: 6,
+                    alignItems: 'center'
                 }}
             >
-                {styleDefinition.previewImage && (
-                    <Box
-                        component="img"
-                        src={styleDefinition.previewImage}
-                        alt={styleDefinition.name}
-                        loading="lazy"
-                        sx={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            opacity: 0.92,
-                            transition: 'transform 0.6s ease'
-                        }}
-                    />
-                )}
-                {styleDefinition.backgroundTexture && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundImage: styleDefinition.backgroundTexture,
-                            backgroundRepeat: 'no-repeat',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            opacity: 0.35,
-                            mixBlendMode: 'multiply'
-                        }}
-                    />
-                )}
+                {/* Podgląd strony - proporcje 16:9 z hover efektem */}
                 <Box
+                    onClick={handleClick}
                     sx={{
                         position: 'relative',
-                        zIndex: 2,
-                        width: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'flex-end',
-                        gap: 1,
-                        px: { xs: 3, md: 5 },
-                        py: { xs: 3, md: 4 }
+                        width: '50%',
+                        aspectRatio: '16/9',
+                        overflow: 'hidden',
+                        borderRadius: 2,
+                        border: '2px solid',
+                        borderColor: 'divider',
+                        backgroundColor: styleDefinition.backgroundColor || 'rgba(245, 242, 235, 1)',
+                        flexShrink: 0,
+                        cursor: isPending ? 'wait' : 'pointer',
+                        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
+                        '&:hover': !isPending ? {
+                            transform: 'translateY(-8px)',
+                            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
+                            borderColor: 'primary.main'
+                        } : {}
                     }}
                 >
-                    <Typography
-                        variant="body2"
-                        sx={{
-                            color: 'rgba(255,255,255,0.82)',
-                            maxWidth: { xs: '100%', md: '60%' },
-                            lineHeight: 1.6
-                        }}
-                    >
-                        {styleDefinition.description}
-                    </Typography>
+                    <StylePreviewRenderer styleId={styleDefinition.id} />
+                </Box>
+
+                {/* Opis stylu */}
+                <Box
+                    sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        justifyContent: 'center',
+                        textAlign: isReversed ? 'right' : 'left'
+                    }}
+                >
                     <Typography
                         variant="h3"
                         sx={{
                             fontFamily: styleDefinition.titleFont || '"Montserrat", sans-serif',
-                            fontWeight: 600,
-                            textTransform: 'none',
-                            fontSize: { xs: '2rem', sm: '2.4rem', md: '2.8rem', lg: '3rem' },
-                            color: '#ffffff',
-                            letterSpacing: 1.4
+                            fontWeight: 700,
+                            fontSize: { xs: '1.75rem', md: '2.5rem' },
+                            color: 'text.primary',
+                            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
+                            letterSpacing: 0.5
                         }}
                     >
                         {styleDefinition.name}
+                    </Typography>
+                    <Typography
+                        variant="body1"
+                        sx={{
+                            color: 'text.secondary',
+                            lineHeight: 1.7,
+                            fontSize: '1.05rem'
+                        }}
+                    >
+                        {styleDefinition.description}
                     </Typography>
                 </Box>
             </Box>
@@ -337,16 +314,16 @@ const StyleSelectionPage = () => {
                     />
                 </Box>
 
-                <Container
-                    maxWidth="lg"
-                    disableGutters
+                <Box
                     sx={{
                         position: 'relative',
                         zIndex: 1,
                         width: '100%',
+                        maxWidth: '1400px',
                         opacity: pageVisible ? 1 : 0,
                         transform: pageVisible ? 'translateY(0)' : 'translateY(-24px)',
-                        transition: 'opacity 0.8s ease, transform 0.8s ease'
+                        transition: 'opacity 0.8s ease, transform 0.8s ease',
+                        px: { xs: 2, md: 4 }
                     }}
                 >
                     <Stack spacing={0} sx={{ width: '100%' }}>
@@ -415,7 +392,7 @@ const StyleSelectionPage = () => {
                             </Box>
                         )}
 
-                        <Stack spacing={0} sx={{ width: '100%' }}>
+                        <Stack spacing={3} sx={{ width: '100%' }}>
                             {styles.map((styleDefinition, index) => (
                                 <StyleStrip
                                     key={styleDefinition.id || styleDefinition.name || index}
@@ -478,7 +455,7 @@ const StyleSelectionPage = () => {
                             </Typography>
                         </Box>
                     </Stack>
-                </Container>
+                </Box>
 
                 {isCreating && (
                     <Box

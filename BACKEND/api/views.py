@@ -1490,6 +1490,35 @@ class PublicSiteByIdView(generics.RetrieveAPIView):
     lookup_url_kwarg = 'site_id'
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@extend_schema(
+    tags=['Public Sites'],
+    summary='Get demo site configuration',
+    description='Returns the demo configuration used for style preview during site creation',
+    responses={200: OpenApiResponse(description='Demo configuration')}
+)
+def demo_config_view(request):
+    """Return demo configuration for style preview."""
+    import json
+    demo_path = os.path.join(settings.BASE_DIR, 'api', 'management', 'commands', 'YourEasySite_Demo.json')
+    
+    try:
+        with open(demo_path, 'r', encoding='utf-8') as f:
+            demo_config = json.load(f)
+        return Response(demo_config, status=status.HTTP_200_OK)
+    except FileNotFoundError:
+        return Response(
+            {'error': 'Demo configuration not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except json.JSONDecodeError:
+        return Response(
+            {'error': 'Invalid demo configuration format'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 class FileUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     permission_classes = [IsAuthenticated]
