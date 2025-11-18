@@ -16,6 +16,10 @@ echo "--- Entrypoint: Ensuring initial admin user exists..."
 python manage.py create_initial_superuser
 echo "--- Entrypoint: Admin user check complete."
 
+echo "--- Entrypoint: Creating default showcase site (YourEasySite_Demo)..."
+python manage.py create_default_site
+echo "--- Entrypoint: Default showcase site ready."
+
 echo "--- Entrypoint: Creating mock sites for superuser..."
 python manage.py create_mock_sites
 echo "--- Entrypoint: Mock sites creation complete."

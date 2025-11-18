@@ -176,9 +176,9 @@ class SiteSerializer(serializers.ModelSerializer):
         model = Site
         fields = [
             'id', 'owner', 'name', 'identifier', 'color_index', 'team_size',
-            'template_config', 'created_at', 'updated_at', 'latest_version'
+            'is_mock', 'template_config', 'created_at', 'updated_at', 'latest_version'
         ]
-        read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner', 'team_size']
+        read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner', 'team_size', 'is_mock']
         extra_kwargs = {
             'color_index': {'required': False}
         }

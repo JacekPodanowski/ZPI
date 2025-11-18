@@ -13,10 +13,10 @@ def _normalize_owner_segment(first_name: str | None, last_name: str | None) -> s
 
 
 def generate_site_identifier(site_id: int, name: str, owner_first_name: str | None, owner_last_name: str | None) -> str:
-    """Return identifier in format `<id>-<site-slug>-<OwnerName>`."""
+    """Return identifier in format `<100+id>-<site-slug>` (for obfuscation)."""
     slug = slugify(name or '') or 'site'
-    owner_segment = _normalize_owner_segment(owner_first_name, owner_last_name)
-    identifier = f"{site_id}-{slug}-{owner_segment}"
+    obfuscated_id = 100 + site_id
+    identifier = f"{obfuscated_id}-{slug}"
     # Ensure identifier fits within field limit
     return identifier[:255]
 

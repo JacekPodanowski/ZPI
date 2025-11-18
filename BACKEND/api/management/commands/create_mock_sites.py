@@ -15,7 +15,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Creates mock sites and templates for the superuser defined in environment variables.'
+    help = 'Creates mock sites (starting from ID=2) and adds mock events to all sites including the showcase site (ID=1).'
 
     def handle(self, *args, **options):
         user_email = os.environ.get('DJANGO_SUPERUSER_EMAIL')
@@ -45,21 +45,26 @@ class Command(BaseCommand):
 
         # Load site configurations from JSON files
         current_dir = Path(__file__).parent
+        # Note: ID=1 is reserved for Pokazowa (our showcase site - YourEasySite Demo)
+        # These mock sites will get IDs starting from 2
         demo_sites = [
             {
                 'name': 'Pracownia Jogi',
-                'json_file': 'pracownia_jogi_new.json',
-                'owner': admin_user
+                'json_file': 'mock_pracownia_jogi_new.json',
+                'owner': admin_user,
+                'force_id': 2
             },
             {
                 'name': 'Studio Oddechu',
-                'json_file': 'studio_oddechu_new.json',
-                'owner': admin_user
+                'json_file': 'mock_studio_oddechu_new.json',
+                'owner': admin_user,
+                'force_id': 3
             },
             {
                 'name': 'Gabinet Psychoterapii',
-                'json_file': 'gabinet_psychoterapii.json',
-                'owner': random_user  # This site will invite admin as contributor
+                'json_file': 'mock_gabinet_psychoterapii.json',
+                'owner': random_user,  # This site will invite admin as contributor
+                'force_id': 4
             }
         ]
 
@@ -72,7 +77,8 @@ class Command(BaseCommand):
                     loaded_sites.append({
                         'name': site_info['name'],
                         'template_config': template_config,
-                        'owner': site_info['owner']
+                        'owner': site_info['owner'],
+                        'force_id': site_info.get('force_id')  # Pass force_id to loaded_sites
                     })
                     self.stdout.write(self.style.SUCCESS(f'Loaded config from {site_info["json_file"]}'))
             except FileNotFoundError:
@@ -81,36 +87,38 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'Invalid JSON in {json_path}: {e}'))
 
         with transaction.atomic():
+            # Delete only mock sites (preserve showcase site and real user sites)
+            # This must be done inside transaction, right before creating new mock sites
+            deleted_count = Site.objects.filter(is_mock=True).delete()[0]
+            self.stdout.write(self.style.SUCCESS(f'Cleared {deleted_count} existing mock sites'))
+            
             created_sites = []
             for idx, site_data in enumerate(loaded_sites):
-                # Set color_index: 0 for first site (red), 1 for second site (blue)
-                color_index = idx % 12  # Cycle through 12 available colors
+                # Set color_index: different color for each site
+                color_index = (idx + 1) % 12  # Cycle through 12 available colors, starting from 1
                 
-                site, created = Site.objects.get_or_create(
+                # Use force_id to ensure consistent IDs (2, 3, 4)
+                force_id = site_data.get('force_id')
+                
+                # Create fresh mock site
+                site = Site.objects.create(
+                    id=force_id,
                     owner=site_data['owner'],
                     name=site_data['name'],
-                    defaults={
-                        'template_config': site_data['template_config'],
-                        'color_index': color_index,
-                        'team_size': 1  # Initially only owner
-                    }
+                    template_config=site_data['template_config'],
+                    color_index=color_index,
+                    team_size=1,  # Initially only owner
+                    is_mock=True  # Mark as mock site
                 )
-                if not created:
-                    Site.objects.filter(pk=site.pk).update(
-                        template_config=site_data['template_config'],
-                        color_index=color_index
-                    )
                 
                 created_sites.append(site)
                 
-                # Simplified log: Created/Updated mock site
-                action = "Updated" if not created else "Created"
-                self.stdout.write(self.style.SUCCESS(f'{action} mock site "{site.name}" for {site_data["owner"].email}'))
+                self.stdout.write(self.style.SUCCESS(f'Created mock site "{site.name}" (ID={site.id}) for {site_data["owner"].email}'))
             
             # Create team member invitation for third site (Gabinet Psychoterapii)
             # Random user invites admin as contributor
             if len(created_sites) >= 3:
-                psychotherapy_site = created_sites[2]  # Gabinet Psychoterapii
+                psychotherapy_site = created_sites[2]  # Gabinet Psychoterapii (ID=4)
                 
                 # Check if team member already exists
                 team_member, tm_created = TeamMember.objects.get_or_create(
@@ -177,7 +185,13 @@ class Command(BaseCommand):
             )
 
         # Create mock events and availability blocks
-        sites = Site.objects.filter(owner__in=[admin_user, random_user])
+        # Include the showcase site (ID=1) and all mock sites
+        try:
+            showcase_site = Site.objects.get(id=1)
+            sites = [showcase_site] + list(Site.objects.filter(owner__in=[admin_user, random_user]).exclude(id=1))
+        except Site.DoesNotExist:
+            # If showcase site doesn't exist yet, just use mock sites
+            sites = Site.objects.filter(owner__in=[admin_user, random_user])
         
         for site in sites:
             # Clear existing events and availability blocks for this site
@@ -208,16 +222,19 @@ class Command(BaseCommand):
                     continue
                 
                 # Different meeting length patterns for each site
-                if site.name == 'Pracownia Jogi':
-                    # Site 1: Single duration (60 min)
+                if site.id == 1:  # Pokazowa (showcase site - YourEasySite Demo)
+                    morning_length = 60
+                    afternoon_length = 60
+                elif site.name == 'Pracownia Jogi':
+                    # Site: Single duration (60 min)
                     morning_length = 60
                     afternoon_length = 90
                 elif site.name == 'Studio Oddechu':
-                    # Site 2: Different duration
+                    # Site: Different duration
                     morning_length = 45
                     afternoon_length = 60
                 else:
-                    # Site 3 (Gabinet Psychoterapii): Different duration
+                    # Gabinet Psychoterapii: Different duration
                     morning_length = 30
                     afternoon_length = 45
                 
@@ -256,7 +273,15 @@ class Command(BaseCommand):
                 'Sesja relaksacyjna'
             ]
             
-            if is_third_site:
+            if site.id == 1:  # Pokazowa (showcase site - YourEasySite Demo)
+                event_titles = [
+                    'Demo platformy',
+                    'Prezentacja funkcji',
+                    'Konsultacja wdrożeniowa',
+                    'Sesja Q&A',
+                    'Workshop YourEasySite'
+                ]
+            elif is_third_site:  # Gabinet Psychoterapii
                 event_titles = [
                     'Sesja terapeutyczna',
                     'Terapia par',

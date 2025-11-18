@@ -120,6 +120,7 @@ class Site(models.Model):
     identifier = models.SlugField(max_length=255, unique=True, editable=False, blank=True, null=True)
     color_index = models.IntegerField(default=0, help_text='Index of the site color in the palette (0-11)')
     team_size = models.IntegerField(default=1, help_text='Cached count of team members for calendar optimization')
+    is_mock = models.BooleanField(default=False, help_text='Flag indicating if this is a mock/demo site for testing')
     template_config = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -262,7 +263,7 @@ class Event(models.Model):
     # Dual assignment: exactly one must be filled
     assigned_to_team_member = models.ForeignKey(
         'TeamMember',
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,  # Delete event when team member is deleted (e.g., when site is deleted)
         null=True,
         blank=True,
         related_name='assigned_events',

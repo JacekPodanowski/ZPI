@@ -696,6 +696,16 @@ class SiteViewSet(viewsets.ModelViewSet):
             'team_member_sites': team_serializer.data
         })
 
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to prevent deletion of the showcase site (ID=1)."""
+        site = self.get_object()
+        if site.id == 1:
+            return Response(
+                {'detail': 'Cannot delete the showcase site.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated], url_path='calendar-roster')
     def calendar_roster(self, request, pk=None):
         """Return lightweight team roster info for calendar filters."""
@@ -811,6 +821,9 @@ class SiteViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
+        # Protect showcase site (ID=1) from deletion
+        if instance.id == 1:
+            raise PermissionDenied('The showcase site (Pokazowa) cannot be deleted.')
         if instance.owner != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied('You cannot delete a site you do not own.')
         instance.delete()

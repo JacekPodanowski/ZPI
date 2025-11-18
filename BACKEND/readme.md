@@ -10,7 +10,20 @@ venv_local\Scripts\activate
 pip install -r requirements.txt
 python manage.py makemigrations
 python manage.py migrate
+
+# Utwórz domyślną stronę pokazową (ID=1: YourEasySite_Demo)
+python manage.py create_initial_superuser
+python manage.py create_default_site
+
+# Opcjonalnie: dodaj mockowe strony i eventy
+python manage.py create_mock_sites
 ```
+
+## Management Commands
+
+- **create_initial_superuser** – tworzy superusera z danych środowiskowych
+- **create_default_site** – tworzy profesjonalną stronę pokazową "YourEasySite_Demo" (ID=1)
+- **create_mock_sites** – tworzy mockowe strony testowe (Pracownia Jogi, Studio Oddechu, Gabinet Psychoterapii) i dodaje mockowe eventy do wszystkich stron
 
 ## API w pigułce
 

@@ -1,0 +1,159 @@
+{
+  "site": {
+    "styleId": "solsticePastel",
+    "styleOverrides": {},
+    "pages": [
+      {
+        "id": "home",
+        "name": "Strona Główna",
+        "route": "/",
+        "modules": [
+          {
+            "id": "hero-1",
+            "type": "hero",
+            "content": {
+              "layout": "centered",
+              "heading": "YourEasySite",
+              "subheading": "Twoja profesjonalna strona internetowa w kilka minut",
+              "description": "Poznaj możliwości naszej platformy. Ta strona demonstracyjna pokazuje, jak łatwo można stworzyć elegancką, funkcjonalną witrynę bez znajomości programowania. Oferujemy intuicyjny edytor, integrację z kalendarzem i asystenta AI, który pomoże Ci w każdym kroku.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=1600&q=80",
+                "alt": "Nowoczesna przestrzeń cyfrowa"
+              },
+              "cta": {
+                "primary": { "text": "Umów konsultację", "link": "/kalendarz" },
+                "secondary": { "text": "Poznaj platformę", "link": "/o-nas" }
+              }
+            }
+          },
+          {
+            "id": "text-1",
+            "type": "text",
+            "content": {
+              "layout": "centered",
+              "title": "Prostota i elegancja w jednym",
+              "text": "YourEasySite to platforma stworzona dla osób, które chcą mieć profesjonalną obecność w sieci, ale nie dysponują wiedzą techniczną ani czasem na skomplikowane narzędzia. Nasz system łączy minimalistyczny design z potężnymi funkcjami, zapewniając intuicyjne doświadczenie na każdym etapie.\n\nNiezależnie od tego, czy prowadzisz studio wellness, jesteś coachem, terapeutą, czy oferujesz inne usługi – YourEasySite pozwoli Ci skupić się na tym, co najważniejsze: Twoich klientach i Twojej pracy."
+            }
+          },
+          {
+            "id": "services-1",
+            "type": "services",
+            "content": {
+              "layout": "grid",
+              "title": "Funkcje platformy",
+              "subtitle": "Wszystko, czego potrzebujesz do profesjonalnej obecności online",
+              "services": [
+                {
+                  "name": "Intuicyjny Edytor",
+                  "description": "Twórz i edytuj swoją stronę za pomocą prostego edytora wizualnego. Przeciągaj moduły, zmieniaj treści, dostosowuj kolory – wszystko bez pisania kodu. Zobacz zmiany na żywo i publikuj, gdy jesteś gotowy.",
+                  "price": "Podstawowa funkcja"
+                },
+                {
+                  "name": "Asystent AI",
+                  "description": "Potrzebujesz pomocy? Nasz asystent AI rozumie naturalne polecenia. Po prostu powiedz, co chcesz zmienić, a AI zrobi to za Ciebie. To jak posiadanie webmastera, który jest dostępny 24/7.",
+                  "price": "Zawsze dostępny"
+                },
+                {
+                  "name": "System Rezerwacji",
+                  "description": "Zintegrowany kalendarz pozwala klientom rezerwować spotkania bezpośrednio na Twojej stronie. Ustaw dostępność, długość sesji i automatycznie synchronizuj wszystko. Twoi klienci otrzymują potwierdzenia mailowe z linkami do spotkań online.",
+                  "price": "Pełna integracja"
+                },
+                {
+                  "name": "Hosting i Publikacja",
+                  "description": "Nie martw się o hosting, domeny czy konfigurację serwerów. Publikujesz stronę jednym kliknięciem, a my zajmujemy się resztą. Twoja strona jest szybka, bezpieczna i zawsze dostępna.",
+                  "price": "Wliczone w cenę"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "about",
+        "name": "O Nas",
+        "route": "/o-nas",
+        "modules": [
+          {
+            "id": "about-1",
+            "type": "about",
+            "content": {
+              "layout": "narrative",
+              "title": "YourEasySite",
+              "description": "Witaj na stronie demonstracyjnej YourEasySite! Ta witryna została stworzona, aby pokazać możliwości naszej platformy – narzędzia, które pozwala każdemu zbudować profesjonalną stronę internetową bez znajomości programowania.\n\nYourEasySite narodził się z prostej obserwacji: większość osób prowadzących jednoosobowe biznesy potrzebuje eleganckiej, funkcjonalnej strony internetowej, ale dostępne rozwiązania są albo zbyt skomplikowane, albo zbyt ograniczone. Postanowiliśmy to zmienić.\n\nNasza platforma łączy w sobie trzy kluczowe elementy: intuicyjny edytor wizualny, zintegrowany system kalendarza do rezerwacji oraz asystenta AI, który pomaga w tworzeniu i modyfikacji strony poprzez naturalne rozmowy. Wszystko to w minimalistycznej, nowoczesnej estetyce, która nie przytłacza użytkownika.\n\nTa strona, którą teraz przeglądasz, została utworzona w naszym systemie. Pokazuje możliwości personalizacji – od wyboru kolorów i typografii, przez układanie modułów treści, aż po integrację z kalendarzem rezerwacji. Każdy element można łatwo dostosować do własnych potrzeb, bez pisania ani linijki kodu.\n\nYourEasySite to więcej niż narzędzie – to partner w budowaniu Twojej obecności online, który działa w tle, pozwalając Ci skupić się na tym, co robisz najlepiej.",
+              "image": {
+                "url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80",
+                "alt": "YourEasySite"
+              }
+            }
+          },
+          {
+            "id": "text-2",
+            "type": "text",
+            "content": {
+              "layout": "centered",
+              "title": "Nasza filozofia",
+              "text": "W YourEasySite kierujemy się zasadą, że technologia powinna służyć człowiekowi, a nie na odwrót. Każda funkcja, każdy element interfejsu został zaprojektowany z myślą o prostocie i intuicyjności.\n\nNasze podejście opiera się na kilku fundamentalnych wartościach:\n\n**Minimalizm bez kompromisów** – Usuwamy wszystko, co niepotrzebne, zostawiając tylko to, co naprawdę ma znaczenie. Elegancja nie wymaga skomplikowania. Nasza platforma jest prosta w obsłudze, ale oferuje wszystkie funkcje niezbędne do profesjonalnej strony.\n\n**Technologia w służbie kreatywności** – Nie musisz być programistą, aby mieć piękną stronę. Nasz edytor wizualny i asystent AI sprawiają, że tworzenie witryny staje się przyjemne i dostępne dla każdego. Skup się na swojej wizji, a my zajmiemy się resztą.\n\n**Jeden system, wszystko pod kontrolą** – Zamiast żonglować wieloma narzędziami (CMS, kalendarz, hosting), otrzymujesz kompletne rozwiązanie. Edytuj treść, zarządzaj rezerwacjami, publikuj zmiany – wszystko z jednego miejsca.\n\n**Projektowanie dla przyszłości** – Twoja strona rośnie razem z Tobą. System jest zbudowany tak, aby był skalowalny, bezpieczny i łatwy w utrzymaniu. Nie zamykamy Cię w sztywnych szablonach – dajesz Ci elastyczność bez chaosu.\n\n**Eteryczny minimalizm** – Nasze strony są przestronne, uspokajające i profesjonalne. Wykorzystujemy subtelne animacje, przemyślaną typografię i harmonijną paletę kolorów, aby stworzyć doświadczenie, które jest zarówno estetyczne, jak i funkcjonalne."
+            }
+          }
+        ]
+      },
+      {
+        "id": "gallery",
+        "name": "Galeria",
+        "route": "/galeria",
+        "modules": [
+          {
+            "id": "gallery-1",
+            "type": "gallery",
+            "content": {
+              "layout": "grid",
+              "title": "Przykładowe realizacje",
+              "subtitle": "Zobacz, jak różnorodne strony można stworzyć w YourEasySite",
+              "images": [
+                {
+                  "url": "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Przykład strony głównej"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Sekcja usług"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Strona kontaktowa"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Galeria zdjęć"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Sekcja o nas"
+                },
+                {
+                  "url": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
+                  "alt": "Integracja kalendarza"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "calendar",
+        "name": "Kalendarz",
+        "route": "/kalendarz",
+        "modules": [
+          {
+            "id": "calendar-1",
+            "type": "calendar",
+            "content": {
+              "title": "Zarezerwuj demo",
+              "description": "Chcesz zobaczyć YourEasySite w akcji? Umów się na prezentację platformy. Wybierz dogodny termin z kalendarza – to przykład tego, jak łatwo Twoi klienci mogą rezerwować spotkania bezpośrednio na Twojej stronie."
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
