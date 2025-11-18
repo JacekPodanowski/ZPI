@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
 import SiteCanvas from './SiteCanvas';
+import SiteSettingsDrawer from './SiteSettingsDrawer';
 import { getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
@@ -63,7 +64,7 @@ const StructureMode = () => {
   const BASE_TITLE_PADDING_LEFT = 12;
   const BASE_TITLE_PADDING_RIGHT = 6;
   const BASE_SECTION_GAP = 12;
-  const BASE_TITLE_CANVAS_GAP = 10;
+  const BASE_TITLE_CANVAS_GAP = 4;
   const BASE_ACTION_SPACING = 4;
 
   const toPx = (value) => `${value}px`;
@@ -435,6 +436,19 @@ const StructureMode = () => {
                 Real Render
               </ToggleButton>
             </ToggleButtonGroup>
+          </Box>
+
+          {/* Site Settings Icon - Right Corner */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 32,
+              zIndex: 5,
+              pointerEvents: 'all'
+            }}
+          >
+            <SiteSettingsDrawer />
           </Box>
 
           {/* Focused Page Preview */}
