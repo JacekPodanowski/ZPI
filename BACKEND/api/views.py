@@ -7,6 +7,7 @@ import os
 import re
 from typing import Any, Dict
 
+import ovh
 import requests
 from django.conf import settings
 from django.db import transaction, models
@@ -46,6 +47,7 @@ from .models import (
     MagicLink,
     EmailTemplate,
     TeamMember,
+    DomainOrder,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -87,6 +89,7 @@ from .serializers import (
     TestEmailSerializer,
     TeamMemberSerializer,
     TeamMemberInfoSerializer,
+    DomainOrderSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -3101,22 +3104,39 @@ def reject_invitation_studio(request, token):
     })
 
 
-# Domain availability checking with NameSilo API
-import xml.etree.ElementTree as ET
-from urllib.parse import urlencode
-
+# ============================================================================
+# Domain Management with OVHcloud API
+# ============================================================================
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Check domain availability',
+    description='Check domain availability across multiple TLDs using OVHcloud API',
+    parameters=[
+        OpenApiParameter('domain', OpenApiTypes.STR, description='Domain name without TLD (e.g., "mybusiness")')
+    ],
+    responses={
+        200: inline_serializer(
+            name='DomainAvailabilityResponse',
+            fields={
+                'domain': serializers.CharField(),
+                'tld': serializers.CharField(),
+                'available': serializers.BooleanField(),
+                'price': serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True),
+                'currency': serializers.CharField(),
+            },
+            many=True
+        ),
+        400: OpenApiResponse(description='Invalid domain name'),
+        500: OpenApiResponse(description='OVH API error'),
+    }
+)
 def check_domain_availability(request):
     """
-    Check domain availability across multiple TLDs using NameSilo API.
-    
-    Query params:
-        domain: str - Domain name without TLD (e.g., "mybusiness")
-    
-    Returns:
-        List of available domains with pricing information
+    Check domain availability using OVHcloud API.
+    Creates a temporary cart to check prices and availability.
     """
     domain = request.GET.get('domain', '').strip().lower()
     
@@ -3138,188 +3158,869 @@ def check_domain_availability(request):
         )
     
     # TLDs to check (sorted by popularity and price)
-    tlds = ['com', 'net', 'org', 'io', 'app', 'store', 'online']
+    tlds = [
+        'com', 'pl', 'net', 'org', 'eu', 'io', 'co', 
+        'app', 'online', 'store', 'shop', 'tech', 'dev',
+        'info', 'biz', 'xyz', 'pro', 'club', 'site'
+    ]
     
-    # Get API key from settings
-    api_key = getattr(settings, 'NAMESILO_API_KEY', None)
-    
-    if not api_key:
-        logger.error('[check_domain_availability] NAMESILO_API_KEY not configured in settings')
+    # Check if OVH API is properly configured
+    if not all([
+        settings.OVH_ENDPOINT,
+        settings.OVH_APPLICATION_KEY,
+        settings.OVH_APPLICATION_SECRET,
+        settings.OVH_CONSUMER_KEY
+    ]):
+        logger.error("[check_domain_availability] OVH API credentials not configured")
         return Response(
-            {'error': 'Domain service not configured'},
+            {
+                'error': 'Domain service temporarily unavailable',
+                'detail': 'Please configure OVH API credentials in backend settings.',
+                'setup_instructions': 'https://eu.api.ovh.com/createToken/ - Required rights: POST/GET/DELETE /order/cart/*',
+                'available_domains': [],
+                'unavailable_domains': []
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    
+    # Initialize OVH client
+    try:
+        client = ovh.Client(
+            endpoint=settings.OVH_ENDPOINT,
+            application_key=settings.OVH_APPLICATION_KEY,
+            application_secret=settings.OVH_APPLICATION_SECRET,
+            consumer_key=settings.OVH_CONSUMER_KEY,
+        )
+    except Exception as e:
+        logger.error(f'[check_domain_availability] Failed to initialize OVH client: {e}')
+        return Response(
+            {'error': 'Domain service configuration error', 'detail': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
-    logger.info(f"[check_domain_availability] API key found, checking {len(tlds)} TLDs")
     results = []
     
-    for tld in tlds:
-        full_domain = f"{domain}.{tld}"
+    try:
+        # Create a temporary cart for checking prices
+        ovh_me = client.get('/me')
+        subsidiary = ovh_me.get('ovhSubsidiary', 'PL')
         
-        try:
-            # Call NameSilo API
-            params = {
-                'version': '1',
-                'type': 'xml',
-                'key': api_key,
-                'domains': full_domain
-            }
+        cart = client.post('/order/cart', ovhSubsidiary=subsidiary)
+        cart_id = cart['cartId']
+        logger.info(f"[check_domain_availability] Created cart {cart_id} for subsidiary {subsidiary}")
+        
+        # Assign cart to current account
+        client.post(f'/order/cart/{cart_id}/assign')
+        
+        for tld in tlds:
+            full_domain = f"{domain}.{tld}"
             
-            url = f"https://www.namesilo.com/api/checkRegisterAvailability?{urlencode(params)}"
-            logger.debug(f"[check_domain_availability] Checking {full_domain}")
-            response = requests.get(url, timeout=10)
-            
-            if response.status_code != 200:
-                logger.warning(f"[check_domain_availability] NameSilo API returned status {response.status_code} for {full_domain}")
-                continue
-            
-            # Parse XML response
-            logger.debug(f"[check_domain_availability] Raw XML response: {response.content[:500]}")
-            root = ET.fromstring(response.content)
-            
-            # Check response code (should be 300 for success)
-            code_elem = root.find('.//code')
-            if code_elem is not None and code_elem.text != '300':
-                detail_elem = root.find('.//detail')
-                detail = detail_elem.text if detail_elem is not None else 'Unknown error'
-                logger.warning(f"[check_domain_availability] NameSilo API error for {full_domain}: {detail}")
-                continue
-            
-            # Check if domain is in available list (correct XML structure per docs)
-            # Format: <available><domain price="X" renew="Y">domain.com</domain></available>
-            domain_found = False
-            for domain_elem in root.findall('.//available/domain'):
-                if domain_elem.text == full_domain:
-                    price = domain_elem.get('price', 'N/A')
-                    renew_price = domain_elem.get('renew', price)
+            try:
+                # Check domain availability and pricing
+                domain_info = client.get(
+                    f'/order/cart/{cart_id}/domain',
+                    domain=full_domain
+                )
+                
+                if not domain_info:
+                    logger.debug(f"[check_domain_availability] {full_domain} - no info returned")
+                    continue
+                
+                # Get first offer (usually the cheapest/recommended one)
+                offers = domain_info[0] if isinstance(domain_info, list) and domain_info else domain_info
+                
+                # Check if domain is available
+                available = offers.get('action') == 'create'
+                
+                if available:
+                    prices = offers.get('prices', [])
+                    price_info = next((p for p in prices if p.get('capacities', [{}])[0].get('name') == 'renew'), prices[0] if prices else None)
                     
-                    logger.info(f"[check_domain_availability] {full_domain} available at ${price}")
+                    price = None
+                    currency = 'PLN'  # Default for OVH Poland
+                    
+                    if price_info:
+                        price_with_tax = price_info.get('price', {})
+                        # OVH API returns value that needs to be multiplied by 10^6 to get actual price
+                        raw_value = float(price_with_tax.get('value', 0))
+                        price = raw_value  # Convert to actual currency units
+                        currency = price_with_tax.get('currencyCode', 'PLN')
+                    
+                    logger.info(f"[check_domain_availability] {full_domain} available at {price:.2f} {currency}")
                     
                     results.append({
                         'domain': full_domain,
                         'tld': tld,
                         'available': True,
-                        'price': price,
-                        'renewalPrice': renew_price,
-                        'purchaseUrl': f"https://www.namesilo.com/domain/search-domains?query={full_domain}"
+                        'price': round(price, 2) if price else None,
+                        'currency': currency,
                     })
-                    domain_found = True
-                    break
-            
-            # Check if domain is in unavailable list
-            if not domain_found:
-                for domain_elem in root.findall('.//unavailable/domain'):
-                    if domain_elem.text == full_domain:
-                        logger.debug(f"[check_domain_availability] {full_domain} not available (taken)")
-                        results.append({
-                            'domain': full_domain,
-                            'tld': tld,
-                            'available': False,
-                            'price': None,
-                            'renewalPrice': None,
-                            'purchaseUrl': None
-                        })
-                        domain_found = True
-                        break
-            
-            if not domain_found:
-                logger.debug(f"[check_domain_availability] {full_domain} status unknown")
-                
-        except requests.exceptions.Timeout:
-            logger.warning(f"[check_domain_availability] Timeout checking domain {full_domain}")
-            continue
-        except ET.ParseError as e:
-            logger.error(f"[check_domain_availability] Failed to parse XML for {full_domain}: {e}")
-            continue
+                else:
+                    logger.debug(f"[check_domain_availability] {full_domain} not available")
+                    results.append({
+                        'domain': full_domain,
+                        'tld': tld,
+                        'available': False,
+                        'price': None,
+                        'currency': 'PLN',
+                    })
+                    
+            except ovh.exceptions.ResourceNotFoundError:
+                logger.debug(f"[check_domain_availability] {full_domain} - not found (likely unavailable)")
+                results.append({
+                    'domain': full_domain,
+                    'tld': tld,
+                    'available': False,
+                    'price': None,
+                    'currency': 'PLN',
+                })
+            except Exception as e:
+                logger.warning(f"[check_domain_availability] Error checking {full_domain}: {e}")
+                continue
+        
+        # Clean up: delete temporary cart
+        try:
+            client.delete(f'/order/cart/{cart_id}')
         except Exception as e:
-            logger.error(f"[check_domain_availability] Error checking domain {full_domain}: {e}")
-            continue
+            logger.warning(f"[check_domain_availability] Failed to delete cart {cart_id}: {e}")
+        
+    except ovh.exceptions.APIError as e:
+        logger.error(f"[check_domain_availability] OVH API error: {e}")
+        
+        # Check if it's a permission error
+        if 'not been granted' in str(e) or 'This call has not been granted' in str(e):
+            return Response(
+                {
+                    'error': 'OVH API access denied',
+                    'detail': 'The API credentials do not have the required permissions.',
+                    'setup_instructions': (
+                        'Please visit https://eu.api.ovh.com/createToken/ and create a token with these rights:\n'
+                        '- POST /order/cart\n'
+                        '- POST /order/cart/*/assign\n'
+                        '- POST /order/cart/*/domain\n'
+                        '- GET /order/cart/*/domain\n'
+                        '- DELETE /order/cart/*\n'
+                        '- GET /me'
+                    ),
+                    'available_domains': [],
+                    'unavailable_domains': []
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return Response(
+            {
+                'error': 'Failed to check domain availability',
+                'detail': str(e),
+                'available_domains': [],
+                'unavailable_domains': []
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except Exception as e:
+        logger.error(f"[check_domain_availability] Unexpected error: {e}")
+        return Response(
+            {
+                'error': 'Failed to check domain availability',
+                'detail': str(e),
+                'available_domains': [],
+                'unavailable_domains': []
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
     # Sort: available domains first (by price), then unavailable domains
-    def sort_key(domain):
-        if not domain['available']:
-            return (1, domain['domain'])  # Unavailable domains last, sorted by name
-        price = domain.get('price')
-        if price is None or price == 'N/A':
-            return (0, float('inf'), domain['domain'])
-        try:
-            return (0, float(price), domain['domain'])
-        except (ValueError, TypeError):
-            return (0, float('inf'), domain['domain'])
+    def sort_key(d):
+        if not d['available']:
+            return (1, d['domain'])
+        price = d.get('price')
+        if price is None:
+            return (0, float('inf'), d['domain'])
+        return (0, float(price), d['domain'])
     
     results.sort(key=sort_key)
     
-    logger.info(f"[check_domain_availability] Found {len(results)} domains for '{domain}' ({len([r for r in results if r['available']])} available)")
+    logger.info(f"[check_domain_availability] Found {len(results)} domains ({len([r for r in results if r['available']])} available)")
     return Response(results)
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def get_domain_pricing(request):
+@extend_schema(
+    tags=['Domains'],
+    summary='Purchase domain',
+    description='Initiate domain purchase process through OVHcloud. Returns mock payment URL for testing.',
+    request=inline_serializer(
+        name='DomainPurchaseRequest',
+        fields={
+            'domain_name': serializers.CharField(help_text='Full domain name (e.g., example.com)'),
+            'site_id': serializers.IntegerField(help_text='ID of the site this domain is for'),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name='DomainPurchaseResponse',
+            fields={
+                'order_id': serializers.IntegerField(),
+                'payment_url': serializers.URLField(),
+                'message': serializers.CharField(),
+            }
+        ),
+        400: OpenApiResponse(description='Invalid request'),
+        500: OpenApiResponse(description='Purchase failed'),
+    }
+)
+def purchase_domain(request):
     """
-    Get pricing for specific TLD.
-    
-    Query params:
-        tld: str - Top-level domain (e.g., "com", "io")
+    Initiate domain purchase via OVHcloud API.
+    Creates order and returns mock payment URL.
     """
-    tld = request.GET.get('tld', '').strip().lower()
+    domain_name = request.data.get('domain_name', '').strip().lower()
+    site_id = request.data.get('site_id')
     
-    if not tld:
+    logger.info(f"[purchase_domain] User {request.user.id} purchasing {domain_name} for site {site_id}")
+    
+    if not domain_name:
         return Response(
-            {'error': 'TLD is required'},
+            {'error': 'domain_name is required'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    api_key = getattr(settings, 'NAMESILO_API_KEY', None)
+    if not site_id:
+        return Response(
+            {'error': 'site_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
-    if not api_key:
+    # Verify site belongs to user
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Initialize OVH client
+    try:
+        client = ovh.Client(
+            endpoint=settings.OVH_ENDPOINT,
+            application_key=settings.OVH_APPLICATION_KEY,
+            application_secret=settings.OVH_APPLICATION_SECRET,
+            consumer_key=settings.OVH_CONSUMER_KEY,
+        )
+    except Exception as e:
+        logger.error(f'[purchase_domain] Failed to initialize OVH client: {e}')
         return Response(
             {'error': 'Domain service not configured'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
     try:
-        params = {
-            'version': '1',
-            'type': 'xml',
-            'key': api_key,
-        }
+        # Get user's OVH subsidiary
+        ovh_me = client.get('/me')
+        subsidiary = ovh_me.get('ovhSubsidiary', 'PL')
         
-        url = f"https://www.namesilo.com/api/getPrices?{urlencode(params)}"
-        response = requests.get(url, timeout=10)
+        # Create cart
+        cart = client.post('/order/cart', ovhSubsidiary=subsidiary)
+        cart_id = cart['cartId']
+        logger.info(f"[purchase_domain] Created cart {cart_id}")
         
-        if response.status_code != 200:
-            return Response(
-                {'error': 'Failed to fetch pricing'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Assign cart
+        client.post(f'/order/cart/{cart_id}/assign')
         
-        # Parse XML response
-        root = ET.fromstring(response.content)
-        
-        # Find pricing for the specific TLD
-        for tld_elem in root.findall('.//tld'):
-            if tld_elem.get('extension') == tld:
-                registration = tld_elem.find('registration')
-                renewal = tld_elem.find('renewal')
-                
-                return Response({
-                    'tld': tld,
-                    'registration': registration.text if registration is not None else None,
-                    'renewal': renewal.text if renewal is not None else None
-                })
-        
-        return Response(
-            {'error': f'Pricing not found for TLD: {tld}'},
-            status=status.HTTP_404_NOT_FOUND
+        # Add domain to cart
+        domain_item = client.post(
+            f'/order/cart/{cart_id}/domain',
+            domain=domain_name,
+            duration='P1Y'  # 1 year
         )
         
-    except Exception as e:
-        logger.error(f"Error fetching domain pricing: {e}")
+        # Get pricing
+        domain_info = client.get(
+            f'/order/cart/{cart_id}/domain',
+            domain=domain_name
+        )
+        
+        price = None
+        if domain_info and isinstance(domain_info, list):
+            offers = domain_info[0]
+            prices = offers.get('prices', [])
+            if prices:
+                price_with_tax = prices[0].get('price', {})
+                raw_value = float(price_with_tax.get('value', 0))
+                price = raw_value * 1000000  # Convert to actual currency units
+        
+        # REAL PURCHASE: Execute OVH checkout to get payment URL and order ID
+        try:
+            # Note: OVH doesn't support return URL in checkout API
+            # User will need to manually return to our site after payment
+            checkout_result = client.post(f'/order/cart/{cart_id}/checkout')
+            payment_url = checkout_result.get('url')
+            ovh_order_id = checkout_result.get('orderId')
+            
+            logger.info(f"[purchase_domain] OVH checkout successful, order ID: {ovh_order_id}")
+            
+            # Create database record with real OVH order ID
+            with transaction.atomic():
+                order = DomainOrder.objects.create(
+                    user=request.user,
+                    site=site,
+                    domain_name=domain_name,
+                    ovh_cart_id=cart_id,
+                    ovh_order_id=str(ovh_order_id),
+                    price=price,
+                    status=DomainOrder.OrderStatus.PENDING_PAYMENT,
+                    payment_url=payment_url,
+                )
+            
+            logger.info(f"[purchase_domain] Order {order.id} created for {domain_name}, OVH order {ovh_order_id}")
+            
+            # Include site_id in response so frontend can redirect back to domain page
+            return Response({
+                'order_id': order.id,
+                'site_id': site.id,
+                'payment_url': payment_url,
+                'message': 'Order created successfully. Redirecting to OVH payment...',
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as checkout_error:
+            logger.error(f"[purchase_domain] Checkout failed: {checkout_error}")
+            # Clean up cart
+            try:
+                client.delete(f'/order/cart/{cart_id}')
+            except:
+                pass
+            raise
+        
+    except ovh.exceptions.ResourceNotFoundError as e:
+        logger.error(f"[purchase_domain] Domain not available: {e}")
         return Response(
-            {'error': 'Failed to fetch pricing'},
+            {'error': 'Domain is not available for purchase'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        logger.error(f"[purchase_domain] Failed to create order: {e}")
+        return Response(
+            {'error': f'Failed to initiate purchase: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # Called by mock payment page
+@extend_schema(
+    tags=['Domains'],
+    summary='Confirm domain payment',
+    description='Webhook endpoint for payment confirmation. Triggers DNS configuration.',
+    request=inline_serializer(
+        name='ConfirmPaymentRequest',
+        fields={
+            'order_id': serializers.IntegerField(help_text='Domain order ID'),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name='ConfirmPaymentResponse',
+            fields={
+                'message': serializers.CharField(),
+                'order_id': serializers.IntegerField(),
+                'status': serializers.CharField(),
+            }
+        ),
+        404: OpenApiResponse(description='Order not found'),
+        500: OpenApiResponse(description='Configuration failed'),
+    }
+)
+def confirm_domain_payment(request):
+    """
+    Confirm payment and trigger DNS configuration.
+    Called by mock payment success page or real payment webhook.
+    """
+    from .tasks import configure_domain_dns
+    
+    order_id = request.data.get('order_id')
+    
+    if not order_id:
+        return Response(
+            {'error': 'order_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        order = DomainOrder.objects.get(id=order_id)
+    except DomainOrder.DoesNotExist:
+        return Response(
+            {'error': 'Order not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    logger.info(f"[confirm_payment] Processing payment confirmation for order {order_id}")
+    
+    # Update status to configuring
+    order.status = DomainOrder.OrderStatus.CONFIGURING_DNS
+    order.save(update_fields=['status'])
+    
+    # Trigger async DNS configuration
+    configure_domain_dns.delay(order_id)
+    
+    return Response({
+        'message': 'Payment confirmed. DNS configuration in progress.',
+        'order_id': order.id,
+        'status': order.status,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_domain_pricing(request):
+    """
+    Get pricing for specific TLD (legacy endpoint - kept for compatibility).
+    Redirects to check_domain_availability with single TLD.
+    """
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Get domain orders for site',
+    description='Retrieve all domain orders for a specific site.',
+    parameters=[
+        OpenApiParameter(
+            name='site_id',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description='Site ID to get orders for',
+            required=True
+        )
+    ],
+    responses={
+        200: DomainOrderSerializer(many=True),
+        400: OpenApiResponse(description='Invalid request'),
+        403: OpenApiResponse(description='Access denied'),
+    }
+)
+def get_domain_orders(request):
+    """Get all domain orders for a specific site, or all orders if user is admin."""
+    site_id = request.GET.get('site_id')
+    
+    # If user is admin and no site_id provided, return ALL orders
+    if request.user.is_staff and not site_id:
+        orders = DomainOrder.objects.all().select_related('site').order_by('-created_at')
+        serializer = DomainOrderSerializer(orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    if not site_id:
+        return Response(
+            {'error': 'site_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Verify user has access to the site (admins can access all sites)
+    try:
+        if request.user.is_staff:
+            site = Site.objects.get(id=site_id)
+        else:
+            site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    orders = DomainOrder.objects.filter(site=site).order_by('-created_at')
+    serializer = DomainOrderSerializer(orders, many=True)
+    
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@extend_schema(
+    tags=['Domains'],
+    summary='OVH Payment Webhook',
+    description='Webhook called by OVH after successful payment. Updates order status and triggers DNS configuration.',
+    request=inline_serializer(
+        name='OVHWebhookRequest',
+        fields={
+            'orderId': serializers.IntegerField(help_text='OVH order ID'),
+            'status': serializers.CharField(help_text='Payment status'),
+        }
+    ),
+    responses={
+        200: OpenApiResponse(description='Webhook processed successfully'),
+        404: OpenApiResponse(description='Order not found'),
+    }
+)
+def ovh_payment_webhook(request):
+    """
+    Webhook endpoint called by OVH after payment completion.
+    Updates order status and triggers DNS configuration.
+    """
+    from .tasks import configure_domain_dns
+    
+    ovh_order_id = request.data.get('orderId')
+    payment_status = request.data.get('status', '').lower()
+    
+    logger.info(f"[OVH Webhook] Received notification for order {ovh_order_id}, status: {payment_status}")
+    
+    if not ovh_order_id:
+        return Response(
+            {'error': 'orderId is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        order = DomainOrder.objects.get(ovh_order_id=str(ovh_order_id))
+    except DomainOrder.DoesNotExist:
+        logger.warning(f"[OVH Webhook] Order not found for OVH order {ovh_order_id}")
+        return Response(
+            {'error': 'Order not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if payment was successful
+    if payment_status in ['paid', 'delivered', 'complete']:
+        logger.info(f"[OVH Webhook] Payment successful for order {order.id}")
+        
+        # Update status and trigger DNS configuration
+        order.status = DomainOrder.OrderStatus.CONFIGURING_DNS
+        order.save(update_fields=['status'])
+        
+        # Trigger async DNS configuration
+        configure_domain_dns.delay(order.id)
+        
+        return Response({
+            'message': 'Payment confirmed, DNS configuration started',
+            'order_id': order.id,
+        }, status=status.HTTP_200_OK)
+    else:
+        logger.warning(f"[OVH Webhook] Payment not successful for order {order.id}, status: {payment_status}")
+        return Response({
+            'message': f'Payment status: {payment_status}',
+            'order_id': order.id,
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Check and update domain order status from OVH',
+    description='Manually check order status in OVH API and update local database. Use when webhook is not available.',
+    request=inline_serializer(
+        name='CheckOrderStatusRequest',
+        fields={
+            'order_id': serializers.IntegerField(help_text='Domain order ID'),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name='CheckOrderStatusResponse',
+            fields={
+                'message': serializers.CharField(),
+                'order_id': serializers.IntegerField(),
+                'ovh_status': serializers.CharField(),
+                'local_status': serializers.CharField(),
+                'updated': serializers.BooleanField(),
+            }
+        ),
+        404: OpenApiResponse(description='Order not found'),
+        500: OpenApiResponse(description='OVH API error'),
+    }
+)
+def check_order_status(request):
+    """
+    Check order status in OVH API and update local database.
+    Useful when webhook is not configured or failed.
+    """
+    from .tasks import configure_domain_dns
+    
+    order_id = request.data.get('order_id')
+    
+    if not order_id:
+        return Response(
+            {'error': 'order_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Admin can check any order, regular users only their own
+        if request.user.is_staff:
+            order = DomainOrder.objects.get(id=order_id)
+        else:
+            order = DomainOrder.objects.get(id=order_id, user=request.user)
+    except DomainOrder.DoesNotExist:
+        return Response(
+            {'error': 'Order not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if not order.ovh_order_id:
+        return Response(
+            {'error': 'This is a mock order without OVH order ID'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Initialize OVH client
+    try:
+        client = ovh.Client(
+            endpoint=settings.OVH_ENDPOINT,
+            application_key=settings.OVH_APPLICATION_KEY,
+            application_secret=settings.OVH_APPLICATION_SECRET,
+            consumer_key=settings.OVH_CONSUMER_KEY,
+        )
+    except Exception as e:
+        logger.error(f'[check_order_status] Failed to initialize OVH client: {e}')
+        return Response(
+            {'error': 'Domain service not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    try:
+        # Get order status from OVH - can return string or list
+        logger.info(f"[check_order_status] Fetching OVH order status: {order.ovh_order_id}")
+        status_response = client.get(f'/me/order/{order.ovh_order_id}/status')
+        logger.info(f"[check_order_status] OVH status response: {status_response}")
+        logger.info(f"[check_order_status] Response type: {type(status_response)}")
+        
+        # Parse status - OVH can return string directly or list of status objects
+        ovh_status = ''
+        if isinstance(status_response, str):
+            # Direct status string (e.g., 'delivered')
+            ovh_status = status_response.lower()
+            logger.info(f"[check_order_status] Status is string: {ovh_status}")
+        elif isinstance(status_response, list) and len(status_response) > 0:
+            # List of status objects - get the most recent
+            status_list_sorted = sorted(status_response, key=lambda x: x.get('date', ''), reverse=True)
+            latest_status = status_list_sorted[0]
+            ovh_status = latest_status.get('status', '').lower()
+            logger.info(f"[check_order_status] Latest status from list: {latest_status}")
+        
+        logger.info(f"[check_order_status] Order {order_id} (OVH {order.ovh_order_id}) current status: {ovh_status}")
+        
+        updated = False
+        old_status = order.status
+        
+        # Update local status based on OVH status
+        # 'delivered' means order is complete and domain is ready
+        if ovh_status in ['delivered', 'complete', 'validated'] and order.status == DomainOrder.OrderStatus.PENDING_PAYMENT:
+            logger.info(f"[check_order_status] Order {order_id} is paid and delivered, triggering DNS configuration")
+            order.status = DomainOrder.OrderStatus.CONFIGURING_DNS
+            order.save(update_fields=['status'])
+            
+            # Trigger DNS configuration
+            configure_domain_dns.delay(order.id)
+            updated = True
+        
+        return Response({
+            'message': 'Order status checked successfully',
+            'order_id': order.id,
+            'ovh_status': ovh_status,
+            'local_status': order.status,
+            'previous_status': old_status,
+            'updated': updated,
+            'dns_configuration_triggered': updated,
+        }, status=status.HTTP_200_OK)
+        
+    except ovh.exceptions.ResourceNotFoundError:
+        logger.error(f"[check_order_status] Order {order.ovh_order_id} not found in OVH")
+        return Response(
+            {'error': 'Order not found in OVH system'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"[check_order_status] Failed to check order status: {e}")
+        return Response(
+            {'error': f'Failed to check order status: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Get domain order history from OVH',
+    description='Fetch detailed order history timeline from OVH API.',
+    responses={
+        200: inline_serializer(
+            name='OrderHistoryResponse',
+            fields={
+                'order_id': serializers.IntegerField(),
+                'ovh_order_id': serializers.CharField(),
+                'history': serializers.ListField(
+                    child=serializers.DictField(),
+                    help_text='List of order status changes with timestamps'
+                ),
+            }
+        ),
+        404: OpenApiResponse(description='Order not found'),
+        500: OpenApiResponse(description='OVH API error'),
+    }
+)
+def get_order_history(request, order_id):
+    """
+    Get order history from OVH API showing timeline of status changes.
+    """
+    try:
+        # Admin can view any order history, regular users only their own
+        if request.user.is_staff:
+            order = DomainOrder.objects.get(id=order_id)
+        else:
+            order = DomainOrder.objects.get(id=order_id, user=request.user)
+    except DomainOrder.DoesNotExist:
+        return Response(
+            {'error': 'Order not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if not order.ovh_order_id:
+        return Response(
+            {'error': 'This is a mock order without OVH order ID'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Initialize OVH client
+    try:
+        client = ovh.Client(
+            endpoint=settings.OVH_ENDPOINT,
+            application_key=settings.OVH_APPLICATION_KEY,
+            application_secret=settings.OVH_APPLICATION_SECRET,
+            consumer_key=settings.OVH_CONSUMER_KEY,
+        )
+    except Exception as e:
+        logger.error(f'[get_order_history] Failed to initialize OVH client: {e}')
+        return Response(
+            {'error': 'Domain service not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    try:
+        # Get order details
+        ovh_order = client.get(f'/me/order/{order.ovh_order_id}')
+        
+        # Get order status - OVH returns current status string, not history
+        status_response = client.get(f'/me/order/{order.ovh_order_id}/status')
+        
+        logger.info(f"[get_order_history] Status response type: {type(status_response)}")
+        logger.info(f"[get_order_history] Status response: {status_response}")
+        
+        # OVH /status endpoint returns current status string, not historical list
+        # Create a single history entry from current status
+        status_history = []
+        if isinstance(status_response, str):
+            # Current status - create history entry
+            current_status = status_response
+            status_history = [{
+                'status': current_status,
+                'date': ovh_order.get('date', ''),
+                'description': f'Status: {current_status}'
+            }]
+            logger.info(f"[get_order_history] Created history from current status: {current_status}")
+        elif isinstance(status_response, list):
+            # If it's already a list (some orders may have this)
+            status_history = status_response
+            status_history.sort(key=lambda x: x.get('date', '') if isinstance(x, dict) else '', reverse=True)
+        
+        logger.info(f"[get_order_history] Retrieved {len(status_history)} status entries for order {order_id}")
+        
+        return Response({
+            'order_id': order.id,
+            'ovh_order_id': order.ovh_order_id,
+            'ovh_status': status_response if isinstance(status_response, str) else ovh_order.get('status', ''),
+            'history': status_history,
+        }, status=status.HTTP_200_OK)
+        
+    except ovh.exceptions.ResourceNotFoundError:
+        logger.error(f"[get_order_history] Order {order.ovh_order_id} not found in OVH")
+        return Response(
+            {'error': 'Order not found in OVH system'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"[get_order_history] Failed to get order history: {e}")
+        return Response(
+            {'error': f'Failed to get order history: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Retry DNS configuration for domain order',
+    description='Manually trigger DNS configuration retry for orders in dns_error status.',
+    request=inline_serializer(
+        name='RetryDnsRequest',
+        fields={
+            'order_id': serializers.IntegerField(help_text='Domain order ID'),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name='RetryDnsResponse',
+            fields={
+                'message': serializers.CharField(),
+                'order_id': serializers.IntegerField(),
+                'status': serializers.CharField(),
+            }
+        ),
+        404: OpenApiResponse(description='Order not found'),
+        400: OpenApiResponse(description='Order not in error status'),
+    }
+)
+def retry_dns_configuration(request):
+    """
+    Retry DNS configuration for a domain order.
+    Only works for orders in dns_error status or delivered orders.
+    """
+    from .tasks import configure_domain_dns
+    
+    order_id = request.data.get('order_id')
+    
+    if not order_id:
+        return Response(
+            {'error': 'order_id is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Admin can retry any order, regular users only their own
+        if request.user.is_staff:
+            order = DomainOrder.objects.get(id=order_id)
+        else:
+            order = DomainOrder.objects.get(id=order_id, user=request.user)
+    except DomainOrder.DoesNotExist:
+        return Response(
+            {'error': 'Order not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if order can be retried
+    if order.status not in [DomainOrder.OrderStatus.DNS_ERROR, DomainOrder.OrderStatus.CONFIGURING_DNS]:
+        return Response(
+            {'error': f'Cannot retry DNS configuration. Order status: {order.status}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    logger.info(f"[retry_dns_configuration] Manually triggering DNS config for order {order_id}")
+    
+    # Reset status and trigger DNS configuration
+    order.status = DomainOrder.OrderStatus.CONFIGURING_DNS
+    order.error_message = None
+    order.save(update_fields=['status', 'error_message'])
+    
+    # Trigger async DNS configuration
+    configure_domain_dns.delay(order.id)
+    
+    return Response({
+        'message': 'DNS configuration retry triggered',
+        'order_id': order.id,
+        'status': order.status,
+    }, status=status.HTTP_200_OK)
 
 
 class AITaskView(APIView):

@@ -22,8 +22,20 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() in ['true', '1', 't', 'yes']
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 DISCORD_SERVER_URL = os.environ.get("DISCORD_SERVER_URL")
 
-# --- NameSilo API (for domain checking) ---
-NAMESILO_API_KEY = os.environ.get('NAMESILO_API_KEY')
+# --- OVHcloud API (for domain management) ---
+OVH_ENDPOINT = os.environ.get('OVH_ENDPOINT', 'ovh-eu')
+OVH_APPLICATION_KEY = os.environ.get('OVH_APPLICATION_KEY')
+OVH_APPLICATION_SECRET = os.environ.get('OVH_APPLICATION_SECRET')
+OVH_CONSUMER_KEY = os.environ.get('OVH_CONSUMER_KEY')
+DOMAIN_TARGET_ADDRESS = os.environ.get('DOMAIN_TARGET_ADDRESS')  # Deprecated, kept for backwards compatibility
+
+# --- Cloudflare API (for DNS management) ---
+CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN')
+CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID')
+
+# --- Google Cloud Target (where domains should point) ---
+GOOGLE_CLOUD_IP = os.environ.get('GOOGLE_CLOUD_IP')  # Static IP from Load Balancer
+GOOGLE_CLOUD_DOMAIN = os.environ.get('GOOGLE_CLOUD_DOMAIN')  # Cloud Run / App Engine domain
 
 # --- AI Models API Keys ---
 FLASH_API_KEY = os.environ.get('FLASH_API_KEY')

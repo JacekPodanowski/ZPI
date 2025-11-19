@@ -23,6 +23,7 @@ from .models import (
     TermsOfService,
     EmailTemplate,
     TeamMember,
+    DomainOrder,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -618,3 +619,25 @@ class SiteWithTeamSerializer(serializers.ModelSerializer):
         if team_member:
             return TeamMemberInfoSerializer(team_member).data
         return None
+
+
+class DomainOrderSerializer(serializers.ModelSerializer):
+    """Serializer for domain orders with payment and DNS configuration tracking."""
+    
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    site_name = serializers.CharField(source='site.name', read_only=True)
+    site_identifier = serializers.CharField(source='site.identifier', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = DomainOrder
+        fields = [
+            'id', 'user', 'user_email', 'site', 'site_name', 'site_identifier',
+            'domain_name', 'ovh_order_id', 'ovh_cart_id', 'price', 'status',
+            'status_display', 'payment_url', 'dns_configuration', 'error_message',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'user', 'ovh_order_id', 'ovh_cart_id', 'payment_url',
+            'dns_configuration', 'error_message', 'created_at', 'updated_at'
+        ]

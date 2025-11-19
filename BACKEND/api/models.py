@@ -617,3 +617,86 @@ class EmailTemplate(models.Model):
     def __str__(self):
         prefix = '[DEFAULT]' if self.is_default else '[CUSTOM]'
         return f'{prefix} {self.name} ({self.get_category_display()})'
+
+
+class DomainOrder(models.Model):
+    """Stores domain purchase orders with payment and configuration tracking."""
+    
+    class OrderStatus(models.TextChoices):
+        PENDING_PAYMENT = 'pending_payment', 'Pending Payment'
+        CONFIGURING_DNS = 'configuring_dns', 'Configuring DNS'
+        ACTIVE = 'active', 'Active'
+        DNS_ERROR = 'dns_error', 'DNS Configuration Error'
+        EXPIRED = 'expired', 'Expired'
+        CANCELLED = 'cancelled', 'Cancelled'
+    
+    user = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.CASCADE,
+        related_name='domain_orders',
+        help_text='User who placed the order'
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.CASCADE,
+        related_name='domain_orders',
+        help_text='Site this domain is for'
+    )
+    domain_name = models.CharField(
+        max_length=255,
+        help_text='Full domain name (e.g., example.com)'
+    )
+    ovh_order_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='OVH order ID from the API'
+    )
+    ovh_cart_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='OVH cart ID used for this order'
+    )
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Domain price in EUR'
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING_PAYMENT,
+        help_text='Current status of the domain order'
+    )
+    payment_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='Mock payment URL for testing'
+    )
+    dns_configuration = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='DNS records configured for this domain'
+    )
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Error message if DNS configuration failed'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['site']),
+            models.Index(fields=['ovh_order_id']),
+            models.Index(fields=['domain_name']),
+        ]
+    
+    def __str__(self):
+        return f"{self.domain_name} - {self.get_status_display()} (Order #{self.id})"
