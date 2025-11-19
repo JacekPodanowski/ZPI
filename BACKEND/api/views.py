@@ -607,6 +607,113 @@ class VerifyMagicLinkView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class RequestPasswordResetView(APIView):
+    """Request a password reset magic link."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        email = user.email
+        
+        # Create magic link for password reset
+        magic_link = MagicLink.create_for_email(
+            email=email,
+            expiry_minutes=30,
+            action_type=MagicLink.ActionType.PASSWORD_RESET
+        )
+        
+        # Send email with password reset link
+        frontend_url = settings.FRONTEND_URL.rstrip('/')
+        reset_link_url = f"{frontend_url}/studio/reset-password/{magic_link.token}"
+        
+        # Render email
+        email_subject = 'Zresetuj swoje hasło'
+        email_html = render_to_string('emails/password_reset_link.html', {
+            'user': user,
+            'reset_link_url': reset_link_url,
+            'expiry_minutes': 30,
+        })
+        email_text = strip_tags(email_html)
+        
+        # Send email asynchronously
+        logger.info("Queueing password reset email to %s", email)
+        send_custom_email_task_async.delay(
+            recipient_list=[email],
+            subject=email_subject,
+            message=email_text,
+            html_content=email_html,
+        )
+        
+        return Response({
+            'detail': 'Link do zmiany hasła został wysłany na Twój e-mail.',
+            'email': email
+        }, status=status.HTTP_200_OK)
+
+
+class VerifyPasswordResetTokenView(APIView):
+    """Verify password reset token and change password."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        token = request.data.get('token')
+        new_password = request.data.get('password')
+        
+        if not token:
+            return Response({'detail': 'Token jest wymagany.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not new_password:
+            return Response({'detail': 'Hasło jest wymagane.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            magic_link = MagicLink.objects.get(token=token, action_type=MagicLink.ActionType.PASSWORD_RESET)
+        except MagicLink.DoesNotExist:
+            return Response({
+                'detail': 'Nieprawidłowy link do resetu hasła.',
+                'error': 'invalid_token'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if valid
+        if not magic_link.is_valid():
+            if magic_link.used:
+                return Response({
+                    'detail': 'Ten link został już użyty.',
+                    'error': 'already_used'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'detail': 'Ten link wygasł. Poproś o nowy.',
+                    'error': 'expired'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get user and change password
+        try:
+            user = PlatformUser.objects.get(email=magic_link.email)
+            if not user.is_active:
+                return Response({
+                    'detail': 'Twoje konto nie jest aktywne.',
+                    'error': 'account_inactive'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except PlatformUser.DoesNotExist:
+            return Response({
+                'detail': 'Użytkownik nie został znaleziony.',
+                'error': 'user_not_found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Change password
+        user.set_password(new_password)
+        user.save()
+        
+        # Mark magic link as used
+        magic_link.mark_as_used()
+        
+        logger.info("User %s changed password via reset link", user.email)
+        
+        return Response({
+            'detail': 'Hasło zostało zmienione pomyślnie!',
+            'email': user.email
+        }, status=status.HTTP_200_OK)
+
+
 class IsOwnerOrStaff(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
@@ -3213,5 +3320,3 @@ def get_domain_pricing(request):
             {'error': 'Failed to fetch pricing'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-
