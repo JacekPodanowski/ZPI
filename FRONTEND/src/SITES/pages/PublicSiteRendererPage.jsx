@@ -8,6 +8,7 @@ const PublicSiteRendererPage = () => {
   const { siteIdentifier } = useParams();
 
   // Przekazuje identyfikator jako props do głównego komponentu renderującego
+  // Nawigacja jest renderowana przez NavigationLayout w App.jsx
   return <SiteApp siteIdentifierFromPath={siteIdentifier} />;
 };
 

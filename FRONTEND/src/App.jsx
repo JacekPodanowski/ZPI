@@ -7,6 +7,7 @@ import TermsOfServicePage from './STUDIO/pages/Terms/TermsOfServicePage';
 import CancelBookingPage from './SITES/pages/CancelBookingPage';
 import PublicSiteRendererPage from './SITES/pages/PublicSiteRendererPage';
 import SiteListPage from './SITES/pages/SiteListPage';
+import NavigationLayout from './STUDIO/layouts/NavigationLayout';
 
 const App = () => {
     // Sprawdź tryb routingu ze zmiennej środowiskowej
@@ -24,7 +25,11 @@ const App = () => {
             {/* Warunkowa ścieżka dla trybu deweloperskiego */}
             {isPathRoutingMode && (
                 <>
-                    <Route path="/viewer" element={<SiteListPage />} />
+                    {/* Lista stron - Z nawigacją */}
+                    <Route element={<NavigationLayout />}>
+                        <Route path="/viewer" element={<SiteListPage />} />
+                    </Route>
+                    {/* Konkretna strona - BEZ nawigacji */}
                     <Route path="/viewer/:siteIdentifier/*" element={<PublicSiteRendererPage />} />
                 </>
             )}
