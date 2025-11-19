@@ -618,7 +618,52 @@ class RequestPasswordResetView(APIView):
         user = request.user
         email = user.email
         
-        # Create magic link for password reset
+        # Check if there's an active (unused, non-expired) password reset link
+        active_link = MagicLink.objects.filter(
+            email=email,
+            action_type=MagicLink.ActionType.PASSWORD_RESET,
+            used=False,
+            expires_at__gt=timezone.now()
+        ).first()
+        
+        frontend_url = settings.FRONTEND_URL.rstrip('/')
+        
+        # If active link exists, resend email with the same link
+        if active_link:
+            reset_link_url = f"{frontend_url}/studio/reset-password/{active_link.token}"
+            
+            # Render email with existing link
+            email_subject = 'Zresetuj swoje hasło'
+            email_html = render_to_string('emails/password_reset_link.html', {
+                'user': user,
+                'reset_link_url': reset_link_url,
+                'expiry_minutes': 30,
+            })
+            email_text = strip_tags(email_html)
+            
+            # Send email asynchronously with existing link
+            logger.info("Resending existing password reset link to %s", email)
+            send_custom_email_task_async.delay(
+                recipient_list=[email],
+                subject=email_subject,
+                message=email_text,
+                html_content=email_html,
+            )
+            
+            return Response({
+                'detail': 'Link do zmiany hasła został ponownie wysłany na Twój e-mail.',
+                'email': email,
+                'resent_existing': True
+            }, status=status.HTTP_200_OK)
+        
+        # Invalidate all previous unused password reset links for this user
+        MagicLink.objects.filter(
+            email=email,
+            action_type=MagicLink.ActionType.PASSWORD_RESET,
+            used=False
+        ).update(used=True, used_at=timezone.now())
+        
+        # Create new magic link for password reset
         magic_link = MagicLink.create_for_email(
             email=email,
             expiry_minutes=30,
@@ -626,7 +671,6 @@ class RequestPasswordResetView(APIView):
         )
         
         # Send email with password reset link
-        frontend_url = settings.FRONTEND_URL.rstrip('/')
         reset_link_url = f"{frontend_url}/studio/reset-password/{magic_link.token}"
         
         # Render email
@@ -639,7 +683,7 @@ class RequestPasswordResetView(APIView):
         email_text = strip_tags(email_html)
         
         # Send email asynchronously
-        logger.info("Queueing password reset email to %s", email)
+        logger.info("Sending new password reset email to %s", email)
         send_custom_email_task_async.delay(
             recipient_list=[email],
             subject=email_subject,
@@ -656,6 +700,44 @@ class RequestPasswordResetView(APIView):
 class VerifyPasswordResetTokenView(APIView):
     """Verify password reset token and change password."""
     permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """Check if password reset token is valid without changing password."""
+        token = request.query_params.get('token')
+        
+        if not token:
+            return Response({'detail': 'Token jest wymagany.', 'valid': False}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            magic_link = MagicLink.objects.get(token=token, action_type=MagicLink.ActionType.PASSWORD_RESET)
+        except MagicLink.DoesNotExist:
+            return Response({
+                'detail': 'Nieprawidłowy link do resetu hasła.',
+                'error': 'invalid_token',
+                'valid': False
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if valid
+        if not magic_link.is_valid():
+            if magic_link.used:
+                return Response({
+                    'detail': 'Ten link został już użyty.',
+                    'error': 'already_used',
+                    'valid': False
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'detail': 'Ten link wygasł. Poproś o nowy.',
+                    'error': 'expired',
+                    'valid': False
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Token is valid
+        return Response({
+            'detail': 'Token jest prawidłowy.',
+            'valid': True,
+            'email': magic_link.email
+        }, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         token = request.data.get('token')

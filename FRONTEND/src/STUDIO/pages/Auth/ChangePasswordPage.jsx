@@ -40,14 +40,32 @@ const ChangePasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [tokenValid, setTokenValid] = useState(true);
+  const [tokenValid, setTokenValid] = useState(null); // null = checking, true = valid, false = invalid
+  const [checkingToken, setCheckingToken] = useState(true);
 
-  // Check if token is present
+  // Check if token is valid on mount
   useEffect(() => {
-    if (!token) {
-      setError('Brak tokenu resetowania hasła. Poproś o nowy link.');
-      setTokenValid(false);
-    }
+    const validateToken = async () => {
+      if (!token) {
+        setError('Brak tokenu resetowania hasła. Poproś o nowy link.');
+        setTokenValid(false);
+        setCheckingToken(false);
+        return;
+      }
+
+      try {
+        await apiClient.get(`/auth/password-reset/verify/?token=${token}`);
+        setTokenValid(true);
+      } catch (err) {
+        const errorDetail = err.response?.data?.detail || 'Nieprawidłowy link do resetu hasła.';
+        setError(errorDetail);
+        setTokenValid(false);
+      } finally {
+        setCheckingToken(false);
+      }
+    };
+
+    validateToken();
   }, [token]);
 
   const handleChange = (field) => (e) => {
@@ -153,11 +171,19 @@ const ChangePasswordPage = () => {
         </Box>
 
         {/* Alerts */}
-        {error && (
+        {checkingToken && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3, py: 2 }}>
+            <CircularProgress size={24} sx={{ color: accentColor }} />
+            <Typography variant="body2" sx={{ ml: 2, color: theme.colors?.text?.secondary }}>
+              Sprawdzanie linku...
+            </Typography>
+          </Box>
+        )}
+
+        {error && !checkingToken && (
           <Alert 
             severity="error" 
             sx={{ mb: 3, borderRadius: '12px' }}
-            onClose={() => setError(null)}
           >
             {error}
           </Alert>
@@ -173,98 +199,98 @@ const ChangePasswordPage = () => {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <Box sx={{ mb: 3 }}>
-            <TextField
+        {!checkingToken && tokenValid && (
+          <form onSubmit={handleSubmit}>
+            <Box sx={{ mb: 3 }}>
+              <TextField
+                fullWidth
+                type={showPassword.new ? 'text' : 'password'}
+                label="Nowe hasło"
+                value={formData.newPassword}
+                onChange={handleChange('newPassword')}
+                disabled={loading || success}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => togglePasswordVisibility('new')}
+                        edge="end"
+                        disabled={loading || success}
+                      >
+                        {showPassword.new ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px'
+                  }
+                }}
+              />
+            </Box>
+
+            <Box sx={{ mb: 4 }}>
+              <TextField
+                fullWidth
+                type={showPassword.confirm ? 'text' : 'password'}
+                label="Potwierdź nowe hasło"
+                value={formData.confirmPassword}
+                onChange={handleChange('confirmPassword')}
+                disabled={loading || success}
+                helperText="Wprowadź ponownie nowe hasło"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => togglePasswordVisibility('confirm')}
+                        edge="end"
+                        disabled={loading || success}
+                      >
+                        {showPassword.confirm ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px'
+                  }
+                }}
+              />
+            </Box>
+
+            <Button
+              type="submit"
               fullWidth
-              type={showPassword.new ? 'text' : 'password'}
-              label="Nowe hasło"
-              value={formData.newPassword}
-              onChange={handleChange('newPassword')}
+              variant="contained"
               disabled={loading || success}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => togglePasswordVisibility('new')}
-                      edge="end"
-                      disabled={loading || success}
-                    >
-                      {showPassword.new ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <LockResetIcon />}
               sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px'
+                borderRadius: '12px',
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                backgroundColor: accentColor,
+                boxShadow: `0 4px 14px ${alpha(accentColor, 0.3)}`,
+                '&:hover': {
+                  backgroundColor: alpha(accentColor, 0.9),
+                  boxShadow: `0 6px 20px ${alpha(accentColor, 0.4)}`
+                },
+                '&:disabled': {
+                  backgroundColor: alpha(accentColor, 0.3)
                 }
               }}
-            />
-          </Box>
-
-          <Box sx={{ mb: 4 }}>
-            <TextField
-              fullWidth
-              type={showPassword.confirm ? 'text' : 'password'}
-              label="Potwierdź nowe nasło"
-              value={formData.confirmPassword}
-              onChange={handleChange('confirmPassword')}
-              disabled={loading || success}
-              helperText="Wprowadź ponownie nowe hasło"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => togglePasswordVisibility('confirm')}
-                      edge="end"
-                      disabled={loading || success}
-                    >
-                      {showPassword.confirm ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px'
-                }
-              }}
-            />
-          </Box>
-
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            disabled={loading || success || !tokenValid}
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <LockResetIcon />}
-            sx={{
-              borderRadius: '12px',
-              py: 1.5,
-              fontSize: '1rem',
-              fontWeight: 600,
-              textTransform: 'none',
-              backgroundColor: accentColor,
-              boxShadow: `0 4px 14px ${alpha(accentColor, 0.3)}`,
-              '&:hover': {
-                backgroundColor: alpha(accentColor, 0.9),
-                boxShadow: `0 6px 20px ${alpha(accentColor, 0.4)}`
-              },
-              '&:disabled': {
-                backgroundColor: alpha(accentColor, 0.3)
-              }
-            }}
-          >
-            {loading ? 'Zmiana hasła...' : success ? 'Hasło zmienione!' : 'Zmień hasło'}
-          </Button>
-        </form>
-
-        {/* Footer */}
+            >
+              {loading ? 'Zmiana hasła...' : success ? 'Hasło zmienione!' : 'Zmień hasło'}
+            </Button>
+          </form>
+        )}        {/* Footer */}
         <Box sx={{ textAlign: 'center', mt: 3 }}>
           <Button
             variant="text"
-            onClick={() => navigate('/studio/login')}
+            onClick={() => navigate('/studio')}
             disabled={loading}
             sx={{
               textTransform: 'none',
@@ -274,7 +300,7 @@ const ChangePasswordPage = () => {
               }
             }}
           >
-            Powrót do Logowania
+            Powrót do Strony Głównej
           </Button>
         </Box>
       </Paper>
