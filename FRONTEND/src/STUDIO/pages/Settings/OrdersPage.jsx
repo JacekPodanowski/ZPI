@@ -9,7 +9,12 @@ import {
   Chip,
   Button,
   Divider,
-  Collapse
+  Collapse,
+  TextField,
+  IconButton,
+  FormControlLabel,
+  Switch,
+  Tooltip
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined';
@@ -18,6 +23,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import HistoryIcon from '@mui/icons-material/History';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 import useTheme from '../../../theme/useTheme';
 import apiClient from '../../../services/apiClient';
 import { checkOrderStatus, getOrderHistory, retryDnsConfiguration } from '../../../services/domainService';
@@ -32,6 +40,10 @@ const OrdersPage = () => {
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [orderHistories, setOrderHistories] = useState({});
   const [loadingHistory, setLoadingHistory] = useState(null);
+  const [editingTarget, setEditingTarget] = useState(null);
+  const [targetValue, setTargetValue] = useState('');
+  const [proxyModeValue, setProxyModeValue] = useState(false);
+  const [savingTarget, setSavingTarget] = useState(false);
 
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
@@ -131,6 +143,42 @@ const OrdersPage = () => {
       setError(err.message || 'Nie udało się ponownie uruchomić konfiguracji DNS.');
     } finally {
       setRetryingDns(null);
+    }
+  };
+
+  const handleEditTarget = (order) => {
+    setEditingTarget(order.id);
+    setTargetValue(order.target || '');
+    setProxyModeValue(order.proxy_mode || false);
+  };
+
+  const handleCancelEditTarget = () => {
+    setEditingTarget(null);
+    setTargetValue('');
+    setProxyModeValue(false);
+  };
+
+  const handleSaveTarget = async (orderId) => {
+    try {
+      setSavingTarget(true);
+      await apiClient.patch(`/domains/orders/${orderId}/`, {
+        target: targetValue,
+        proxy_mode: proxyModeValue
+      });
+      
+      // Update local state
+      setOrders(orders.map(order => 
+        order.id === orderId ? { ...order, target: targetValue, proxy_mode: proxyModeValue } : order
+      ));
+      
+      setEditingTarget(null);
+      setTargetValue('');
+      setProxyModeValue(false);
+    } catch (err) {
+      console.error('Failed to update target:', err);
+      setError('Nie udało się zaktualizować docelowego URL.');
+    } finally {
+      setSavingTarget(false);
     }
   };
 
@@ -367,36 +415,132 @@ const OrdersPage = () => {
                 )}
 
                 {order.status === 'active' && (
-                  <Alert 
-                    severity="success"
-                    sx={{ mt: 2, borderRadius: '8px' }}
-                  >
-                    {order.dns_configuration?.method === 'cloudflare' ? (
-                      <>
-                        <strong>✓ Domena aktywna i skonfigurowana przez Cloudflare</strong>
-                        <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
-                          DNS wskazuje na: {order.dns_configuration?.target || 'Google Cloud'}
-                          <br />
-                          Nameservery: {order.dns_configuration?.nameservers?.join(', ') || 'Cloudflare'}
-                          <br />
-                          <em style={{ color: 'rgba(0,0,0,0.6)' }}>
-                            Propagacja DNS może potrwać 24-48h
-                          </em>
+                  <>
+                    <Alert 
+                      severity="success"
+                      sx={{ mt: 2, borderRadius: '8px' }}
+                    >
+                      {order.dns_configuration?.method === 'cloudflare' ? (
+                        <>
+                          <strong>✓ Domena aktywna i skonfigurowana przez Cloudflare</strong>
+                          <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
+                            DNS wskazuje na: {order.dns_configuration?.target || 'Google Cloud'}
+                            <br />
+                            Nameservery: {order.dns_configuration?.nameservers?.join(', ') || 'Cloudflare'}
+                            <br />
+                            <em style={{ color: 'rgba(0,0,0,0.6)' }}>
+                              Propagacja DNS może potrwać 24-48h
+                            </em>
+                          </Box>
+                        </>
+                      ) : order.dns_configuration?.method === 'dns_only' ? (
+                        <>
+                          <strong>⚠️ Domena aktywna - wymagana ręczna konfiguracja DNS</strong>
+                          <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
+                            {order.dns_configuration?.message || 'Przekierowanie automatyczne nie jest dostępne dla tego typu domeny.'}
+                            <br />
+                            Aby skonfigurować domenę, skontaktuj się z supportem lub skonfiguruj rekordy DNS ręcznie.
+                          </Box>
+                        </>
+                      ) : (
+                        '✓ Domena jest aktywna i przekierowuje odwiedzających'
+                      )}
+                    </Alert>
+
+                    {/* Target URL Configuration */}
+                    <Box sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      bgcolor: alpha(accentColor, 0.05), 
+                      borderRadius: '8px',
+                      border: `1px solid ${alpha(accentColor, 0.2)}`
+                    }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: theme.colors?.text?.primary }}>
+                        🌐 Konfiguracja przekierowania
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block', mb: 2 }}>
+                        Ustaw docelowy URL, na który będzie przekierowywana Twoja domena
+                      </Typography>
+
+                      {editingTarget === order.id ? (
+                        <Stack spacing={2}>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            <TextField
+                              fullWidth
+                              size="small"
+                              value={targetValue}
+                              onChange={(e) => setTargetValue(e.target.value)}
+                              placeholder="np. youtube.com lub twoja-strona.youreasysite.com"
+                              sx={{ 
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: '8px',
+                                }
+                              }}
+                            />
+                            <IconButton 
+                              color="primary"
+                              onClick={() => handleSaveTarget(order.id)}
+                              disabled={savingTarget}
+                              sx={{ 
+                                bgcolor: alpha(accentColor, 0.1),
+                                '&:hover': { bgcolor: alpha(accentColor, 0.2) }
+                              }}
+                            >
+                              {savingTarget ? <CircularProgress size={20} /> : <SaveIcon />}
+                            </IconButton>
+                            <IconButton 
+                              onClick={handleCancelEditTarget}
+                              disabled={savingTarget}
+                            >
+                              <CancelIcon />
+                            </IconButton>
+                          </Box>
+                          
+                          <Tooltip title="Proxy Mode zachowuje URL domeny w przeglądarce. Redirect zmienia URL na docelowy. UWAGA: YouTube blokuje proxy mode!" placement="top">
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={proxyModeValue}
+                                  onChange={(e) => setProxyModeValue(e.target.checked)}
+                                  size="small"
+                                />
+                              }
+                              label={
+                                <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary }}>
+                                  🔄 Proxy Mode (zachowaj URL w przeglądarce)
+                                </Typography>
+                              }
+                              sx={{ ml: 0 }}
+                            />
+                          </Tooltip>
+                        </Stack>
+                      ) : (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box>
+                            <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block' }}>
+                              Docelowy URL:
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {order.target || `${order.site_identifier}.youreasysite.com (domyślny)`}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block', mt: 0.5 }}>
+                              Tryb: {order.proxy_mode ? '🔄 Proxy (zachowuje URL)' : '↗️ Redirect (zmienia URL)'}
+                            </Typography>
+                          </Box>
+                          <IconButton 
+                            size="small"
+                            onClick={() => handleEditTarget(order)}
+                            sx={{ 
+                              color: accentColor,
+                              '&:hover': { bgcolor: alpha(accentColor, 0.1) }
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
                         </Box>
-                      </>
-                    ) : order.dns_configuration?.method === 'dns_only' ? (
-                      <>
-                        <strong>⚠️ Domena aktywna - wymagana ręczna konfiguracja DNS</strong>
-                        <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
-                          {order.dns_configuration?.message || 'Przekierowanie automatyczne nie jest dostępne dla tego typu domeny.'}
-                          <br />
-                          Aby skonfigurować domenę, skontaktuj się z supportem lub skonfiguruj rekordy DNS ręcznie.
-                        </Box>
-                      </>
-                    ) : (
-                      '✓ Domena jest aktywna i przekierowuje odwiedzających'
-                    )}
-                  </Alert>
+                      )}
+                    </Box>
+                  </>
                 )}
 
                 {order.status === 'dns_error' && order.error_message && (

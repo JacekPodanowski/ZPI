@@ -1,0 +1,12 @@
+name = "domain-proxy-worker"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Environment Variables
+[vars]
+BACKEND_API = "https://str-rivers-acrobat-cartridges.trycloudflare.com/api/v1/domains/resolve"
+
+# Optional: set custom routes for domains
+# [[routes]]
+# pattern = "*dronecomponentsfpv.online/*"
+# custom_domain = true

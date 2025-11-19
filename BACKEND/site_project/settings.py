@@ -32,6 +32,8 @@ DOMAIN_TARGET_ADDRESS = os.environ.get('DOMAIN_TARGET_ADDRESS')  # Deprecated, k
 # --- Cloudflare API (for DNS management) ---
 CLOUDFLARE_API_TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN')
 CLOUDFLARE_ACCOUNT_ID = os.environ.get('CLOUDFLARE_ACCOUNT_ID')
+CLOUDFLARE_ZONE_ID = os.environ.get('CLOUDFLARE_ZONE_ID')  # Zone ID for cache purging
+CLOUDFLARE_WORKER_NAME = os.environ.get('CLOUDFLARE_WORKER_NAME', 'youreasysite-domain-proxy')
 
 # --- Google Cloud Target (where domains should point) ---
 GOOGLE_CLOUD_IP = os.environ.get('GOOGLE_CLOUD_IP')  # Static IP from Load Balancer
@@ -72,7 +74,7 @@ if SUPABASE_URL:
         SUPABASE_STORAGE_PUBLIC_URL = SUPABASE_STORAGE_PUBLIC_URLS.get(default_bucket)
 
 # --- Konfiguracja sieci i bezpieczeństwa ---
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104', '136.115.41.232']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104', '136.115.41.232', '.trycloudflare.com']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -192,6 +194,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://127\.0\.0\.1:\d+$",
     r"^http://192\.168\.0\.104:\d+$",
     r"^http://136\.115\.41\.232:\d+$",
+    r"^https://.*\.trycloudflare\.com$",  # Allow Cloudflare Tunnel
+    r"^null$",  # Allow local HTML files for testing
 ]
 CORS_ALLOW_CREDENTIALS = True
 

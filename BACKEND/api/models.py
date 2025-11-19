@@ -681,6 +681,16 @@ class DomainOrder(models.Model):
         blank=True,
         help_text='DNS records configured for this domain'
     )
+    target = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Target URL for domain redirect (e.g., youtube.com or user site subdomain)'
+    )
+    proxy_mode = models.BooleanField(
+        default=False,
+        help_text='If True, use reverse proxy (keeps URL). If False, use 301 redirect (changes URL)'
+    )
     error_message = models.TextField(
         blank=True,
         null=True,

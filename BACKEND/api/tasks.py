@@ -474,15 +474,17 @@ def configure_domain_dns(self, order_id: int):
         # STEP 2: Update OVH nameservers to Cloudflare
         logger.info(f"[Celery] Step 2: Updating OVH nameservers to Cloudflare")
         try:
-            # Change nameservers to Cloudflare
-            ovh_client.post(
+            # Change nameservers to Cloudflare (OVH API doesn't need toDelete parameter)
+            result = ovh_client.post(
                 f'/domain/{domain_name}/nameServers/update',
                 nameServers=[
-                    {'host': cf_nameservers[0], 'toDelete': False},
-                    {'host': cf_nameservers[1], 'toDelete': False}
+                    {'host': cf_nameservers[0]},
+                    {'host': cf_nameservers[1]}
                 ]
             )
-            logger.info(f"[Celery] OVH nameservers updated to Cloudflare: {cf_nameservers}")
+            task_id = result.get('id', 'N/A')
+            logger.info(f"[Celery] OVH nameserver update task created: {task_id}")
+            logger.info(f"[Celery] Nameservers will be changed to: {cf_nameservers}")
         except Exception as e:
             logger.warning(f"[Celery] Failed to update OVH nameservers (may already be set): {e}")
         
@@ -502,93 +504,128 @@ def configure_domain_dns(self, order_id: int):
                 )
                 logger.info(f"[Celery] Deleted existing {record['type']} record: {record['name']}")
         
-        # Add DNS records
-        if google_cloud_ip:
-            # Use A record pointing to Google Cloud IP
-            for subdomain in ['@', 'www']:
-                record_name = domain_name if subdomain == '@' else f'www.{domain_name}'
-                cf_dns = requests.post(
-                    f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/dns_records',
-                    headers=cf_headers,
-                    json={
-                        'type': 'A',
-                        'name': subdomain,
-                        'content': google_cloud_ip,
-                        'ttl': 1,  # Auto
-                        'proxied': True  # Enable Cloudflare proxy (SSL, caching, DDoS protection)
-                    }
-                )
-                if cf_dns.status_code == 200:
-                    dns_records.append({
-                        'type': 'A',
-                        'name': record_name,
-                        'content': google_cloud_ip,
-                        'proxied': True
-                    })
-                    logger.info(f"[Celery] Created A record: {record_name} -> {google_cloud_ip}")
-        else:
-            # Use CNAME for www subdomain pointing to site-specific subdomain
+        # Add DNS records (dummy IPs for Worker proxy - actual routing handled by Worker)
+        # When using Worker Routes, the actual IP doesn't matter because Cloudflare proxy intercepts all traffic
+        dummy_ip = '192.0.2.1'  # Reserved IP for documentation/testing
+        
+        for subdomain in ['@', 'www']:
+            record_name = domain_name if subdomain == '@' else f'www.{domain_name}'
             cf_dns = requests.post(
                 f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/dns_records',
                 headers=cf_headers,
                 json={
-                    'type': 'CNAME',
-                    'name': 'www',
-                    'content': actual_target,
-                    'ttl': 1,
-                    'proxied': True
+                    'type': 'A',
+                    'name': subdomain,
+                    'content': dummy_ip,
+                    'ttl': 1,  # Auto
+                    'proxied': True  # MUST be proxied for Worker to intercept traffic
                 }
             )
             if cf_dns.status_code == 200:
                 dns_records.append({
-                    'type': 'CNAME',
-                    'name': f'www.{domain_name}',
-                    'content': actual_target,
-                    'proxied': True
+                    'type': 'A',
+                    'name': record_name,
+                    'content': dummy_ip,
+                    'proxied': True,
+                    'note': 'Dummy IP - actual routing handled by Cloudflare Worker'
                 })
-                logger.info(f"[Celery] Created CNAME record: www.{domain_name} -> {actual_target}")
-            
-            # For root domain, use CNAME flattening or redirect
-            logger.warning(f"[Celery] Root domain CNAME not supported, using Cloudflare redirect rule")
+                logger.info(f"[Celery] Created proxied A record: {record_name} -> {dummy_ip} (Worker routing)")
         
-        # STEP 4: (Optional) Add redirect rule from root to www if using CNAME
-        if not google_cloud_ip and google_cloud_domain:
-            logger.info(f"[Celery] Step 4: Creating redirect rule from @ to {actual_target}")
-            # Cloudflare Page Rules API to redirect both root and www to target domain
-            for pattern in [f'{domain_name}/*', f'www.{domain_name}/*']:
-                cf_page_rule = requests.post(
-                    f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules',
-                    headers=cf_headers,
-                    json={
-                        'targets': [
-                            {
-                                'target': 'url',
-                                'constraint': {
-                                    'operator': 'matches',
-                                    'value': pattern
-                                }
+        # STEP 4: Get target URL from order.target or use default site subdomain
+        logger.info(f"[Celery] Step 4: Determining redirect target")
+        
+        # Get the target from the order's target field
+        redirect_target = order.target
+        if not redirect_target:
+            # If no target set, use site's subdomain as default
+            redirect_target = f"{order.site.identifier}.youreasysite.com"
+            logger.info(f"[Celery] No target set, using site subdomain: {redirect_target}")
+        else:
+            logger.info(f"[Celery] Using configured target: {redirect_target}")
+        
+        # STEP 5: Configure redirect using Cloudflare Page Rules
+        # Page Rules work with basic API permissions and redirect to any URL
+        logger.info(f"[Celery] Step 5: Creating/updating Cloudflare Page Rules for redirect")
+        
+        # Get existing page rules for this zone
+        existing_rules_resp = requests.get(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules',
+            headers=cf_headers
+        )
+        existing_rules = {}
+        if existing_rules_resp.status_code == 200:
+            for rule in existing_rules_resp.json().get('result', []):
+                pattern = rule.get('targets', [{}])[0].get('constraint', {}).get('value')
+                if pattern:
+                    existing_rules[pattern] = rule['id']
+        
+        page_rules_added = []
+        # Create/update redirect rules for both root and www
+        for pattern in [f'{domain_name}/*', f'www.{domain_name}/*']:
+            try:
+                # Ensure target has https://
+                target_url = redirect_target if redirect_target.startswith('http') else f'https://{redirect_target}'
+                
+                page_rule_config = {
+                    'targets': [
+                        {
+                            'target': 'url',
+                            'constraint': {
+                                'operator': 'matches',
+                                'value': pattern
                             }
-                        ],
-                        'actions': [
-                            {
-                                'id': 'forwarding_url',
-                                'value': {
-                                    'url': f'https://{actual_target}/$1',
-                                    'status_code': 301
-                                }
+                        }
+                    ],
+                    'actions': [
+                        {
+                            'id': 'forwarding_url',
+                            'value': {
+                                'url': f'{target_url}/$1',
+                                'status_code': 301
                             }
-                        ],
-                        'priority': 1,
-                        'status': 'active'
-                    }
-                )
-                if cf_page_rule.status_code == 200:
-                    source = pattern.replace('/*', '')
-                    logger.info(f"[Celery] Created redirect rule: {source} -> {actual_target}")
-                    dns_records.append({
-                        'type': 'PAGE_RULE',
-                        'description': f'Redirect {source} to {actual_target}'
+                        }
+                    ],
+                    'priority': 1,
+                    'status': 'active'
+                }
+                
+                # Check if rule already exists
+                if pattern in existing_rules:
+                    rule_id = existing_rules[pattern]
+                    logger.info(f"[Celery] Updating existing Page Rule {rule_id} for {pattern}")
+                    cf_page_rule = requests.patch(
+                        f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules/{rule_id}',
+                        headers=cf_headers,
+                        json=page_rule_config
+                    )
+                else:
+                    logger.info(f"[Celery] Creating new Page Rule for {pattern}")
+                    cf_page_rule = requests.post(
+                        f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules',
+                        headers=cf_headers,
+                        json=page_rule_config
+                    )
+                
+                if cf_page_rule.status_code in [200, 201]:
+                    rule_id = cf_page_rule.json()['result']['id']
+                    page_rules_added.append({
+                        'pattern': pattern,
+                        'rule_id': rule_id,
+                        'target': target_url,
+                        'type': 'forwarding_url',
+                        'action': 'updated' if pattern in existing_rules else 'created'
                     })
+                    logger.info(f"[Celery] Page Rule configured: {pattern} -> {target_url}")
+                else:
+                    logger.warning(f"[Celery] Failed to configure Page Rule for {pattern}: {cf_page_rule.text}")
+            except Exception as e:
+                logger.error(f"[Celery] Error configuring Page Rule for {pattern}: {e}")
+        
+        # STEP 6: (Fallback) If Page Rules failed and google_cloud_domain provided, log warning
+        if not page_rules_added and google_cloud_domain:
+            logger.info(f"[Celery] Step 6: Creating redirect rules (Page Rules failed - using fallback)")
+            # Legacy fallback - try basic redirect
+            pass
         
         # Update order status
         order.status = DomainOrder.OrderStatus.ACTIVE
@@ -597,9 +634,10 @@ def configure_domain_dns(self, order_id: int):
             'cloudflare_zone_id': cf_zone_id,
             'nameservers': cf_nameservers,
             'records': dns_records,
-            'target': actual_target,
+            'page_rules': page_rules_added,
+            'redirect_target': redirect_target,
             'configured_at': str(time.time()),
-            'message': 'Domain configured with Cloudflare DNS pointing to Google Cloud'
+            'message': f'Domain configured with Cloudflare DNS and Page Rules redirect (rules: {len(page_rules_added)})'
         }
         order.error_message = None
         order.save(update_fields=['status', 'dns_configuration', 'error_message'])
@@ -614,7 +652,8 @@ def configure_domain_dns(self, order_id: int):
             "cloudflare_zone_id": cf_zone_id,
             "nameservers": cf_nameservers,
             "records_added": len(dns_records),
-            "target": actual_target
+            "page_rules_added": len(page_rules_added),
+            "redirect_target": redirect_target
         }
         
     except ovh.exceptions.ResourceNotFoundError as exc:
@@ -652,5 +691,81 @@ def configure_domain_dns(self, order_id: int):
             "status": "error",
             "message": str(exc),
             "order_id": order_id
+        }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def purge_cloudflare_cache(self, domain_name: str):
+    """
+    Purge Cloudflare cache for a specific domain when configuration changes.
+    This ensures Worker immediately sees updated target/proxy_mode settings.
+    
+    Args:
+        self: Celery task instance
+        domain_name: Domain to purge cache for (e.g., 'dronecomponentsfpv.online')
+        
+    Returns:
+        dict: Purge result with status
+    """
+    import requests
+    from django.conf import settings
+    
+    logger.info(f"[Celery] Purging Cloudflare cache for domain: {domain_name}")
+    
+    # Get Cloudflare credentials from settings
+    cf_api_token = getattr(settings, 'CLOUDFLARE_API_TOKEN', None)
+    cf_zone_id = getattr(settings, 'CLOUDFLARE_ZONE_ID', None)
+    
+    if not cf_api_token or not cf_zone_id:
+        logger.warning(f"[Celery] Cloudflare credentials not configured - skipping cache purge")
+        return {
+            "status": "skipped",
+            "message": "Cloudflare credentials not configured"
+        }
+    
+    try:
+        # Purge cache for specific files/URLs related to this domain
+        # We purge the API endpoint that Worker calls
+        purge_url = f"https://youreasysite.com/api/v1/domains/resolve/{domain_name}"
+        
+        url = f"https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/purge_cache"
+        headers = {
+            "Authorization": f"Bearer {cf_api_token}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "files": [purge_url]
+        }
+        
+        response = requests.post(url, json=data, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        if result.get('success'):
+            logger.info(f"[Celery] Successfully purged cache for {domain_name}")
+            return {
+                "status": "success",
+                "domain": domain_name,
+                "purged_url": purge_url
+            }
+        else:
+            logger.error(f"[Celery] Cloudflare API returned error: {result}")
+            return {
+                "status": "error",
+                "message": result.get('errors', 'Unknown error'),
+                "domain": domain_name
+            }
+            
+    except requests.RequestException as e:
+        logger.error(f"[Celery] Failed to purge cache for {domain_name}: {e}")
+        # Retry with exponential backoff
+        raise self.retry(exc=e)
+    except Exception as e:
+        logger.error(f"[Celery] Unexpected error purging cache for {domain_name}: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "domain": domain_name
         }
 

@@ -634,7 +634,7 @@ class DomainOrderSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'user_email', 'site', 'site_name', 'site_identifier',
             'domain_name', 'ovh_order_id', 'ovh_cart_id', 'price', 'status',
-            'status_display', 'payment_url', 'dns_configuration', 'error_message',
+            'status_display', 'payment_url', 'dns_configuration', 'target', 'proxy_mode', 'error_message',
             'created_at', 'updated_at'
         ]
         read_only_fields = [

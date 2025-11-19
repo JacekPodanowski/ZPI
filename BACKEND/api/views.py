@@ -3635,6 +3635,52 @@ def get_domain_orders(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_domain_order(request, order_id):
+    """Update domain order configuration (e.g., target URL, proxy mode)."""
+    from .tasks import purge_cloudflare_cache
+    
+    try:
+        # Get the order
+        if request.user.is_staff:
+            # Admin can update any order
+            order = DomainOrder.objects.get(id=order_id)
+        else:
+            # Regular user can only update their own orders
+            order = DomainOrder.objects.get(id=order_id, user=request.user)
+    except DomainOrder.DoesNotExist:
+        return Response(
+            {'error': 'Order not found or access denied'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Allow updating target and proxy_mode fields
+    updated = False
+    
+    target = request.data.get('target')
+    if target is not None:
+        order.target = target
+        updated = True
+        logger.info(f"[Domain Order] Updated target for {order.domain_name}: {target}")
+    
+    proxy_mode = request.data.get('proxy_mode')
+    if proxy_mode is not None:
+        order.proxy_mode = proxy_mode
+        updated = True
+        logger.info(f"[Domain Order] Updated proxy_mode for {order.domain_name}: {proxy_mode}")
+    
+    if updated:
+        order.save()
+        
+        # Purge Cloudflare cache so Worker sees changes immediately
+        purge_cloudflare_cache.delay(order.domain_name)
+        logger.info(f"[Domain Order] Triggered cache purge for {order.domain_name}")
+    
+    serializer = DomainOrderSerializer(order)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @extend_schema(
@@ -4165,3 +4211,53 @@ def poll_ai_task_result(request, task_id):
         logger.info(f"[Polling] WebSocket message sent successfully")
     
     return Response(result)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Public endpoint for Cloudflare Worker
+def resolve_domain(request, domain):
+    """
+    Public endpoint for Cloudflare Worker to resolve domain configuration.
+    Returns the target URL for domain redirect.
+    
+    GET /api/v1/domains/resolve/{domain}/
+    Response: {"target": "youtube.com"} or {"target": "1234-mysite.youreasysite.com"}
+    """
+    try:
+        # Find active domain order
+        domain_order = DomainOrder.objects.filter(
+            domain_name=domain,
+            status=DomainOrder.OrderStatus.ACTIVE
+        ).first()
+        
+        if not domain_order:
+            logger.warning(f"[Domain Resolve] Domain not found or not active: {domain}")
+            return Response(
+                {'error': 'Domain not configured'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get target URL - if not set, use site subdomain
+        target = domain_order.target
+        if not target:
+            # Default to site subdomain
+            site = domain_order.site
+            target = f"{site.identifier}.youreasysite.com"
+            logger.info(f"[Domain Resolve] No target set, using default: {target}")
+        
+        logger.info(f"[Domain Resolve] {domain} -> {target}")
+        
+        return Response({
+            'target': target,
+            'proxy_mode': domain_order.proxy_mode,
+            'domain': domain,
+            'site_id': domain_order.site.id,
+            'site_name': domain_order.site.name
+        })
+        
+    except Exception as e:
+        logger.error(f"[Domain Resolve] Error resolving {domain}: {e}")
+        return Response(
+            {'error': 'Internal server error'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

@@ -49,6 +49,7 @@ from .views import (
     purchase_domain,
     confirm_domain_payment,
     get_domain_orders,
+    update_domain_order,
     ovh_payment_webhook,
     check_order_status,
     get_order_history,
@@ -56,6 +57,7 @@ from .views import (
     get_domain_pricing,
     AITaskView,
     poll_ai_task_result,
+    resolve_domain,
 )
 
 
@@ -113,11 +115,13 @@ urlpatterns = [
     path('domains/purchase/', purchase_domain, name='purchase-domain'),
     path('domains/confirm-payment/', confirm_domain_payment, name='confirm-domain-payment'),
     path('domains/orders/', get_domain_orders, name='get-domain-orders'),
+    path('domains/orders/<int:order_id>/', update_domain_order, name='update-domain-order'),
     path('domains/orders/<int:order_id>/history/', get_order_history, name='get-order-history'),
     path('domains/webhook/ovh/', ovh_payment_webhook, name='ovh-payment-webhook'),
     path('domains/check-status/', check_order_status, name='check-order-status'),
     path('domains/retry-dns/', retry_dns_configuration, name='retry-dns-configuration'),
     path('domains/pricing/', get_domain_pricing, name='get-domain-pricing'),
+    path('domains/resolve/<str:domain>/', resolve_domain, name='resolve-domain'),
     # AI Assistant endpoints
     path('ai-task/', AITaskView.as_view(), name='ai-task'),
     path('ai-task/<str:task_id>/poll/', poll_ai_task_result, name='poll-ai-task'),
