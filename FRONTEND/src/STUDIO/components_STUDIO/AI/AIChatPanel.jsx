@@ -4,8 +4,9 @@ import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon } from '
 import { processAITask } from '../../../services/aiService';
 import apiClient from '../../../services/apiClient';
 import useNewEditorStore from '../../store/newEditorStore';
+import { buildContextMessage, extractModuleTypes, estimateTokens, formatErrorMessage } from './aiHelpers';
 
-const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessingChange }) => {
+const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessingChange, mode = 'detail', onTaskComplete }) => {
   const [messages, setMessages] = useState([
     {
       id: 'intro',
@@ -62,43 +63,15 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
     setProcessingMessageId(loadingMsgId);
 
     try {
-      // Optimize context: send structure without long mock content
-      const optimizedSite = {
-        ...site,
-        pages: site.pages?.map(page => ({
-          ...page,
-          modules: page.modules?.map(module => ({
-            id: module.id,
-            name: module.name,
-            type: module.type,
-            enabled: module.enabled,
-            // Include only essential content fields (remove long descriptions/offers)
-            content: module.content ? {
-              title: module.content.title,
-              subtitle: module.content.subtitle,
-              // Don't send full offers array, descriptions etc - only structure
-              ...(module.content.offers ? { offersCount: module.content.offers.length } : {})
-            } : {}
-          }))
-        }))
-      };
+      // Extract mentioned module types for logging
+      const mentionedModules = extractModuleTypes(trimmed);
       
-      // Determine context: send only relevant page if possible
-      let contextData = optimizedSite;
-      let contextDescription = 'strukturę strony';
+      // Build context with full site structure
+      const contextData = buildContextMessage(mode, site, currentPageId);
       
-      // If user mentions specific page or we're on a specific page
-      if (currentPageId && currentPageId !== 'home') {
-        const currentPage = site.pages?.find(p => p.id === currentPageId);
-        if (currentPage) {
-          contextData = { 
-            currentPageId,
-            currentPageName: currentPage.name,
-            structure: optimizedSite 
-          };
-          contextDescription = `stronę "${currentPage.name}"`;
-        }
-      }
+      // Log for debugging
+      const tokenEstimate = estimateTokens(JSON.stringify(contextData));
+      console.log(`[AI] Sending context: ~${tokenEstimate} tokens, mentioned modules:`, mentionedModules);
 
       // Send to AI and get task_id
       const response = await processAITask(trimmed, contextData);
@@ -127,7 +100,7 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
         { 
           id: `ai-error-${Date.now()}`, 
           sender: 'ai', 
-          text: `Wystąpił błąd: ${error.response?.data?.error || error.message || 'Nieznany błąd'}. Spróbuj ponownie.` 
+          text: `Wystąpił błąd: ${formatErrorMessage(error)}. Spróbuj ponownie.` 
         }
       ]);
       setIsProcessing(false);
@@ -238,12 +211,17 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
         );
         setProcessingMessageId(null);
         setIsProcessing(false);
+        
+        // Notify parent that task is complete (success or error)
+        if (onTaskComplete) {
+          onTaskComplete(status === 'success');
+        }
       }
     };
 
     window.addEventListener('ai-update-received', handleAIUpdate);
     return () => window.removeEventListener('ai-update-received', handleAIUpdate);
-  }, [processingMessageId]);
+  }, [processingMessageId, onTaskComplete]);
 
   useEffect(() => {
     if (listRef.current) {

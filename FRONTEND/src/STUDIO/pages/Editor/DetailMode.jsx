@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, IconButton, Drawer, useMediaQuery, useTheme as useMuiTheme, CircularProgress } from '@mui/material';
-import { Menu as MenuIcon, Tune as TuneIcon, Chat as ChatIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Menu as MenuIcon, Tune as TuneIcon, Chat as ChatIcon, Close as CloseIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
-import AIChatPanel from './AIChatPanel';
+import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -20,6 +20,7 @@ const DetailMode = () => {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false); // AI chat initially collapsed
   const [isAiProcessing, setIsAiProcessing] = useState(false); // Track AI processing state
+  const [aiTaskCompleted, setAiTaskCompleted] = useState(false); // Track if task completed
   const MIN_PANEL = 0.1;
   const MAX_PANEL = 0.35;
   const MIN_CENTER = 0.4;
@@ -133,12 +134,14 @@ const DetailMode = () => {
               // Just open the existing chat - don't create a new one
               setAiChatOpen(true);
             }
+            // Clear completed state when opening
+            setAiTaskCompleted(false);
           }}
           disabled={false} // Always allow opening the chat
           sx={{
             position: 'fixed',
-            bottom: 16,
-            right: 16,
+            bottom: 24,
+            right: 24,
             zIndex: 1200,
             bgcolor: 'rgb(146, 0, 32)',
             color: 'white',
@@ -150,11 +153,23 @@ const DetailMode = () => {
               transform: 'scale(1.05)',
               boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
             },
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            '@keyframes checkPulse': {
+              '0%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.2)' },
+              '100%': { transform: 'scale(1)' }
+            }
           }}
         >
           {isAiProcessing ? (
             <CircularProgress size={24} sx={{ color: 'white' }} />
+          ) : aiTaskCompleted ? (
+            <CheckCircleIcon 
+              sx={{ 
+                animation: 'checkPulse 0.6s ease-in-out',
+                fontSize: 28
+              }} 
+            />
           ) : (
             <ChatIcon />
           )}
@@ -291,6 +306,8 @@ const DetailMode = () => {
                 <AIChatPanel 
                   onClose={() => setRightPanelOpen(false)}
                   onProcessingChange={setIsAiProcessing}
+                  onTaskComplete={(success) => setAiTaskCompleted(success)}
+                  mode="detail"
                 />
               </Box>
             </Box>
@@ -333,6 +350,8 @@ const DetailMode = () => {
             <AIChatPanel 
               onClose={() => setAiChatOpen(false)}
               onProcessingChange={setIsAiProcessing}
+              onTaskComplete={(success) => setAiTaskCompleted(success)}
+              mode="detail"
             />
           </Box>
         )}
