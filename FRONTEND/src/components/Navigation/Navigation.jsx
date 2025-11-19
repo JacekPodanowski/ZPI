@@ -60,27 +60,27 @@ const Navigation = () => {
     const userMenuItems = useMemo(
         () => ([
             {
-                label: 'Notifications',
+                label: 'Powiadomienia',
                 icon: <NotificationsNoneOutlinedIcon fontSize="small" />,
                 path: '/studio/account/notifications'
             },
             {
-                label: 'Profile Settings',
+                label: 'Ustawienia profilu',
                 icon: <PersonOutlineIcon fontSize="small" />,
                 path: '/studio/account/profile'
             },
             {
-                label: 'Billing & Plans',
+                label: 'Plan i płatności',
                 icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
                 path: '/studio/account/billing'
             },
             {
-                label: 'Appearance',
+                label: 'Wygląd',
                 icon: <PaletteOutlinedIcon fontSize="small" />,
                 path: '/studio/account/appearance'
             },
             {
-                label: 'Settings',
+                label: 'Ustawienia',
                 icon: <SettingsOutlinedIcon fontSize="small" />,
                 path: '/studio/account/settings'
             }
@@ -93,7 +93,7 @@ const Navigation = () => {
 
         if (isAuthenticated) {
             primary.push(
-                { label: 'Sites', to: '/studio/sites', requiresAuth: true },
+                { label: 'Strony', to: '/studio/sites', requiresAuth: true },
                 { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true },
                 { label: 'Viewer', to: '/viewer', requiresAuth: true }
             );
