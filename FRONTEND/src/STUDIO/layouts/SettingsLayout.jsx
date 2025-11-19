@@ -216,7 +216,7 @@ const SettingsLayout = () => {
               fontSize: { xs: '1.75rem', md: '3rem' }
             }}
           >
-            Your Account
+            Twoje konto
           </Typography>
         </Box>
         
@@ -229,7 +229,7 @@ const SettingsLayout = () => {
             fontSize: { xs: '0.9rem', md: '1rem' }
           }}
         >
-          Manage your account preferences and settings
+          Preferencje i ustawienia twojego konta
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
