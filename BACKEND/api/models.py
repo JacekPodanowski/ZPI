@@ -448,15 +448,35 @@ def custom_component_path(instance, filename):
 
 
 class CustomReactComponent(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    site = models.ForeignKey(
+        Site, 
+        on_delete=models.CASCADE, 
+        related_name='custom_components',
+        help_text='Site this custom component belongs to'
+    )
+    created_by = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_components',
+        help_text='User who created this component'
+    )
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     source_code = models.TextField(blank=True, help_text='Oryginalny kod JSX dla celów edycji')
     compiled_js = models.FileField(upload_to=custom_component_path, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = [('site', 'name')]
+        indexes = [
+            models.Index(fields=['site']),
+        ]
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.site.identifier})"
 
 
 class Notification(models.Model):
@@ -487,6 +507,14 @@ class MagicLink(models.Model):
         LOGIN = 'login', 'Login'
         PASSWORD_RESET = 'password_reset', 'Password Reset'
     
+    user = models.ForeignKey(
+        PlatformUser, 
+        on_delete=models.CASCADE, 
+        related_name='magic_links',
+        null=True,
+        blank=True,
+        help_text='User associated with this magic link'
+    )
     email = models.EmailField(max_length=254)
     token = models.CharField(max_length=64, unique=True, db_index=True)
     action_type = models.CharField(max_length=20, choices=ActionType.choices, default=ActionType.LOGIN)
@@ -497,9 +525,13 @@ class MagicLink(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'action_type']),
+            models.Index(fields=['user', 'used']),
+        ]
     
     def __str__(self):
-        return f'Magic link for {self.email} ({"used" if self.used else "active"})'
+        return f'Magic link for {self.user.email} ({"used" if self.used else "active"})'
     
     def is_valid(self):
         """Check if the magic link is still valid."""
@@ -516,13 +548,22 @@ class MagicLink(models.Model):
         self.save(update_fields=['used', 'used_at'])
     
     @classmethod
-    def create_for_email(cls, email, expiry_minutes=15, action_type=None):
-        """Create a new magic link for the given email."""
+    def create_for_email(cls, email, expiry_minutes=15, action_type=None, user=None):
+        """Create a new magic link for the given email and user."""
         if action_type is None:
             action_type = cls.ActionType.LOGIN
+        
+        # If user is not provided, try to find by email
+        if user is None:
+            try:
+                user = PlatformUser.objects.get(email=email)
+            except PlatformUser.DoesNotExist:
+                raise ValueError(f"No user found with email {email}")
+        
         token = get_random_string(64)
         expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
         return cls.objects.create(
+            user=user,
             email=email,
             token=token,
             action_type=action_type,
