@@ -28,6 +28,7 @@ import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
 import MagicLoginPage from './pages/Auth/MagicLoginPage';
 import BuildingLoginPage from './pages/Auth/BuildingLoginPage';
 import TermsAdminPage from './pages/Admin/TermsAdminPage';
+import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
 
 const StudioApp = () => (
   <Routes>
@@ -42,6 +43,9 @@ const StudioApp = () => (
     
     {/* Magic link login - PUBLIC route, no auth required */}
     <Route path="magic-login/:token" element={<MagicLoginPage />} />
+    
+    {/* Password reset - PUBLIC route, no auth required */}
+    <Route path="reset-password/:token" element={<ChangePasswordPage />} />
     
     {/* Building login page - shown during site creation flow */}
     <Route path="building-login" element={<BuildingLoginPage />} />
