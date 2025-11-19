@@ -272,7 +272,9 @@ EMAIL_HOST_CONFIGURED = os.environ.get('EMAIL_HOST')
 EMAIL_HOST_USER_CONFIGURED = os.environ.get('EMAIL_HOST_USER')
 
 if EMAIL_HOST_CONFIGURED and EMAIL_HOST_USER_CONFIGURED:
+    # Use standard SMTP backend
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    
     EMAIL_HOST = EMAIL_HOST_CONFIGURED
     EMAIL_HOST_USER = EMAIL_HOST_USER_CONFIGURED
     EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
