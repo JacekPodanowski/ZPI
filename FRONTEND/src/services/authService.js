@@ -48,6 +48,11 @@ export const updateUserPreferences = async (preferences) => {
     return response.data;
 };
 
+export const updateUserProfile = async (userData) => {
+    const response = await apiClient.patch('/users/me/', userData);
+    return response.data;
+};
+
 export const fetchLatestTerms = async () => {
     const response = await apiClient.get('/terms/latest/');
     return response.data;
