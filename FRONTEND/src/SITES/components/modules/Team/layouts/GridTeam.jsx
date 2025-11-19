@@ -89,8 +89,8 @@ const GridTeam = ({ content, style }) => {
                       </p>
                     )}
                   </div>
-                  {member.focus && (
-                    <p className="text-sm opacity-70" dangerouslySetInnerHTML={{ __html: member.focus }} />
+                  {member.description && (
+                    <p className="text-sm opacity-70" dangerouslySetInnerHTML={{ __html: member.description }} />
                   )}
                 </div>
               </motion.article>

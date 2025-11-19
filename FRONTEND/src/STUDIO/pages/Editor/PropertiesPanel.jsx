@@ -178,7 +178,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     
     // Set defaults based on collection type
     if (fieldKey === 'members') {
-      defaultItem = { ...defaultItem, name: 'New Member', role: 'Role', image: '' };
+      defaultItem = { ...defaultItem, name: 'Nowy członek', role: 'Rola', description: '', image: '' };
     } else if (fieldKey === 'offers' || fieldKey === 'services') {
       defaultItem = { ...defaultItem, name: 'New Service', price: '0', description: '' };
     } else if (fieldKey === 'items' && module.type === 'services') {
@@ -344,7 +344,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Team Members'} ({items.length})
+          {fieldDef.d || 'Członkowie zespołu'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((member, index) => (
@@ -374,7 +374,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               </IconButton>
               
               <TextField
-                label="Name"
+                label="Imię i nazwisko"
                 fullWidth
                 size="small"
                 value={member.name || ''}
@@ -387,7 +387,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <TextField
-                label="Role"
+                label="Rola"
                 fullWidth
                 size="small"
                 value={member.role || ''}
@@ -399,8 +399,24 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 sx={{ mb: 2 }}
               />
               
+              <TextField
+                label="Opis"
+                fullWidth
+                size="small"
+                multiline
+                rows={3}
+                value={member.description || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], description: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+                placeholder="Krótki opis osoby..."
+              />
+              
               <ImageUploader
-                label="Photo"
+                label="Zdjęcie"
                 value={member.image || ''}
                 onChange={(url) => {
                   const newItems = [...items];
@@ -446,7 +462,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Member
+          Dodaj członka
         </Button>
       </Box>
     );

@@ -239,6 +239,7 @@ class TeamMember(models.Model):
     bio = models.TextField(blank=True, help_text='Member bio for public display')
     avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='Custom avatar URL or null for generated')
     is_active = models.BooleanField(default=True)
+    description = models.CharField(max_length=1500)
     
     # Invitation management
     linked_user = models.ForeignKey(PlatformUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='team_memberships')

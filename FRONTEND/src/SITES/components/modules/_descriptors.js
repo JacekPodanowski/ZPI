@@ -528,29 +528,29 @@ export const TEAM_DEFAULTS = {
       title: 'Poznaj nasz zespół',
       subtitle: 'Instruktorzy, którzy poprowadzą Cię przez praktykę',
       members: [
-        { name: 'Anna Kowalska', role: 'Założycielka & Instruktorka Główna', bio: 'Praktykuję jogę od 15 lat. Certyfikowana instruktorka RYT 500 i mindfulness. Specjalizuję się w Hatha i Vinyasa Yoga.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Jan Nowak', role: 'Instruktor Vinyasa Flow', bio: '8 lat doświadczenia w prowadzeniu dynamicznych praktyk. Pasjonat filozofii jogi i ajurwedy.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Maria Wiśniewska', role: 'Instruktorka Medytacji', bio: 'Specjalistka od praktyk medytacyjnych i Joga Nidra. Pomaga odnaleźć spokój w codziennym życiu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Piotr Zieliński', role: 'Instruktor Jogi Terapeutycznej', bio: 'Fizjoterapeuta i instruktor jogi. Łączy wiedzę medyczną z praktyką dla bezpiecznego rozwoju.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Anna Kowalska', role: 'Założycielka & Instruktorka Główna', bio: 'Praktykuję jogę od 15 lat. Certyfikowana instruktorka RYT 500 i mindfulness. Specjalizuję się w Hatha i Vinyasa Yoga.', description: 'Anna jest sercem naszego studia. Jej pasja do jogi inspiruje wszystkich wokół.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Jan Nowak', role: 'Instruktor Vinyasa Flow', bio: '8 lat doświadczenia w prowadzeniu dynamicznych praktyk. Pasjonat filozofii jogi i ajurwedy.', description: 'Jan prowadzi energetyzujące sesje, które łączą ruch z oddechem.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Maria Wiśniewska', role: 'Instruktorka Medytacji', bio: 'Specjalistka od praktyk medytacyjnych i Joga Nidra. Pomaga odnaleźć spokój w codziennym życiu.', description: 'Maria pomoże Ci odnaleźć wewnętrzny spokój i równowagę.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Piotr Zieliński', role: 'Instruktor Jogi Terapeutycznej', bio: 'Fizjoterapeuta i instruktor jogi. Łączy wiedzę medyczną z praktyką dla bezpiecznego rozwoju.', description: 'Piotr specjalizuje się w pracy z kontuzjami i przewlekłym bólem.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     },
     {
       title: 'Nasi Eksperci',
       subtitle: 'Doświadczeni coachowie i mentorzy',
       members: [
-        { name: 'Michał Kowalski', role: 'Główny Coach & Founder', bio: '15 lat w biznesie korporacyjnym, certyfikowany coach ICF ACC. Specjalizacja: leadership i transformacja biznesowa.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Katarzyna Nowak', role: 'Career Coach', bio: 'Pomaga w rozwoju kariery i zmianie ścieżki zawodowej. HR z 10-letnim doświadczeniem.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Tomasz Wiśniewski', role: 'Executive Coach', bio: 'Były CEO, teraz wspiera liderów w osiąganiu szczytów. Mentor dla top management.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Michał Kowalski', role: 'Główny Coach & Founder', bio: '15 lat w biznesie korporacyjnym, certyfikowany coach ICF ACC. Specjalizacja: leadership i transformacja biznesowa.', description: 'Michał transformuje liderów i organizacje, łącząc strategię z rozwojem osobistym.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Katarzyna Nowak', role: 'Career Coach', bio: 'Pomaga w rozwoju kariery i zmianie ścieżki zawodowej. HR z 10-letnim doświadczeniem.', description: 'Katarzyna wspiera w odkrywaniu potencjału i planowaniu ścieżki kariery.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Tomasz Wiśniewski', role: 'Executive Coach', bio: 'Były CEO, teraz wspiera liderów w osiąganiu szczytów. Mentor dla top management.', description: 'Tomasz dzieli się praktyczną wiedzą z pozycji top managementu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     },
     {
       title: 'Poznaj Nas',
       subtitle: 'Twórcy wyjątkowych kadrów',
       members: [
-        { name: 'Piotr Wiśniewski', role: 'Fotograf Główny & Założyciel', bio: '10 lat doświadczenia w fotografii portretowej i ślubnej. Nagrody w konkursach fotograficznych.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Anna Lewandowska', role: 'Fotograf Eventowy', bio: 'Specjalistka od reportaży ślubnych i eventowych. Uwiecznia emocje i autentyczne momenty.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Marek Kowalczyk', role: 'Fotograf Produktowy', bio: 'Specjalizacja: fotografia komercyjna i produktowa dla e-commerce i brandów.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Ewa Zielińska', role: 'Retuszerka & Edytorka', bio: 'Magik post-produkcji. Każde zdjęcie dopracowuje do perfekcji z zachowaniem naturalności.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Piotr Wiśniewski', role: 'Fotograf Główny & Założyciel', bio: '10 lat doświadczenia w fotografii portretowej i ślubnej. Nagrody w konkursach fotograficznych.', description: 'Piotr tworzy ponadczasowe kadry pełne emocji i artyzmu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Anna Lewandowska', role: 'Fotograf Eventowy', bio: 'Specjalistka od reportaży ślubnych i eventowych. Uwiecznia emocje i autentyczne momenty.', description: 'Anna ma wyjątkowy dar wychwytywania spontanicznych chwil.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Marek Kowalczyk', role: 'Fotograf Produktowy', bio: 'Specjalizacja: fotografia komercyjna i produktowa dla e-commerce i brandów.', description: 'Marek prezentuje produkty w sposób, który zwiększa sprzedaż.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Ewa Zielińska', role: 'Retuszerka & Edytorka', bio: 'Magik post-produkcji. Każde zdjęcie dopracowuje do perfekcji z zachowaniem naturalności.', description: 'Ewa nadaje każdemu zdjęciu ostateczny szlif, zachowując naturalność.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     }
   ],
@@ -559,27 +559,27 @@ export const TEAM_DEFAULTS = {
       title: 'Nasz zespół',
       subtitle: 'Pasja i profesjonalizm',
       members: [
-        { name: 'Kasia Nowak', role: 'Yin Yoga Instructor', bio: 'Prowadzę spokojne, regenerujące praktyki Yin. Idealne po intensywnym dniu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Bartek Kowalski', role: 'Ashtanga Instructor', bio: 'Tradycyjna praktyka Ashtangi w moim wykonaniu. Dla tych, którzy lubią wyzwania.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Zosia Wiśniewska', role: 'Kids Yoga', bio: 'Pracuję z dziećmi, ucząc je świadomości ciała i umysłu przez zabawę.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Kasia Nowak', role: 'Yin Yoga Instructor', bio: 'Prowadzę spokojne, regenerujące praktyki Yin. Idealne po intensywnym dniu.', description: 'Kasia specjalizuje się w głębokiej relaksacji i rozciąganiu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Bartek Kowalski', role: 'Ashtanga Instructor', bio: 'Tradycyjna praktyka Ashtangi w moim wykonaniu. Dla tych, którzy lubią wyzwania.', description: 'Bartek prowadzi wymagające praktyki dla zaawansowanych.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Zosia Wiśniewska', role: 'Kids Yoga', bio: 'Pracuję z dziećmi, ucząc je świadomości ciała i umysłu przez zabawę.', description: 'Zosia wprowadza najmłodszych w świat jogi przez zabawę.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     },
     {
       title: 'Zespół Coachów',
       subtitle: 'Wspieramy Twój rozwój',
       members: [
-        { name: 'Agnieszka Malinowska', role: 'Life Coach', bio: 'Specjalizuję się w work-life balance i rozwoju osobistym. Pomagam odnaleźć równowagę.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Robert Nowicki', role: 'Team Coach', bio: 'Buduję efektywne zespoły. Pracuję z firmami nad komunikacją i współpracą.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Monika Zielińska', role: 'Wellness Coach', bio: 'Łączę coaching z podejściem holistycznym. Ciało, umysł i dusza w harmonii.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Agnieszka Malinowska', role: 'Life Coach', bio: 'Specjalizuję się w work-life balance i rozwoju osobistym. Pomagam odnaleźć równowagę.', description: 'Agnieszka pomaga znaleźć równowagę między życiem zawodowym a prywatnym.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Robert Nowicki', role: 'Team Coach', bio: 'Buduję efektywne zespoły. Pracuję z firmami nad komunikacją i współpracą.', description: 'Robert buduje zgrany zespół poprzez komunikację i współpracę.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Monika Zielińska', role: 'Wellness Coach', bio: 'Łączę coaching z podejściem holistycznym. Ciało, umysł i dusza w harmonii.', description: 'Monika łączy rozwój zawodowy z troską o zdrowie i samopoczucie.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     },
     {
       title: 'Studio Team',
       subtitle: 'Profesjonaliści za obiektywem',
       members: [
-        { name: 'Jakub Nowak', role: 'Asystent Fotografa', bio: 'Wspieram przy dużych sesjach i eventach. Uczę się od najlepszych.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Kasia Lewandowska', role: 'Stylistka', bio: 'Dbam o wygląd podczas sesji - fryzury, makijaż, styling. Sprawiamy, że wyglądasz perfekcyjnie.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Tomasz Kowalczyk', role: 'Oświetleniowiec', bio: 'Magik światła. Każda sesja to dla mnie szansa na stworzenie idealnego oświetlenia.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Jakub Nowak', role: 'Asystent Fotografa', bio: 'Wspieram przy dużych sesjach i eventach. Uczę się od najlepszych.', description: 'Jakub zapewnia płynny przebieg każdej sesji zdjęciowej.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Kasia Lewandowska', role: 'Stylistka', bio: 'Dbam o wygląd podczas sesji - fryzury, makijaż, styling. Sprawiamy, że wyglądasz perfekcyjnie.', description: 'Kasia dba, abyś wyglądała perfekcyjnie przed każdym ujęciem.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Tomasz Kowalczyk', role: 'Oświetleniowiec', bio: 'Magik światła. Każda sesja to dla mnie szansa na stworzenie idealnego oświetlenia.', description: 'Tomasz kreuje idealne światło do każdego ujęcia.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     }
   ],
@@ -588,27 +588,27 @@ export const TEAM_DEFAULTS = {
       title: 'Zespół',
       subtitle: 'Poznaj ludzi, którzy tworzą naszą społeczność',
       members: [
-        { name: 'Laura Kowalska', role: 'Kundalini Instructor', bio: 'Prowadzę praktyki Kundalini Yoga - energetyczne przebudzenie i transformacja.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Marcin Nowak', role: 'Pranayama Specialist', bio: 'Specjalizuję się w technikach oddechowych. Oddech to życie - naucz się go kontrolować.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Ania Zielińska', role: 'Prenatal Yoga', bio: 'Pracuję z kobietami w ciąży, przygotowując je na poród i macierzyństwo.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Laura Kowalska', role: 'Kundalini Instructor', bio: 'Prowadzę praktyki Kundalini Yoga - energetyczne przebudzenie i transformacja.', description: 'Laura prowadzi transformacyjne praktyki Kundalini.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Marcin Nowak', role: 'Pranayama Specialist', bio: 'Specjalizuję się w technikach oddechowych. Oddech to życie - naucz się go kontrolować.', description: 'Marcin uczy kontroli oddechu i pracy z energią życiową.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Ania Zielińska', role: 'Prenatal Yoga', bio: 'Pracuję z kobietami w ciąży, przygotowując je na poród i macierzyństwo.', description: 'Ania wspiera przyszłe mamy w przygotowaniu do porodu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     },
     {
       title: 'Nasi Specjaliści',
       subtitle: 'Eksperci w swoich dziedzinach',
       members: [
-        { name: 'Paweł Wiśniewski', role: 'Business Strategy Coach', bio: 'Pomagam firmom w tworzeniu i realizacji strategii wzrostu. MBA, 20 lat doświadczenia.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Ewa Kowalczyk', role: 'Mindfulness Coach', bio: 'Uczę uważności w życiu zawodowym. Mindfulness to klucz do efektywności bez stresu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Kamil Nowicki', role: 'Sales Coach', bio: 'Trenuję zespoły sprzedażowe. Zwiększam skuteczność przez rozwój kompetencji.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Paweł Wiśniewski', role: 'Business Strategy Coach', bio: 'Pomagam firmom w tworzeniu i realizacji strategii wzrostu. MBA, 20 lat doświadczenia.', description: 'Paweł tworzy strategie wzrostu oparte na danych i doświadczeniu.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Ewa Kowalczyk', role: 'Mindfulness Coach', bio: 'Uczę uważności w życiu zawodowym. Mindfulness to klucz do efektywności bez stresu.', description: 'Ewa uczy technik mindfulness dla większej efektywności.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Kamil Nowicki', role: 'Sales Coach', bio: 'Trenuję zespoły sprzedażowe. Zwiększam skuteczność przez rozwój kompetencji.', description: 'Kamil rozwija umiejętności sprzedażowe zespołów.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     },
     {
       title: 'Nasz Zespół Kreatywny',
       subtitle: 'Wszyscy zaangażowani w Twój sukces',
       members: [
-        { name: 'Magda Kowalska', role: 'Menedżer Studia', bio: 'Koordynuję wszystkie sesje i dbam o płynną organizację. Pierwszy kontakt dla klientów.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Wojtek Nowak', role: 'Videograf', bio: 'Oprócz foto robimy też video. Tworzę filmy z sesji i eventów.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
-        { name: 'Ola Wiśniewska', role: 'Grafik', bio: 'Projektuję albumy, zaproszenia i wszystkie materiały graficzne dla klientów.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
+        { name: 'Magda Kowalska', role: 'Menedżer Studia', bio: 'Koordynuję wszystkie sesje i dbam o płynną organizację. Pierwszy kontakt dla klientów.', description: 'Magda jest Twoim pierwszym punktem kontaktu i koordynuje wszystkie sesje.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Wojtek Nowak', role: 'Videograf', bio: 'Oprócz foto robimy też video. Tworzę filmy z sesji i eventów.', description: 'Wojtek tworzy dynamiczne filmy, które opowiadają Twoją historię.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` },
+        { name: 'Ola Wiśniewska', role: 'Grafik', bio: 'Projektuję albumy, zaproszenia i wszystkie materiały graficzne dla klientów.', description: 'Ola tworzy piękne materiały graficzne i albumy ze zdjęć.', image: `https://picsum.photos/seed/${randomSeed()}/400/400` }
       ]
     }
   ]
