@@ -1,6 +1,7 @@
 """Celery tasks for asynchronous media processing and notifications."""
 
 import base64
+import json
 import logging
 from celery import shared_task
 from django.conf import settings
@@ -209,4 +210,124 @@ def send_booking_confirmation_emails(self, booking_id):
     
     logger.info(f"Queued confirmation emails for booking {booking_id}.")
     return {"status": "success", "booking_id": booking_id}
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: int, context: dict = None):
+    """
+    Execute complex AI task using Claude in background.
+    Sends complete modified site config via WebSocket when done.
+    
+    Args:
+        self: Celery task instance
+        user_prompt: User's command/request
+        site_config: Current FULL site configuration
+        user_id: ID of the user who initiated the request
+        context: Optional additional context
+        
+    Returns:
+        dict: Task result with status
+    """
+    from .ai_services import get_flash_service, AIServiceException
+    from django.core.cache import cache
+    import json
+    
+    logger.info(f"[Celery] Starting AI task for user {user_id}: {user_prompt[:50]}...")
+    logger.info(f"[Celery] Task ID: {self.request.id}")
+    
+    cache_key = f'ai_task_result_{user_id}_{self.request.id}'
+    logger.info(f"[Celery] Cache key will be: {cache_key}")
+    
+    try:
+        # Use Flash for all tasks
+        flash_service = get_flash_service()
+        result = flash_service.process_task(user_prompt, site_config, context)
+        
+        status = result.get('status', 'success')
+        logger.info(f"[Celery] Flash result status: {status}")
+        
+        # CLARIFICATION NEEDED - ask user for more details
+        if status == 'clarification':
+            question = result.get('question', 'Proszę doprecyzuj co chcesz zmienić')
+            logger.info(f"[Celery] Clarification needed: {question}")
+            
+            result_data = {
+                'status': 'clarification',
+                'question': question,
+                'prompt': user_prompt,
+                'task_id': self.request.id
+            }
+            cache.set(cache_key, json.dumps(result_data), timeout=300)
+            
+            return {
+                "status": "clarification",
+                "question": question,
+                "prompt": user_prompt,
+                "user_id": user_id,
+                "task_id": self.request.id
+            }
+        
+        logger.info(f"[Celery] Flash returned result with keys: {list(result.keys())}")
+        logger.info(f"[Celery] Site config present: {('site' in result)}, Explanation: {result.get('explanation', 'N/A')[:100]}")
+        
+        # Store result in cache for frontend to poll (5 minutes TTL)
+        result_data = {
+            'status': 'success',
+            'site': result.get('site'),
+            'explanation': result.get('explanation', 'Zmiany wprowadzone pomyślnie'),
+            'prompt': user_prompt,
+            'task_id': self.request.id
+        }
+        
+        cache.set(cache_key, json.dumps(result_data), timeout=300)
+        logger.info(f"[Celery] Result stored in cache with key: {cache_key}")
+        
+        return {
+            "status": "success",
+            "prompt": user_prompt,
+            "user_id": user_id,
+            "task_id": self.request.id
+        }
+        
+    except AIServiceException as exc:
+        logger.error(f"[Celery] AI service error for user {user_id}: {exc}")
+        
+        # Store error in cache
+        error_data = {
+            'status': 'error',
+            'error': str(exc),
+            'prompt': user_prompt,
+            'task_id': self.request.id
+        }
+        cache.set(cache_key, json.dumps(error_data), timeout=300)
+        
+        return {
+            "status": "error",
+            "message": str(exc),
+            "prompt": user_prompt,
+            "user_id": user_id,
+            "task_id": self.request.id
+        }
+        
+    except Exception as exc:
+        logger.exception(f"[Celery] Unexpected error in complex AI task for user {user_id}: {exc}")
+        
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+        
+        # Store error in cache after final retry
+        error_data = {
+            'status': 'error',
+            'error': f"Task failed after retries: {str(exc)}",
+            'prompt': user_prompt,
+            'task_id': self.request.id
+        }
+        cache.set(cache_key, json.dumps(error_data), timeout=300)
+        
+        return {
+            "status": "error",
+            "message": f"Task failed after retries: {str(exc)}",
+            "prompt": user_prompt,
+            "user_id": user_id
+        }
 

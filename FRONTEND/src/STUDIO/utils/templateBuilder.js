@@ -147,44 +147,44 @@ export const createDefaultTemplateConfig = () => {
             textColor: 'rgb(30, 30, 30)',
             accentColor: 'rgb(146, 0, 32)',
             currency: 'PLN',
-            offers: [
+            services: [
               {
-                id: `offer-${Date.now()}-1`,
+                id: `service-${Date.now()}-1`,
                 name: 'Sesja indywidualna',
                 category: '1:1',
-                description: '<p>60 minut pracy dopasowanej do Twoich potrzeb. Otrzymujesz plan praktyki domowej.</p>',
+                description: '<p>60 minut pracy dopasowanej do Twoich potrzeb. Podczas sesji skupiamy się na Twoich celach i wyzwaniach. Otrzymujesz spersonalizowany plan praktyki domowej oraz wsparcie w jego realizacji. Każde spotkanie to przestrzeń na rozwój i autentyczne odkrywanie siebie. Sesje prowadzone są w kameralnej atmosferze sprzyjającej głębokiej pracy. Możliwość rezerwacji sesji stacjonarnych lub online. Dedykowane osobom poszukującym indywidualnego podejścia. Pierwsze spotkanie zawiera szczegółową konsultację i diagnozę potrzeb.</p>',
                 price: '180',
                 image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?auto=format&fit=crop&w=900&q=60'
               },
               {
-                id: `offer-${Date.now()}-2`,
+                id: `service-${Date.now()}-2`,
                 name: 'Karnet 4 spotkania',
                 category: 'Pakiet',
-                description: '<p>4 tygodnie praktyki z dostępem do nagrań i zniżkami na warsztaty.</p>',
+                description: '<p>4 tygodnie systematycznej praktyki z dostępem do nagrań wszystkich sesji. Program zapewnia kompleksowe wsparcie w budowaniu regularnej rutyny. Otrzymujesz ekskluzywny dostęp do biblioteki nagrań medytacyjnych i ćwiczeń. Karnet obejmuje zniżki na warsztaty tematyczne i wydarzenia specjalne. Elastyczny harmonogram dostosowany do Twojego stylu życia. Możliwość przedłużenia ważności karnetu w uzasadnionych przypadkach. Idealne rozwiązanie dla osób chcących zaangażować się w dłuższą praktykę. Dodatkowy bonus: konsultacja online w połowie programu.</p>',
                 price: '640',
                 image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=60'
               },
               {
-                id: `offer-${Date.now()}-3`,
+                id: `service-${Date.now()}-3`,
                 name: 'Warsztaty grupowe',
                 category: 'Grupa',
-                description: '<p>Kameralne spotkania tematyczne rozwijające świadomość ciała i oddechu.</p>',
+                description: '<p>Kameralne spotkania tematyczne rozwijające świadomość ciała i oddechu. Każdy warsztat to 3 godziny intensywnej pracy w grupie maksymalnie 12 osób. Tworzymy bezpieczną przestrzeń do eksploracji i wymiany doświadczeń. Program obejmuje praktykę ruchową, techniki oddechowe oraz medytację prowadzoną. Uczestników łączymy w pary wspierające się nawzajem w praktyce. Po warsztacie otrzymujesz zestaw materiałów do samodzielnej pracy. Regularne tematy obejmują zarządzanie stresem, poprawę snu i budowanie odporności. Dołącz do społeczności praktykujących i rozwijaj się w inspirującym towarzystwie.</p>',
                 price: '120',
                 image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=900&q=60'
               },
               {
-                id: `offer-${Date.now()}-4`,
+                id: `service-${Date.now()}-4`,
                 name: 'Program oddechowy',
                 category: 'Online',
-                description: '<p>Czterotygodniowy cykl spotkań online z nagraniami i materiałami PDF.</p>',
+                description: '<p>Czterotygodniowy cykl spotkań online z kompleksowym podejściem do pracy z oddechem. Każdy tydzień to nowa technika i pogłębianie świadomości. Otrzymujesz dostęp do nagrań wszystkich sesji oraz materiałów PDF z instrukcjami. Program prowadzi certyfikowany instruktor z wieloletnim doświadczeniem. Spotkania odbywają się na żywo przez Zoom z możliwością zadawania pytań. Dodatkowe wsparcie poprzez grupę zamkniętą na komunikatorze. Uczysz się technik, które możesz stosować codziennie dla poprawy samopoczucia. Idealne dla osób pracujących, które cenią elastyczność i wygodę nauki online.</p>',
                 price: '450',
                 image: 'https://images.unsplash.com/photo-1526674183561-3a54354ceaba?auto=format&fit=crop&w=900&q=60'
               },
               {
-                id: `offer-${Date.now()}-5`,
+                id: `service-${Date.now()}-5`,
                 name: 'Program regeneracyjny',
                 category: 'Weekend',
-                description: '<p>Weekend w kameralnej grupie z pełnym wyżywieniem i zestawem nagrań medytacyjnych.</p>',
+                description: '<p>Weekend w kameralnej grupie z pełnym wyżywieniem i kompleksowym programem odnowy. Dwa dni intensywnej praktyki w pięknym, spokojnym otoczeniu z dala od miejskiego zgiełku. Program obejmuje sesje poranne i wieczorne, warsztaty tematyczne oraz czas na indywidualną refleksję. Otrzymujesz zestaw nagrań medytacyjnych do dalszej praktyki w domu. Posiłki przygotowane z lokalnych, ekologicznych produktów wspierających regenerację organizmu. Zakwaterowanie w komfortowych pokojach 1-2 osobowych zapewniających prywatność i wypoczynek. Maksymalnie 16 uczestników gwarantuje kameralną atmosferę i indywidualne podejście. Idealne dla osób potrzebujących głębokiego resetu i oderwania się od codziennych obowiązków.</p>',
                 price: '920',
                 image: 'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=900&q=60'
               }

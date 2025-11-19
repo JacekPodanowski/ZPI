@@ -7,12 +7,8 @@ export const SERVICES_DESCRIPTOR = {
   fields: {
     title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
-    serviceItems: { 
-      t: 'array', 
-      d: 'Service items', 
-      category: 'content'
-    },
-    offers: { t: 'array', req: true, d: 'Lista ofert', category: 'content' },
+    services: { t: 'array', req: true, d: 'Lista usług', category: 'content' },
+    offers: { t: 'array', req: true, d: 'Lista ofert (deprecated - użyj services)', category: 'content' },
     currency: { t: 'text', d: 'Waluta', category: 'content' },
   bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
   backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },

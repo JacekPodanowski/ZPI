@@ -33,15 +33,15 @@ const FullscreenHero = ({ content, style }) => {
           className={headingClass}
           style={{ color: primaryColor }}
         >
-          {content.heading}
+          {content.title || content.heading}
         </h1>
         
-        {content.subheading && (
+        {(content.subtitle || content.subheading) && (
           <p 
             className={`${textClass} mt-4 md:mt-6`} 
             style={{ color: textColor }}
           >
-            {content.subheading}
+            {content.subtitle || content.subheading}
           </p>
         )}
         

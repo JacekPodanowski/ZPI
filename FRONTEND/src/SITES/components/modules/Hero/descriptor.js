@@ -3,8 +3,8 @@ export const HERO_DESCRIPTOR = {
   type: 'hero',
   desc: 'Eye-catching intro section',
   fields: {
-    heading: { t: 'text', req: true, d: 'Main headline', category: 'content' },
-    subheading: { t: 'text', d: 'Supporting text', category: 'content' },
+    title: { t: 'text', req: true, d: 'Main headline', category: 'content' },
+    subtitle: { t: 'text', d: 'Supporting text', category: 'content' },
     ctaText: { t: 'text', d: 'Button text', category: 'content' },
     ctaLink: { t: 'text', d: 'Button URL', category: 'content' },
   showButton: { t: 'boolean', d: 'Display call-to-action button', category: 'appearance' },

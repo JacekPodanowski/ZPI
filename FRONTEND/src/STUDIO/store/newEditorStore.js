@@ -160,6 +160,12 @@ const normalizeModule = (module, index, pageId) => {
   const enabled = module.enabled !== undefined ? module.enabled : module.visible !== false;
   const baseContent = deepClone(module.content || module.config || {});
 
+  console.log(`[normalizeModule] Processing ${moduleType}:`, {
+    hasModuleLayout: !!module.layout,
+    hasContentLayout: !!baseContent?.layout,
+    contentKeys: Object.keys(baseContent)
+  });
+
   const { __legacyKey, modules: _childModules, ...rest } = module;
 
   const normalized = {
@@ -176,6 +182,11 @@ const normalizeModule = (module, index, pageId) => {
   if (!normalized.config && module.config) {
     normalized.config = deepClone(module.config);
   }
+
+  console.log(`[normalizeModule] Result for ${moduleType}:`, {
+    layout: normalized.layout,
+    contentKeys: Object.keys(normalized.content)
+  });
 
   return normalized;
 };
@@ -789,6 +800,58 @@ const useNewEditorStore = create((set, get) => ({
       return applyChangeWithHistory(state, 'detail', metadata, updates);
     }),
 
+  // Update module property (not content) - for layout, enabled, order, etc.
+  updateModuleProperty: (pageId, moduleId, property, value) =>
+    set((state) => {
+      const page = state.site.pages.find((p) => p.id === pageId);
+      if (!page) {
+        return {};
+      }
+
+      const modules = page.modules || [];
+      const module = modules.find((m) => m.id === moduleId);
+      if (!module) {
+        return {};
+      }
+
+      // Check if value actually changed
+      if (JSON.stringify(module[property]) === JSON.stringify(value)) {
+        return {};
+      }
+
+      const updatedModule = {
+        ...module,
+        [property]: value
+      };
+
+      const updatedSite = {
+        ...state.site,
+        pages: state.site.pages.map((p) =>
+          p.id === pageId
+            ? {
+                ...p,
+                modules: (p.modules || []).map((m) => (m.id === moduleId ? updatedModule : m))
+              }
+            : p
+        )
+      };
+
+      const metadata = {
+        source: state.aiTransaction.active ? 'ai' : 'user',
+        actionType: 'edit_property',
+        description: `Changed ${property} of ${module.type || 'module'}`,
+        affectedModules: [moduleId],
+        changesCount: 1
+      };
+
+      const updates = {
+        site: updatedSite,
+        hasUnsavedChanges: true
+      };
+
+      return applyChangeWithHistory(state, 'detail', metadata, updates);
+    }),
+
   batchUpdateModuleContents: (updates = {}) =>
     set((state) => {
       const page = state.site.pages.find((p) => p.id === state.selectedPageId);
@@ -1263,6 +1326,10 @@ const useNewEditorStore = create((set, get) => ({
       ? requestedEntryPoint
       : defaultEntryPoint;
 
+    console.log('[EditorStore] loadSite - pages:', nextSite.pages?.map(p => ({ id: p.id, name: p.name })));
+    console.log('[EditorStore] loadSite - entryPoint:', entryPoint);
+    console.log('[EditorStore] loadSite - selectedPageId will be:', entryPoint);
+
     set(() => {
       return {
         siteId: siteData.id || siteData.siteId || null,
@@ -1326,6 +1393,48 @@ const useNewEditorStore = create((set, get) => ({
     const state = get();
     return state.moduleHeights[moduleType] || defaultHeight;
   },
+
+  // Replace entire site state with history tracking (for AI updates)
+  replaceSiteStateWithHistory: (newSiteConfig, metadata = {}) =>
+    set((state) => {
+      const mode = metadata.mode || 'detail'; // AI changes are detail-level
+      const snapshotOverride = createSnapshot(state); // Save current state BEFORE change
+
+      // Normalize and validate new site config - CRITICAL: ensures module.layout is set correctly
+      const rawSite = newSiteConfig.site || newSiteConfig;
+      const normalizedSite = normalizeSiteConfig(rawSite);
+      
+      console.log('[EditorStore] replaceSiteStateWithHistory - normalized site:', {
+        pagesCount: normalizedSite.pages?.length,
+        firstPageModules: normalizedSite.pages?.[0]?.modules?.map(m => ({
+          id: m.id,
+          type: m.type,
+          layout: m.layout,
+          contentKeys: Object.keys(m.content || {})
+        }))
+      });
+      
+      const updates = {
+        site: normalizedSite,
+        hasUnsavedChanges: true,
+      };
+
+      // Push current state to history before applying new state
+      const historyUpdate = pushHistoryEntry(state, mode, {
+        timestamp: Date.now(),
+        source: metadata.source || 'ai',
+        actionType: metadata.actionType || 'ai_edit',
+        description: metadata.description || 'AI-generated change',
+        conversationId: metadata.conversationId || null,
+        affectedModules: metadata.affectedModules || [],
+        changesCount: metadata.changesCount || 1,
+      }, snapshotOverride);
+
+      return {
+        ...updates,
+        ...historyUpdate,
+      };
+    }),
 
   undo: (mode) =>
     set((state) => {

@@ -22,7 +22,8 @@ const renderModule = (module, style, siteId, activePageKey) => {
 
   if (moduleDef) {
     const Component = moduleDef.component;
-    const layout = module.content?.layout || moduleDef.defaultLayout;
+    // Support both module.layout and module.content.layout
+    const layout = module.layout || module.content?.layout || moduleDef.defaultLayout;
     
     // Dla nawigacji dodaj activePageId do contentu
     const content = moduleType === 'navigation' 

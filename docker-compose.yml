@@ -64,9 +64,9 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    # Uruchamia serwer deweloperski Django z włączonym domyślnie auto-reloaderem.
-    # 0.0.0.0 sprawia, że serwer jest dostępny z zewnątrz kontenera.
-    command: python manage.py runserver 0.0.0.0:8000
+    # Use Daphne ASGI server to support WebSocket connections
+    #command: python manage.py runserver 0.0.0.0:8000
+    command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
     volumes:
       # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
       - ./BACKEND:/home/appuser/app

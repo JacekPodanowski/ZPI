@@ -182,7 +182,8 @@ const SiteCanvas = () => {
     }
 
     const Component = moduleDef.component
-    const layout = module.config?.layout || module.content?.layout || moduleDef.defaultLayout
+    // Read layout from normalized location (module.layout), fallback to legacy locations
+    const layout = module.layout || module.config?.layout || module.content?.layout || moduleDef.defaultLayout
 
     const animationVariants = {
       smooth: {
@@ -210,6 +211,13 @@ const SiteCanvas = () => {
       content: module.content || module.config || {},
       style
     }
+
+    console.log(`[SiteCanvas] Rendering ${moduleType}:`, {
+      moduleId: module.id,
+      layout,
+      contentKeys: Object.keys(module.content || {}),
+      content: module.content
+    });
 
     const content = animations.enabled ? (
       <motion.div {...animationVariants[animations.style]}>

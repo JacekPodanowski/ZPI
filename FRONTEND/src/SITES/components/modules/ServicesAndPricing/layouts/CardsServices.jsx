@@ -8,7 +8,8 @@ const CardsServices = ({ content, style }) => {
   const {
     title = 'Oferta',
     subtitle = 'Sprawdź naszą ofertę i przejrzyste ceny',
-    offers = [],
+    services,  // Primary field
+    offers,    // Deprecated fallback
     currency = 'PLN',
     bgColor = style?.background || '#FFFFFF',
     textColor = style?.text || 'rgb(30, 30, 30)',
@@ -17,7 +18,9 @@ const CardsServices = ({ content, style }) => {
     backgroundOverlayColor
   } = content || {};
 
-  const hasOffers = offers && offers.length > 0;
+  // Use services if available, otherwise fall back to offers for backward compatibility
+  const items = services || offers || [];
+  const hasServices = items && items.length > 0;
 
   return (
     <section className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor }}>
@@ -39,22 +42,22 @@ const CardsServices = ({ content, style }) => {
           </div>
         )}
 
-        {/* Offers Grid */}
-        {hasOffers ? (
+        {/* Services Grid */}
+        {hasServices ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {offers.map((offer) => {
-              const resolvedImage = resolveMediaUrl(offer.image);
+            {items.map((service, index) => {
+              const resolvedImage = resolveMediaUrl(service.image);
               const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
               
               return (
                 <motion.article
-                  key={offer.id}
+                  key={service.id || index}
                   whileHover={{ y: -6 }}
                   className={`${style.cardStyle} overflow-hidden bg-white shadow-lg border border-black/5`}
                 >
                   {hasValidImage && (
                     <div className="aspect-video overflow-hidden bg-black">
-                      {isVideoUrl(offer.image) ? (
+                      {isVideoUrl(service.image) ? (
                         <video
                           src={resolvedImage}
                           autoPlay
@@ -66,26 +69,26 @@ const CardsServices = ({ content, style }) => {
                           Twoja przeglądarka nie obsługuje odtwarzania wideo.
                         </video>
                       ) : (
-                        <img src={resolvedImage} alt={offer.name} className="w-full h-full object-cover" />
+                        <img src={resolvedImage} alt={service.name} className="w-full h-full object-cover" />
                       )}
                     </div>
                   )}
                   <div className="p-6 space-y-4" style={{ color: textColor }}>
                     <div>
-                      {offer.category && (
+                      {service.category && (
                         <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
-                          {offer.category}
+                          {service.category}
                         </span>
                       )}
-                      <h3 className="text-xl font-semibold">{offer.name || 'Nowa oferta'}</h3>
-                      {offer.description && (
-                        <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: offer.description }} />
+                      <h3 className="text-xl font-semibold">{service.name || 'Nowa usługa'}</h3>
+                      {service.description && (
+                        <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: service.description }} />
                       )}
                     </div>
                     <div className="flex items-baseline justify-between pt-2 border-t border-black/10">
                       <span className="text-sm uppercase tracking-[0.2em] opacity-60">Cena</span>
                       <span className="text-2xl font-semibold" style={{ color: accentColor }}>
-                        {offer.price ? `${offer.price} ${currency}` : 'Na zapytanie'}
+                        {service.price ? `${service.price} ${currency}` : 'Na zapytanie'}
                       </span>
                     </div>
                   </div>
@@ -95,7 +98,7 @@ const CardsServices = ({ content, style }) => {
           </div>
         ) : (
           <div className="text-center py-12 text-sm text-black/40">
-            Dodaj oferty w konfiguratorze, aby wypełnić sekcję.
+            Dodaj usługi w konfiguratorze, aby wypełnić sekcję.
           </div>
         )}
       </div>

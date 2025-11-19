@@ -45,6 +45,8 @@ from .views import (
     reject_invitation_studio,
     check_domain_availability,
     get_domain_pricing,
+    AITaskView,
+    poll_ai_task_result,
 )
 
 
@@ -98,4 +100,7 @@ urlpatterns = [
     # Domain checking endpoints
     path('domains/check-availability/', check_domain_availability, name='check-domain-availability'),
     path('domains/pricing/', get_domain_pricing, name='get-domain-pricing'),
+    # AI Assistant endpoints
+    path('ai-task/', AITaskView.as_view(), name='ai-task'),
+    path('ai-task/<str:task_id>/poll/', poll_ai_task_result, name='poll-ai-task'),
 ]

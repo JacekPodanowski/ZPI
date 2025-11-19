@@ -3215,3 +3215,153 @@ def get_domain_pricing(request):
         )
 
 
+class AITaskView(APIView):
+    """
+    Two-tier AI system endpoint.
+    Flash model performs triage, Claude handles complex tasks.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(
+        tags=['AI Assistant'],
+        summary='Process AI task with two-tier system',
+        description=(
+            'Submit a user command for AI processing. Flash model performs fast triage: '
+            'simple tasks are executed immediately, complex tasks are queued for Claude processing.'
+        ),
+        request=inline_serializer(
+            name='AITaskRequest',
+            fields={
+                'prompt': serializers.CharField(help_text='User command or request'),
+                'config': serializers.JSONField(help_text='Current site/module configuration'),
+                'context': serializers.JSONField(
+                    required=False,
+                    help_text='Optional additional context (site type, target audience, etc.)'
+                ),
+            }
+        ),
+        responses={
+            200: inline_serializer(
+                name='AITaskSimpleResponse',
+                fields={
+                    'status': serializers.CharField(),
+                    'difficulty': serializers.CharField(),
+                    'action': serializers.JSONField(),
+                }
+            ),
+            202: inline_serializer(
+                name='AITaskComplexResponse',
+                fields={
+                    'status': serializers.CharField(),
+                    'difficulty': serializers.CharField(),
+                    'reason': serializers.CharField(),
+                    'task_id': serializers.CharField(),
+                }
+            ),
+            400: OpenApiResponse(description='Invalid request data'),
+            500: OpenApiResponse(description='AI processing error'),
+        }
+    )
+    def post(self, request):
+        """
+        Process AI task - all site editing tasks go directly to Claude via Celery.
+        Returns task_id for WebSocket tracking.
+        """
+        from .tasks import execute_complex_ai_task
+        
+        user_prompt = request.data.get('prompt')
+        site_config = request.data.get('config')
+        context = request.data.get('context', {})
+        user_id = request.user.id
+        
+        if not user_prompt:
+            return Response(
+                {"error": "Prompt is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not site_config:
+            return Response(
+                {"error": "Config is required (full site configuration)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # All site editing tasks go directly to Claude for full context processing
+            # Results will be sent via WebSocket when ready
+            task = execute_complex_ai_task.delay(user_prompt, site_config, user_id, context)
+            
+            logger.info(f"AI task queued for user {user_id}: {user_prompt[:50]}... (task_id: {task.id})")
+            
+            return Response(
+                {
+                    'status': 'task_started',
+                    'task_id': task.id,
+                    'message': 'AI is processing your request. You will see changes via WebSocket.',
+                },
+                status=status.HTTP_202_ACCEPTED
+            )
+        
+        except Exception as e:
+            logger.exception(f"Failed to queue AI task for user {user_id}: {e}")
+            return Response(
+                {"error": "Failed to queue AI task"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        except Exception as e:
+            logger.exception(f"Failed to queue AI task for user {user_id}: {e}")
+            return Response(
+                {"error": "Failed to queue AI task"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def poll_ai_task_result(request, task_id):
+    """Poll for AI task result from cache."""
+    from django.core.cache import cache
+    import json
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    
+    user_id = request.user.id
+    cache_key = f'ai_task_result_{user_id}_{task_id}'
+    
+    logger.info(f"[Polling] User {user_id} polling for task {task_id}")
+    logger.info(f"[Polling] Looking for cache key: {cache_key}")
+    
+    result_json = cache.get(cache_key)
+    
+    if not result_json:
+        logger.info(f"[Polling] No result found in cache - returning pending")
+        return Response({'status': 'pending'})
+    
+    logger.info(f"[Polling] Found result in cache: {result_json[:200]}...")
+    
+    # Parse result
+    result = json.loads(result_json)
+    
+    # Delete from cache
+    cache.delete(cache_key)
+    logger.info(f"[Polling] Deleted cache key: {cache_key}")
+    
+    # Send via WebSocket (now from Django process with proper context)
+    if result.get('status') in ['success', 'error']:
+        channel_layer = get_channel_layer()
+        
+        message_data = {
+            'type': 'send_ai_update',
+            **result  # status, site, explanation, error, etc.
+        }
+        
+        logger.info(f"[Polling] Sending WebSocket message to group ai_updates_{user_id}")
+        async_to_sync(channel_layer.group_send)(
+            f'ai_updates_{user_id}',
+            message_data
+        )
+        logger.info(f"[Polling] WebSocket message sent successfully")
+    
+    return Response(result)
+

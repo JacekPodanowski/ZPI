@@ -179,8 +179,8 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     // Set defaults based on collection type
     if (fieldKey === 'members') {
       defaultItem = { ...defaultItem, name: 'New Member', role: 'Role', image: '' };
-    } else if (fieldKey === 'offers') {
-      defaultItem = { ...defaultItem, name: 'New Offer', price: '0', description: '' };
+    } else if (fieldKey === 'offers' || fieldKey === 'services') {
+      defaultItem = { ...defaultItem, name: 'New Service', price: '0', description: '' };
     } else if (fieldKey === 'items' && module.type === 'services') {
       defaultItem = { ...defaultItem, name: 'New Service', description: 'Service description', image: '', details: '' };
     } else if (fieldKey === 'serviceItems') {
@@ -189,6 +189,21 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
       defaultItem = { ...defaultItem, question: 'New Question', answer: '<p>New Answer</p>' };
     } else if (fieldKey === 'images') {
       defaultItem = { url: '', caption: '' };
+    } else if (fieldKey === 'timeline' || fieldKey === 'milestones') {
+      // Timeline/milestones for About module
+      const currentYear = new Date().getFullYear();
+      defaultItem = {
+        year: currentYear.toString(),
+        title: 'Nowy kamień milowy',
+        description: 'Opis tego etapu rozwoju'
+      };
+    } else if (fieldKey === 'keyHighlights' || fieldKey === 'highlights') {
+      // Key highlights for About module
+      defaultItem = {
+        icon: 'star',
+        title: 'Nowe osiągnięcie',
+        description: 'Opis osiągnięcia lub wyróżniającej cechy'
+      };
     } else if (fieldKey === 'events') {
       const today = new Date().toISOString().split('T')[0];
       defaultItem = {
@@ -675,11 +690,11 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
   }
 
   // Pricing offers
-  if (fieldKey === 'offers') {
+  if (fieldKey === 'offers' || fieldKey === 'services') {
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Pricing Offers'} ({items.length})
+          {fieldDef.d || 'Services'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((offer, index) => (
@@ -1118,6 +1133,243 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     );
   }
   
+  // Timeline milestones editor (for About module)
+  if (fieldKey === 'timeline' || fieldKey === 'milestones') {
+    return (
+      <Box key={fieldKey}>
+        <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
+          {fieldDef.d || 'Timeline milestones'} ({items.length})
+        </Typography>
+        <Stack spacing={2}>
+          {(items || []).map((item, index) => (
+            <Box
+              key={index}
+              sx={{
+                p: 2,
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: '8px',
+                position: 'relative'
+              }}
+            >
+              <Stack spacing={1.5}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Year"
+                  value={item.year || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, year: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                />
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Title"
+                  value={item.title || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, title: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                />
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Description"
+                  multiline
+                  rows={2}
+                  value={item.description || item.desc || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, description: e.target.value };
+                    // Remove old 'desc' field if it exists
+                    if (newItems[index].desc !== undefined) {
+                      delete newItems[index].desc;
+                    }
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                />
+              </Stack>
+              
+              <Stack direction="row" spacing={0.5} sx={{ mt: 1.5 }}>
+                <IconButton
+                  size="small"
+                  disabled={index === 0}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowUpward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  disabled={index === items.length - 1}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowDownward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const newItems = items.filter((_, i) => i !== index);
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+        <Button
+          startIcon={<Add />}
+          onClick={handleAddItem}
+          sx={{
+            mt: 2,
+            color: 'rgb(146, 0, 32)',
+            '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
+          }}
+        >
+          Add Milestone
+        </Button>
+      </Box>
+    );
+  }
+  
+  // Key highlights editor (for About module)
+  if (fieldKey === 'keyHighlights' || fieldKey === 'highlights') {
+    const iconOptions = ['star', 'award', 'heart', 'users', 'briefcase', 'chart', 'camera', 'building'];
+    
+    return (
+      <Box key={fieldKey}>
+        <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
+          {fieldDef.d || 'Key highlights'} ({items.length})
+        </Typography>
+        <Stack spacing={2}>
+          {(items || []).map((item, index) => (
+            <Box
+              key={index}
+              sx={{
+                p: 2,
+                border: '1px solid rgba(0,0,0,0.1)',
+                borderRadius: '8px',
+                position: 'relative'
+              }}
+            >
+              <Stack spacing={1.5}>
+                <TextField
+                  fullWidth
+                  select
+                  size="small"
+                  label="Icon"
+                  value={item.icon || 'star'}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, icon: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                >
+                  {iconOptions.map(icon => (
+                    <MenuItem key={icon} value={icon}>{icon}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Title"
+                  value={item.title || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, title: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                />
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Description"
+                  multiline
+                  rows={2}
+                  value={item.description || item.desc || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...item, description: e.target.value };
+                    // Remove old 'desc' field if it exists
+                    if (newItems[index].desc !== undefined) {
+                      delete newItems[index].desc;
+                    }
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }}
+                />
+              </Stack>
+              
+              <Stack direction="row" spacing={0.5} sx={{ mt: 1.5 }}>
+                <IconButton
+                  size="small"
+                  disabled={index === 0}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowUpward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  disabled={index === items.length - 1}
+                  onClick={() => {
+                    const newItems = [...items];
+                    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+                    onContentChange(fieldKey, newItems);
+                  }}
+                >
+                  <ArrowDownward fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const newItems = items.filter((_, i) => i !== index);
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
+        <Button
+          startIcon={<Add />}
+          onClick={handleAddItem}
+          sx={{
+            mt: 2,
+            color: 'rgb(146, 0, 32)',
+            '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
+          }}
+        >
+          Add Highlight
+        </Button>
+      </Box>
+    );
+  }
+  
   // Generic array fallback - simple list with add/remove
   return (
     <Box key={fieldKey}>
@@ -1169,7 +1421,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
 };
 
 const PropertiesPanel = ({ placement = 'right' }) => {
-  const { selectedModuleId, selectedPageId, updateModuleContent, deselectModule } = useNewEditorStore();
+  const { selectedModuleId, selectedPageId, updateModuleContent, updateModuleProperty, deselectModule } = useNewEditorStore();
   
   // Subscribe to pages array so component re-renders when modules change
   const pages = useNewEditorStore(state => state.site.pages);
@@ -1182,7 +1434,17 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   
   // Get available layouts for this module
   const availableLayouts = moduleDef?.layouts || [];
-  let rawLayout = module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+  // Check both module.layout and module.content.layout
+  let rawLayout = module?.layout || module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
+  
+  console.log('[PropertiesPanel] Layout info:', {
+    moduleType: module?.type,
+    moduleLayout: module?.layout,
+    contentLayout: module?.content?.layout,
+    rawLayout,
+    availableLayouts,
+    defaultLayout: moduleDef?.defaultLayout
+  });
   
   // Normalize layout: if current layout is not in available options, use default
   const currentLayout = availableLayouts.includes(rawLayout) 
@@ -1224,7 +1486,13 @@ const PropertiesPanel = ({ placement = 'right' }) => {
         moduleId: module.id,
         pageId: page.id
       });
-      updateModuleContent(page.id, module.id, { [field]: value });
+      
+      // Special handling for 'layout' - save to module.layout, not module.content.layout
+      if (field === 'layout') {
+        updateModuleProperty(page.id, module.id, 'layout', value);
+      } else {
+        updateModuleContent(page.id, module.id, { [field]: value });
+      }
     }
   };
   

@@ -16,6 +16,9 @@ const GridAbout = ({ content, style }) => {
   const primaryColor = content.primaryColor || style?.primary || '#1e1e1e';
   const textColor = content.textColor || style?.text || '#333333';
   const borderColor = content.borderColor || style?.colors?.border || style?.borderColor || `${primaryColor}26`;
+  
+  // Support both old (highlights) and new (keyHighlights) field names
+  const highlightsData = content.keyHighlights || content.highlights || [];
 
   return (
     <section 
@@ -52,9 +55,9 @@ const GridAbout = ({ content, style }) => {
         </div>
         
         {/* Highlights Grid */}
-        {content.highlights && (
+        {highlightsData.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-12 md:mt-16">
-            {content.highlights.map((highlight, index) => (
+            {highlightsData.map((highlight, index) => (
               <div 
                 key={index}
                 className={`${cardClass} ${animationClass} text-center`}
@@ -70,7 +73,7 @@ const GridAbout = ({ content, style }) => {
                   className={`${textClass} text-sm`}
                   style={{ color: textColor }}
                 >
-                  {highlight.desc}
+                  {highlight.description || highlight.desc}
                 </p>
               </div>
             ))}

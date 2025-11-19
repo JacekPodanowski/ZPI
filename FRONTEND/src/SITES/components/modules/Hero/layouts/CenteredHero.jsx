@@ -2,6 +2,10 @@
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const CenteredHero = ({ content, style }) => {
+  console.log('[CenteredHero] Rendering with content:', content);
+  console.log('[CenteredHero] title:', content?.title);
+  console.log('[CenteredHero] subtitle:', content?.subtitle);
+  
   const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
   const spacingClass = style?.spacing || '';
   const roundedClass = style?.rounded || '';

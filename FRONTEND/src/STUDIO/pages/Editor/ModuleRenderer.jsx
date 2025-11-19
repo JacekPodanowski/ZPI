@@ -137,7 +137,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
     }
   }
 
-  const baseLayout = module.content?.layout || moduleDef.defaultLayout;
+  const baseLayout = module.layout || module.content?.layout || moduleDef.defaultLayout;
   const layout = isNavigationModule && devicePreview === 'mobile'
     ? 'mobile'
     : baseLayout;

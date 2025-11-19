@@ -100,20 +100,23 @@ class Command(BaseCommand):
                 # Use force_id to ensure consistent IDs (2, 3, 4)
                 force_id = site_data.get('force_id')
                 
-                # Create fresh mock site
-                site = Site.objects.create(
+                # Use update_or_create to handle existing IDs gracefully
+                site, created = Site.objects.update_or_create(
                     id=force_id,
-                    owner=site_data['owner'],
-                    name=site_data['name'],
-                    template_config=site_data['template_config'],
-                    color_index=color_index,
-                    team_size=1,  # Initially only owner
-                    is_mock=True  # Mark as mock site
+                    defaults={
+                        'owner': site_data['owner'],
+                        'name': site_data['name'],
+                        'template_config': site_data['template_config'],
+                        'color_index': color_index,
+                        'team_size': 1,  # Initially only owner
+                        'is_mock': True  # Mark as mock site
+                    }
                 )
                 
                 created_sites.append(site)
                 
-                self.stdout.write(self.style.SUCCESS(f'Created mock site "{site.name}" (ID={site.id}) for {site_data["owner"].email}'))
+                action = 'Created' if created else 'Updated'
+                self.stdout.write(self.style.SUCCESS(f'{action} mock site "{site.name}" (ID={site.id}) for {site_data["owner"].email}'))
             
             # Create team member invitation for third site (Gabinet Psychoterapii)
             # Random user invites admin as contributor

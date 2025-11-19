@@ -10,6 +10,7 @@ import { fetchSiteById } from '../../../services/siteService';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
 import { getDefaultModuleContent } from './moduleDefinitions';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Helper function to convert old module format to new format
 const convertModuleNameToObject = (moduleName, index) => {
@@ -46,11 +47,12 @@ const convertModuleNameToObject = (moduleName, index) => {
 
 const NewEditorPage = () => {
   const { siteId } = useParams();
-  const { editorMode, loadSite, setSiteId, setSiteName } = useNewEditorStore();
+  const { editorMode, loadSite, setSiteId, setSiteName, replaceSiteStateWithHistory } = useNewEditorStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const theme = useTheme();
   const editorColors = getEditorColorTokens(theme);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadSiteData = async () => {
@@ -193,6 +195,91 @@ const NewEditorPage = () => {
 
     loadSiteData();
   }, [siteId, loadSite, setSiteId, setSiteName]);
+
+  // WebSocket connection for AI updates (now used only for real-time delivery)
+  useEffect(() => {
+    if (!user?.id) {
+      console.log('[NewEditorPage] No user ID available, skipping WebSocket connection');
+      return;
+    }
+
+    // Use backend URL for WebSocket
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.104:8000/api/v1';
+    const backendHost = API_BASE.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '');
+    const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
+    
+    console.log('[NewEditorPage] Establishing WebSocket connection to:', wsUrl);
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log('[NewEditorPage] WebSocket connected for AI updates');
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        console.log('[NewEditorPage] Raw WebSocket message received:', event.data);
+        const data = JSON.parse(event.data);
+        console.log('[NewEditorPage] Parsed AI update:', data);
+
+        handleAIUpdate(data);
+      } catch (error) {
+        console.error('[NewEditorPage] Error parsing WebSocket message:', error);
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error('[NewEditorPage] WebSocket error:', error);
+    };
+
+    socket.onclose = (event) => {
+      console.log('[NewEditorPage] WebSocket closed:', event.code, event.reason);
+    };
+
+    return () => {
+      console.log('[NewEditorPage] Cleaning up WebSocket connection');
+      socket.close();
+    };
+  }, [user?.id, replaceSiteStateWithHistory]);
+
+  // Also listen for polling-based updates
+  useEffect(() => {
+    const handlePolledUpdate = (event) => {
+      console.log('[NewEditorPage] Polled AI update received:', event.detail);
+      handleAIUpdate(event.detail);
+    };
+
+    window.addEventListener('ai-site-updated', handlePolledUpdate);
+    return () => window.removeEventListener('ai-site-updated', handlePolledUpdate);
+  }, [replaceSiteStateWithHistory]);
+
+  // Unified AI update handler
+  const handleAIUpdate = (data) => {
+    if (data.status === 'success' && data.site) {
+      console.log('[NewEditorPage] Applying AI-generated site update');
+      console.log('[NewEditorPage] Site data structure:', Object.keys(data.site));
+      
+      replaceSiteStateWithHistory(data.site, {
+        type: 'ai-update',
+        prompt: data.prompt || 'AI modification',
+        explanation: data.explanation
+      });
+      
+      console.log('[NewEditorPage] replaceSiteStateWithHistory called successfully');
+      
+      // Notify chat panel about success
+      window.dispatchEvent(new CustomEvent('ai-update-received', {
+        detail: { status: 'success', explanation: data.explanation }
+      }));
+    } else if (data.status === 'error') {
+      console.error('[NewEditorPage] AI task failed:', data.error);
+      
+      // Notify chat panel about error
+      window.dispatchEvent(new CustomEvent('ai-update-received', {
+        detail: { status: 'error', explanation: data.error }
+      }));
+    }
+  };
 
   if (loading) {
     return (

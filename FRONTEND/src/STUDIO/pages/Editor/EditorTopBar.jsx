@@ -94,6 +94,7 @@ const EditorTopBar = () => {
   const [titleValue, setTitleValue] = useState(siteName);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [versions, setVersions] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const fileInputRef = useRef(null);
   const isMobile = useMediaQuery('(max-width:900px)');

@@ -12,6 +12,9 @@ const TimelineAbout = ({ content, style }) => {
   const backgroundColor = content.bgColor || style?.background || '#f0f0ed';
   const primaryColor = content.primaryColor || style?.primary || '#1e1e1e';
   const textColor = content.textColor || style?.text || '#333333';
+  
+  // Support both old (milestones) and new (timeline) field names
+  const timelineData = content.timeline || content.milestones || [];
 
   return (
     <section 
@@ -38,7 +41,7 @@ const TimelineAbout = ({ content, style }) => {
         
         {/* Timeline */}
         <div className="mt-12 md:mt-16 space-y-8 md:space-y-12">
-          {content.milestones?.map((milestone, index) => (
+          {timelineData.map((milestone, index) => (
             <div 
               key={index}
               className={`flex flex-col md:flex-row gap-4 md:gap-8 items-start ${animationClass}`}
@@ -64,7 +67,7 @@ const TimelineAbout = ({ content, style }) => {
                   className={textClass}
                   style={{ color: textColor }}
                 >
-                  {milestone.desc}
+                  {milestone.description || milestone.desc}
                 </p>
               </div>
             </div>

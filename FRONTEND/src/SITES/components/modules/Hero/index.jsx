@@ -13,14 +13,14 @@ const LAYOUTS = {
 };
 
 const HeroSection = ({ layout = 'centered', content = {}, style }) => {
-  // Use the first variant from defaults as fallback, but content from props should already be set
-  const defaultOptions = HERO_DEFAULTS[layout] || HERO_DEFAULTS.centered;
-  const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
+  console.log('[HeroSection] Rendering with layout:', layout);
+  console.log('[HeroSection] content:', content);
+  console.log('[HeroSection] content keys:', Object.keys(content || {}));
   
-  const mergedContent = mergeWithDefaults(defaults, content);
-  
+  // Don't merge with defaults - use only actual content from JSON
+  // This ensures AI-generated changes are displayed immediately
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.centered;
-  return <LayoutComponent content={mergedContent} style={style} />;
+  return <LayoutComponent content={content} style={style} />;
 };
 
 HeroSection.descriptor = HERO_DESCRIPTOR;

@@ -3,22 +3,22 @@
 export const HERO_DEFAULTS = {
   centered: [
     {
-      heading: "Odkryj Swoją Wewnętrzną Równowagę",
-      subheading: "Profesjonalne sesje jogi i medytacji w sercu miasta",
+      title: "Odkryj Swoją Wewnętrzną Równowagę",
+      subtitle: "Profesjonalne sesje jogi i medytacji w sercu miasta",
       ctaText: "Zarezerwuj Sesję",
       ctaLink: "/rezerwacja",
       showButton: true
     },
     {
-      heading: "Rozwijaj Swój Biznes z Ekspertem",
-      subheading: "Indywidualne konsultacje biznesowe dla przedsiębiorców",
+      title: "Rozwijaj Swój Biznes z Ekspertem",
+      subtitle: "Indywidualne konsultacje biznesowe dla przedsiębiorców",
       ctaText: "Umów Konsultację",
       ctaLink: "/kontakt",
       showButton: true
     },
     {
-      heading: "Twoja Wizja, Moja Pasja",
-      subheading: "Profesjonalna fotografia portretowa i eventowa",
+      title: "Twoja Wizja, Moja Pasja",
+      subtitle: "Profesjonalna fotografia portretowa i eventowa",
       ctaText: "Zobacz Portfolio",
       ctaLink: "/galeria",
       showButton: true
@@ -26,8 +26,8 @@ export const HERO_DEFAULTS = {
   ],
   split: [
     {
-      heading: "Odkryj Sztukę Spokoju",
-      subheading: "Twoja osobista przestrzeń do praktyki jogi i medytacji",
+      title: "Odkryj Sztukę Spokoju",
+      subtitle: "Twoja osobista przestrzeń do praktyki jogi i medytacji",
       image: `https://picsum.photos/seed/hero-split-1/800/600`,
       imagePosition: 'right',
       ctaText: "Zobacz Ofertę",
@@ -35,8 +35,8 @@ export const HERO_DEFAULTS = {
       showButton: true
     },
     {
-      heading: "Przekształć Swoją Karierę",
-      subheading: "Kompleksowe wsparcie w rozwoju zawodowym i osobistym",
+      title: "Przekształć Swoją Karierę",
+      subtitle: "Kompleksowe wsparcie w rozwoju zawodowym i osobistym",
       image: `https://picsum.photos/seed/hero-split-2/800/600`,
       imagePosition: 'left',
       ctaText: "Poznaj Metody",
@@ -44,8 +44,8 @@ export const HERO_DEFAULTS = {
       showButton: true
     },
     {
-      heading: "Uwiecznij Najważniejsze Chwile",
-      subheading: "Artystyczna fotografia z pasją i profesjonalizmem",
+      title: "Uwiecznij Najważniejsze Chwile",
+      subtitle: "Artystyczna fotografia z pasją i profesjonalizmem",
       image: `https://picsum.photos/seed/hero-split-3/800/600`,
       imagePosition: 'right',
       ctaText: "Sprawdź Cennik",
@@ -55,8 +55,8 @@ export const HERO_DEFAULTS = {
   ],
   fullscreen: [
     {
-      heading: "Przestrzeń dla Twojego Ciała i Umysłu",
-      subheading: "Dołącz do naszej społeczności świadomych praktyków",
+      title: "Przestrzeń dla Twojego Ciała i Umysłu",
+      subtitle: "Dołącz do naszej społeczności świadomych praktyków",
       backgroundImage: `https://picsum.photos/seed/hero-full-1/1920/1080`,
       overlay: true,
       ctaText: "Rozpocznij Praktykę",
@@ -64,8 +64,8 @@ export const HERO_DEFAULTS = {
       showButton: true
     },
     {
-      heading: "Zbuduj Silny Fundament Biznesowy",
-      subheading: "Strategia, coaching i mentoring dla liderów",
+      title: "Zbuduj Silny Fundament Biznesowy",
+      subtitle: "Strategia, coaching i mentoring dla liderów",
       backgroundImage: `https://picsum.photos/seed/hero-full-2/1920/1080`,
       overlay: true,
       ctaText: "Dowiedz Się Więcej",
@@ -73,8 +73,8 @@ export const HERO_DEFAULTS = {
       showButton: true
     },
     {
-      heading: "Twórz Niezapomniane Historie",
-      subheading: "Profesjonalne sesje zdjęciowe w wyjątkowych lokalizacjach",
+      title: "Twórz Niezapomniane Historie",
+      subtitle: "Profesjonalne sesje zdjęciowe w wyjątkowych lokalizacjach",
       backgroundImage: `https://picsum.photos/seed/hero-full-3/1920/1080`,
       overlay: true,
       ctaText: "Zarezerwuj Sesję",

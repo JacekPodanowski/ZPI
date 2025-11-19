@@ -25,6 +25,9 @@ DISCORD_SERVER_URL = os.environ.get("DISCORD_SERVER_URL")
 # --- NameSilo API (for domain checking) ---
 NAMESILO_API_KEY = os.environ.get('NAMESILO_API_KEY')
 
+# --- AI Models API Keys ---
+FLASH_API_KEY = os.environ.get('FLASH_API_KEY')
+
 SUPABASE_URL = os.environ.get('supabase_url')
 SUPABASE_ANON_KEY = os.environ.get('supabase_api_key')
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -74,11 +77,13 @@ if not DEBUG:
 # --- Konfiguracja aplikacji Django ---
 ROOT_URLCONF = 'site_project.urls'
 WSGI_APPLICATION = 'site_project.wsgi.application'
+ASGI_APPLICATION = 'site_project.asgi.application'
 AUTH_USER_MODEL = 'api.PlatformUser'
 SITE_ID = 1
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 INSTALLED_APPS = [
+    'channels',
     'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -321,3 +326,20 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
 
+# --- Konfiguracja Django Cache (Redis) ---
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{os.environ.get('REDIS_HOST', '127.0.0.1')}:{os.environ.get('REDIS_PORT', 6379)}/1",
+    }
+}
+
+# --- Konfiguracja Django Channels ---
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(os.environ.get('REDIS_HOST', '127.0.0.1'), int(os.environ.get('REDIS_PORT', 6379)))],
+        },
+    },
+}
