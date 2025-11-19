@@ -56,27 +56,27 @@ const AdminNavigation = () => {
     const userMenuItems = useMemo(
         () => ([
             {
-                label: 'Notifications',
+                label: 'Powiadomienia',
                 icon: <NotificationsNoneOutlinedIcon fontSize="small" />,
                 path: '/studio/account/notifications'
             },
             {
-                label: 'Profile Settings',
+                label: 'Ustawienia profilu',
                 icon: <PersonOutlineIcon fontSize="small" />,
                 path: '/studio/account/profile'
             },
             {
-                label: 'Billing & Plans',
+                label: 'Plan i płatności',
                 icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
                 path: '/studio/account/billing'
             },
             {
-                label: 'Appearance',
+                label: 'Wygląd',
                 icon: <PaletteOutlinedIcon fontSize="small" />,
                 path: '/studio/account/appearance'
             },
             {
-                label: 'Settings',
+                label: 'Ustawienia',
                 icon: <SettingsOutlinedIcon fontSize="small" />,
                 path: '/studio/account/settings'
             }
@@ -96,6 +96,7 @@ const AdminNavigation = () => {
     const handleLogout = () => {
         logout();
         setMobileOpen(false);
+        navigate('/');
     };
 
     const drawer = (

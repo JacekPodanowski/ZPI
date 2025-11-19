@@ -25,7 +25,7 @@ import Logo from '../../../components/Logo/Logo';
 const LoginPage = () => {
     const { login, signup, googleLogin, mockLogin } = useAuth();
     const location = useLocation();
-    const redirectPath = location.state?.from?.pathname ?? '/admin';
+    const redirectPath = location.state?.from?.pathname ?? '/studio/sites';
 
     const [mode, setMode] = useState('login'); // 'login', 'register', or 'magic'
     const [email, setEmail] = useState('');

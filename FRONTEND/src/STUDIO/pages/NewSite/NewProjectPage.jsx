@@ -14,7 +14,14 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { getModulesForCategory, validateSiteName, WIZARD_STORAGE_KEYS } from './wizardConstants';
 import ModuleWarningModal from './ModuleWarningModal';
-import Navigation from '../../../components/Navigation/Navigation';
+import {
+    WIZARD_STAGES,
+    validateStageAccess,
+    getWizardData,
+    completeStage,
+    clearStageAndFollowing,
+    getStageRoute
+} from './wizardStageManager';
 
 const MONTSERRAT_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';
 
@@ -172,55 +179,61 @@ const NewProjectPage = () => {
     const location = useLocation();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const selectedCategory = location.state?.category || 'default';
     
     const [siteName, setSiteName] = useState('');
-    const [modules, setModules] = useState(() => getModulesForCategory(selectedCategory));
+    const [modules, setModules] = useState([]);
     const [warningModal, setWarningModal] = useState({ open: false, module: null });
     const [nameError, setNameError] = useState(null);
     const [pageVisible, setPageVisible] = useState(false);
     const [titleConfirmed, setTitleConfirmed] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [showAdditionalModules, setShowAdditionalModules] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('default');
+
+    // Validate stage access on mount
+    useEffect(() => {
+        const validation = validateStageAccess(WIZARD_STAGES.PROJECT);
+        
+        if (!validation.canAccess) {
+            // Redirect to the appropriate stage
+            navigate(validation.redirectTo, { replace: true });
+            return;
+        }
+
+        // Load wizard data
+        const wizardData = getWizardData();
+        
+        if (wizardData?.category) {
+            setSelectedCategory(wizardData.category);
+            setModules(getModulesForCategory(wizardData.category));
+            
+            // Restore name if saved
+            if (wizardData.name) {
+                setSiteName(wizardData.name);
+                setTitleConfirmed(true);
+            }
+            
+            // Restore module selections if saved
+            if (Array.isArray(wizardData.modules) && wizardData.modules.length > 0) {
+                setModules((prevModules) =>
+                    prevModules.map((module) => ({
+                        ...module,
+                        enabled: wizardData.modules.includes(module.id)
+                    }))
+                );
+            }
+        } else {
+            // Use category from location state if available
+            const category = location.state?.category || 'default';
+            setSelectedCategory(category);
+            setModules(getModulesForCategory(category));
+        }
+    }, [navigate, location.state]);
 
     useEffect(() => {
         const timer = setTimeout(() => setPageVisible(true), 80);
         return () => clearTimeout(timer);
     }, []);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        try {
-            const storedDraft = window.localStorage.getItem(WIZARD_STORAGE_KEYS.ACTIVE_DRAFT);
-            if (!storedDraft) {
-                return;
-            }
-
-            const parsedDraft = JSON.parse(storedDraft);
-            if (!parsedDraft || parsedDraft.category !== selectedCategory) {
-                return;
-            }
-
-            if (parsedDraft.name && !siteName) {
-                setSiteName(parsedDraft.name);
-                setTitleConfirmed(true);
-            }
-
-            if (Array.isArray(parsedDraft.modules) && parsedDraft.modules.length) {
-                setModules((prevModules) =>
-                    prevModules.map((module) => ({
-                        ...module,
-                        enabled: parsedDraft.modules.includes(module.id)
-                    }))
-                );
-            }
-        } catch (draftError) {
-            console.warn('[NewProjectPage] Failed to restore wizard draft:', draftError);
-        }
-    }, [selectedCategory, siteName]);
 
     const handleToggle = (module) => {
         if (module.enabled && module.disableWarning?.enabled) {
@@ -264,7 +277,9 @@ const NewProjectPage = () => {
     };
 
     const handleBack = () => {
-        navigate('/studio/new');
+        // Clear this stage and following stages when going back
+        clearStageAndFollowing(WIZARD_STAGES.CATEGORY);
+        navigate(getStageRoute(WIZARD_STAGES.CATEGORY));
     };
 
     const handleNext = () => {
@@ -273,24 +288,14 @@ const NewProjectPage = () => {
         }
 
         const enabledModules = modules.filter((m) => m.enabled).map((m) => m.id);
-        const draftPayload = {
+        
+        // Complete this stage
+        completeStage(WIZARD_STAGES.PROJECT, {
             name: siteName.trim(),
-            category: selectedCategory,
             modules: enabledModules
-        };
+        });
 
-        if (typeof window !== 'undefined') {
-            try {
-                window.localStorage.setItem(
-                    WIZARD_STORAGE_KEYS.ACTIVE_DRAFT,
-                    JSON.stringify(draftPayload)
-                );
-            } catch (storageError) {
-                console.warn('[NewProjectPage] Failed to persist wizard draft:', storageError);
-            }
-        }
-
-        navigate('/studio/new/style', { state: draftPayload });
+        navigate(getStageRoute(WIZARD_STAGES.STYLE));
     };
 
     const canProceed = siteName?.trim() && !validateSiteName(siteName);
@@ -313,9 +318,7 @@ const NewProjectPage = () => {
     }, [titleConfirmed, canProceed]);
 
     return (
-        <>
-            <Navigation />
-            <Box
+        <Box
                 sx={{
                     minHeight: 'calc(100vh - 60px)',
                     width: '100%',
@@ -803,7 +806,6 @@ const NewProjectPage = () => {
                 />
             </Container>
         </Box>
-        </>
     );
 };
 

@@ -17,7 +17,6 @@ import ModuleWarningModal from './ModuleWarningModal';
 import { fetchSiteById, updateSiteTemplate } from '../../../services/siteService';
 import { DEFAULT_STYLE_ID } from '../../../SITES/styles';
 import { normalizeStyleState } from '../../../SITES/styles/utils';
-import Navigation from '../../../components/Navigation/Navigation';
 
 const MONTSERRAT_FONT = '"Montserrat", "Inter", "Roboto", "Helvetica", "Arial", sans-serif';
 
@@ -327,7 +326,6 @@ const ManageModulesPage = () => {
     if (error) {
         return (
             <Box sx={{ p: 4 }}>
-                <Navigation />
                 <Container maxWidth="md">
                     <Alert severity="error">{error}</Alert>
                     <Box sx={{ mt: 2 }}>
@@ -348,9 +346,7 @@ const ManageModulesPage = () => {
     }
 
     return (
-        <>
-            <Navigation />
-            <Box
+        <Box
                 sx={{
                     minHeight: 'calc(100vh - 60px)',
                     width: '100%',
@@ -658,8 +654,7 @@ const ManageModulesPage = () => {
                         warning={warningModal.module?.disableWarning}
                     />
                 </Container>
-            </Box>
-        </>
+        </Box>
     );
 };
 

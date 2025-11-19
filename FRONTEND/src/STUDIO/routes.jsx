@@ -10,6 +10,7 @@ import NewEditorPage from './pages/Editor/NewEditorPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import StudioLayout from './layouts/StudioLayout';
+import NavigationLayout from './layouts/NavigationLayout';
 import SettingsLayout from './layouts/SettingsLayout';
 import ProfilePage from './pages/Settings/ProfilePage';
 import BillingPage from './pages/Settings/BillingPage';
@@ -25,12 +26,13 @@ import DomainPage from './pages/Domain/DomainPage';
 import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
 import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
 import MagicLoginPage from './pages/Auth/MagicLoginPage';
+import BuildingLoginPage from './pages/Auth/BuildingLoginPage';
 import TermsAdminPage from './pages/Admin/TermsAdminPage';
 
 const StudioApp = () => (
   <Routes>
     {/* Default redirect when visiting /studio */}
-    <Route index element={<Navigate to="" replace />} />
+    <Route index element={<Navigate to="sites" replace />} />
 
     {/* Terms of Service acceptance - OUTSIDE ProtectedRoute to avoid redirect loop */}
     <Route path="accept-terms" element={<AcceptTermsPage />} />
@@ -40,25 +42,29 @@ const StudioApp = () => (
     
     {/* Magic link login - PUBLIC route, no auth required */}
     <Route path="magic-login/:token" element={<MagicLoginPage />} />
+    
+    {/* Building login page - shown during site creation flow */}
+    <Route path="building-login" element={<BuildingLoginPage />} />
 
-    {/* Site creation flow - OUTSIDE StudioLayout to avoid layout padding/footer */}
-    <Route path="new" element={<ProtectedRoute><CategorySelectionPage /></ProtectedRoute>} />
-    <Route path="new_project" element={<ProtectedRoute><NewProjectPage /></ProtectedRoute>} />
-    <Route path="new/style" element={<ProtectedRoute><StyleSelectionPage /></ProtectedRoute>} />
-    <Route path="sites/modules/:siteId" element={<ProtectedRoute><ManageModulesPage /></ProtectedRoute>} />
-
-    {/* Pages using REAL_DefaultLayout - OUTSIDE StudioLayout */}
-    <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
-    <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
-    <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
-    <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
-
-    {/* LEGACY LAYOUT - USE REAL_DefaultLayout for new pages !!! */}
-    <Route element={<StudioLayout />}>
+    {/* Pages with persistent Navigation - shared NavigationLayout */}
+    <Route element={<NavigationLayout />}>
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
-      <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
+      <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
+      <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+      <Route path="new" element={<CategorySelectionPage />} />
+      <Route path="new_project" element={<NewProjectPage />} />
+      <Route path="new/style" element={<StyleSelectionPage />} />
+      <Route path="sites/modules/:siteId" element={<ManageModulesPage />} />
       <Route path="lab/components" element={<ProtectedRoute><ComponentLabPage /></ProtectedRoute>} />
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
+      <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
+      <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
+    </Route>
+
+
+    {/* LEGACY LAYOUT - USE NavigationLayout for new pages !!! */}
+    <Route element={<StudioLayout />}>
+      <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
     </Route>
 
     {/* Account settings routes with shared layout */}
@@ -73,7 +79,7 @@ const StudioApp = () => (
       <Route path="toast" element={<ToastTestPage />} />
     </Route>
 
-    {/* Editor routes - New editor is now default */}
+    {/* Editor routes - Has own editor navigation*/}
     <Route path="editor/new" element={<ProtectedRoute><NewEditorPage /></ProtectedRoute>} />
     <Route path="editor/:siteId" element={<ProtectedRoute><NewEditorPage /></ProtectedRoute>} />
     

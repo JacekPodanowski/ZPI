@@ -79,7 +79,7 @@ const StudioLayout = ({
           height: isFullWidthRoute ? 'calc(100vh - 60px)' : 'auto',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'background.default',
+          backgroundColor: isDashboardRoute ? 'transparent' : 'background.default',
           overflow: 'visible'
         }}
       >

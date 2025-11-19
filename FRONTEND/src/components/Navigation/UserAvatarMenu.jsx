@@ -112,6 +112,7 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
   const handleLogout = () => {
     handleClose();
     onLogout();
+    navigate('/');
   };
 
   const handleAvatarChange = async (newAvatarUrl) => {

@@ -13,10 +13,18 @@ def _normalize_owner_segment(first_name: str | None, last_name: str | None) -> s
 
 
 def generate_site_identifier(site_id: int, name: str, owner_first_name: str | None, owner_last_name: str | None) -> str:
-    """Return identifier in format `<100+id>-<site-slug>` (for obfuscation)."""
+    """
+    Generate unique site identifier in format `<id>-<site-slug>`.
+    
+    ID RANGE CONVENTION:
+    - ID 1: Reserved for "YourEasySite Demo" (identifier: 1-youreasysite-demo)
+    - IDs 2-99: Mock/demo sites (e.g., 2-pracownia-jogi, 3-studio-oddechu)
+    - IDs 100+: Real user sites (e.g., 100-wellness-studio, 101-yoga-center)
+    
+    No obfuscation needed - the ID itself indicates site type.
+    """
     slug = slugify(name or '') or 'site'
-    obfuscated_id = 100 + site_id
-    identifier = f"{obfuscated_id}-{slug}"
+    identifier = f"{site_id}-{slug}"
     # Ensure identifier fits within field limit
     return identifier[:255]
 

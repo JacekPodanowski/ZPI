@@ -169,11 +169,8 @@ const HomePage = () => {
 
     const proceedToNewSite = useCallback(() => {
         const go = () => {
-            if (isAuthenticated) {
-                navigate('/studio/new');
-            } else {
-                navigate('/login', { state: { from: { pathname: '/studio/new' } } });
-            }
+            // Zawsze przekieruj na /studio/new - logowanie będzie wymagane dopiero przy zapisywaniu strony
+            navigate('/studio/new');
         };
 
         setLogoExpanded(false);
