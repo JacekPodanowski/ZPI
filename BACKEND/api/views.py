@@ -3320,7 +3320,6 @@ def get_domain_pricing(request):
             {'error': 'Failed to fetch pricing'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-<<<<<<< HEAD
 
 
 class AITaskView(APIView):
@@ -3408,13 +3407,6 @@ class AITaskView(APIView):
                     'message': 'AI is processing your request. You will see changes via WebSocket.',
                 },
                 status=status.HTTP_202_ACCEPTED
-            )
-        
-        except Exception as e:
-            logger.exception(f"Failed to queue AI task for user {user_id}: {e}")
-            return Response(
-                {"error": "Failed to queue AI task"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         except Exception as e:
