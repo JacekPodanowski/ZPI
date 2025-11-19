@@ -278,7 +278,7 @@ const OrdersPage = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <LanguageIcon sx={{ fontSize: 28, color: accentColor }} />
           <Typography variant="h5" sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-            Twoje Domeny
+            Twoje domeny
           </Typography>
         </Box>
         <Button

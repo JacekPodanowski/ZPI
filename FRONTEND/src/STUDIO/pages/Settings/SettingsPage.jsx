@@ -67,17 +67,17 @@ const SettingsPage = () => {
       }}
     >
       <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-        Settings
+        Ustawienia
       </Typography>
       <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-        Manage your application preferences
+        Zarządzaj preferencjami aplikacji
       </Typography>
 
       <Stack spacing={4}>
         {/* Notifications */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Notifications
+            Powiadomienia
           </Typography>
           <Stack spacing={2}>
             <Box
@@ -93,10 +93,10 @@ const SettingsPage = () => {
             >
               <Box>
                 <Typography variant="body1" fontWeight={600}>
-                  Email Notifications
+                  Powiadomienia email
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Receive updates via email
+                  Otrzymuj aktualizacje przez email
                 </Typography>
               </Box>
               <Switch
@@ -119,10 +119,10 @@ const SettingsPage = () => {
             >
               <Box>
                 <Typography variant="body1" fontWeight={600}>
-                  Booking Notifications
+                  Powiadomienia o rezerwacjach
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Get notified about new bookings
+                  Otrzymuj powiadomienia o nowych rezerwacjach
                 </Typography>
               </Box>
               <Switch
@@ -145,10 +145,10 @@ const SettingsPage = () => {
             >
               <Box>
                 <Typography variant="body1" fontWeight={600}>
-                  Marketing Emails
+                  Emaile marketingowe
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Receive news and promotions
+                  Otrzymuj wiadomości i promocje
                 </Typography>
               </Box>
               <Switch
@@ -165,7 +165,7 @@ const SettingsPage = () => {
         {/* Security */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Security
+            Bezpieczeństwo
           </Typography>
           <Stack spacing={2}>
             <Box
@@ -177,10 +177,10 @@ const SettingsPage = () => {
               }}
             >
               <Typography variant="body1" fontWeight={600} sx={{ mb: 1 }}>
-                Session Timeout
+                Limit czasu sesji
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-                Auto logout after inactivity (minutes)
+                Automatyczne wylogowanie po bezczynności (minuty)
               </Typography>
               <TextField
                 type="number"
@@ -233,7 +233,7 @@ const SettingsPage = () => {
         <Divider />
 
         <Alert severity="info" sx={{ borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          <strong>TODO:</strong> Settings to be implemented.
+          <strong>TODO:</strong> Ustawienia do implementacji.
         </Alert>
 
         {/* Save Button */}
@@ -253,7 +253,7 @@ const SettingsPage = () => {
               }
             }}
           >
-            Save Settings
+            Zapisz ustawienia
           </Button>
         </Box>
       </Stack>

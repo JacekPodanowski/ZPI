@@ -38,12 +38,12 @@ const devNavigation = [
 
 const notificationsNavigation = [
   {
-    label: 'Notifications',
+    label: 'Powiadomienia',
     path: '/studio/account/notifications',
     icon: <NotificationsNoneOutlinedIcon />
   },
   {
-    label: 'Mails',
+    label: 'Maile',
     path: '/studio/account/mails',
     icon: <EmailOutlinedIcon />
   }
@@ -51,7 +51,7 @@ const notificationsNavigation = [
 
 const settingsNavigation = [
   {
-    label: 'Profile',
+    label: 'Profil',
     path: '/studio/account/profile',
     icon: <PersonOutlineIcon />
   },
@@ -61,17 +61,17 @@ const settingsNavigation = [
     icon: <LanguageIcon />
   },
   {
-    label: 'Billing & Plans',
+    label: 'Płatności i plany',
     path: '/studio/account/billing',
     icon: <AccountBalanceWalletOutlinedIcon />
   },
   {
-    label: 'Appearance',
+    label: 'Wygląd',
     path: '/studio/account/appearance',
     icon: <PaletteOutlinedIcon />
   },
   {
-    label: 'Settings',
+    label: 'Ustawienia',
     path: '/studio/account/settings',
     icon: <SettingsOutlinedIcon />
   }
@@ -159,7 +159,7 @@ const SettingsLayout = () => {
           letterSpacing: '0.5px'
         }}
       >
-        Notifications
+        Powiadomienia
       </Typography>
       <List disablePadding sx={{ mt: 1 }}>
         {renderNavItems(notificationsNavigation)}
@@ -177,7 +177,7 @@ const SettingsLayout = () => {
           letterSpacing: '0.5px'
         }}
       >
-        Account Settings
+        Ustawienia konta
       </Typography>
       <List disablePadding sx={{ mt: 1 }}>
         {renderNavItems(settingsNavigation)}

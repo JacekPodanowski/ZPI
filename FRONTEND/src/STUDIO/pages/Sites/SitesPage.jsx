@@ -153,7 +153,7 @@ const SitesPage = () => {
                             mb: 0.5
                         }}
                     >
-                        Your Sites
+                        Twoje strony
                     </Typography>
                     <Typography
                         variant="body1"
@@ -162,7 +162,7 @@ const SitesPage = () => {
                             maxWidth: 600
                         }}
                     >
-                        Manage and monitor all your personal sites
+                        Monitoruj i zarządzaj swoimi stronami
                     </Typography>
                 </motion.div>
 

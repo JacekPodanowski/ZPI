@@ -236,10 +236,10 @@ const PageCard = ({ page, isEntryPoint, onSetEntryPoint, onClick, index }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <MenuItem onClick={(e) => { e.stopPropagation(); handleMenuClose(); }}>
-          <Edit sx={{ mr: 1, fontSize: 18 }} /> Rename
+          <Edit sx={{ mr: 1, fontSize: 18 }} /> Zmień nazwę
         </MenuItem>
         <MenuItem onClick={handleDelete} sx={{ color: 'rgb(146, 0, 32)' }}>
-          <Delete sx={{ mr: 1, fontSize: 18 }} /> Delete
+          <Delete sx={{ mr: 1, fontSize: 18 }} /> Usuń
         </MenuItem>
       </Menu>
     </motion.div>

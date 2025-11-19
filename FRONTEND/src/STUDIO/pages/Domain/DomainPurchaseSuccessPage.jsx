@@ -57,9 +57,9 @@ const DomainPurchaseSuccessPage = () => {
     }, [orderId]);
 
     const steps = [
-        'Payment Received',
-        'Domain Configuration',
-        'DNS Propagation'
+        'Płatność otrzymana',
+        'Konfiguracja domeny',
+        'Propagacja DNS'
     ];
 
     const activeStep = confirmed ? 1 : 0;
@@ -67,8 +67,8 @@ const DomainPurchaseSuccessPage = () => {
     if (confirming) {
         return (
             <REAL_DefaultLayout
-                title="Processing Payment"
-                subtitle="Please wait while we confirm your payment"
+                title="Przetwarzanie płatności"
+                subtitle="Proszę czekać, potwierdzamy Twoją płatność"
             >
                 <Paper
                     sx={{
@@ -80,10 +80,10 @@ const DomainPurchaseSuccessPage = () => {
                 >
                     <CircularProgress size={60} sx={{ mb: 3 }} />
                     <Typography variant="h5" gutterBottom>
-                        Confirming Your Payment...
+                        Potwierdzanie płatności...
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                        This should only take a moment
+                        To potrwa tylko chwilę
                     </Typography>
                 </Paper>
             </REAL_DefaultLayout>
@@ -93,8 +93,8 @@ const DomainPurchaseSuccessPage = () => {
     if (error || !confirmed) {
         return (
             <REAL_DefaultLayout
-                title="Payment Error"
-                subtitle="There was a problem processing your payment"
+                title="Błąd płatności"
+                subtitle="Wystąpił problem z przetwarzaniem płatności"
             >
                 <Paper
                     sx={{
@@ -106,10 +106,10 @@ const DomainPurchaseSuccessPage = () => {
                 >
                     <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
                         <Typography variant="h6" gutterBottom>
-                            Payment Confirmation Failed
+                            Nie udało się potwierdzić płatności
                         </Typography>
                         <Typography variant="body2">
-                            {error || 'An unknown error occurred'}
+                            {error || 'Wystąpił nieznany błąd'}
                         </Typography>
                     </Alert>
                     <Button
@@ -122,7 +122,7 @@ const DomainPurchaseSuccessPage = () => {
                             px: 4
                         }}
                     >
-                        Return to Dashboard
+                        Wróć do panelu
                     </Button>
                 </Paper>
             </REAL_DefaultLayout>
@@ -131,8 +131,8 @@ const DomainPurchaseSuccessPage = () => {
 
     return (
         <REAL_DefaultLayout
-            title="Purchase Successful!"
-            subtitle="Your domain is being configured"
+            title="Zakup zakończony sukcesem!"
+            subtitle="Twoja domena jest konfigurowana"
         >
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -171,31 +171,31 @@ const DomainPurchaseSuccessPage = () => {
                     </motion.div>
 
                     <Typography variant="h3" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-                        Payment Successful!
+                        Płatność zakończona sukcesem!
                     </Typography>
                     
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}>
-                        Your payment has been confirmed. We are now configuring your domain and setting up DNS records. 
-                        This process may take a few minutes.
+                        Twoja płatność została potwierdzona. Konfigurujemy Twoją domenę i ustawiamy rekordy DNS. 
+                        Ten proces może potrwać kilka minut.
                     </Typography>
 
                     <Alert severity="info" sx={{ mb: 4, borderRadius: 2, textAlign: 'left' }}>
                         <Typography variant="body2" sx={{ mb: 1 }}>
-                            <strong>Order ID:</strong> #{orderId}
+                            <strong>ID zamówienia:</strong> #{orderId}
                         </Typography>
                         <Typography variant="body2">
-                            <strong>Status:</strong> {orderDetails?.status || 'Configuring DNS'}
+                            <strong>Status:</strong> {orderDetails?.status || 'Konfiguracja DNS'}
                         </Typography>
                     </Alert>
                     
                     {/* Demo Notice */}
                     <Alert severity="info" sx={{ mb: 4, borderRadius: 2, textAlign: 'left' }}>
                         <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                            🧪 Demo Mode
+                            🧪 Tryb demo
                         </Typography>
                         <Typography variant="body2">
-                            This is a demonstration of the domain purchase flow. In production, this would process 
-                            a real payment through OVHcloud and automatically configure DNS records to point to your site.
+                            To jest demonstracja procesu zakupu domeny. W wersji produkcyjnej przetwarzana byłaby 
+                            prawdziwa płatność przez OVHcloud i automatycznie konfigurowane rekordy DNS wskazujące na Twoją stronę.
                         </Typography>
                     </Alert>
 
@@ -225,11 +225,11 @@ const DomainPurchaseSuccessPage = () => {
 
                     <Alert severity="warning" sx={{ mb: 4, borderRadius: 2, textAlign: 'left' }}>
                         <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                            ⏱️ DNS Propagation Time (Production Only)
+                            ⏱️ Czas propagacji DNS (tylko wersja produkcyjna)
                         </Typography>
                         <Typography variant="body2">
-                            When using real domain purchases in production, DNS changes may take 24-48 hours 
-                            to propagate globally. Your domain will be fully functional once propagation is complete.
+                            Przy prawdziwym zakupie domeny w wersji produkcyjnej, zmiany DNS mogą potrzebować 24-48 godzin 
+                            aby rozpropagować się globalnie. Twoja domena będzie w pełni funkcjonalna po zakończeniu propagacji.
                         </Typography>
                     </Alert>
 
@@ -247,7 +247,7 @@ const DomainPurchaseSuccessPage = () => {
                                 py: 1.5
                             }}
                         >
-                            Domain Settings
+                            Ustawienia domeny
                         </Button>
                         <Button
                             variant="contained"
@@ -261,7 +261,7 @@ const DomainPurchaseSuccessPage = () => {
                                 py: 1.5
                             }}
                         >
-                            Back to Dashboard
+                            Wróć do panelu
                         </Button>
                     </Box>
                 </Paper>
@@ -275,7 +275,7 @@ const DomainPurchaseSuccessPage = () => {
                     }}
                 >
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                        What's Next?
+                        Co dalej?
                     </Typography>
                     
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -297,11 +297,11 @@ const DomainPurchaseSuccessPage = () => {
                             </Box>
                             <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    DNS Configuration (Demo Mode)
+                                    Konfiguracja DNS (Tryb demo)
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    In production, our system would automatically configure DNS records to point your domain to your site. 
-                                    This happens in the background via OVHcloud API.
+                                    W wersji produkcyjnej nasz system automatycznie skonfigurowałby rekordy DNS aby wskazywały Twoją domenę na Twoją stronę. 
+                                    Dzieje się to w tle poprzez API OVHcloud.
                                 </Typography>
                             </Box>
                         </Box>
@@ -324,11 +324,11 @@ const DomainPurchaseSuccessPage = () => {
                             </Box>
                             <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Production: Wait for Propagation
+                                    Produkcja: Czekaj na propagację
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    In production with real domains, DNS changes can take 24-48 hours to propagate worldwide. 
-                                    You can check the status in your domain settings.
+                                    W wersji produkcyjnej z prawdziwymi domenami, zmiany DNS mogą potrzebować 24-48 godzin aby rozpropagować się globalnie. 
+                                    Możesz sprawdzić status w ustawieniach domeny.
                                 </Typography>
                             </Box>
                         </Box>
@@ -351,10 +351,10 @@ const DomainPurchaseSuccessPage = () => {
                             </Box>
                             <Box>
                                 <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Your Site is Live!
+                                    Twoja strona jest aktywna!
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    Once DNS propagation is complete, your site will be accessible at your custom domain.
+                                    Po zakończeniu propagacji DNS, Twoja strona będzie dostępna pod Twoją własną domeną.
                                 </Typography>
                             </Box>
                         </Box>

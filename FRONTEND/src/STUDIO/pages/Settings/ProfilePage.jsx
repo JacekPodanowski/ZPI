@@ -73,7 +73,7 @@ const ProfilePage = () => {
       
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to update profile. Please try again.');
+      setError(err.response?.data?.detail || 'Nie udało się zaktualizować profilu. Spróbuj ponownie.');
       console.error('Profile update error:', err);
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ const ProfilePage = () => {
       }}
     >
       <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-        Twoje Konto
+        Twoje konto
       </Typography>
       <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
         Zarządzaj swoimi danymi osobowymi
@@ -151,7 +151,7 @@ const ProfilePage = () => {
         {/* Avatar Section */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Zdjęcie Profilowe
+            Zdjęcie profilowe
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems={{ xs: 'center', sm: 'center' }}>
             <Box sx={{ position: 'relative', display: 'inline-block' }}>
@@ -183,7 +183,7 @@ const ProfilePage = () => {
         {/* Personal Information */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Dane Osobowe
+            Dane osobowe
           </Typography>
           <Stack spacing={3}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>

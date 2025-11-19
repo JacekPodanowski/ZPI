@@ -112,20 +112,20 @@ const BillingPage = () => {
       }}
     >
       <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-        Billing & Plans
+        Plan i płatności
       </Typography>
       <Typography variant="body2" sx={{ mb: 4, color: colors?.text?.secondary }}>
-        Choose the plan that fits your needs
+        Wybierz plan odpowiedni dla Twoich potrzeb
       </Typography>
 
       <Alert severity="warning" sx={{ mb: 4, borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-        <strong>Development Mode:</strong> Payment API is not connected. Plan changes are simulated only.
+        <strong>Tryb deweloperski:</strong> API Płatności nie jest podłączone. Zmiany planów są tylko symulowane.
       </Alert>
 
       {/* Current Plan Info */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-          Current Plan
+          Aktualny plan
         </Typography>
         <Chip
           label={plans.find((p) => p.id === currentPlan)?.name || 'Free'}
@@ -138,7 +138,7 @@ const BillingPage = () => {
 
       {/* Plans Grid */}
       <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
-        Available Plans
+        Dostępne plany
       </Typography>
       <Box
         sx={{
@@ -197,7 +197,7 @@ const BillingPage = () => {
                     letterSpacing: '0.5px'
                   }}
                 >
-                  Most Popular
+                  Najpopularniejszy
                 </Box>
               )}
               <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 4 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -281,7 +281,7 @@ const BillingPage = () => {
                       })
                     }}
                   >
-                    {isCurrentPlan ? 'Current Plan' : `Choose ${plan.name}`}
+                    {isCurrentPlan ? 'Aktualny plan' : `Wybierz ${plan.name}`}
                   </Button>
                 </Stack>
               </CardContent>
@@ -294,10 +294,10 @@ const BillingPage = () => {
       <Box sx={{ mt: { xs: 4, md: 6 } }}>
         <Divider sx={{ mb: 4 }} />
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
-          Billing History
+          Historia płatności
         </Typography>
         <Alert severity="info" sx={{ borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          <strong>TODO:</strong> Billing history and invoice management will be implemented here.
+          <strong>TODO:</strong> Historia płatności i zarządzanie fakturami zostanie wdrożone tutaj.
         </Alert>
       </Box>
     </Paper>

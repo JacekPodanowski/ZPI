@@ -60,7 +60,7 @@ const ThemeCard = ({
         </Typography>
         {preset.isCustom && (
           <Chip
-            label="Custom"
+            label="Własny"
             size="small"
             color="primary"
             variant="outlined"
@@ -94,13 +94,13 @@ const ThemeCard = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: themeColors.interactive.default }}>
           <CheckIcon sx={{ fontSize: 16 }} />
           <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            Active Theme
+            Aktywny motyw
           </Typography>
         </Box>
       )}
     </Stack>
     {preset.isCustom && (
-      <Tooltip title="Delete Theme" placement="top">
+      <Tooltip title="Usuń motyw" placement="top">
         <IconButton
           size="small"
           sx={{
@@ -167,17 +167,17 @@ const AppearancePage = () => {
       }}
     >
       <Typography variant="h5" sx={{ mb: 1, fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-        Appearance
+        Wygląd
       </Typography>
       <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-        Customize how the application looks and feels
+        Dostosuj wygląd i działanie aplikacji
       </Typography>
 
       <Stack spacing={4}>
         {/* Theme Mode Selection - Simple Toggle */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Theme Mode
+            Tryb motywu
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'fit-content' } }}>
             <Button
@@ -201,7 +201,7 @@ const AppearancePage = () => {
                 })
               }}
             >
-              Light Mode
+              Tryb jasny
             </Button>
 
             <Button
@@ -225,7 +225,7 @@ const AppearancePage = () => {
                 })
               }}
             >
-              Dark Mode
+              Tryb ciemny
             </Button>
           </Stack>
         </Box>
@@ -235,7 +235,7 @@ const AppearancePage = () => {
         {/* Theme Selection Section */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-            Choose Theme
+            Wybierz motyw
           </Typography>
           <Typography variant="body2" sx={{ mb: 3, color: colors?.text?.secondary }}>
             Select a base theme to customize the look and feel
@@ -271,7 +271,7 @@ const AppearancePage = () => {
         {/* Display Settings */}
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-            Display Options
+            Opcje wyświetlania
           </Typography>
           <Stack spacing={2}>
             <Box
@@ -287,10 +287,10 @@ const AppearancePage = () => {
             >
               <Box>
                 <Typography variant="body1" fontWeight={600}>
-                  Enable Animations
+                  Włącz animacje
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Smooth transitions and effects
+                  Płynne przejścia i efekty
                 </Typography>
               </Box>
               <Switch
@@ -313,10 +313,10 @@ const AppearancePage = () => {
             >
               <Box>
                 <Typography variant="body1" fontWeight={600}>
-                  Reduced Motion
+                  Ograniczone animacje
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Minimize animations for accessibility
+                  Minimalizuj animacje dla dostępności
                 </Typography>
               </Box>
               <Switch
@@ -339,10 +339,10 @@ const AppearancePage = () => {
             >
               <Box>
                 <Typography variant="body1" fontWeight={600}>
-                  Compact Mode
+                  Tryb kompaktowy
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Reduce spacing for more content
+                  Zmniejsz odstępy dla większej ilości treści
                 </Typography>
               </Box>
               <Switch
@@ -377,7 +377,7 @@ const AppearancePage = () => {
               }
             }}
           >
-            Save Preferences
+            Zapisz preferencje
           </Button>
         </Box>
       </Stack>
