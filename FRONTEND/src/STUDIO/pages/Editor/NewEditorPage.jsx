@@ -11,6 +11,7 @@ import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
 import { getDefaultModuleContent } from './moduleDefinitions';
 import { useAuth } from '../../../contexts/AuthContext';
+import { validateAIResponse, extractSiteFromResponse } from '../../components_STUDIO/AI/aiHelpers';
 
 // Helper function to convert old module format to new format
 const convertModuleNameToObject = (moduleName, index) => {
@@ -255,11 +256,38 @@ const NewEditorPage = () => {
 
   // Unified AI update handler
   const handleAIUpdate = (data) => {
+    // Validate response structure
+    const validation = validateAIResponse(data);
+    
+    if (!validation.valid) {
+      console.error('[NewEditorPage] Invalid AI response:', validation.error);
+      window.dispatchEvent(new CustomEvent('ai-update-received', {
+        detail: { status: 'error', explanation: validation.error }
+      }));
+      return;
+    }
+    
+    if (validation.warning) {
+      console.warn('[NewEditorPage] AI response warning:', validation.warning);
+    }
+    
     if (data.status === 'success' && data.site) {
       console.log('[NewEditorPage] Applying AI-generated site update');
-      console.log('[NewEditorPage] Site data structure:', Object.keys(data.site));
       
-      replaceSiteStateWithHistory(data.site, {
+      // Extract site using helper (handles unwrapping)
+      const siteData = extractSiteFromResponse(data);
+      
+      if (!siteData) {
+        console.error('[NewEditorPage] Failed to extract site data from response');
+        window.dispatchEvent(new CustomEvent('ai-update-received', {
+          detail: { status: 'error', explanation: 'Invalid site data structure' }
+        }));
+        return;
+      }
+      
+      console.log('[NewEditorPage] Extracted site data - pages:', siteData.pages?.length || 0);
+      
+      replaceSiteStateWithHistory(siteData, {
         type: 'ai-update',
         prompt: data.prompt || 'AI modification',
         explanation: data.explanation

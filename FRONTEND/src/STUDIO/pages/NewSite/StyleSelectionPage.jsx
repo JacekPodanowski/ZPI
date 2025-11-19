@@ -14,7 +14,7 @@ import composeSiteStyle from '../../../SITES/styles/utils';
 import { createSite } from '../../../services/siteService';
 import { buildTemplateFromModules } from '../../utils/templateBuilder';
 import { WIZARD_STORAGE_KEYS } from './wizardConstants';
-import StylePreviewRenderer from '../../components/StylePreview/StylePreviewRenderer';
+import StylePreviewRenderer from '../../components_STUDIO/StylePreview/StylePreviewRenderer';
 import {
     WIZARD_STAGES,
     validateStageAccess,

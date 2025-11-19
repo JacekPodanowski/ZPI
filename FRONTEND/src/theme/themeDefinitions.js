@@ -37,165 +37,93 @@ export const STUDIO_THEMES = {
     },
     options: createBaseOptions()
   },
-  sereneForest: {
-    id: 'sereneForest',
-    name: 'Serene Forest',
-    description: 'Miękkie, leśne zielenie z ciepłymi tonami ziemi.',
+  warmSand: {
+    id: 'warmSand',
+    name: 'Warm Sand',
+    description: 'Ciepłe piaskowe beże z naturalnymi brązowymi akcentami.',
     light: {
-      background: '#edf2e6',
-      text: '#1a261d',
-      primary: '#3a7d44',
-      secondary: '#d6c7a1'
+      background: '#faf8f5',
+      text: '#2a251f',
+      primary: '#a67c52',
+      secondary: '#e8ddd0'
     },
     dark: {
-      background: '#101712',
-      text: '#dfe8d9',
-      primary: '#2f6a37',
-      secondary: '#5a4f34'
+      background: '#1a1612',
+      text: '#f2ebe2',
+      primary: '#8f6b47',
+      secondary: '#4a3f35'
     },
     options: createBaseOptions()
   },
-  oceanCalm: {
-    id: 'oceanCalm',
-    name: 'Ocean Calm',
-    description: 'Mglisty błękit i chłodne slate’y inspirowane morską bryzą.',
+  sageStudio: {
+    id: 'sageStudio',
+    name: 'Sage Studio',
+    description: 'Stonowane zielenie z ciepłymi neutralami dla spokojnej przestrzeni.',
     light: {
-      background: '#e6eef5',
-      text: '#1a2330',
-      primary: '#1f6fb2',
-      secondary: '#a7b7c8'
+      background: '#e9ede8',
+      text: '#1f241e',
+      primary: '#4a7456',
+      secondary: '#c4cdc0'
     },
     dark: {
-      background: '#0d141d',
-      text: '#d6e0eb',
-      primary: '#1b5c91',
-      secondary: '#3e5062'
+      background: '#111512',
+      text: '#dfe5dd',
+      primary: '#3c5e47',
+      secondary: '#3f4a3e'
     },
     options: createBaseOptions()
   },
-  sunsetWarmth: {
-    id: 'sunsetWarmth',
-    name: 'Sunset Warmth',
-    description: 'Terracotta, bursztyn i złote światło zachodzącego słońca.',
+  neonDusk: {
+    id: 'neonDusk',
+    name: 'Neon Dusk',
+    description: 'Intensywna pomarańcz i głęboki fiolet - nowoczesna energia.',
     light: {
-      background: '#f6eee6',
-      text: '#2a1a14',
-      primary: '#c1522c',
-      secondary: '#f0c27b'
+      background: '#faf7f5',
+      text: '#1a1214',
+      primary: '#e8530f',
+      secondary: '#d4c5e0'
     },
     dark: {
-      background: '#1a1210',
-      text: '#f2e2d7',
-      primary: '#a74324',
-      secondary: '#704a24'
+      background: '#0d0a0e',
+      text: '#f5ede8',
+      primary: '#ff6b2b',
+      secondary: '#6b4c7a'
     },
     options: createBaseOptions()
   },
-  lavenderDream: {
-    id: 'lavenderDream',
-    name: 'Lavender Dream',
-    description: 'Delikatne fiolety i srebrno-różowe półtony.',
+  magentaDreams: {
+    id: 'magentaDreams',
+    name: 'Magenta Dreams',
+    description: 'Głęboka magenta i różowe odcienie inspirowane zachodem słońca.',
     light: {
-      background: '#f2eef9',
-      text: '#211c2c',
-      primary: '#7a5cc2',
-      secondary: '#d9c7eb'
+      background: '#fdf9fb',
+      text: '#1e1420',
+      primary: '#d91e7a',
+      secondary: '#e8d4e8'
     },
     dark: {
-      background: '#161222',
-      text: '#e6ddf8',
-      primary: '#6a4fb4',
-      secondary: '#5a4a75'
+      background: '#0e0a12',
+      text: '#f5e8f2',
+      primary: '#ff4d9d',
+      secondary: '#4a2f5e'
     },
     options: createBaseOptions()
   },
-  mintBreeze: {
-    id: 'mintBreeze',
-    name: 'Mint Breeze',
-    description: 'Refreshing mint greens with cool grays and soft ivory.',
+  pureMinimal: {
+    id: 'pureMinimal',
+    name: 'Pure Minimal',
+    description: 'Absolutny minimalizm - czysta czerń i biel.',
     light: {
-      background: '#f0f7f4',
-      text: '#1a2e25',
-      primary: '#4a9b7f',
-      secondary: '#c8ddd4'
+      background: '#ffffff',
+      text: '#000000',
+      primary: '#1a1a1a',
+      secondary: '#e8e8e8'
     },
     dark: {
-      background: '#0e1814',
-      text: '#e2f0ea',
-      primary: '#3d8168',
-      secondary: '#4a5b52'
-    },
-    options: createBaseOptions()
-  },
-  coralSunset: {
-    id: 'coralSunset',
-    name: 'Coral Sunset',
-    description: 'Soft coral and peach tones with warm sandy neutrals.',
-    light: {
-      background: '#fef5f1',
-      text: '#2d1f1a',
-      primary: '#e57373',
-      secondary: '#f4d9c6'
-    },
-    dark: {
-      background: '#1d1311',
-      text: '#f7ebe3',
-      primary: '#c85f5f',
-      secondary: '#6b4a3d'
-    },
-    options: createBaseOptions()
-  },
-  slate: {
-    id: 'slate',
-    name: 'Slate',
-    description: 'Professional grays with deep blue-gray accents and crisp whites.',
-    light: {
-      background: '#f8fafc',
-      text: '#1e293b',
-      primary: '#475569',
-      secondary: '#cbd5e1'
-    },
-    dark: {
-      background: '#0f172a',
-      text: '#e2e8f0',
-      primary: '#64748b',
-      secondary: '#334155'
-    },
-    options: createBaseOptions()
-  },
-  goldenHour: {
-    id: 'goldenHour',
-    name: 'Golden Hour',
-    description: 'Warm honey golds with rich amber and soft cream.',
-    light: {
-      background: '#fef9f1',
-      text: '#2c2416',
-      primary: '#d4a756',
-      secondary: '#f0ddb8'
-    },
-    dark: {
-      background: '#1a1510',
-      text: '#f5ead5',
-      primary: '#b88f47',
-      secondary: '#6b5638'
-    },
-    options: createBaseOptions()
-  },
-  roseGarden: {
-    id: 'roseGarden',
-    name: 'Rose Garden',
-    description: 'Dusty rose with muted mauve and soft blush tones.',
-    light: {
-      background: '#fdf5f7',
-      text: '#2e1c22',
-      primary: '#b87b8a',
-      secondary: '#e8d4d9'
-    },
-    dark: {
-      background: '#1b1214',
-      text: '#f3e3e8',
-      primary: '#9f6775',
-      secondary: '#5d434a'
+      background: '#000000',
+      text: '#ffffff',
+      primary: '#cccccc',
+      secondary: '#1a1a1a'
     },
     options: createBaseOptions()
   }

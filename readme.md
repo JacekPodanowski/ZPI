@@ -16,9 +16,6 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
 
 # Do uruchomiaia używać docera :
     docker-compose up --build
-    lub
-    docker-compose up --build -d   (w tle, nie zawala konsoli logami)
-
 
 # Docer uruchaminia:
     Frontend  na          localhost:3000
@@ -31,15 +28,3 @@ Każdy folder ma plik `.env.example` z którego należy skopiować wszytsko i zr
     Jeśli nie widzisz zmian, sprawdź logi
 
 # Komendy do docera są w `docer_commands.md`
-
-# Używane technologie są w `Technology_Stack.md`
-
-# Konsultacje z AI
-* Przed rozpoczęciem pracy zróbcie sobie instrucje. (ratuje to masę czasu)
-* Wklejcie cały plik `copilot-instructions.md` w google AI Studio (gemmini 2.5)
-* Opiszcie niżej co chcecie zrobić i dodajcie na koniec :
-
-`Act as an expert consultant. Analyze project description and my request. Based on this analysis, propose an optimal solution that aligns with project's vision and reflects professional best practices. Shortly explain why your proposed solution is the most effective. If your proposal introduces significant strategic changes to my original request, present your solution and ask for my confirmation before you proceed. If your proposal only refines or details my request without major changes, present it and then create a detailed work plan.`
-
-
-# Jeśli dalej macie wątpliwości to piszcie na grupie.

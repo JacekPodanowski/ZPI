@@ -125,21 +125,7 @@ const AnimatedBuilding = () => {
                 overflow: 'hidden'
             }}
         >
-            {/* Background gradient blobs */}
-            <Box
-                sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: (theme) => theme.palette.mode === 'light'
-                        ? 'radial-gradient(circle at 30% 40%, rgba(146,0,32,0.08) 0%, transparent 60%)'
-                        : 'radial-gradient(circle at 30% 40%, rgba(114,0,21,0.15) 0%, transparent 60%)',
-                    animation: 'pulse 4s ease-in-out infinite',
-                    '@keyframes pulse': {
-                        '0%, 100%': { opacity: 0.6 },
-                        '50%': { opacity: 1 }
-                    }
-                }}
-            />
+
 
             {/* Building blocks container */}
             <Box
@@ -151,7 +137,23 @@ const AnimatedBuilding = () => {
                     transform: 'translateY(-25px)'
                 }}
             >
-                {currentBlocks.map((block) => {
+                {currentBlocks.map((block, index) => {
+                    // Module colors array
+                    const moduleColors = [
+                        '#FF6B6B', // Hero
+                        '#4ECDC4', // About
+                        '#45B7D1', // Services
+                        '#FFA07A', // Gallery
+                        '#98D8C8', // Calendar
+                        '#FFD93D', // Contact
+                        '#A8E6CF', // Text
+                        '#C7CEEA', // Video
+                        '#F8B195', // Testimonials
+                        '#88D8B0', // Pricing
+                        '#FFEAA7', // FAQ
+                        '#DFE6E9'  // Team
+                    ];
+                    const blockColor = moduleColors[index % moduleColors.length];
                     // Oblicz delay bazując na poprzednich rzędach
                     let cumulativeDelay = 0;
                     for (let i = 0; i < block.rowIndex; i++) {
@@ -201,16 +203,9 @@ const AnimatedBuilding = () => {
                                     width: '100%',
                                     height: '100%',
                                     borderRadius: 2,
-                                    border: '2px solid',
-                                    borderColor: (theme) => theme.palette.mode === 'light'
-                                        ? 'rgba(146,0,32,0.3)'
-                                        : 'rgba(114,0,21,0.5)',
-                                    backgroundColor: (theme) => theme.palette.mode === 'light'
-                                        ? 'rgba(146,0,32,0.05)'
-                                        : 'rgba(114,0,21,0.1)',
-                                    boxShadow: (theme) => theme.palette.mode === 'light'
-                                        ? '0 4px 20px rgba(146,0,32,0.15)'
-                                        : '0 4px 20px rgba(114,0,21,0.25)',
+                                    backgroundColor: `${blockColor}40`, // 40 = ~25% opacity
+                                    backdropFilter: 'blur(4px)',
+                                    boxShadow: `0 4px 20px ${blockColor}25`,
                                 }}
                             />
                         </motion.div>
@@ -363,9 +358,7 @@ const BuildingLoginPage = () => {
                 flexDirection: { xs: 'column', md: 'row' },
                 position: 'relative',
                 overflow: 'hidden',
-                background: theme.palette.mode === 'light'
-                    ? 'linear-gradient(to right, rgba(146, 0, 32, 0.25) 0%, rgba(146, 0, 32, 0.08) 50%, rgba(228, 229, 218, 1) 100%)'
-                    : 'linear-gradient(to right, rgba(114, 0, 21, 0.4) 0%, rgba(114, 0, 21, 0.15) 50%, rgba(12, 12, 12, 1) 100%)'
+                backgroundColor: 'background.default'
             }}
         >
             {/* Lewa strona - Animacja */}

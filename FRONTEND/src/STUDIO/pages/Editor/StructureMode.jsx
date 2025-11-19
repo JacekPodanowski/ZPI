@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase, useMediaQuery } from '@mui/material';
-import { GridView, Visibility, RemoveRedEye, Edit } from '@mui/icons-material';
+import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, InputBase, useMediaQuery, CircularProgress } from '@mui/material';
+import { GridView, Visibility, RemoveRedEye, Edit, Chat as ChatIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleToolbar from './ModuleToolbar';
 import SiteCanvas from './SiteCanvas';
 import SiteSettingsDrawer from './SiteSettingsDrawer';
+import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 import { getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
@@ -58,6 +59,9 @@ const StructureMode = () => {
   const [focusedPageId, setFocusedPageId] = useState(() => selectedPageId || entryPointPageId || site?.pages?.[0]?.id || null);
   const [editingPageId, setEditingPageId] = useState(null);
   const [draftPageTitle, setDraftPageTitle] = useState('');
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [aiTaskCompleted, setAiTaskCompleted] = useState(false);
   const titleInputRef = useRef(null);
   const pages = useMemo(() => site?.pages ?? [], [site?.pages]);
 
@@ -655,6 +659,74 @@ const StructureMode = () => {
             </Box>
           )}
         </Box>
+      </Box>
+
+      {/* AI Chat floating button - hidden when chat is open */}
+      {!aiChatOpen && (
+        <IconButton
+          onClick={() => {
+            setAiChatOpen(true);
+            setAiTaskCompleted(false);
+          }}
+          disabled={false}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 1200,
+            bgcolor: 'rgb(146, 0, 32)',
+            color: 'white',
+            width: 56,
+            height: 56,
+            boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
+            '&:hover': { 
+              bgcolor: 'rgb(114, 0, 21)',
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
+            },
+            transition: 'all 0.3s ease',
+            '@keyframes checkPulse': {
+              '0%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.2)' },
+              '100%': { transform: 'scale(1)' }
+            }
+          }}
+        >
+          {isAiProcessing ? (
+            <CircularProgress size={24} sx={{ color: 'white' }} />
+          ) : aiTaskCompleted ? (
+            <CheckCircleIcon 
+              sx={{ 
+                animation: 'checkPulse 0.6s ease-in-out',
+                fontSize: 28
+              }} 
+            />
+          ) : (
+            <ChatIcon />
+          )}
+        </IconButton>
+      )}
+
+      {/* AI Chat Panel - Singleton instance */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: '60px',
+          right: 0,
+          bottom: 0,
+          width: aiChatOpen ? '350px' : '0',
+          height: 'calc(100vh - 60px)',
+          overflow: 'hidden',
+          transition: 'width 0.3s ease',
+          zIndex: 1100
+        }}
+      >
+        <AIChatPanel 
+          onClose={() => setAiChatOpen(false)}
+          onProcessingChange={setIsAiProcessing}
+          onTaskComplete={(success) => setAiTaskCompleted(success)}
+          mode="structure"
+        />
       </Box>
     </Box>
   );
