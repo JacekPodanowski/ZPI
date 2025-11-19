@@ -481,9 +481,15 @@ class Notification(models.Model):
 
 
 class MagicLink(models.Model):
-    """Stores magic link tokens for passwordless authentication."""
+    """Stores magic link tokens for passwordless authentication and password reset."""
+    
+    class ActionType(models.TextChoices):
+        LOGIN = 'login', 'Login'
+        PASSWORD_RESET = 'password_reset', 'Password Reset'
+    
     email = models.EmailField(max_length=254)
     token = models.CharField(max_length=64, unique=True, db_index=True)
+    action_type = models.CharField(max_length=20, choices=ActionType.choices, default=ActionType.LOGIN)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     used = models.BooleanField(default=False)
@@ -510,13 +516,16 @@ class MagicLink(models.Model):
         self.save(update_fields=['used', 'used_at'])
     
     @classmethod
-    def create_for_email(cls, email, expiry_minutes=15):
+    def create_for_email(cls, email, expiry_minutes=15, action_type=None):
         """Create a new magic link for the given email."""
+        if action_type is None:
+            action_type = cls.ActionType.LOGIN
         token = get_random_string(64)
         expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
         return cls.objects.create(
             email=email,
             token=token,
+            action_type=action_type,
             expires_at=expires_at
         )
     
