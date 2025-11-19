@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, IconButton, Drawer, useMediaQuery, useTheme as useMuiTheme } from '@mui/material';
+import { Box, IconButton, Drawer, useMediaQuery, useTheme as useMuiTheme, CircularProgress } from '@mui/material';
 import { Menu as MenuIcon, Tune as TuneIcon, Chat as ChatIcon, Close as CloseIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
-import MockAIChatPanel from './MockAIChatPanel';
+import AIChatPanel from './AIChatPanel';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -18,6 +18,8 @@ const DetailMode = () => {
   const [rightWidth, setRightWidth] = useState(0.15); // 15%
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false); // AI chat initially collapsed
+  const [isAiProcessing, setIsAiProcessing] = useState(false); // Track AI processing state
   const MIN_PANEL = 0.1;
   const MAX_PANEL = 0.35;
   const MIN_CENTER = 0.4;
@@ -100,7 +102,7 @@ const DetailMode = () => {
             onClick={() => setLeftPanelOpen(true)}
             sx={{
               position: 'fixed',
-              bottom: 200,
+              bottom: 80,
               left: 16,
               zIndex: 1200,
               bgcolor: 'rgb(146, 0, 32)',
@@ -118,29 +120,45 @@ const DetailMode = () => {
           >
             <TuneIcon />
           </IconButton>
-          <IconButton
-            onClick={() => setRightPanelOpen(true)}
-            sx={{
-              position: 'fixed',
-              bottom: 200,
-              right: 16,
-              zIndex: 1200,
-              bgcolor: 'rgb(146, 0, 32)',
-              color: 'white',
-              width: 56,
-              height: 56,
-              boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
-              '&:hover': { 
-                bgcolor: 'rgb(114, 0, 21)',
-                transform: 'scale(1.05)',
-                boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <ChatIcon />
-          </IconButton>
         </>
+      )}
+
+      {/* AI Chat floating button - both desktop and mobile (hidden when open on desktop) */}
+      {(!aiChatOpen || isMobile) && (
+        <IconButton
+          onClick={() => {
+            if (isMobile) {
+              setRightPanelOpen(true);
+            } else {
+              // Just open the existing chat - don't create a new one
+              setAiChatOpen(true);
+            }
+          }}
+          disabled={false} // Always allow opening the chat
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 1200,
+            bgcolor: 'rgb(146, 0, 32)',
+            color: 'white',
+            width: 56,
+            height: 56,
+            boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
+            '&:hover': { 
+              bgcolor: 'rgb(114, 0, 21)',
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
+            },
+            transition: 'all 0.3s ease'
+          }}
+        >
+          {isAiProcessing ? (
+            <CircularProgress size={24} sx={{ color: 'white' }} />
+          ) : (
+            <ChatIcon />
+          )}
+        </IconButton>
       )}
 
       <Box
@@ -270,41 +288,52 @@ const DetailMode = () => {
                 </IconButton>
               </Box>
               <Box sx={{ flex: 1, overflow: 'auto' }}>
-                <MockAIChatPanel />
+                <AIChatPanel 
+                  onClose={() => setRightPanelOpen(false)}
+                  onProcessingChange={setIsAiProcessing}
+                />
               </Box>
             </Box>
           </Drawer>
         ) : (
+          // Singleton instance - always rendered but conditionally displayed
           <Box
             sx={{
-              flex: `0 0 ${rightWidth * 100}%`,
-              minWidth: '240px',
-              maxWidth: '35%',
+              flex: aiChatOpen ? `0 0 ${rightWidth * 100}%` : '0 0 0',
+              minWidth: aiChatOpen ? '290px' : '0',
+              maxWidth: aiChatOpen ? '35%' : '0',
               height: '100%',
               display: 'flex',
-              position: 'relative'
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'all 0.3s ease'
             }}
           >
-            <Box
-              onPointerDown={startDragging('right')}
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: -3,
-                width: '6px',
-                height: '100%',
-                cursor: 'col-resize',
-                zIndex: 20,
-                '&::after': {
-                  content: '""',
+            {aiChatOpen && (
+              <Box
+                onPointerDown={startDragging('right')}
+                sx={{
                   position: 'absolute',
-                  inset: '0 1px',
-                  borderRadius: '4px',
-                  background: 'rgba(30, 30, 30, 0.12)'
-                }
-              }}
+                  top: 0,
+                  left: -3,
+                  width: '6px',
+                  height: '100%',
+                  cursor: 'col-resize',
+                  zIndex: 20,
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    inset: '0 1px',
+                    borderRadius: '4px',
+                    background: 'rgba(30, 30, 30, 0.12)'
+                  }
+                }}
+              />
+            )}
+            <AIChatPanel 
+              onClose={() => setAiChatOpen(false)}
+              onProcessingChange={setIsAiProcessing}
             />
-            <MockAIChatPanel />
           </Box>
         )}
       </Box>

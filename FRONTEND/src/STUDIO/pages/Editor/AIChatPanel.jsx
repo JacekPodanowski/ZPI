@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Box, Typography, Stack, TextField, Button, CircularProgress, IconButton } from '@mui/material';
-import { ChevronRight as ChevronRightIcon } from '@mui/icons-material';
+import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon } from '@mui/icons-material';
 import { processAITask } from '../../../services/aiService';
 import apiClient from '../../../services/apiClient';
 import useNewEditorStore from '../../store/newEditorStore';
 
-const MockAIChatPanel = ({ onClose }) => {
+const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessingChange }) => {
   const [messages, setMessages] = useState([
     {
       id: 'intro',
@@ -17,8 +17,36 @@ const MockAIChatPanel = ({ onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessageId, setProcessingMessageId] = useState(null);
   const listRef = useRef(null);
+  const pollIntervalRef = useRef(null);
   
   const { site, currentPageId, selectedModuleId } = useNewEditorStore();
+
+  // Sync internal processing state with parent
+  useEffect(() => {
+    if (onProcessingChange) {
+      onProcessingChange(isProcessing);
+    }
+  }, [isProcessing, onProcessingChange]);
+
+  const handleRefresh = () => {
+    // Cancel any ongoing polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    
+    // Reset state
+    setMessages([
+      {
+        id: 'intro',
+        sender: 'ai',
+        text: 'Cześć! Jestem Twoim asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!'
+      }
+    ]);
+    setInput('');
+    setIsProcessing(false);
+    setProcessingMessageId(null);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -82,7 +110,7 @@ const MockAIChatPanel = ({ onClose }) => {
         { 
           id: loadingMsgId,
           sender: 'ai', 
-          text: 'Analizuję',
+          text: 'Myślę',
           isLoading: true,
           taskId  // Store task_id for polling
         }
@@ -107,7 +135,12 @@ const MockAIChatPanel = ({ onClose }) => {
   };
 
   const pollForResult = async (taskId, loadingMsgId) => {
-    const pollInterval = setInterval(async () => {
+    // Clear any existing interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    
+    pollIntervalRef.current = setInterval(async () => {
       try {
         // Use apiClient which handles auth automatically
         const response = await apiClient.get(`/ai-task/${taskId}/poll/`);
@@ -118,7 +151,8 @@ const MockAIChatPanel = ({ onClose }) => {
         }
 
         // Got result - stop polling
-        clearInterval(pollInterval);
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
 
         // Handle clarification - AI asks for more details
         if (result.status === 'clarification') {
@@ -157,7 +191,8 @@ const MockAIChatPanel = ({ onClose }) => {
         }
 
       } catch (error) {
-        clearInterval(pollInterval);
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
         console.error('Polling error:', error);
         
         setMessages((prev) => 
@@ -172,6 +207,15 @@ const MockAIChatPanel = ({ onClose }) => {
       }
     }, 2000); // Poll every 2 seconds
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Listen for AI updates via custom event
   useEffect(() => {
@@ -237,19 +281,43 @@ const MockAIChatPanel = ({ onClose }) => {
         <Typography sx={{ fontSize: '20px', fontWeight: 500 }}>
           Asystent AI
         </Typography>
-        {onClose && (
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <IconButton
-            onClick={onClose}
+            onClick={handleRefresh}
+            disabled={isProcessing}
             sx={{
               color: 'rgb(220, 220, 220)',
               '&:hover': {
                 bgcolor: 'rgba(220, 220, 220, 0.1)'
+              },
+              '&:disabled': {
+                opacity: 0.5
+              },
+              '@keyframes spinLeft': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(-360deg)' }
+              },
+              '&:hover:not(:disabled)': {
+                animation: 'spinLeft 0.6s ease-in-out'
               }
             }}
           >
-            <ChevronRightIcon />
+            <RestartAltIcon />
           </IconButton>
-        )}
+          {onClose && (
+            <IconButton
+              onClick={onClose}
+              sx={{
+                color: 'rgb(220, 220, 220)',
+                '&:hover': {
+                  bgcolor: 'rgba(220, 220, 220, 0.1)'
+                }
+              }}
+            >
+              <ChevronRightIcon />
+            </IconButton>
+          )}
+        </Box>
       </Box>
 
       <Box
@@ -280,15 +348,14 @@ const MockAIChatPanel = ({ onClose }) => {
                 whiteSpace: 'pre-wrap',
                 bgcolor: message.sender === 'user'
                   ? 'rgba(146, 0, 32, 0.85)'
-                  : 'rgba(255, 255, 255, 0.08)',
+                  : message.isLoading 
+                    ? 'transparent'
+                    : 'rgba(255, 255, 255, 0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1
               }}
             >
-              {message.isLoading && (
-                <CircularProgress size={14} sx={{ color: 'rgb(146, 0, 32)' }} />
-              )}
               <span>{message.text}</span>
               {message.isLoading && (
                 <Box
@@ -309,24 +376,6 @@ const MockAIChatPanel = ({ onClose }) => {
             </Box>
           </Stack>
         ))}
-        {isProcessing && (
-          <Stack alignItems="flex-start">
-            <Box
-              sx={{
-                px: 2,
-                py: 1.5,
-                borderRadius: '12px',
-                bgcolor: 'rgba(255, 255, 255, 0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
-              }}
-            >
-              <CircularProgress size={16} sx={{ color: 'rgb(146, 0, 32)' }} />
-              <Typography sx={{ fontSize: '14px' }}>Przetwarzam...</Typography>
-            </Box>
-          </Stack>
-        )}
       </Box>
 
       <Box
@@ -389,4 +438,4 @@ const MockAIChatPanel = ({ onClose }) => {
   );
 };
 
-export default MockAIChatPanel;
+export default AIChatPanel;
