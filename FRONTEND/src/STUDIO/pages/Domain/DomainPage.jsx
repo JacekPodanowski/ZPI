@@ -15,12 +15,15 @@ import {
     DialogTitle,
     DialogContent,
     DialogContentText,
-    DialogActions
+    DialogActions,
+    Link
 } from '@mui/material';
 import { 
     Search as SearchIcon, 
     CheckCircle as CheckCircleIcon,
-    ShoppingCart as ShoppingCartIcon
+    ShoppingCart as ShoppingCartIcon,
+    Add as AddIcon,
+    OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchSiteById } from '../../../services/siteService';
@@ -300,6 +303,68 @@ const DomainPage = () => {
             title="Domain Management"
             subtitle={`Search and purchase a custom domain for ${site.name}`}
         >
+            {/* Site URL and Add Domain Button */}
+            <Paper
+                sx={{
+                    p: 3,
+                    mb: 3,
+                    bgcolor: 'background.paper',
+                    borderRadius: 3,
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 2
+                }}
+            >
+                <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        Current Site URL
+                    </Typography>
+                    <Link
+                        href={`https://${getSiteUrlDisplay(site)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            fontSize: '1.1rem',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            color: 'primary.main',
+                            '&:hover': {
+                                textDecoration: 'underline'
+                            }
+                        }}
+                    >
+                        {getSiteUrlDisplay(site)}
+                        <OpenInNewIcon sx={{ fontSize: 18 }} />
+                    </Link>
+                </Box>
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                        // Scroll to search section
+                        document.getElementById('domain-search')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    sx={{
+                        bgcolor: 'primary.main',
+                        color: '#fff',
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        px: 3,
+                        '&:hover': {
+                            bgcolor: 'primary.dark'
+                        }
+                    }}
+                >
+                    Dodaj domenę
+                </Button>
+            </Paper>
+
             {/* Payment Return Notification */}
             {returnedFromPayment && (
                 <Alert 
@@ -424,6 +489,7 @@ const DomainPage = () => {
 
             {/* Domain Search */}
             <Paper
+                id="domain-search"
                 sx={{
                     p: 4,
                     bgcolor: 'background.paper',

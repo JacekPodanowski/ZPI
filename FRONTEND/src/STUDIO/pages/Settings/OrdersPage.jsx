@@ -17,7 +17,8 @@ import {
   Tooltip
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined';
+import LanguageIcon from '@mui/icons-material/Language';
+import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -273,15 +274,34 @@ const OrdersPage = () => {
         p: { xs: 2, sm: 3, md: 4 }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-        <ShoppingBagOutlinedIcon sx={{ fontSize: 28, color: accentColor }} />
-        <Typography variant="h5" sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-          Twoje Zamówienia
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <LanguageIcon sx={{ fontSize: 28, color: accentColor }} />
+          <Typography variant="h5" sx={{ fontWeight: 600, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
+            Twoje Domeny
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          href="/domain"
+          sx={{
+            bgcolor: accentColor,
+            color: '#fff',
+            borderRadius: '8px',
+            textTransform: 'none',
+            px: 3,
+            '&:hover': {
+              bgcolor: alpha(accentColor, 0.9)
+            }
+          }}
+        >
+          Dodaj domenę
+        </Button>
       </Box>
       
       <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary }}>
-        Historia zakupów domen i ich statusy
+        Zarządzaj swoimi domenami i ich konfiguracją
       </Typography>
 
       {error && (
@@ -298,12 +318,12 @@ const OrdersPage = () => {
             color: theme.colors?.text?.secondary
           }}
         >
-          <ShoppingBagOutlinedIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
+          <LanguageIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
           <Typography variant="h6" sx={{ mb: 1 }}>
-            Brak zamówień
+            Brak domen
           </Typography>
           <Typography variant="body2">
-            Nie masz jeszcze żadnych zamówień domenowych
+            Nie masz jeszcze żadnych domen. Kliknij "Dodaj domenę" aby rozpocząć.
           </Typography>
         </Box>
       ) : (

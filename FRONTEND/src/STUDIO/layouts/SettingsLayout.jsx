@@ -22,7 +22,7 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
-import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined';
+import LanguageIcon from '@mui/icons-material/Language';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
 import useTheme from '../../theme/useTheme';
@@ -56,9 +56,9 @@ const settingsNavigation = [
     icon: <PersonOutlineIcon />
   },
   {
-    label: 'Orders',
+    label: 'Domeny',
     path: '/studio/account/orders',
-    icon: <ShoppingBagOutlinedIcon />
+    icon: <LanguageIcon />
   },
   {
     label: 'Billing & Plans',
