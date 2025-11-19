@@ -180,13 +180,13 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     if (fieldKey === 'members') {
       defaultItem = { ...defaultItem, name: 'Nowy członek', role: 'Rola', description: '', image: '' };
     } else if (fieldKey === 'offers' || fieldKey === 'services') {
-      defaultItem = { ...defaultItem, name: 'New Service', price: '0', description: '' };
+      defaultItem = { ...defaultItem, name: 'Nowa usługa', price: '0', description: '' };
     } else if (fieldKey === 'items' && module.type === 'services') {
-      defaultItem = { ...defaultItem, name: 'New Service', description: 'Service description', image: '', details: '' };
+      defaultItem = { ...defaultItem, name: 'Nowa usługa', description: 'Opis usługi', image: '', details: '' };
     } else if (fieldKey === 'serviceItems') {
-      defaultItem = { ...defaultItem, name: 'New Service', description: 'Service description', image: '', details: '' };
+      defaultItem = { ...defaultItem, name: 'Nowa usługa', description: 'Opis usługi', image: '', details: '' };
     } else if (fieldKey === 'items') {
-      defaultItem = { ...defaultItem, question: 'New Question', answer: '<p>New Answer</p>' };
+      defaultItem = { ...defaultItem, question: 'Nowe pytanie', answer: '<p>Nowa odpowiedź</p>' };
     } else if (fieldKey === 'images') {
       defaultItem = { url: '', caption: '' };
     } else if (fieldKey === 'timeline' || fieldKey === 'milestones') {
@@ -227,7 +227,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Gallery Images'}
+          {fieldDef.d || 'Zdjęcia w galerii'}
         </Typography>
         
         <ImageUploader
@@ -276,7 +276,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                       <TextField
                         fullWidth
                         size="small"
-                        placeholder="Image caption..."
+                        placeholder="Podpis obrazu..."
                         value={caption}
                         onChange={(e) => {
                           const newItems = [...items];
@@ -710,7 +710,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Services'} ({items.length})
+          {fieldDef.d || 'Usługi'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((offer, index) => (
@@ -740,7 +740,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               </IconButton>
               
               <TextField
-                label="Offer Name"
+                label="Nazwa oferty"
                 fullWidth
                 size="small"
                 value={offer.name || ''}
@@ -753,7 +753,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <TextField
-                label="Price"
+                label="Cena"
                 fullWidth
                 size="small"
                 value={offer.price || ''}
@@ -766,7 +766,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <TextField
-                label="Description"
+                label="Opis"
                 fullWidth
                 size="small"
                 multiline
@@ -815,7 +815,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Offer
+          Dodaj ofertę
         </Button>
       </Box>
     );
@@ -826,7 +826,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Service Items'} ({items.length})
+          {fieldDef.d || 'Elementy usługi'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((item, index) => (
@@ -915,7 +915,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               
               {item.details !== undefined && (
                 <TextField
-                  label="Additional Details (Optional)"
+                  label="Dodatkowe szczegóły (opcjonalnie)"
                   fullWidth
                   size="small"
                   multiline
@@ -941,7 +941,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Service
+          Dodaj usługę
         </Button>
       </Box>
     );
@@ -1001,7 +1001,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               </Stack>
               
               <TextField
-                label="Service Name"
+                label="Nazwa usługi"
                 fullWidth
                 size="small"
                 value={item.name || ''}
@@ -1014,7 +1014,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <TextField
-                label="Description"
+                label="Opis"
                 fullWidth
                 size="small"
                 multiline
@@ -1029,7 +1029,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <ImageUploader
-                label="Service Image"
+                label="Zdjęcie usługi"
                 value={item.image || ''}
                 onChange={(url) => {
                   const newItems = [...items];
@@ -1040,7 +1040,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <TextField
-                label="Additional Details (Optional)"
+                label="Dodatkowe szczegóły (opcjonalnie)"
                 fullWidth
                 size="small"
                 multiline
@@ -1065,7 +1065,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Service
+          Dodaj usługę
         </Button>
       </Box>
     );
@@ -1076,7 +1076,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'FAQ Items'} ({items.length})
+          {fieldDef.d || 'Pytania FAQ'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((item, index) => (
@@ -1106,7 +1106,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               </IconButton>
               
               <TextField
-                label="Question"
+                label="Pytanie"
                 fullWidth
                 size="small"
                 value={item.question || ''}
@@ -1119,7 +1119,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
               />
               
               <TextField
-                label="Answer (HTML)"
+                label="Odpowiedź (HTML)"
                 fullWidth
                 size="small"
                 multiline
@@ -1143,7 +1143,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Question
+          Dodaj pytanie
         </Button>
       </Box>
     );
@@ -1154,7 +1154,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Timeline milestones'} ({items.length})
+          {fieldDef.d || 'Oś czasu'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((item, index) => (
@@ -1171,7 +1171,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 <TextField
                   fullWidth
                   size="small"
-                  label="Year"
+                  label="Rok"
                   value={item.year || ''}
                   onChange={(e) => {
                     const newItems = [...items];
@@ -1183,7 +1183,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 <TextField
                   fullWidth
                   size="small"
-                  label="Title"
+                  label="Tytuł"
                   value={item.title || ''}
                   onChange={(e) => {
                     const newItems = [...items];
@@ -1195,7 +1195,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 <TextField
                   fullWidth
                   size="small"
-                  label="Description"
+                  label="Opis"
                   multiline
                   rows={2}
                   value={item.description || item.desc || ''}
@@ -1258,7 +1258,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Milestone
+          Dodaj kamień milowy
         </Button>
       </Box>
     );
@@ -1271,7 +1271,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     return (
       <Box key={fieldKey}>
         <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Key highlights'} ({items.length})
+          {fieldDef.d || 'Kluczowe osiągnięcia'} ({items.length})
         </Typography>
         <Stack spacing={2}>
           {(items || []).map((item, index) => (
@@ -1289,7 +1289,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                   fullWidth
                   select
                   size="small"
-                  label="Icon"
+                  label="Ikona"
                   value={item.icon || 'star'}
                   onChange={(e) => {
                     const newItems = [...items];
@@ -1305,7 +1305,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 <TextField
                   fullWidth
                   size="small"
-                  label="Title"
+                  label="Tytuł"
                   value={item.title || ''}
                   onChange={(e) => {
                     const newItems = [...items];
@@ -1317,7 +1317,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 <TextField
                   fullWidth
                   size="small"
-                  label="Description"
+                  label="Opis"
                   multiline
                   rows={2}
                   value={item.description || item.desc || ''}
@@ -1380,7 +1380,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
           }}
         >
-          Add Highlight
+          Dodaj osiągnięcie
         </Button>
       </Box>
     );
@@ -1430,7 +1430,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
           '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
         }}
       >
-        Add Item
+        Dodaj element
       </Button>
     </Box>
   );

@@ -85,8 +85,8 @@ const AdminNavigation = () => {
     );
 
     const adminNavItems = useMemo(() => [
-        { label: 'Dashboard', to: '/studio/admin', icon: <DashboardIcon fontSize="small" /> },
-        { label: 'Terms', to: '/studio/admin/terms', icon: <DescriptionIcon fontSize="small" /> }
+        { label: 'Panel admina', to: '/studio/admin', icon: <DashboardIcon fontSize="small" /> },
+        { label: 'Regulaminy', to: '/studio/admin/terms', icon: <DescriptionIcon fontSize="small" /> }
     ], []);
 
     const handleDrawerToggle = () => {

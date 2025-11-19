@@ -221,7 +221,7 @@ const SitesPage = () => {
                             }
                         }}
                     >
-                        Create New Site
+                        Utwórz nową stronę
                     </Button>
                 </motion.div>
             </Box>
@@ -254,7 +254,7 @@ const SitesPage = () => {
                                     fontWeight: 500
                                 }}
                             >
-                                No sites yet
+                                Jeszcze nie masz żadnych stron
                             </Typography>
                             <Typography
                                 variant="body1"
@@ -263,7 +263,7 @@ const SitesPage = () => {
                                     color: 'text.disabled'
                                 }}
                             >
-                                Create your first site to get started
+                                Utwórz swoją pierwszą stronę, aby zacząć
                             </Typography>
                             <Button
                                 variant="outlined"
@@ -284,7 +284,7 @@ const SitesPage = () => {
                                     }
                                 }}
                             >
-                                Create Your First Site
+                                Utwórz swoją pierwszą stronę
                             </Button>
                         </Box>
                     </motion.div>

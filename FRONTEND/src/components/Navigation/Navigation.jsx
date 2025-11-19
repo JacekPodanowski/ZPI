@@ -94,7 +94,7 @@ const Navigation = () => {
         if (isAuthenticated) {
             primary.push(
                 { label: 'Strony', to: '/studio/sites', requiresAuth: true },
-                { label: 'Kalendarz twórcy', to: '/studio/calendar/creator', requiresAuth: true },
+                { label: 'Kalendarz', to: '/studio/calendar/creator', requiresAuth: true },
                 { label: 'Viewer', to: '/viewer', requiresAuth: true }
             );
         }
@@ -103,8 +103,8 @@ const Navigation = () => {
         const admin = [];
         if (user?.is_staff && isAdminPage) {
             admin.push(
-                { label: 'Dashboard', to: '/studio/admin' },
-                { label: 'Terms', to: '/studio/admin/terms' }
+                { label: 'Panel admina', to: '/studio/admin' },
+                { label: 'Regulaminy', to: '/studio/admin/terms' }
             );
         }
 
