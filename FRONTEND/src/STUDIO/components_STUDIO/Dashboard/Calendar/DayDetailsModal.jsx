@@ -1392,45 +1392,68 @@ const DayDetailsModal = ({
 
                 {!isEvent && (
                     <>
-                        <FormControl fullWidth sx={{ mb: 2 }}>
-                            <InputLabel sx={{ fontWeight: 600 }}>Długość spotkania</InputLabel>
-                            <Select
-                                value={formData.meetingDuration || '60'}
-                                label="Długość spotkania"
-                                onChange={(e) => setFormData({ ...formData, meetingDuration: e.target.value })}
-                            >
-                                <MenuItem value="30">30 minut</MenuItem>
-                                <MenuItem value="45">45 minut</MenuItem>
-                                <MenuItem value="60">1 godzina</MenuItem>
-                                <MenuItem value="90">1,5 godziny</MenuItem>
-                                <MenuItem value="120">2 godziny</MenuItem>
-                            </Select>
-                        </FormControl>
+                        <Box>
+                            <FormControl fullWidth>
+                                <InputLabel sx={{ fontWeight: 600 }}>Długość spotkania</InputLabel>
+                                <Select
+                                    value={formData.meetingDuration || '60'}
+                                    label="Długość spotkania"
+                                    onChange={(e) => setFormData({ ...formData, meetingDuration: e.target.value })}
+                                >
+                                    <MenuItem value="30">30 minut</MenuItem>
+                                    <MenuItem value="45">45 minut</MenuItem>
+                                    <MenuItem value="60">1 godzina</MenuItem>
+                                    <MenuItem value="90">1,5 godziny</MenuItem>
+                                    <MenuItem value="120">2 godziny</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
 
-                        <FormControl fullWidth>
-                            <InputLabel sx={{ fontWeight: 600 }}>Spotkania mogą zaczynać się co</InputLabel>
-                            <Select
-                                value={formData.timeSnapping}
-                                label="Spotkania mogą zaczynać się co"
-                                onChange={(e) => setFormData({ ...formData, timeSnapping: e.target.value })}
-                            >
-                                <MenuItem value="15">15 minut</MenuItem>
-                                <MenuItem value="30">30 minut</MenuItem>
-                                <MenuItem value="60">60 minut</MenuItem>
-                                <MenuItem value="0">Dowolnie</MenuItem>
-                            </Select>
-                        </FormControl>
+                        <Box>
+                            <FormControl fullWidth>
+                                <InputLabel sx={{ fontWeight: 600 }}>Spotkania mogą zaczynać się co</InputLabel>
+                                <Select
+                                    value={formData.timeSnapping}
+                                    label="Spotkania mogą zaczynać się co"
+                                    onChange={(e) => setFormData({ ...formData, timeSnapping: e.target.value })}
+                                >
+                                    <MenuItem value="15">15 minut</MenuItem>
+                                    <MenuItem value="30">30 minut</MenuItem>
+                                    <MenuItem value="60">60 minut</MenuItem>
+                                    <MenuItem value="0">Dowolnie</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
 
-                        <TextField
-                            fullWidth
-                            type="number"
-                            label="Przerwa między spotkaniami (min)"
-                            InputLabelProps={{ sx: { fontWeight: 600 } }}
-                            value={formData.bufferTime}
-                            onChange={(e) => setFormData({ ...formData, bufferTime: e.target.value })}
-                            inputProps={{ min: 0 }}
-                            helperText="Minimalny czas między spotkaniami"
-                        />
+                        <Box sx={{ position: 'relative' }}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Minimalna przerwa między spotkaniami"
+                                InputLabelProps={{ sx: { fontWeight: 600 } }}
+                                value={formData.bufferTime}
+                                onChange={(e) => setFormData({ ...formData, bufferTime: e.target.value })}
+                                inputProps={{ min: 0 }}
+                                size="small"
+                            />
+                            {formData.bufferTime && (
+                                <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: `calc(14px + ${String(formData.bufferTime).length * 8.5}px + 4px)`,
+                                        transform: 'translateY(-50%)',
+                                        color: 'text.primary',
+                                        pointerEvents: 'none',
+                                        fontSize: '16px',
+                                        fontFamily: 'inherit'
+                                    }}
+                                >
+                                    min
+                                </Typography>
+                            )}
+                        </Box>
                     </>
                 )}
 
