@@ -4,6 +4,8 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+
 const GridTeam = ({ content, style, siteId }) => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,10 @@ const GridTeam = ({ content, style, siteId }) => {
 
   // Fetch team members from API
   useEffect(() => {
+    console.log('[GridTeam] siteId:', siteId);
+    
     if (!siteId) {
+      console.log('[GridTeam] No siteId, skipping API fetch');
       setLoading(false);
       return;
     }
@@ -34,11 +39,17 @@ const GridTeam = ({ content, style, siteId }) => {
     const fetchTeamMembers = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/public-sites/${siteId}/team/`);
+        const apiUrl = `${API_BASE}/api/v1/public-sites/${siteId}/team/`;
+        console.log('[GridTeam] Fetching team members from:', apiUrl);
+        const response = await fetch(apiUrl);
+        console.log('[GridTeam] Response status:', response.status);
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch team members');
+          throw new Error(`Failed to fetch team members: ${response.status}`);
         }
+        
         const data = await response.json();
+        console.log('[GridTeam] Fetched team members:', data);
         setTeamMembers(data);
       } catch (err) {
         console.error('Error fetching team members:', err);

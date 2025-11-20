@@ -150,6 +150,22 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
     case 'array':
       return renderArrayField(fieldKey, fieldDef, value, module, pageId, onContentChange);
     
+    case 'info':
+      return (
+        <Box
+          sx={{
+            p: 2,
+            border: '1px solid rgba(146, 0, 32, 0.2)',
+            borderRadius: '8px',
+            bgcolor: 'rgba(146, 0, 32, 0.05)'
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {fieldDef.d || fieldKey}
+          </Typography>
+        </Box>
+      );
+    
     case 'object':
       return (
         <Box
@@ -343,148 +359,6 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
             })}
           </Stack>
         )}
-      </Box>
-    );
-  }
-  
-  // Team members
-  if (fieldKey === 'members') {
-    return (
-      <Box key={fieldKey}>
-        <Typography sx={{ mb: 2, fontWeight: 600, fontSize: '14px' }}>
-          {fieldDef.d || 'Członkowie zespołu'} ({items.length})
-        </Typography>
-        <Stack spacing={2}>
-          {(items || []).map((member, index) => (
-            <Box
-              key={member.id || index}
-              sx={{
-                p: 2,
-                border: '1px solid rgba(0,0,0,0.1)',
-                borderRadius: '8px',
-                position: 'relative'
-              }}
-            >
-              <IconButton
-                size="small"
-                onClick={() => {
-                  const newItems = items.filter((_, i) => i !== index);
-                  onContentChange(fieldKey, newItems);
-                }}
-                sx={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  color: 'error.main'
-                }}
-              >
-                <Delete fontSize="small" />
-              </IconButton>
-              
-              <TextField
-                label="Imię i nazwisko"
-                fullWidth
-                size="small"
-                value={member.name || ''}
-                onChange={(e) => {
-                  const newItems = [...items];
-                  newItems[index] = { ...newItems[index], name: e.target.value };
-                  onContentChange(fieldKey, newItems);
-                }}
-                sx={{ mb: 2 }}
-              />
-              
-              <TextField
-                label="Rola"
-                fullWidth
-                size="small"
-                value={member.role || ''}
-                onChange={(e) => {
-                  const newItems = [...items];
-                  newItems[index] = { ...newItems[index], role: e.target.value };
-                  onContentChange(fieldKey, newItems);
-                }}
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="Biografia"
-                fullWidth
-                size="small"
-                value={member.bio || ''}
-                onChange={(e) => {
-                  const newItems = [...items];
-                  newItems[index] = { ...newItems[index], bio: e.target.value };
-                  onContentChange(fieldKey, newItems);
-                }}
-                sx={{ mb: 2 }}
-              />
-              
-              <TextField
-                label="Opis"
-                fullWidth
-                size="small"
-                multiline
-                rows={3}
-                value={member.description || ''}
-                onChange={(e) => {
-                  const newItems = [...items];
-                  newItems[index] = { ...newItems[index], description: e.target.value };
-                  onContentChange(fieldKey, newItems);
-                }}
-                sx={{ mb: 2 }}
-                placeholder="Krótki opis osoby..."
-              />
-              
-              <ImageUploader
-                label="Zdjęcie"
-                value={member.image || ''}
-                onChange={(url) => {
-                  const newItems = [...items];
-                  newItems[index] = { ...newItems[index], image: url };
-                  onContentChange(fieldKey, newItems);
-                }}
-                siteId={pageId}
-              />
-              
-              <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                <IconButton
-                  size="small"
-                  disabled={index === 0}
-                  onClick={() => {
-                    const newItems = [...items];
-                    [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
-                    onContentChange(fieldKey, newItems);
-                  }}
-                >
-                  <ArrowUpward fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  disabled={index === items.length - 1}
-                  onClick={() => {
-                    const newItems = [...items];
-                    [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-                    onContentChange(fieldKey, newItems);
-                  }}
-                >
-                  <ArrowDownward fontSize="small" />
-                </IconButton>
-              </Stack>
-            </Box>
-          ))}
-        </Stack>
-        <Button
-          startIcon={<Add />}
-          onClick={handleAddItem}
-          sx={{
-            mt: 2,
-            color: 'rgb(146, 0, 32)',
-            '&:hover': { bgcolor: 'rgba(146, 0, 32, 0.04)' }
-          }}
-        >
-          Dodaj członka
-        </Button>
       </Box>
     );
   }

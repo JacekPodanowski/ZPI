@@ -28,6 +28,8 @@ import DomainPurchaseSuccessPage from './pages/Domain/DomainPurchaseSuccessPage'
 import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
 import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
 import MagicLoginPage from './pages/Auth/MagicLoginPage';
+import AcceptInvitationPage from './pages/Auth/AcceptInvitationPage';
+import SetupAccountPage from './pages/Auth/SetupAccountPage';
 import BuildingLoginPage from './pages/Auth/BuildingLoginPage';
 import TermsAdminPage from './pages/Admin/TermsAdminPage';
 import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
@@ -45,6 +47,12 @@ const StudioApp = () => (
     
     {/* Magic link login - PUBLIC route, no auth required */}
     <Route path="magic-login/:token" element={<MagicLoginPage />} />
+    
+    {/* Accept team invitation - PUBLIC route, no auth required */}
+    <Route path="accept-invitation/:token" element={<AcceptInvitationPage />} />
+    
+    {/* Setup account (new users from team invitation) */}
+    <Route path="setup-account/:token" element={<SetupAccountPage />} />
     
     {/* Password reset - PUBLIC route, no auth required */}
     <Route path="reset-password/:token" element={<ChangePasswordPage />} />

@@ -365,7 +365,7 @@ export const TEAM_DESCRIPTOR = {
       d: 'Wysokość okienka (px)', 
       category: 'layout'
     },
-    members: { t: 'array', req: true, d: 'Lista członków zespołu', category: 'content' },
+    members: { t: 'info', d: 'Lista członków zespołu (zarządzana w zakładce Zespół)', category: 'content' },
     bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
     backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
     backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },

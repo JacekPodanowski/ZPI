@@ -13,13 +13,12 @@ import {
     Box,
     Typography,
     IconButton,
-    Avatar as MuiAvatar,
     CircularProgress
 } from '@mui/material';
 import { PhotoCamera, Delete as DeleteIcon } from '@mui/icons-material';
 import { uploadMedia } from '../../../services/mediaService';
 
-const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
+const EditTeamMemberDialog = ({ open, onClose, onSave, member, siteId }) => {
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -27,11 +26,11 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
         role_description: '',
         bio: '',
         permission_role: 'viewer',
-        avatar_url: ''
+        public_image_url: ''
     });
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
-    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     useEffect(() => {
         if (member) {
@@ -42,7 +41,7 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
                 role_description: member.role_description || '',
                 bio: member.bio || '',
                 permission_role: member.permission_role || 'viewer',
-                avatar_url: member.avatar_url || ''
+                public_image_url: member.public_image_url || ''
             });
         }
     }, [member]);
@@ -60,35 +59,36 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            setErrors(prev => ({ ...prev, avatar: 'Proszę wybrać plik obrazu' }));
+            setErrors(prev => ({ ...prev, image: 'Proszę wybrać plik obrazu' }));
             return;
         }
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-            setErrors(prev => ({ ...prev, avatar: 'Plik jest za duży (max 5MB)' }));
+            setErrors(prev => ({ ...prev, image: 'Plik jest za duży (max 5MB)' }));
             return;
         }
 
-        setUploadingAvatar(true);
-        setErrors(prev => ({ ...prev, avatar: null }));
+        setUploadingImage(true);
+        setErrors(prev => ({ ...prev, image: null }));
 
         try {
             const uploadedMedia = await uploadMedia(file, {
-                usage: 'avatar'
+                usage: 'site_content',
+                siteId: siteId
             });
             
-            handleChange('avatar_url', uploadedMedia.url);
+            handleChange('public_image_url', uploadedMedia.url);
         } catch (error) {
-            console.error('Avatar upload failed:', error);
-            setErrors(prev => ({ ...prev, avatar: 'Nie udało się przesłać zdjęcia' }));
+            console.error('Image upload failed:', error);
+            setErrors(prev => ({ ...prev, image: 'Nie udało się przesłać zdjęcia' }));
         } finally {
-            setUploadingAvatar(false);
+            setUploadingImage(false);
         }
     };
 
     const handleRemoveAvatar = () => {
-        handleChange('avatar_url', '');
+        handleChange('public_image_url', '');
     };
 
     const validate = () => {
@@ -134,9 +134,6 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
         }
     };
 
-    const displayAvatar = formData.avatar_url || null;
-    const avatarLetter = formData.first_name ? formData.first_name.charAt(0).toUpperCase() : '?';
-
     return (
         <Dialog
             open={open}
@@ -166,85 +163,12 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
                         WebkitTextFillColor: 'transparent'
                     }}
                 >
-                    Edytuj członka zespołu
+                    {member?.is_owner ? 'Edytuj profil właściciela' : 'Edytuj członka zespołu'}
                 </Box>
             </DialogTitle>
 
             <DialogContent>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 2 }}>
-                    {/* Avatar Upload Section */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ position: 'relative' }}>
-                            <MuiAvatar
-                                src={displayAvatar}
-                                sx={{
-                                    width: 120,
-                                    height: 120,
-                                    fontSize: '3rem',
-                                    bgcolor: member?.avatar_color || 'rgb(146, 0, 32)'
-                                }}
-                            >
-                                {avatarLetter}
-                            </MuiAvatar>
-                            {uploadingAvatar && (
-                                <Box
-                                    sx={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        bgcolor: 'rgba(0, 0, 0, 0.5)',
-                                        borderRadius: '50%'
-                                    }}
-                                >
-                                    <CircularProgress size={40} sx={{ color: 'white' }} />
-                                </Box>
-                            )}
-                        </Box>
-                        
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                                component="label"
-                                variant="outlined"
-                                startIcon={<PhotoCamera />}
-                                disabled={uploadingAvatar || submitting}
-                                size="small"
-                            >
-                                {formData.avatar_url ? 'Zmień zdjęcie' : 'Dodaj zdjęcie'}
-                                <input
-                                    type="file"
-                                    hidden
-                                    accept="image/*"
-                                    onChange={handleAvatarUpload}
-                                />
-                            </Button>
-                            
-                            {formData.avatar_url && (
-                                <IconButton
-                                    onClick={handleRemoveAvatar}
-                                    disabled={uploadingAvatar || submitting}
-                                    size="small"
-                                    color="error"
-                                >
-                                    <DeleteIcon />
-                                </IconButton>
-                            )}
-                        </Box>
-                        
-                        {errors.avatar && (
-                            <Typography variant="caption" color="error">
-                                {errors.avatar}
-                            </Typography>
-                        )}
-                        
-                        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-                            Zdjęcie będzie wyświetlane na stronie publicznej
-                        </Typography>
-                    </Box>
 
                     <TextField
                         label="Imię"
@@ -274,9 +198,9 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
                         value={formData.email}
                         onChange={(e) => handleChange('email', e.target.value)}
                         error={Boolean(errors.email)}
-                        helperText={errors.email || 'Wymagane do wysłania zaproszenia'}
+                        helperText={errors.email || (member?.is_owner ? 'Email systemowy (niezmienny)' : 'Wymagane do wysłania zaproszenia')}
                         fullWidth
-                        disabled={submitting}
+                        disabled={submitting || member?.is_owner}
                     />
 
                     <TextField
@@ -301,45 +225,133 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
                         disabled={submitting}
                     />
 
-                    <FormControl fullWidth disabled={submitting}>
-                        <InputLabel>Uprawnienia</InputLabel>
-                        <Select
-                            value={formData.permission_role}
-                            onChange={(e) => handleChange('permission_role', e.target.value)}
-                            label="Uprawnienia"
-                        >
-                            <MenuItem value="viewer">
-                                <Box>
-                                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                        Viewer
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                                        Widzi tylko swoje wydarzenia
-                                    </Typography>
+                    {!member?.is_owner && (
+                        <FormControl fullWidth disabled={submitting}>
+                            <InputLabel>Uprawnienia</InputLabel>
+                            <Select
+                                value={formData.permission_role}
+                                onChange={(e) => handleChange('permission_role', e.target.value)}
+                                label="Uprawnienia"
+                            >
+                                <MenuItem value="viewer">
+                                    <Box>
+                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                            Viewer
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                                            Widzi tylko swoje wydarzenia
+                                        </Typography>
+                                    </Box>
+                                </MenuItem>
+                                <MenuItem value="contributor">
+                                    <Box>
+                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                            Contributor
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                                            Zarządza swoim kalendarzem
+                                        </Typography>
+                                    </Box>
+                                </MenuItem>
+                                <MenuItem value="manager">
+                                    <Box>
+                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                            Manager
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                                            Pełna kontrola nad kalendarzem
+                                        </Typography>
+                                    </Box>
+                                </MenuItem>
+                            </Select>
+                        </FormControl>
+                    )}
+
+                    {/* Public Image Upload Section */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 2,
+                        p: 2,
+                        borderRadius: 2,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        bgcolor: (theme) => theme.palette.mode === 'light' 
+                            ? 'rgba(228, 229, 218, 0.3)' 
+                            : 'rgba(30, 30, 30, 0.3)'
+                    }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            Zdjęcie publiczne
+                        </Typography>
+                        
+                        {formData.public_image_url ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                <Box
+                                    component="img"
+                                    src={formData.public_image_url}
+                                    sx={{
+                                        width: '100%',
+                                        maxHeight: 200,
+                                        objectFit: 'cover',
+                                        borderRadius: 2,
+                                        border: (theme) => `1px solid ${theme.palette.divider}`
+                                    }}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Button
+                                        component="label"
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<PhotoCamera />}
+                                        disabled={uploadingImage || submitting}
+                                        fullWidth
+                                    >
+                                        Zmień zdjęcie
+                                        <input
+                                            type="file"
+                                            hidden
+                                            accept="image/*"
+                                            onChange={handleAvatarUpload}
+                                        />
+                                    </Button>
+                                    <IconButton
+                                        onClick={handleRemoveAvatar}
+                                        disabled={uploadingImage || submitting}
+                                        size="small"
+                                        color="error"
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
                                 </Box>
-                            </MenuItem>
-                            <MenuItem value="contributor">
-                                <Box>
-                                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                        Contributor
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                                        Zarządza swoim kalendarzem
-                                    </Typography>
-                                </Box>
-                            </MenuItem>
-                            <MenuItem value="manager">
-                                <Box>
-                                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                        Manager
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                                        Pełna kontrola nad kalendarzem
-                                    </Typography>
-                                </Box>
-                            </MenuItem>
-                        </Select>
-                    </FormControl>
+                            </Box>
+                        ) : (
+                            <Button
+                                component="label"
+                                variant="outlined"
+                                size="small"
+                                startIcon={uploadingImage ? <CircularProgress size={16} /> : <PhotoCamera />}
+                                disabled={uploadingImage || submitting}
+                                fullWidth
+                            >
+                                {uploadingImage ? 'Wgrywanie...' : 'Dodaj zdjęcie'}
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept="image/*"
+                                    onChange={handleAvatarUpload}
+                                />
+                            </Button>
+                        )}
+                        
+                        {errors.image && (
+                            <Typography variant="caption" color="error">
+                                {errors.image}
+                            </Typography>
+                        )}
+                        
+                        <Typography variant="caption" color="text.secondary">
+                            Zdjęcie będzie wyświetlane na stronie publicznej (opcjonalne)
+                        </Typography>
+                    </Box>
 
                     {errors.submit && (
                         <Typography variant="body2" color="error" sx={{ textAlign: 'center' }}>
@@ -360,7 +372,7 @@ const EditTeamMemberDialog = ({ open, onClose, onSave, member }) => {
                 <Button
                     onClick={handleSubmit}
                     variant="contained"
-                    disabled={submitting || uploadingAvatar}
+                    disabled={submitting || uploadingImage}
                     sx={{
                         bgcolor: 'rgb(146, 0, 32)',
                         '&:hover': {

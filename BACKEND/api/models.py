@@ -72,6 +72,9 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=150, blank=False)
     last_name = models.CharField(max_length=150, blank=True, null=True)
     avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='URL to user avatar image')
+    public_image_url = models.CharField(max_length=500, blank=True, null=True, help_text='Public image URL displayed on team page')
+    role_description = models.CharField(max_length=200, blank=True, null=True, help_text='Role/title displayed on team page (e.g., "Założyciel", "Instruktor")')
+    bio = models.TextField(blank=True, null=True, help_text='Biography displayed on team page')
     account_type = models.CharField(max_length=10, choices=AccountType.choices, default=AccountType.FREE)
     source_tag = models.CharField(max_length=10, choices=SourceTag.choices, default=SourceTag.WEB)
     preferences = models.JSONField(
@@ -221,7 +224,6 @@ class Client(models.Model):
 class TeamMember(models.Model):
     """Represents a team member with invitation and permission management."""
     class InvitationStatus(models.TextChoices):
-        MOCK = 'mock', 'Mock (Not invited)'
         INVITED = 'invited', 'Invited (No account)'
         PENDING = 'pending', 'Pending (Has account)'
         LINKED = 'linked', 'Linked (Connected)'
@@ -238,12 +240,13 @@ class TeamMember(models.Model):
     email = models.EmailField(blank=True, null=True, help_text='Required for sending invitations')
     role_description = models.CharField(max_length=255, blank=True, help_text='E.g., "Yoga Instructor", "Therapist"')
     bio = models.TextField(blank=True, help_text='Member bio for public display')
-    avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='Custom avatar URL or null for generated')
+    avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='Private avatar URL for internal use')
+    public_image_url = models.CharField(max_length=500, blank=True, null=True, help_text='Public image URL displayed on site')
     is_active = models.BooleanField(default=True)
     
     # Invitation management
     linked_user = models.ForeignKey(PlatformUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='team_memberships')
-    invitation_status = models.CharField(max_length=16, choices=InvitationStatus.choices, default=InvitationStatus.MOCK)
+    invitation_status = models.CharField(max_length=16, choices=InvitationStatus.choices, default=InvitationStatus.INVITED)
     invitation_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     invited_at = models.DateTimeField(null=True, blank=True)
     

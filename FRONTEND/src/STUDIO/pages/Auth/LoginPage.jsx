@@ -41,6 +41,7 @@ const LoginPage = () => {
     const [magicLinkSent, setMagicLinkSent] = useState(false);
     const [registeredEmail, setRegisteredEmail] = useState('');
     const [resendingEmail, setResendingEmail] = useState(false);
+    const [successMessage, setSuccessMessage] = useState(location.state?.message || null);
 
     useEffect(() => {
         if (mode === 'register') {
@@ -49,6 +50,13 @@ const LoginPage = () => {
                 .catch(console.error);
         }
     }, [mode]);
+    
+    // Pre-fill email if coming from account setup
+    useEffect(() => {
+        if (location.state?.email) {
+            setEmail(location.state.email);
+        }
+    }, [location.state]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -161,6 +169,12 @@ const LoginPage = () => {
                     <Typography variant="h4" sx={{ fontWeight: 700, textAlign: 'center' }}>
                         {mode === 'login' ? 'Zaloguj się' : mode === 'magic' ? 'Magiczny link' : 'Stwórz konto'}
                     </Typography>
+
+                    {successMessage && (
+                        <Alert severity="success" onClose={() => setSuccessMessage(null)}>
+                            {successMessage}
+                        </Alert>
+                    )}
 
                     {magicLinkSent && (
                         <Alert severity="success">

@@ -42,6 +42,11 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const selectedPageId = useNewEditorStore(state => state.selectedPageId);
   const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
 
+  // Debug log for Team module
+  if (module?.type === 'team') {
+    console.log('[ModuleRenderer] Team module - siteId:', siteId);
+  }
+
   const resolvedStyle = useMemo(() => {
     return site?.style || STYLES.auroraMinimal || {};
   }, [site?.style]);

@@ -14,7 +14,7 @@
                     <tr>
                         <td style="padding: 40px 40px 20px; text-align: center;">
                             <h1 style="margin: 0; color: #1a1a1a; font-size: 28px; font-weight: 600;">
-                                Zaproszenie do zespołu
+                                Konto zostało utworzone!
                             </h1>
                         </td>
                     </tr>
@@ -30,24 +30,53 @@
                                 Zostałeś zaproszony jako <strong style="color: #920015;">{{ permission_role }}</strong> do zespołu strony <strong>{{ site_name }}</strong>.
                             </p>
                             
+                            <p style="margin: 0 0 25px; color: #333; font-size: 16px; line-height: 1.6;">
+                                Automatycznie utworzyliśmy dla Ciebie konto w systemie YourEasySite. Poniżej znajdziesz dane do pierwszego logowania:
+                            </p>
+                            
+                            <!-- Credentials Box -->
+                            <div style="background-color: #f8f9fa; border-left: 4px solid #920015; padding: 20px; margin-bottom: 25px; border-radius: 4px;">
+                                <p style="margin: 0 0 12px; color: #666; font-size: 14px; text-transform: uppercase; font-weight: 600;">Twoje dane logowania:</p>
+                                <p style="margin: 0 0 10px; color: #333; font-size: 15px;">
+                                    <strong>Email:</strong> <span style="font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 3px;">{{ email }}</span>
+                                </p>
+                                <p style="margin: 0; color: #333; font-size: 15px;">
+                                    <strong>Hasło tymczasowe:</strong> <span style="font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 3px;">{{ temp_password }}</span>
+                                </p>
+                            </div>
+                            
+                            <!-- Warning Box -->
+                            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; margin-bottom: 25px; border-radius: 4px;">
+                                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.5;">
+                                    ⚠️ <strong>Ważne:</strong> To hasło jest tymczasowe. Przy pierwszym logowaniu <strong>musisz zmienić hasło</strong> na własne, bezpieczne.
+                                </p>
+                            </div>
+                            
                             <p style="margin: 0 0 30px; color: #333; font-size: 16px; line-height: 1.6;">
-                                Kliknij poniższy przycisk, aby się zarejestrować i dołączyć do zespołu:
+                                Kliknij poniższy przycisk, aby skonfigurować swoje konto i zmienić hasło:
                             </p>
                             
                             <!-- CTA Button -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center; padding: 20px 0;">
-                                        <a href="{{ invitation_link }}" 
+                                        <a href="{{ setup_link }}" 
                                            style="display: inline-block; padding: 16px 32px; background-color: #920015; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; transition: background-color 0.3s;">
-                                            Zarejestruj się i dołącz
+                                            Skonfiguruj konto i zmień hasło
                                         </a>
                                     </td>
                                 </tr>
                             </table>
                             
-                            <p style="margin: 30px 0 0; color: #666; font-size: 14px; line-height: 1.6;">
-                                Link zaproszenia jest ważny przez 7 dni.
+                            <p style="margin: 30px 0 10px; color: #666; font-size: 14px; line-height: 1.6;">
+                                Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:
+                            </p>
+                            <p style="margin: 0 0 20px; color: #920015; font-size: 13px; word-break: break-all; font-family: monospace; background: #f8f9fa; padding: 12px; border-radius: 4px;">
+                                {{ setup_link }}
+                            </p>
+                            
+                            <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">
+                                Link jest ważny przez 7 dni.
                             </p>
                         </td>
                     </tr>

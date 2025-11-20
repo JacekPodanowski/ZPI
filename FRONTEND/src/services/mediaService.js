@@ -79,6 +79,8 @@ export const uploadMedia = async (file, options = {}) => {
     return response.data
   } catch (error) {
     console.error('Failed to upload media', error)
+    console.error('Response data:', error.response?.data)
+    console.error('Response status:', error.response?.status)
     throw error
   }
 }
