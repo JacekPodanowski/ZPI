@@ -71,6 +71,9 @@ if (typeof document !== 'undefined' && !document.getElementById('day-details-sha
     document.head.appendChild(styleSheet);
 }
 
+const TIMELINE_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
+const POSITION_TRANSITION = `top 0.45s ${TIMELINE_EASE}, height 0.45s ${TIMELINE_EASE}, left 0.45s ${TIMELINE_EASE}, width 0.45s ${TIMELINE_EASE}`;
+
 const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
     if (!start || !end || typeof start !== 'string' || typeof end !== 'string') {
@@ -233,23 +236,19 @@ const AvailabilityBlockDisplay = ({ block, siteColor, siteName, onClick, dayStar
 
     // Calculate horizontal position based on column
     // Timeline content area: left margin 60px, right margin 8px
-    const columnWidth = 100 / totalColumns;
     const gapSize = totalColumns > 1 ? 2 : 0; // 2px gap between columns
     
     return (
         <motion.div
-            layout
-            transition={{
-                duration: 0.5,
-                ease: [0.4, 0, 0.2, 1]
-            }}
             style={{
                 position: 'absolute',
                 left: `calc(60px + ${column} * ((100% - 68px) / ${totalColumns}))`,
                 width: `calc((100% - 68px) / ${totalColumns} - ${gapSize}px)`,
                 top: metrics.top,
                 height: metrics.height,
-                zIndex: isHovered ? 5 : 1
+                zIndex: isHovered ? 5 : 1,
+                transition: POSITION_TRANSITION,
+                willChange: 'top, height, left, width'
             }}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
@@ -330,12 +329,6 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
     
     return (
         <motion.div
-            layout
-            transition={{
-                duration: 0.5,
-                ease: [0.4, 0, 0.2, 1],
-                scale: { duration: 0.2 }
-            }}
             style={{
                 position: 'absolute',
                 left: `calc(60px + ${column} * ((100% - 68px) / ${totalColumns}))`,
@@ -343,7 +336,9 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                 top: `calc(${metrics.top} + ${padding}px)`,
                 height: `calc(${metrics.height} - ${padding * 2}px)`,
                 zIndex: isHovered ? 30 : 10,
-                pointerEvents: 'auto'
+                pointerEvents: 'auto',
+                transition: POSITION_TRANSITION,
+                willChange: 'top, height, left, width'
             }}
             whileHover={{ scale: 1.02 }}
             onHoverStart={() => {
@@ -1213,21 +1208,14 @@ const DayDetailsModal = ({
             }}
         >
             <motion.div
-                layout
-                initial={false}
-                animate={{ 
-                    scaleY: 1,
-                    opacity: 1
-                }}
-                transition={{ 
-                    duration: 0.5,
-                    ease: [0.4, 0, 0.2, 1],
-                    layout: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
-                }}
+                initial={{ opacity: 0.92 }}
+                animate={{ opacity: 1 }}
+                transition={{ opacity: { duration: 0.25, ease: [0.4, 0, 0.2, 1] } }}
                 style={{ 
                     width: '100%', 
                     height: '100%',
-                    transformOrigin: 'top center'
+                    transition: `height 0.45s ${TIMELINE_EASE}`,
+                    willChange: 'height'
                 }}
             >
                 <Box
@@ -1248,15 +1236,10 @@ const DayDetailsModal = ({
                 return (
                     <motion.div
                         key={hour}
-                        layout
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ 
-                            duration: 0.3,
-                            ease: [0.4, 0, 0.2, 1],
-                            layout: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
-                        }}
+                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                         style={{
                             position: 'absolute',
                             left: 0,
@@ -1265,7 +1248,9 @@ const DayDetailsModal = ({
                             height: `${heightPercent}%`,
                             borderBottom: `1px solid ${theme.palette.divider}`,
                             display: 'flex',
-                            alignItems: 'flex-start'
+                            alignItems: 'flex-start',
+                            transition: POSITION_TRANSITION,
+                            willChange: 'top, height'
                         }}
                     >
                         <Typography
