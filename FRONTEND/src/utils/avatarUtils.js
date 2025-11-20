@@ -29,7 +29,7 @@ export const getAvatarColor = (name) => {
  * @returns {string} Uppercase first letter
  */
 export const getAvatarLetter = (name) => {
-    if (!name) return '?';
+    if (!name) return '+';
     return name.charAt(0).toUpperCase();
 };
 
@@ -41,7 +41,7 @@ export const getAvatarLetter = (name) => {
 export const generateAvatarProps = (user) => {
     if (!user) {
         return {
-            letter: '?',
+            letter: '+',
             color: '#ffffff',
             bgColor: AVATAR_COLORS[0]
         };

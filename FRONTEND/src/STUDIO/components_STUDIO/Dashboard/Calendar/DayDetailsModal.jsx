@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Dialog,
     DialogTitle,
@@ -21,7 +22,6 @@ import {
     ToggleButton,
     Alert,
     Divider,
-    Avatar,
     FormControlLabel,
     Checkbox
 } from '@mui/material';
@@ -47,6 +47,7 @@ import BookingDetailsModal from './BookingDetailsModal';
 import * as eventService from '../../../../services/eventService';
 import { useToast } from '../../../../contexts/ToastContext';
 import { getSiteColorHex } from '../../../../theme/siteColors';
+import Avatar from '../../../../components/Avatar/Avatar';
 
 const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
@@ -475,7 +476,8 @@ const DayDetailsModal = ({
     onDataRefresh
 }) => {
     const theme = useTheme();
-        const addToast = useToast();
+    const addToast = useToast();
+    const navigate = useNavigate();
     const [view, setView] = useState('timeline'); // 'timeline' | 'chooser' | 'createEvent' | 'createAvailability' | 'editEvent' | 'editAvailability'
     const [hoveredEventId, setHoveredEventId] = useState(null);
     const [editingItem, setEditingItem] = useState(null); // Store the item being edited
@@ -533,6 +535,9 @@ const DayDetailsModal = ({
                 id: ownerProfile.id ?? null,
                 label: ownerName,
                 avatar_url: ownerProfile.avatar_url,
+                first_name: ownerProfile.first_name,
+                last_name: ownerProfile.last_name,
+                email: ownerProfile.email,
                 avatar_letter: ownerName.charAt(0)?.toUpperCase() || 'O',
                 role: 'Właściciel strony'
             });
@@ -546,6 +551,9 @@ const DayDetailsModal = ({
                 id: member.id,
                 label: memberName,
                 avatar_url: member.avatar_url,
+                first_name: member.first_name,
+                last_name: member.last_name,
+                email: member.email,
                 avatar_color: member.avatar_color,
                 avatar_letter: member.avatar_letter || memberName.charAt(0)?.toUpperCase() || 'T',
                 role: member.role_description || 'Członek zespołu'
@@ -742,7 +750,7 @@ const DayDetailsModal = ({
     const ownerIdForSite = ownerProfile?.id ?? activeSite?.owner?.id ?? null;
     const siteHasTeam = (activeSite?.team_size ?? 1) > 1;
     const rosterUnavailable = siteHasTeam && !rosterData;
-    const disableAssignmentSelect = !canAssignAnyone || assignmentOptions.length <= 1 || rosterLoading;
+    const disableAssignmentSelect = !canAssignAnyone || rosterLoading;
     const submitDisabled = (view === 'createEvent' && !canCreateEvents) || (view === 'createAvailability' && !canManageAvailability);
 
     const handleClose = () => {
@@ -774,6 +782,11 @@ const DayDetailsModal = ({
 
     const handleAssigneeSelection = (value) => {
         if (!value) {
+            return;
+        }
+        if (value === 'add_team_member') {
+            handleClose();
+            navigate(`/dashboard/team/${activeSiteId}`);
             return;
         }
         const [type, rawId] = value.split(':');
@@ -1229,7 +1242,7 @@ const DayDetailsModal = ({
                 {!hasSingleSite && (
                     <Box>
                         <FormControl fullWidth size="small">
-                            <InputLabel>Strona</InputLabel>
+                            <InputLabel sx={{ fontWeight: 600 }}>Strona</InputLabel>
                             <Select
                                 value={formData.siteId || ''}
                                 label="Strona"
@@ -1276,6 +1289,7 @@ const DayDetailsModal = ({
                 <Box>
                     <TextField
                         label="Tytuł"
+                        InputLabelProps={{ sx: { fontWeight: 600 } }}
                         fullWidth
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -1292,7 +1306,7 @@ const DayDetailsModal = ({
                             type="time"
                             value={formData.startTime}
                             onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                            InputLabelProps={{ shrink: true }}
+                            InputLabelProps={{ shrink: true, sx: { fontWeight: 600 } }}
                             size="small"
                         />
                         <TextField
@@ -1301,7 +1315,7 @@ const DayDetailsModal = ({
                             type="time"
                             value={formData.endTime}
                             onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                            InputLabelProps={{ shrink: true }}
+                            InputLabelProps={{ shrink: true, sx: { fontWeight: 600 } }}
                             size="small"
                         />
                     </Stack>
@@ -1310,7 +1324,7 @@ const DayDetailsModal = ({
                 {isEvent && (
                     <>
                         <Box>
-                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: theme.palette.text.secondary, fontWeight: 600 }}>
                                 Typ spotkania
                             </Typography>
                             <ToggleButtonGroup
@@ -1328,6 +1342,7 @@ const DayDetailsModal = ({
                                 <TextField
                                     fullWidth
                                     label="Lokalizacja"
+                                    InputLabelProps={{ sx: { fontWeight: 600 } }}
                                     value={formData.location}
                                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                                     placeholder="np. ul. Kwiatowa 5, Warszawa"
@@ -1339,7 +1354,7 @@ const DayDetailsModal = ({
 
                         <>
                             <Box>
-                                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
+                                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: theme.palette.text.secondary, fontWeight: 600 }}>
                                     Forma spotkania
                                 </Typography>
                                 <ToggleButtonGroup
@@ -1358,6 +1373,7 @@ const DayDetailsModal = ({
                                         fullWidth
                                         type="number"
                                         label="Maksymalna liczba osób"
+                                        InputLabelProps={{ sx: { fontWeight: 600 } }}
                                         value={formData.capacity}
                                         onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
                                         inputProps={{ min: 1 }}
@@ -1368,20 +1384,26 @@ const DayDetailsModal = ({
                             </Box>
 
                             <Box>
-                                <FormControlLabel
-                                        control={
-                                            <Checkbox
-                                                checked={formData.showHost}
-                                                onChange={(e) => setFormData({ ...formData, showHost: e.target.checked })}
-                                                size="small"
-                                            />
-                                        }
-                                        label={
-                                            <Typography variant="body2" fontWeight={600}>
-                                                Pokaż prowadzącego
-                                            </Typography>
-                                        }
-                                    />
+                                <Tooltip 
+                                    title="Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie. Gdy odznaczone, informacja o prowadzącym będzie ukryta."
+                                    placement="top"
+                                    arrow
+                                >
+                                    <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={formData.showHost}
+                                                    onChange={(e) => setFormData({ ...formData, showHost: e.target.checked })}
+                                                    size="small"
+                                                />
+                                            }
+                                            label={
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    Pokaż prowadzącego
+                                                </Typography>
+                                            }
+                                        />
+                                </Tooltip>
                                     
                                     {formData.showHost && (
                                         <>
@@ -1393,32 +1415,36 @@ const DayDetailsModal = ({
                                                 />
                                             )}
                                             <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 2 }}>
-                                                <InputLabel>Prowadzący wydarzenie</InputLabel>
+                                                <InputLabel sx={{ fontWeight: 600 }}>Prowadzący wydarzenie</InputLabel>
                                                 <Select
                                                     value={assignmentValue}
                                                     label="Prowadzący wydarzenie"
                                                     onChange={(e) => handleAssigneeSelection(e.target.value)}
                                                     renderValue={(value) => {
                                                         const option = assignmentOptions.find((opt) => opt.key === value);
-                                                        return option ? option.label : 'Właściciel strony';
+                                                        if (!option) return 'Właściciel strony';
+                                                        return (
+                                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                                <Avatar
+                                                                    avatarUrl={option.avatar_url}
+                                                                    user={option}
+                                                                    size={28}
+                                                                />
+                                                                <Typography variant="body2" component="span">
+                                                                    {option.label}
+                                                                </Typography>
+                                                            </Stack>
+                                                        );
                                                     }}
                                                 >
                                                     {assignmentOptions.map((option) => (
                                                         <MenuItem key={option.key} value={option.key}>
                                                             <Stack direction="row" spacing={1.5} alignItems="center">
                                                                 <Avatar
-                                                                    src={option.avatar_url || undefined}
-                                                                    sx={{
-                                                                        width: 32,
-                                                                        height: 32,
-                                                                        bgcolor: option.avatar_url ? 'transparent' : (option.avatar_color || 'primary.main'),
-                                                                        color: option.avatar_url ? 'inherit' : '#fff',
-                                                                        fontSize: '0.875rem',
-                                                                        fontWeight: 600
-                                                                    }}
-                                                                >
-                                                                    {!option.avatar_url ? (option.avatar_letter || option.label?.charAt(0) || '•') : null}
-                                                                </Avatar>
+                                                                    avatarUrl={option.avatar_url}
+                                                                    user={option}
+                                                                    size={32}
+                                                                />
                                                                 <Box>
                                                                     <Typography variant="body2" fontWeight={600}>
                                                                         {option.label}
@@ -1430,6 +1456,31 @@ const DayDetailsModal = ({
                                                             </Stack>
                                                         </MenuItem>
                                                     ))}
+                                                    {assignmentOptions.length === 1 && canAssignAnyone && (
+                                                        <MenuItem 
+                                                            value="add_team_member"
+                                                            sx={{ 
+                                                                color: 'primary.main',
+                                                                fontWeight: 600
+                                                            }}
+                                                        >
+                                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                                <Avatar
+                                                                    sx={{
+                                                                        width: 32,
+                                                                        height: 32,
+                                                                        bgcolor: 'primary.main',
+                                                                        color: '#fff'
+                                                                    }}
+                                                                >
+                                                                    <AddIcon fontSize="small" />
+                                                                </Avatar>
+                                                                <Typography variant="body2" fontWeight={600} color="primary.main">
+                                                                    Dodaj członka zespołu
+                                                                </Typography>
+                                                            </Stack>
+                                                        </MenuItem>
+                                                    )}
                                                     {assignmentOptions.length === 0 && (
                                                         <MenuItem value="owner:auto" disabled>
                                                             Brak dostępnych prowadzących
@@ -1437,11 +1488,9 @@ const DayDetailsModal = ({
                                                     )}
                                                 </Select>
                                             </FormControl>
-                                            {(!canAssignAnyone || assignmentOptions.length <= 1) && (
+                                            {!canAssignAnyone && (
                                                 <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                    {!canAssignAnyone
-                                                        ? 'Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.'
-                                                        : 'Na razie tylko właściciel strony może prowadzić spotkania.'}
+                                                    Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.
                                                 </Typography>
                                             )}
                                             {rosterUnavailable && !rosterLoading && (
@@ -1460,7 +1509,7 @@ const DayDetailsModal = ({
                 {!isEvent && (
                     <>
                         <FormControl fullWidth sx={{ mb: 2 }}>
-                            <InputLabel>Długość spotkania</InputLabel>
+                            <InputLabel sx={{ fontWeight: 600 }}>Długość spotkania</InputLabel>
                             <Select
                                 value={formData.meetingDuration || '60'}
                                 label="Długość spotkania"
@@ -1475,7 +1524,7 @@ const DayDetailsModal = ({
                         </FormControl>
 
                         <FormControl fullWidth>
-                            <InputLabel>Spotkania mogą zaczynać się co</InputLabel>
+                            <InputLabel sx={{ fontWeight: 600 }}>Spotkania mogą zaczynać się co</InputLabel>
                             <Select
                                 value={formData.timeSnapping}
                                 label="Spotkania mogą zaczynać się co"
@@ -1492,6 +1541,7 @@ const DayDetailsModal = ({
                             fullWidth
                             type="number"
                             label="Przerwa między spotkaniami (min)"
+                            InputLabelProps={{ sx: { fontWeight: 600 } }}
                             value={formData.bufferTime}
                             onChange={(e) => setFormData({ ...formData, bufferTime: e.target.value })}
                             inputProps={{ min: 0 }}
