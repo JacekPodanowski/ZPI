@@ -221,6 +221,7 @@ const createDefaultFormState = (siteId = null) => ({
     location: '',
     meetingType: 'individual',
     capacity: 1,
+    isUnlimitedCapacity: false,
     meetingDuration: '60',
     timeSnapping: '30',
     bufferTime: '0',
@@ -399,7 +400,7 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                             flexShrink: 0
                         }}
                     >
-                        {event.bookings?.length || 0}/{event.max_capacity || event.capacity || 1}
+                        {event.bookings?.length || 0}/{(event.max_capacity === null || event.capacity === null) ? '∞' : (event.max_capacity || event.capacity || 1)}
                     </Typography>
                 </Box>
                 {event.bookings && event.bookings.length > 0 && (
@@ -522,6 +523,7 @@ const DayDetailsModal = ({
     });
     const [formData, setFormData] = useState(() => createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
     const [validationErrors, setValidationErrors] = useState({});
+    const [isHoveringInfinity, setIsHoveringInfinity] = useState(false);
     const resetFormData = useCallback(() => {
         setFormData(createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
         setValidationErrors({});
@@ -890,6 +892,7 @@ const DayDetailsModal = ({
             location: event.location || '',
             meetingType: event.event_type || 'individual',
             capacity: event.capacity || event.max_capacity || 1,
+            isUnlimitedCapacity: event.capacity === null || event.max_capacity === null,
             meetingDuration: '60',
             timeSnapping: '30',
             bufferTime: '0',
@@ -1134,8 +1137,10 @@ const DayDetailsModal = ({
             const assigneePayload = assigneeType === 'team_member'
                 ? { type: 'team_member', id: assigneeId }
                 : { type: 'owner', id: ownerIdForSite };
+            const finalCapacity = restFormData.isUnlimitedCapacity ? null : restFormData.capacity;
             onCreateEvent?.({
                 ...restFormData,
+                capacity: finalCapacity,
                 siteId: targetSiteId,
                 date: dateKey,
                 assignee: assigneePayload
@@ -1148,9 +1153,11 @@ const DayDetailsModal = ({
             const assigneePayload = assigneeType === 'team_member'
                 ? { type: 'team_member', id: assigneeId }
                 : { type: 'owner', id: ownerIdForSite };
+            const finalCapacity = restFormData.isUnlimitedCapacity ? null : restFormData.capacity;
             onUpdateEvent?.({
                 id: editingItem.id,
                 ...restFormData,
+                capacity: finalCapacity,
                 siteId: targetSiteId,
                 date: dateKey,
                 assignee: assigneePayload
@@ -1681,17 +1688,63 @@ const DayDetailsModal = ({
                                 </ToggleButtonGroup>
 
                                 {formData.meetingType === 'group' && (
-                                    <TextField
-                                        fullWidth
-                                        type="number"
-                                        label="Maksymalna liczba osób"
-                                        InputLabelProps={{ sx: { fontWeight: 600 } }}
-                                        value={formData.capacity}
-                                        onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                                        inputProps={{ min: 1 }}
-                                        size="small"
-                                        sx={{ mt: 1.5 }}
-                                    />
+                                    <Box sx={{ position: 'relative', mt: 1.5 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label={formData.isUnlimitedCapacity ? "Nieograniczona" : "Maksymalna liczba osób"}
+                                            InputLabelProps={{ sx: { fontWeight: 600 } }}
+                                            value={formData.isUnlimitedCapacity ? '' : formData.capacity}
+                                            onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                                            inputProps={{ min: 1 }}
+                                            size="small"
+                                            disabled={formData.isUnlimitedCapacity}
+                                            sx={{ 
+                                                '& .MuiInputBase-root': {
+                                                    backgroundColor: formData.isUnlimitedCapacity ? 'action.hover' : 'inherit',
+                                                    opacity: formData.isUnlimitedCapacity ? 0.7 : 1
+                                                }
+                                            }}
+                                        />
+                                        <IconButton
+                                            size="small"
+                                            onMouseEnter={() => setIsHoveringInfinity(true)}
+                                            onMouseLeave={() => setIsHoveringInfinity(false)}
+                                            onClick={() => {
+                                                setFormData({ 
+                                                    ...formData, 
+                                                    isUnlimitedCapacity: !formData.isUnlimitedCapacity,
+                                                    capacity: formData.isUnlimitedCapacity ? 1 : formData.capacity
+                                                });
+                                            }}
+                                            sx={{
+                                                position: 'absolute',
+                                                right: 8,
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                color: formData.isUnlimitedCapacity || isHoveringInfinity 
+                                                    ? theme.palette.primary.main 
+                                                    : theme.palette.text.secondary,
+                                                backgroundColor: formData.isUnlimitedCapacity || isHoveringInfinity
+                                                    ? `${theme.palette.primary.main}15`
+                                                    : 'transparent',
+                                                transition: 'all 0.2s ease',
+                                                '&:hover': {
+                                                    backgroundColor: `${theme.palette.primary.main}20`
+                                                }
+                                            }}
+                                        >
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '20px',
+                                                    fontWeight: 600,
+                                                    lineHeight: 1
+                                                }}
+                                            >
+                                                ∞
+                                            </Typography>
+                                        </IconButton>
+                                    </Box>
                                 )}
                             </Box>
                         </>
@@ -2173,7 +2226,7 @@ const DayDetailsModal = ({
                                         {isZoomedTimeline ? <ZoomOutIcon /> : <ZoomInIcon />}
                                     </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Jak chcesz to zaplanować?">
+                                <Tooltip title="Dodaj nowe wydarzenie">
                                     <Fab
                                         color="primary"
                                         size="small"
@@ -2291,8 +2344,11 @@ const DayDetailsModal = ({
                                                 pr: 2
                                             }}
                                         >
-                                            Określ przedział czasu, w którym klienci mogą samodzielnie zarezerwować spotkanie. 
-                                            Idealne rozwiązanie gdy chcesz dać klientom swobodę wyboru godziny w dostępnym przedziale czasowym.
+                                            Określ przedział czasu, w którym klienci mogą zarezerwować spotkanie indywidualne.
+                                            <br />
+                                            System automatycznie zaproponuje wolne terminy na podstawie Twojej dostępności.
+                                            <br />
+                                            Ustaw reguły spotkań a my powiadomimy Cię o każdej nowej rezerwacji.
                                         </Typography>
                                     </Box>
 
@@ -2381,8 +2437,11 @@ const DayDetailsModal = ({
                                                 pr: 2
                                             }}
                                         >
-                                            Ustaw konkretną datę i czas spotkania z określonym uczestnikiem lub grupą. 
-                                            Możesz wybrać spotkanie indywidualne lub grupowe oraz zaznaczyć prowadzącego.
+                                            Zaplanuj wydarzenie na wybrany termin – indywidualne lub grupowe.
+                                            <br />
+                                            Rozwiązanie stworzone dla warsztatów, webinarów i spotkań cyklicznych.
+                                            <br />
+                                            Ookreśl limit miejsc a system zamknie zapisy po zapełnieniu.
                                         </Typography>
                                     </Box>
 
