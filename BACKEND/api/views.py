@@ -13,7 +13,7 @@ import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction, models
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, F
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
@@ -3013,10 +3013,13 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         user = self.request.user
         # Owner can see all team members of their sites
         # Invitees can see their own team member records
+        # Exclude team members where linked_user is the site owner
         return TeamMember.objects.filter(
             Q(site__owner=user) | 
             Q(linked_user=user) |
             Q(email__iexact=user.email, invitation_status__in=['pending', 'invited'])
+        ).exclude(
+            linked_user=F('site__owner')
         ).select_related('site', 'linked_user')
     
     @action(detail=False, methods=['get'], url_path='pending-invitations')

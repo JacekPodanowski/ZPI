@@ -786,7 +786,7 @@ const DayDetailsModal = ({
         }
         if (value === 'add_team_member') {
             handleClose();
-            navigate(`/dashboard/team/${activeSiteId}`);
+            navigate(`/studio/team/${activeSiteId}`);
             return;
         }
         const [type, rawId] = value.split(':');
@@ -1385,7 +1385,7 @@ const DayDetailsModal = ({
 
                             <Box>
                                 <Tooltip 
-                                    title="Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie. Gdy odznaczone, informacja o prowadzącym będzie ukryta."
+                                    title="Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie."
                                     placement="top"
                                     arrow
                                 >
@@ -1426,6 +1426,7 @@ const DayDetailsModal = ({
                                                         return (
                                                             <Stack direction="row" spacing={1.5} alignItems="center">
                                                                 <Avatar
+                                                                    key={`${option.key}-${option.avatar_url || 'no-avatar'}-${option.first_name || ''}-${option.last_name || ''}`}
                                                                     avatarUrl={option.avatar_url}
                                                                     user={option}
                                                                     size={28}
@@ -1441,6 +1442,7 @@ const DayDetailsModal = ({
                                                         <MenuItem key={option.key} value={option.key}>
                                                             <Stack direction="row" spacing={1.5} alignItems="center">
                                                                 <Avatar
+                                                                    key={`${option.key}-${option.avatar_url || 'no-avatar'}-${option.first_name || ''}-${option.last_name || ''}`}
                                                                     avatarUrl={option.avatar_url}
                                                                     user={option}
                                                                     size={32}

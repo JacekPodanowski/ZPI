@@ -340,7 +340,13 @@ const TeamPage = () => {
 
                     {/* Team Members */}
                     {teamMembers
-                        .filter(member => member.linked_user !== site?.owner?.id)
+                        .filter(member => {
+                            // Filter out owner by ID
+                            if (member.linked_user === site?.owner?.id) return false;
+                            // Filter out duplicates by email
+                            if (member.email && member.email === site?.owner?.email) return false;
+                            return true;
+                        })
                         .map((member, index) => (
                         <motion.div
                             key={member.id}
