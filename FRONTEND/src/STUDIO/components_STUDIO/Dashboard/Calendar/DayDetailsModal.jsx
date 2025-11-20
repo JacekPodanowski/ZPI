@@ -1832,7 +1832,7 @@ const DayDetailsModal = ({
                                     </Typography>
                                 </Box>
 
-                                {/* Dostępność - with graphic intro */}
+                                {/* Dostępność - with graphic intro and visualization */}
                                 <Box
                                     onClick={() => handleCreateChoice('availability')}
                                     sx={{
@@ -1841,7 +1841,8 @@ const DayDetailsModal = ({
                                         borderRadius: 2,
                                         overflow: 'hidden',
                                         transition: 'all 200ms',
-                                        minHeight: '180px',
+                                        minHeight: '220px',
+                                        display: 'flex',
                                         '&:hover': {
                                             transform: 'translateY(-2px)',
                                             boxShadow: '0 8px 20px rgba(76, 175, 80, 0.2)'
@@ -1861,15 +1862,15 @@ const DayDetailsModal = ({
                                         }}
                                     />
                                     
-                                    {/* Content */}
-                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                                    {/* Content - Left side */}
+                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4, flex: 1 }}>
                                         <Typography
                                             sx={{
                                                 fontFamily: 'Montserrat, sans-serif',
-                                                fontSize: '32px',
+                                                fontSize: '36px',
                                                 fontWeight: 700,
                                                 color: 'rgb(76, 175, 80)',
-                                                mb: 1,
+                                                mb: 1.5,
                                                 letterSpacing: '-0.5px',
                                                 textAlign: 'left',
                                                 fontStyle: 'italic'
@@ -1883,16 +1884,45 @@ const DayDetailsModal = ({
                                                 color: theme.palette.text.secondary,
                                                 lineHeight: 1.6,
                                                 textAlign: 'left',
-                                                fontSize: '15px'
+                                                fontSize: '15px',
+                                                pr: 2
                                             }}
                                         >
                                             Określ przedział czasu, w którym klienci mogą samodzielnie zarezerwować spotkanie. 
                                             Idealne rozwiązanie gdy chcesz dać klientom swobodę wyboru godziny w dostępnym przedziale czasowym.
                                         </Typography>
                                     </Box>
+
+                                    {/* Visualization - Right side */}
+                                    <Box 
+                                        sx={{ 
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            pr: 4,
+                                            py: 4
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: '140px',
+                                                height: '160px',
+                                                border: '3px dashed rgb(76, 175, 80)',
+                                                borderRadius: 2,
+                                                bgcolor: 'rgba(76, 175, 80, 0.08)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            <ScheduleIcon sx={{ fontSize: 60, color: 'rgb(76, 175, 80)', opacity: 0.6 }} />
+                                        </Box>
+                                    </Box>
                                 </Box>
 
-                                {/* Wydarzenie - with graphic intro */}
+                                {/* Wydarzenie - with graphic intro and visualization */}
                                 <Box
                                     onClick={() => handleCreateChoice('event')}
                                     sx={{
@@ -1901,7 +1931,8 @@ const DayDetailsModal = ({
                                         borderRadius: 2,
                                         overflow: 'hidden',
                                         transition: 'all 200ms',
-                                        minHeight: '180px',
+                                        minHeight: '220px',
+                                        display: 'flex',
                                         '&:hover': {
                                             transform: 'translateY(-2px)',
                                             boxShadow: '0 8px 20px rgba(146, 0, 32, 0.2)'
@@ -1921,15 +1952,15 @@ const DayDetailsModal = ({
                                         }}
                                     />
                                     
-                                    {/* Content */}
-                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                                    {/* Content - Left side */}
+                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4, flex: 1 }}>
                                         <Typography
                                             sx={{
                                                 fontFamily: 'Montserrat, sans-serif',
-                                                fontSize: '32px',
+                                                fontSize: '36px',
                                                 fontWeight: 700,
                                                 color: 'rgb(146, 0, 32)',
-                                                mb: 1,
+                                                mb: 1.5,
                                                 letterSpacing: '-0.5px',
                                                 textAlign: 'left',
                                                 fontStyle: 'italic'
@@ -1943,12 +1974,53 @@ const DayDetailsModal = ({
                                                 color: theme.palette.text.secondary,
                                                 lineHeight: 1.6,
                                                 textAlign: 'left',
-                                                fontSize: '15px'
+                                                fontSize: '15px',
+                                                pr: 2
                                             }}
                                         >
                                             Ustaw konkretną datę i czas spotkania z określonym uczestnikiem lub grupą. 
                                             Możesz wybrać spotkanie indywidualne lub grupowe oraz zaznaczyć prowadzącego.
                                         </Typography>
+                                    </Box>
+
+                                    {/* Visualization - Right side - 3 red blocks */}
+                                    <Box 
+                                        sx={{ 
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            pr: 4,
+                                            py: 4
+                                        }}
+                                    >
+                                        <Stack spacing={1} sx={{ width: '140px' }}>
+                                            <Box
+                                                sx={{
+                                                    height: '45px',
+                                                    bgcolor: 'rgb(146, 0, 32)',
+                                                    borderRadius: 1,
+                                                    opacity: 0.85
+                                                }}
+                                            />
+                                            <Box
+                                                sx={{
+                                                    height: '45px',
+                                                    bgcolor: 'rgb(146, 0, 32)',
+                                                    borderRadius: 1,
+                                                    opacity: 0.85
+                                                }}
+                                            />
+                                            <Box
+                                                sx={{
+                                                    height: '45px',
+                                                    bgcolor: 'rgb(146, 0, 32)',
+                                                    borderRadius: 1,
+                                                    opacity: 0.85
+                                                }}
+                                            />
+                                        </Stack>
                                     </Box>
                                 </Box>
                             </Box>
