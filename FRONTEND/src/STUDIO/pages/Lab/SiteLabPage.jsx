@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Button, Chip, CircularProgress, Divider, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, Divider, Typography, Tabs, Tab } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { fetchSiteById } from '../../../services/siteService';
+import TestimonialsManager from '../../components_STUDIO/Lab/TestimonialsManager';
 
 const generateSampleSeries = (seed) => {
     const base = Number(String(seed ?? 17).replace(/\D/g, '')) || 17;
@@ -80,6 +81,7 @@ const SiteLabPage = () => {
     const [site, setSite] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [currentTab, setCurrentTab] = useState(0);
 
     useEffect(() => {
         let mounted = true;
@@ -328,58 +330,73 @@ const SiteLabPage = () => {
                 />
             </Box>
 
-            <Box
-                sx={{
-                    borderRadius: 4,
-                    p: { xs: 3, md: 4 },
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(228,229,218,0.85) 100%)',
-                    border: '1px solid rgba(146, 0, 32, 0.12)',
-                    boxShadow: '0 20px 40px rgba(12,12,12,0.15)',
-                    display: 'flex',
-                    flexDirection: { xs: 'column', md: 'row' },
-                    gap: 3
-                }}
-            >
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        Laboratorium danej witryny
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 520 }}>
-                        Tutaj wkrótce pojawią się szczegółowe moduły AI z rekomendacjami zmian w treści, kolorystyce i strukturze. System przeanalizuje historię publikacji oraz zachowania użytkowników, aby zaproponować kolejne kroki optymalizacji.
-                    </Typography>
-                </Box>
+            {/* Tabs for different lab sections */}
+            <Box>
+                <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)}>
+                    <Tab label="Przegląd" />
+                    <Tab label="Opinie klientów" />
+                </Tabs>
+            </Box>
+
+            {/* Tab Content */}
+            {currentTab === 0 && (
                 <Box
                     sx={{
-                        flex: 1,
-                        borderRadius: 3,
-                        p: 3,
-                        background: 'rgba(12,12,12,0.85)',
-                        color: 'rgb(228,229,218)',
-                        border: '1px solid rgba(146, 0, 32, 0.18)',
-                        boxShadow: '0 18px 35px rgba(12,12,12,0.35)',
+                        borderRadius: 4,
+                        p: { xs: 3, md: 4 },
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(228,229,218,0.85) 100%)',
+                        border: '1px solid rgba(146, 0, 32, 0.12)',
+                        boxShadow: '0 20px 40px rgba(12,12,12,0.15)',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: 1.5
+                        flexDirection: { xs: 'column', md: 'row' },
+                        gap: 3
                     }}
                 >
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        Wkrótce dostępne
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.75 }}>
-                        • Scoring jakości bloków treści
-                        <br />• Alerty o spadku wydajności modułów
-                        <br />• Eksperymenty A/B z jednym kliknięciem
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        sx={{ alignSelf: 'flex-start', mt: 1 }}
-                        onClick={() => navigate(`/studio/editor/${site?.id}`)}
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                            Laboratorium danej witryny
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 520 }}>
+                            Tutaj wkrótce pojawią się szczegółowe moduły AI z rekomendacjami zmian w treści, kolorystyce i strukturze. System przeanalizuje historię publikacji oraz zachowania użytkowników, aby zaproponować kolejne kroki optymalizacji.
+                        </Typography>
+                    </Box>
+                    <Box
+                        sx={{
+                            flex: 1,
+                            borderRadius: 3,
+                            p: 3,
+                            background: 'rgba(12,12,12,0.85)',
+                            color: 'rgb(228,229,218)',
+                            border: '1px solid rgba(146, 0, 32, 0.18)',
+                            boxShadow: '0 18px 35px rgba(12,12,12,0.35)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1.5
+                        }}
                     >
-                        Rozpocznij eksperyment
-                    </Button>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            Wkrótce dostępne
+                        </Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                            • Scoring jakości bloków treści
+                            <br />• Alerty o spadku wydajności modułów
+                            <br />• Eksperymenty A/B z jednym kliknięciem
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            sx={{ alignSelf: 'flex-start', mt: 1 }}
+                            onClick={() => navigate(`/studio/editor/${site?.id}`)}
+                        >
+                            Rozpocznij eksperyment
+                        </Button>
+                    </Box>
                 </Box>
-            </Box>
+            )}
+
+            {currentTab === 1 && (
+                <TestimonialsManager siteId={siteId} />
+            )}
         </Box>
     );
 };

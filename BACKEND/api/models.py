@@ -723,3 +723,86 @@ class DomainOrder(models.Model):
     
     def __str__(self):
         return f"{self.domain_name} - {self.get_status_display()} (Order #{self.id})"
+
+
+class Testimonial(models.Model):
+    """Stores client testimonials/reviews for a site."""
+    
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.CASCADE,
+        related_name='testimonials',
+        help_text='Site this testimonial belongs to'
+    )
+    author_name = models.CharField(
+        max_length=255,
+        help_text='Name of the person leaving the testimonial'
+    )
+    author_email = models.EmailField(
+        blank=True,
+        null=True,
+        help_text='Email address (optional, for verification)'
+    )
+    rating = models.IntegerField(
+        help_text='Rating from 1 to 5'
+    )
+    content = models.TextField(
+        help_text='Testimonial content'
+    )
+    is_approved = models.BooleanField(
+        default=True,
+        help_text='Whether this testimonial is approved for public display'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['site', 'is_approved']),
+            models.Index(fields=['site', 'rating']),
+            models.Index(fields=['created_at']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(rating__gte=1, rating__lte=5),
+                name='testimonial_rating_range'
+            ),
+        ]
+    
+    def __str__(self):
+        return f"{self.author_name} - {self.rating}★ ({self.site.name})"
+
+
+class TestimonialSummary(models.Model):
+    """Stores AI-generated summaries of testimonials for a site."""
+    
+    site = models.OneToOneField(
+        Site,
+        on_delete=models.CASCADE,
+        related_name='testimonial_summary',
+        help_text='Site this summary belongs to'
+    )
+    summary = models.TextField(
+        help_text='AI-generated summary of recent testimonials'
+    )
+    detailed_summary = models.TextField(
+        blank=True,
+        help_text='Detailed AI-generated analysis for admin panel'
+    )
+    total_count = models.IntegerField(
+        default=0,
+        help_text='Total number of testimonials analyzed'
+    )
+    average_rating = models.FloatField(
+        default=0.0,
+        help_text='Average rating from analyzed testimonials'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name_plural = 'Testimonial summaries'
+    
+    def __str__(self):
+        return f"Summary for {self.site.name} ({self.total_count} testimonials)"

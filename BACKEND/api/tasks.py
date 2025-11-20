@@ -769,3 +769,122 @@ def purge_cloudflare_cache(self, domain_name: str):
             "domain": domain_name
         }
 
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def regenerate_testimonial_summary(self, site_id: int):
+    """
+    Regenerate AI summary for site testimonials.
+    Triggered when testimonials are added or deleted.
+    
+    Args:
+        self: Celery task instance
+        site_id: ID of the site to generate summary for
+        
+    Returns:
+        dict: Summary generation result
+    """
+    from .models import Site, Testimonial, TestimonialSummary
+    from .ai_services import get_flash_service, AIServiceException
+    from django.db.models import Avg
+    
+    logger.info(f"[Celery] Generating testimonial summary for site {site_id}")
+    
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        logger.error(f"[Celery] Site {site_id} not found")
+        return {"status": "error", "message": "Site not found"}
+    
+    # Get last 10 approved testimonials
+    testimonials = Testimonial.objects.filter(
+        site=site,
+        is_approved=True
+    ).order_by('-created_at')[:10]
+    
+    if not testimonials.exists():
+        logger.info(f"[Celery] No testimonials found for site {site_id}")
+        # Delete existing summary if no testimonials
+        TestimonialSummary.objects.filter(site=site).delete()
+        return {"status": "success", "message": "No testimonials to summarize"}
+    
+    # Calculate statistics
+    total_count = testimonials.count()
+    avg_rating = testimonials.aggregate(avg=Avg('rating'))['avg'] or 0
+    
+    # Prepare data for AI
+    testimonials_text = "\n\n".join([
+        f"Ocena: {t.rating}/5\nAutor: {t.author_name}\nTreść: {t.content}"
+        for t in testimonials
+    ])
+    
+    try:
+        flash_service = get_flash_service()
+        
+        # Generate public summary (short, for site visitors)
+        public_prompt = f"""Na podstawie poniższych {total_count} opinii klientów, wygeneruj krótkie podsumowanie (max 2-3 zdania) 
+co klienci najbardziej cenią i co im się nie podoba. Podsumowanie powinno być pozytywne i zachęcające.
+
+Opinie:
+{testimonials_text}
+
+Wygeneruj tylko samo podsumowanie, bez dodatkowych komentarzy."""
+        
+        public_result = flash_service.process_task(
+            public_prompt,
+            {},
+            {'task_type': 'text_generation'}
+        )
+        public_summary = public_result.get('explanation', 'Brak podsumowania')
+        
+        # Generate detailed summary (for admin panel)
+        detailed_prompt = f"""Na podstawie poniższych {total_count} opinii klientów, wygeneruj szczegółową analizę obejmującą:
+1. Najczęściej pojawiające się pozytywy
+2. Obszary wymagające poprawy
+3. Sugestie dla właściciela strony
+4. Ogólny sentyment klientów
+
+Opinie:
+{testimonials_text}
+
+Wygeneruj szczegółową analizę w punktach."""
+        
+        detailed_result = flash_service.process_task(
+            detailed_prompt,
+            {},
+            {'task_type': 'text_generation'}
+        )
+        detailed_summary = detailed_result.get('explanation', 'Brak szczegółowej analizy')
+        
+        # Save or update summary
+        summary, created = TestimonialSummary.objects.update_or_create(
+            site=site,
+            defaults={
+                'summary': public_summary,
+                'detailed_summary': detailed_summary,
+                'total_count': total_count,
+                'average_rating': round(avg_rating, 2)
+            }
+        )
+        
+        action = "created" if created else "updated"
+        logger.info(f"[Celery] Testimonial summary {action} for site {site_id}")
+        
+        return {
+            "status": "success",
+            "site_id": site_id,
+            "action": action,
+            "testimonials_analyzed": total_count
+        }
+        
+    except AIServiceException as exc:
+        logger.error(f"[Celery] AI service error generating summary: {exc}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+        return {"status": "error", "message": str(exc)}
+    
+    except Exception as exc:
+        logger.exception(f"[Celery] Failed to generate summary for site {site_id}: {exc}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+        return {"status": "error", "message": str(exc)}
+

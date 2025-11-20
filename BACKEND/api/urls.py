@@ -61,6 +61,7 @@ from .views import (
     resolve_domain,
     validate_setup_token,
     setup_account,
+    TestimonialViewSet,
 )
 
 
@@ -76,6 +77,7 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='availabilityblock')
 router.register(r'email-templates', EmailTemplateViewSet, basename='emailtemplate')
 router.register(r'team-members', TeamMemberViewSet, basename='teammember')
+router.register(r'testimonials', TestimonialViewSet, basename='testimonial')
 
 urlpatterns = [
     path('', include(router.urls)),

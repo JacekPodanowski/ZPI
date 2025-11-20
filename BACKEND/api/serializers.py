@@ -24,6 +24,8 @@ from .models import (
     EmailTemplate,
     TeamMember,
     DomainOrder,
+    Testimonial,
+    TestimonialSummary,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -672,3 +674,27 @@ class DomainOrderSerializer(serializers.ModelSerializer):
             'id', 'user', 'ovh_order_id', 'ovh_cart_id', 'payment_url',
             'dns_configuration', 'error_message', 'created_at', 'updated_at'
         ]
+
+
+class TestimonialSerializer(serializers.ModelSerializer):
+    """Serializer for client testimonials."""
+    
+    class Meta:
+        model = Testimonial
+        fields = [
+            'id', 'site', 'author_name', 'author_email', 'rating', 'content',
+            'is_approved', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class TestimonialSummarySerializer(serializers.ModelSerializer):
+    """Serializer for AI-generated testimonial summaries."""
+    
+    class Meta:
+        model = TestimonialSummary
+        fields = [
+            'id', 'site', 'summary', 'detailed_summary', 'total_count',
+            'average_rating', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']

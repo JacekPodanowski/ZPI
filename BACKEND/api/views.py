@@ -51,6 +51,8 @@ from .models import (
     EmailTemplate,
     TeamMember,
     DomainOrder,
+    Testimonial,
+    TestimonialSummary,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -94,6 +96,8 @@ from .serializers import (
     TeamMemberInfoSerializer,
     PublicTeamMemberSerializer,
     DomainOrderSerializer,
+    TestimonialSerializer,
+    TestimonialSummarySerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -3011,16 +3015,20 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return team members for sites owned by current user OR where user is the invitee."""
         user = self.request.user
-        # Owner can see all team members of their sites
-        # Invitees can see their own team member records
-        # Exclude team members where linked_user is the site owner
-        return TeamMember.objects.filter(
+        queryset = TeamMember.objects.filter(
             Q(site__owner=user) | 
             Q(linked_user=user) |
             Q(email__iexact=user.email, invitation_status__in=['pending', 'invited'])
         ).exclude(
             linked_user=F('site__owner')
         ).select_related('site', 'linked_user')
+        
+        # Filter by site if provided in query params
+        site_id = self.request.query_params.get('site')
+        if site_id:
+            queryset = queryset.filter(site_id=site_id)
+        
+        return queryset
     
     @action(detail=False, methods=['get'], url_path='pending-invitations')
     def pending_invitations(self, request):
@@ -4757,4 +4765,197 @@ def setup_account(request, token):
             {'error': 'Link jest nieprawidłowy lub wygasł.'},
             status=status.HTTP_404_NOT_FOUND
         )
+
+
+class TestimonialViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing testimonials.
+    - Public users can create testimonials
+    - Site owners/managers can approve/delete testimonials
+    - Public endpoint for fetching approved testimonials
+    """
+    serializer_class = TestimonialSerializer
+    permission_classes = [AllowAny]  # We'll handle permissions per action
+    
+    def get_queryset(self):
+        site_id = self.request.query_params.get('site_id')
+        if not site_id:
+            return Testimonial.objects.none()
+        
+        queryset = Testimonial.objects.filter(site_id=site_id)
+        
+        # Public users see only approved testimonials
+        if not self.request.user.is_authenticated:
+            queryset = queryset.filter(is_approved=True)
+        else:
+            # Authenticated users see all if they own/manage the site
+            try:
+                site = Site.objects.get(id=site_id)
+                if site.owner != self.request.user:
+                    # Check if user is a manager of this site
+                    is_manager = TeamMember.objects.filter(
+                        site=site,
+                        linked_user=self.request.user,
+                        permission_role=TeamMember.PermissionRole.MANAGER,
+                        invitation_status=TeamMember.InvitationStatus.LINKED
+                    ).exists()
+                    if not is_manager:
+                        queryset = queryset.filter(is_approved=True)
+            except Site.DoesNotExist:
+                queryset = queryset.filter(is_approved=True)
+        
+        # Sorting
+        sort_by = self.request.query_params.get('sort', '-created_at')
+        if sort_by in ['created_at', '-created_at', 'rating', '-rating']:
+            queryset = queryset.order_by(sort_by)
+        
+        # Filter by rating
+        rating_filter = self.request.query_params.get('rating')
+        if rating_filter and rating_filter.isdigit():
+            queryset = queryset.filter(rating=int(rating_filter))
+        
+        return queryset
+    
+    def create(self, request, *args, **kwargs):
+        """Public endpoint for creating testimonials."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        # Trigger summary regeneration
+        site_id = serializer.validated_data.get('site').id
+        from .tasks import regenerate_testimonial_summary
+        regenerate_testimonial_summary.delay(site_id)
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Only site owners/managers can delete testimonials."""
+        instance = self.get_object()
+        site = instance.site
+        
+        # Check permissions
+        if not request.user.is_authenticated:
+            raise PermissionDenied("Musisz być zalogowany, aby usunąć opinię.")
+        
+        if site.owner != request.user:
+            is_manager = TeamMember.objects.filter(
+                site=site,
+                linked_user=request.user,
+                permission_role=TeamMember.PermissionRole.MANAGER,
+                invitation_status=TeamMember.InvitationStatus.LINKED
+            ).exists()
+            if not is_manager:
+                raise PermissionDenied("Nie masz uprawnień do usuwania opinii.")
+        
+        site_id = site.id
+        self.perform_destroy(instance)
+        
+        # Trigger summary regeneration
+        from .tasks import regenerate_testimonial_summary
+        regenerate_testimonial_summary.delay(site_id)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=['get'], url_path='summary')
+    def get_summary(self, request):
+        """Get AI-generated summary for a site."""
+        site_id = request.query_params.get('site_id')
+        if not site_id:
+            return Response(
+                {'error': 'site_id jest wymagane'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            summary = TestimonialSummary.objects.get(site_id=site_id)
+            serializer = TestimonialSummarySerializer(summary)
+            return Response(serializer.data)
+        except TestimonialSummary.DoesNotExist:
+            # Generate summary if it doesn't exist
+            from .tasks import regenerate_testimonial_summary
+            regenerate_testimonial_summary.delay(site_id)
+            return Response(
+                {'message': 'Podsumowanie jest generowane...'},
+                status=status.HTTP_202_ACCEPTED
+            )
+    
+    @action(detail=False, methods=['get'], url_path='stats')
+    def get_stats(self, request):
+        """Get testimonial statistics for a site."""
+        site_id = request.query_params.get('site_id')
+        if not site_id:
+            return Response(
+                {'error': 'site_id jest wymagane'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check permissions
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Musisz być zalogowany'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        try:
+            site = Site.objects.get(id=site_id)
+            if site.owner != request.user:
+                is_manager = TeamMember.objects.filter(
+                    site=site,
+                    linked_user=request.user,
+                    permission_role=TeamMember.PermissionRole.MANAGER,
+                    invitation_status=TeamMember.InvitationStatus.LINKED
+                ).exists()
+                if not is_manager:
+                    raise PermissionDenied("Nie masz dostępu do statystyk.")
+        except Site.DoesNotExist:
+            return Response(
+                {'error': 'Strona nie istnieje'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Calculate stats
+        testimonials = Testimonial.objects.filter(site_id=site_id, is_approved=True)
+        
+        from django.db.models import Count, Avg
+        from django.db.models.functions import TruncDate, TruncMonth
+        
+        # Rating distribution
+        rating_dist = list(
+            testimonials.values('rating')
+            .annotate(count=Count('id'))
+            .order_by('rating')
+        )
+        
+        # Daily frequency (last 30 days)
+        from datetime import timedelta
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        daily_freq = list(
+            testimonials.filter(created_at__gte=thirty_days_ago)
+            .annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+        
+        # Monthly frequency (last 12 months)
+        twelve_months_ago = timezone.now() - timedelta(days=365)
+        monthly_freq = list(
+            testimonials.filter(created_at__gte=twelve_months_ago)
+            .annotate(month=TruncMonth('created_at'))
+            .values('month')
+            .annotate(count=Count('id'))
+            .order_by('month')
+        )
+        
+        # Average rating
+        avg_rating = testimonials.aggregate(avg=Avg('rating'))['avg'] or 0
+        
+        return Response({
+            'total_count': testimonials.count(),
+            'average_rating': round(avg_rating, 2),
+            'rating_distribution': rating_dist,
+            'daily_frequency': daily_freq,
+            'monthly_frequency': monthly_freq,
+        })
 

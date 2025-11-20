@@ -2,7 +2,8 @@ from django.contrib import admin
 
 from .models import (
 	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, 
-    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate
+    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
+    Testimonial, TestimonialSummary
 )
 
 
@@ -120,3 +121,22 @@ class EmailTemplateAdmin(admin.ModelAdmin):
 	ordering = ('category', '-is_default', 'name')
 	readonly_fields = ('created_at', 'updated_at')
 	prepopulated_fields = {'slug': ('name',)}
+
+
+@admin.register(Testimonial)
+class TestimonialAdmin(admin.ModelAdmin):
+	list_display = ('author_name', 'site', 'rating', 'is_approved', 'created_at')
+	search_fields = ('author_name', 'author_email', 'content')
+	list_filter = ('rating', 'is_approved', 'site', 'created_at')
+	ordering = ('-created_at',)
+	autocomplete_fields = ('site',)
+	list_editable = ('is_approved',)
+
+
+@admin.register(TestimonialSummary)
+class TestimonialSummaryAdmin(admin.ModelAdmin):
+	list_display = ('site', 'total_count', 'average_rating', 'updated_at')
+	search_fields = ('site__name', 'site__identifier')
+	ordering = ('-updated_at',)
+	autocomplete_fields = ('site',)
+	readonly_fields = ('created_at', 'updated_at')

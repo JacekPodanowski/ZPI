@@ -19,6 +19,7 @@ import TeamModule from './Team';
 import ContainerModule from './Container';
 import ReactComponentModule from './ReactComponent';
 import PublicCalendarBigModule from './Caldenar_Full';
+import TestimonialsModule from './Testimonials';
 
 export const MODULE_REGISTRY = {
   hero: {
@@ -101,12 +102,11 @@ export const MODULE_REGISTRY = {
     legacyAlias: true
   },
   testimonials: {
-    component: TextModule,
-    descriptor: TextModule.descriptor,
-    layouts: ['block', 'inline', 'centered'],
-    defaultLayout: 'block',
-    category: 'content',
-    legacyAlias: true
+    component: TestimonialsModule,
+    descriptor: TestimonialsModule.descriptor,
+    layouts: ['cards', 'carousel', 'masonry'],
+    defaultLayout: 'cards',
+    category: 'content'
   },
   contact: {
     component: ContactSection,
