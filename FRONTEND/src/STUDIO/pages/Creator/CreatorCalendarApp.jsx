@@ -1152,10 +1152,10 @@ const CreatorCalendarApp = () => {
     return (
         <Box
             sx={{
-                flex: 1,
+                height: 'calc(100vh - 60px)',
                 display: 'flex',
                 flexDirection: 'column',
-                minHeight: 0,
+                overflow: 'hidden',
                 backgroundColor: 'background.default'
             }}
         >

@@ -9,7 +9,6 @@ import StyleSelectionPage from './pages/NewSite/StyleSelectionPage';
 import NewEditorPage from './pages/Editor/NewEditorPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
-import StudioLayout from './layouts/StudioLayout';
 import NavigationLayout from './layouts/NavigationLayout';
 import SettingsLayout from './layouts/SettingsLayout';
 import ProfilePage from './pages/Settings/ProfilePage';
@@ -68,6 +67,7 @@ const StudioApp = () => (
 
     {/* Pages with persistent Navigation - shared NavigationLayout */}
     <Route element={<NavigationLayout />}>
+      <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
       <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
       <Route path="domain-purchase-success" element={<ProtectedRoute><DomainPurchaseSuccessPage /></ProtectedRoute>} />
@@ -80,12 +80,6 @@ const StudioApp = () => (
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
       <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
       <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
-    </Route>
-
-
-    {/* LEGACY LAYOUT - USE NavigationLayout for new pages !!! */}
-    <Route element={<StudioLayout />}>
-      <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
     </Route>
 
     {/* Payment success/failed pages - PUBLIC routes */}

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
     Dialog,
@@ -48,6 +49,27 @@ import * as eventService from '../../../../services/eventService';
 import { useToast } from '../../../../contexts/ToastContext';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 import Avatar from '../../../../components/Avatar/Avatar';
+
+// Shake animation keyframes - fast and snappy
+const shakeAnimation = `
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.shake-error {
+    animation: shake 0.3s ease;
+}
+`;
+
+// Inject shake animation into document
+if (typeof document !== 'undefined' && !document.getElementById('day-details-shake-styles')) {
+    const styleSheet = document.createElement('style');
+    styleSheet.id = 'day-details-shake-styles';
+    styleSheet.textContent = shakeAnimation;
+    document.head.appendChild(styleSheet);
+}
 
 const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     // Handle undefined or invalid time strings
@@ -216,6 +238,11 @@ const AvailabilityBlockDisplay = ({ block, siteColor, siteName, onClick, dayStar
     
     return (
         <motion.div
+            layout
+            transition={{
+                duration: 0.5,
+                ease: [0.4, 0, 0.2, 1]
+            }}
             style={{
                 position: 'absolute',
                 left: `calc(60px + ${column} * ((100% - 68px) / ${totalColumns}))`,
@@ -303,6 +330,12 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
     
     return (
         <motion.div
+            layout
+            transition={{
+                duration: 0.5,
+                ease: [0.4, 0, 0.2, 1],
+                scale: { duration: 0.2 }
+            }}
             style={{
                 position: 'absolute',
                 left: `calc(60px + ${column} * ((100% - 68px) / ${totalColumns}))`,
@@ -493,9 +526,42 @@ const DayDetailsModal = ({
         message: 'Witam,\n\nNiestety muszę wprowadzić zmiany w harmonogramie. Proszę o kontakt w celu ustalenia nowego terminu.\n\nPrzepraszam za niedogodności.\nPozdrawiam'
     });
     const [formData, setFormData] = useState(() => createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
+    const [validationErrors, setValidationErrors] = useState({});
     const resetFormData = useCallback(() => {
         setFormData(createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
+        setValidationErrors({});
     }, [selectedSiteId, sites]);
+
+    const titleFieldRef = useRef(null);
+    const startTimeFieldRef = useRef(null);
+    const endTimeFieldRef = useRef(null);
+    const locationFieldRef = useRef(null);
+    const meetingDurationFieldRef = useRef(null);
+    const timeSnappingFieldRef = useRef(null);
+
+    const fieldRefs = useMemo(() => ({
+        title: titleFieldRef,
+        startTime: startTimeFieldRef,
+        endTime: endTimeFieldRef,
+        location: locationFieldRef,
+        meetingDuration: meetingDurationFieldRef,
+        timeSnapping: timeSnappingFieldRef
+    }), []);
+
+    const triggerFieldShake = useCallback((fieldsToShake) => {
+        fieldsToShake.forEach((fieldKey) => {
+            const element = fieldRefs[fieldKey]?.current;
+            if (!element) {
+                return;
+            }
+            element.classList.remove('shake-error');
+            void element.offsetWidth; // Force reflow to restart animation
+            element.classList.add('shake-error');
+            setTimeout(() => {
+                element.classList.remove('shake-error');
+            }, 350);
+        });
+    }, [fieldRefs]);
 
     const dateFormatted = useMemo(() => moment(date).format('dddd, D MMMM YYYY'), [date]);
     const dateKey = useMemo(() => moment(date).format('YYYY-MM-DD'), [date]);
@@ -755,6 +821,16 @@ const DayDetailsModal = ({
     const disableAssignmentSelect = !canAssignAnyone || rosterLoading;
     const submitDisabled = (view === 'createEvent' && !canCreateEvents) || (view === 'createAvailability' && !canManageAvailability);
 
+    // Clear validation errors when view changes
+    useEffect(() => {
+        setValidationErrors({});
+        Object.values(fieldRefs).forEach((ref) => {
+            if (ref?.current) {
+                ref.current.classList.remove('shake-error');
+            }
+        });
+    }, [view, fieldRefs]);
+
     const handleClose = () => {
         setView('timeline');
         resetFormData();
@@ -972,7 +1048,80 @@ const DayDetailsModal = ({
         }
     };
 
+    const validateForm = () => {
+        const errors = {};
+        const isEvent = view === 'createEvent' || view === 'editEvent';
+        const fieldsToShake = [];
+
+        // Title is required
+        if (!formData.title || formData.title.trim() === '') {
+            errors.title = 'Tytuł jest wymagany';
+            fieldsToShake.push('title');
+        }
+
+        // Start time is required
+        if (!formData.startTime) {
+            errors.startTime = 'Godzina rozpoczęcia jest wymagana';
+            fieldsToShake.push('startTime');
+        }
+
+        // End time is required
+        if (!formData.endTime) {
+            errors.endTime = 'Godzina zakończenia jest wymagana';
+            fieldsToShake.push('endTime');
+        }
+
+        // Validate time range
+        if (formData.startTime && formData.endTime) {
+            const [startHour, startMin] = formData.startTime.split(':').map(Number);
+            const [endHour, endMin] = formData.endTime.split(':').map(Number);
+            const startMinutes = startHour * 60 + startMin;
+            const endMinutes = endHour * 60 + endMin;
+            
+            if (endMinutes <= startMinutes) {
+                errors.endTime = 'Godzina zakończenia musi być późniejsza niż rozpoczęcia';
+                if (!fieldsToShake.includes('endTime')) {
+                    fieldsToShake.push('endTime');
+                }
+            }
+        }
+
+        // For events, validate location if type is local
+        if (isEvent && formData.type === 'local' && (!formData.location || formData.location.trim() === '')) {
+            errors.location = 'Lokalizacja jest wymagana dla spotkań stacjonarnych';
+            fieldsToShake.push('location');
+        }
+
+        // For availability, validate meeting duration and time snapping
+        if (!isEvent) {
+            if (!formData.meetingDuration || formData.meetingDuration <= 0) {
+                errors.meetingDuration = 'Czas trwania spotkania jest wymagany';
+                fieldsToShake.push('meetingDuration');
+            }
+            if (!formData.timeSnapping || formData.timeSnapping <= 0) {
+                errors.timeSnapping = 'Rozstawienie spotkań jest wymagane';
+                fieldsToShake.push('timeSnapping');
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            flushSync(() => {
+                setValidationErrors(errors);
+            });
+            triggerFieldShake(fieldsToShake);
+            
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = () => {
+        // Validate form first
+        if (!validateForm()) {
+            return;
+        }
+
         const { assigneeType, assigneeId, meetingDuration, ...restFormData } = formData;
         
         const targetSiteId = restFormData.siteId || activeSiteId;
@@ -1064,14 +1213,22 @@ const DayDetailsModal = ({
             }}
         >
             <motion.div
-                key={`timeline-${actualStartHour}-${actualEndHour}`}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ 
-                    duration: 0.4, 
-                    ease: [0.4, 0, 0.2, 1]
+                layout
+                initial={false}
+                animate={{ 
+                    scaleY: 1,
+                    opacity: 1
                 }}
-                style={{ width: '100%', height: '100%' }}
+                transition={{ 
+                    duration: 0.5,
+                    ease: [0.4, 0, 0.2, 1],
+                    layout: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
+                }}
+                style={{ 
+                    width: '100%', 
+                    height: '100%',
+                    transformOrigin: 'top center'
+                }}
             >
                 <Box
                     sx={{
@@ -1084,13 +1241,23 @@ const DayDetailsModal = ({
                     }}
                 >
             {/* Hour lines */}
+            <AnimatePresence mode="sync">
             {HOURS.map((hour, index) => {
                 const topPercent = (index / HOURS.length) * 100;
                 const heightPercent = (1 / HOURS.length) * 100;
                 return (
-                    <Box
+                    <motion.div
                         key={hour}
-                        sx={{
+                        layout
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ 
+                            duration: 0.3,
+                            ease: [0.4, 0, 0.2, 1],
+                            layout: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
+                        }}
+                        style={{
                             position: 'absolute',
                             left: 0,
                             right: 0,
@@ -1114,9 +1281,10 @@ const DayDetailsModal = ({
                         >
                             {`${hour.toString().padStart(2, '0')}:00`}
                         </Typography>
-                    </Box>
+                    </motion.div>
                 );
             })}
+            </AnimatePresence>
 
             {/* Current time indicator */}
             {(() => {
@@ -1361,35 +1529,100 @@ const DayDetailsModal = ({
 
                 <Box>
                     <TextField
+                        ref={titleFieldRef}
                         label="Tytuł"
-                        InputLabelProps={{ sx: { fontWeight: 600 } }}
+                        InputLabelProps={{ 
+                            sx: { 
+                                fontWeight: 600,
+                                color: validationErrors.title ? 'error.main' : undefined
+                            } 
+                        }}
                         fullWidth
                         value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, title: e.target.value });
+                            if (validationErrors.title) {
+                                setValidationErrors({ ...validationErrors, title: undefined });
+                            }
+                        }}
                         placeholder={isEvent ? 'np. Spotkanie z klientem' : 'Dostępny'}
                         size="small"
+                        error={!!validationErrors.title}
+                        helperText={validationErrors.title}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'error.main',
+                                    borderWidth: 2
+                                }
+                            }
+                        }}
                     />
                 </Box>
 
                 <Box>
                     <Stack direction="row" spacing={2}>
                         <TextField
+                            ref={startTimeFieldRef}
                             fullWidth
                             label="Od"
                             type="time"
                             value={formData.startTime}
-                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                            InputLabelProps={{ shrink: true, sx: { fontWeight: 600 } }}
+                            onChange={(e) => {
+                                setFormData({ ...formData, startTime: e.target.value });
+                                if (validationErrors.startTime) {
+                                    setValidationErrors({ ...validationErrors, startTime: undefined });
+                                }
+                            }}
+                            InputLabelProps={{ 
+                                shrink: true, 
+                                sx: { 
+                                    fontWeight: 600,
+                                    color: validationErrors.startTime ? 'error.main' : undefined
+                                } 
+                            }}
                             size="small"
+                            error={!!validationErrors.startTime}
+                            helperText={validationErrors.startTime}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'error.main',
+                                        borderWidth: 2
+                                    }
+                                }
+                            }}
                         />
                         <TextField
+                            ref={endTimeFieldRef}
                             fullWidth
                             label="Do"
                             type="time"
                             value={formData.endTime}
-                            onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                            InputLabelProps={{ shrink: true, sx: { fontWeight: 600 } }}
+                            onChange={(e) => {
+                                setFormData({ ...formData, endTime: e.target.value });
+                                if (validationErrors.endTime) {
+                                    setValidationErrors({ ...validationErrors, endTime: undefined });
+                                }
+                            }}
+                            InputLabelProps={{ 
+                                shrink: true, 
+                                sx: { 
+                                    fontWeight: 600,
+                                    color: validationErrors.endTime ? 'error.main' : undefined
+                                } 
+                            }}
                             size="small"
+                            error={!!validationErrors.endTime}
+                            helperText={validationErrors.endTime}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'error.main',
+                                        borderWidth: 2
+                                    }
+                                }
+                            }}
                         />
                     </Stack>
                 </Box>
@@ -1413,14 +1646,35 @@ const DayDetailsModal = ({
 
                             {formData.type === 'local' && (
                                 <TextField
+                                    ref={locationFieldRef}
                                     fullWidth
                                     label="Lokalizacja"
-                                    InputLabelProps={{ sx: { fontWeight: 600 } }}
+                                    InputLabelProps={{ 
+                                        sx: { 
+                                            fontWeight: 600,
+                                            color: validationErrors.location ? 'error.main' : undefined
+                                        } 
+                                    }}
                                     value={formData.location}
-                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, location: e.target.value });
+                                        if (validationErrors.location) {
+                                            setValidationErrors({ ...validationErrors, location: undefined });
+                                        }
+                                    }}
                                     placeholder="np. ul. Kwiatowa 5, Warszawa"
                                     size="small"
-                                    sx={{ mt: 1.5 }}
+                                    error={!!validationErrors.location}
+                                    helperText={validationErrors.location}
+                                    sx={{ 
+                                        mt: 1.5,
+                                        '& .MuiOutlinedInput-root': {
+                                            '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+                                                borderColor: 'error.main',
+                                                borderWidth: 2
+                                            }
+                                        }
+                                    }}
                                 />
                             )}
                         </Box>
@@ -1463,12 +1717,37 @@ const DayDetailsModal = ({
                 {!isEvent && (
                     <>
                         <Box>
-                            <FormControl fullWidth>
-                                <InputLabel sx={{ fontWeight: 600 }}>Długość spotkania</InputLabel>
+                            <FormControl 
+                                ref={meetingDurationFieldRef}
+                                fullWidth
+                                error={!!validationErrors.meetingDuration}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+                                            borderColor: 'error.main',
+                                            borderWidth: 2
+                                        }
+                                    }
+                                }}
+                            >
+                                <InputLabel 
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        color: validationErrors.meetingDuration ? 'error.main' : undefined
+                                    }}
+                                >
+                                    Długość spotkania
+                                </InputLabel>
                                 <Select
                                     value={formData.meetingDuration || '60'}
                                     label="Długość spotkania"
-                                    onChange={(e) => setFormData({ ...formData, meetingDuration: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, meetingDuration: e.target.value });
+                                        if (validationErrors.meetingDuration) {
+                                            setValidationErrors({ ...validationErrors, meetingDuration: undefined });
+                                        }
+                                    }}
+                                    error={!!validationErrors.meetingDuration}
                                 >
                                     <MenuItem value="30">30 minut</MenuItem>
                                     <MenuItem value="45">45 minut</MenuItem>
@@ -1476,22 +1755,57 @@ const DayDetailsModal = ({
                                     <MenuItem value="90">1,5 godziny</MenuItem>
                                     <MenuItem value="120">2 godziny</MenuItem>
                                 </Select>
+                                {validationErrors.meetingDuration && (
+                                    <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.75 }}>
+                                        {validationErrors.meetingDuration}
+                                    </Typography>
+                                )}
                             </FormControl>
                         </Box>
 
                         <Box>
-                            <FormControl fullWidth>
-                                <InputLabel sx={{ fontWeight: 600 }}>Spotkania mogą zaczynać się co</InputLabel>
+                            <FormControl 
+                                ref={timeSnappingFieldRef}
+                                fullWidth
+                                error={!!validationErrors.timeSnapping}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+                                            borderColor: 'error.main',
+                                            borderWidth: 2
+                                        }
+                                    }
+                                }}
+                            >
+                                <InputLabel 
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        color: validationErrors.timeSnapping ? 'error.main' : undefined
+                                    }}
+                                >
+                                    Spotkania mogą zaczynać się co
+                                </InputLabel>
                                 <Select
                                     value={formData.timeSnapping}
                                     label="Spotkania mogą zaczynać się co"
-                                    onChange={(e) => setFormData({ ...formData, timeSnapping: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, timeSnapping: e.target.value });
+                                        if (validationErrors.timeSnapping) {
+                                            setValidationErrors({ ...validationErrors, timeSnapping: undefined });
+                                        }
+                                    }}
+                                    error={!!validationErrors.timeSnapping}
                                 >
                                     <MenuItem value="15">15 minut</MenuItem>
                                     <MenuItem value="30">30 minut</MenuItem>
                                     <MenuItem value="60">60 minut</MenuItem>
                                     <MenuItem value="0">Dowolnie</MenuItem>
                                 </Select>
+                                {validationErrors.timeSnapping && (
+                                    <Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.75 }}>
+                                        {validationErrors.timeSnapping}
+                                    </Typography>
+                                )}
                             </FormControl>
                         </Box>
 
@@ -1532,7 +1846,7 @@ const DayDetailsModal = ({
                     <Tooltip 
                         title={isEvent 
                             ? "Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie."
-                            : "Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto jest dostępny w tym terminie."}
+                            : "Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie."}
                         placement="top"
                         arrow
                     >
@@ -1863,23 +2177,15 @@ const DayDetailsModal = ({
                                     <IconButton
                                         onClick={() => setIsZoomedTimeline(!isZoomedTimeline)}
                                         sx={{
-                                            color: 'primary.main',
+                                            color: 'error.main',
                                             transition: 'all 0.3s ease',
                                             '&:hover': {
-                                                backgroundColor: 'rgba(146, 0, 32, 0.08)',
+                                                backgroundColor: 'rgba(211, 47, 47, 0.08)',
                                                 transform: 'scale(1.1)'
                                             }
                                         }}
                                     >
-                                        <motion.div
-                                            key={isZoomedTimeline ? 'zoom-out' : 'zoom-in'}
-                                            initial={{ scale: 0.8, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            exit={{ scale: 0.8, opacity: 0 }}
-                                            transition={{ duration: 0.2 }}
-                                        >
-                                            {isZoomedTimeline ? <ZoomOutIcon /> : <ZoomInIcon />}
-                                        </motion.div>
+                                        {isZoomedTimeline ? <ZoomOutIcon /> : <ZoomInIcon />}
                                     </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Jak chcesz to zaplanować?">
