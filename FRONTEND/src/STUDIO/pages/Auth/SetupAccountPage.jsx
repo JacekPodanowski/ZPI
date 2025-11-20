@@ -36,7 +36,7 @@ function SetupAccountPage() {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const response = await apiClient.get(`/api/v1/validate-setup-token/${token}/`);
+        const response = await apiClient.get(`/validate-setup-token/${token}/`);
         setUserInfo(response.data);
         setLoading(false);
       } catch (err) {
@@ -92,7 +92,7 @@ function SetupAccountPage() {
     setError('');
     
     try {
-      const response = await apiClient.post(`/api/v1/setup-account/${token}/`, {
+      const response = await apiClient.post(`/setup-account/${token}/`, {
         new_password: formData.newPassword,
       });
       

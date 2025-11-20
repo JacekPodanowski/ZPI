@@ -821,39 +821,50 @@ def regenerate_testimonial_summary(self, site_id: int):
         flash_service = get_flash_service()
         
         # Generate public summary (short, for site visitors)
-        public_prompt = f"""Na podstawie poniższych {total_count} opinii klientów, wygeneruj krótkie podsumowanie (max 2-3 zdania) 
-co klienci najbardziej cenią i co im się nie podoba. Podsumowanie powinno być pozytywne i zachęcające.
+        public_prompt = f"""Na podstawie poniższych {total_count} opinii napisz krótkie podsumowanie (2-3 zdania) w formie stwierdzenia.
+Skoncentruj się na tym, co klienci najbardziej podkreślają i cenią. Odpowiedź ma być konkretna i pozytywna.
+
+Przykład: "Klienci szczególnie cenią profesjonalizm i indywidualne podejście. Recenzenci podkreślają atmosferę oraz widoczne efekty po sesjach."
 
 Opinie:
 {testimonials_text}
 
-Wygeneruj tylko samo podsumowanie, bez dodatkowych komentarzy."""
+Odpowiedz tylko samym podsumowaniem, bez wstępów i komentarzy."""
         
         public_result = flash_service.process_task(
             public_prompt,
             {},
             {'task_type': 'text_generation'}
         )
-        public_summary = public_result.get('explanation', 'Brak podsumowania')
+        # Handle both explanation and needs_clarification responses
+        public_summary = public_result.get('explanation') or public_result.get('needs_clarification') or 'Brak podsumowania'
         
         # Generate detailed summary (for admin panel)
-        detailed_prompt = f"""Na podstawie poniższych {total_count} opinii klientów, wygeneruj szczegółową analizę obejmującą:
-1. Najczęściej pojawiające się pozytywy
-2. Obszary wymagające poprawy
-3. Sugestie dla właściciela strony
-4. Ogólny sentyment klientów
+        detailed_prompt = f"""Przeanalizuj {total_count} opinii klientów i napisz szczegółową analizę:
 
 Opinie:
 {testimonials_text}
 
-Wygeneruj szczegółową analizę w punktach."""
+Wygeneruj analizę w następującym formacie:
+
+**Najczęstsze pozytywy:**
+- [wymień 3-5 najważniejszych rzeczy, które klienci chwalą]
+
+**Obszary do poprawy:**
+- [wymień ewentualne uwagi krytyczne lub sugestie, jeśli są]
+
+**Rekomendacje:**
+- [2-3 konkretne sugestie dla właściciela jak wykorzystać te opinie]
+
+**Sentyment:** [ogólna ocena nastawienia klientów w 1-2 zdaniach]"""
         
         detailed_result = flash_service.process_task(
             detailed_prompt,
             {},
             {'task_type': 'text_generation'}
         )
-        detailed_summary = detailed_result.get('explanation', 'Brak szczegółowej analizy')
+        # Handle both explanation and needs_clarification responses
+        detailed_summary = detailed_result.get('explanation') or detailed_result.get('needs_clarification') or 'Nie udało się wygenerować szczegółowej analizy.'
         
         # Save or update summary
         summary, created = TestimonialSummary.objects.update_or_create(

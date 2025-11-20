@@ -96,9 +96,10 @@ class PlatformUserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name', 'avatar_url',
             'public_image_url', 'role_description', 'bio',
             'account_type', 'source_tag', 'is_staff', 'is_active',
-            'preferences', 'created_at', 'updated_at'
+            'preferences', 'created_at', 'updated_at',
+            'is_temporary_password', 'password_changed_at'
         ]
-        read_only_fields = ['created_at', 'updated_at', 'is_staff', 'is_active']
+        read_only_fields = ['created_at', 'updated_at', 'is_staff', 'is_active', 'is_temporary_password', 'password_changed_at']
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)

@@ -7,44 +7,56 @@ from .models import TeamMember
 class IsOwnerOrTeamMember(permissions.BasePermission):
     """
     Permission class that allows access to site owners and linked team members.
+    Specific role-based restrictions are handled in the ViewSet methods.
     """
     
     def has_object_permission(self, request, view, obj):
         """Check if user is owner or linked team member of the site."""
+        # Add debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[IsOwnerOrTeamMember.has_object_permission] User: {request.user.id}, Method: {request.method}, Object: {obj}")
+        
         # Staff always have access
         if request.user.is_staff:
+            logger.info(f"[IsOwnerOrTeamMember] User is staff - allowing")
             return True
         
         # For Site objects
         if hasattr(obj, 'owner'):
             # Check if user is owner
             if obj.owner == request.user:
+                logger.info(f"[IsOwnerOrTeamMember] User is owner - allowing")
                 return True
             
-            # Check if user is a linked team member
+            # Check if user is a linked team member (any role)
             is_team_member = TeamMember.objects.filter(
                 site=obj,
                 linked_user=request.user,
                 invitation_status='linked'
             ).exists()
             
+            logger.info(f"[IsOwnerOrTeamMember] Is team member: {is_team_member}")
             return is_team_member
         
         # For Event objects
         if hasattr(obj, 'site'):
             # Check if user is site owner
             if obj.site.owner == request.user:
+                logger.info(f"[IsOwnerOrTeamMember] User is site owner - allowing")
                 return True
             
-            # Check if user is a linked team member
+            # Check if user is a linked team member (any role)
             is_team_member = TeamMember.objects.filter(
                 site=obj.site,
                 linked_user=request.user,
                 invitation_status='linked'
             ).exists()
             
+            logger.info(f"[IsOwnerOrTeamMember] Is team member: {is_team_member}")
             return is_team_member
         
+        logger.warning(f"[IsOwnerOrTeamMember] No matching condition - denying")
         return False
 
 

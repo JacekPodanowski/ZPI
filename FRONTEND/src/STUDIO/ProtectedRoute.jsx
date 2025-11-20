@@ -21,6 +21,12 @@ const ProtectedRoute = ({ children, requireStaff = false, allowedAccountTypes })
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    // Check if user has temporary password and needs to change it
+    // BUT only if not already on the change-password page
+    if (user?.is_temporary_password && location.pathname !== '/studio/change-password') {
+        return <Navigate to="/studio/change-password" replace />;
+    }
+
     // Show 404 for non-admin users trying to access admin routes
     if (requireStaff && !user?.is_staff) {
         return <NotFoundPage />;

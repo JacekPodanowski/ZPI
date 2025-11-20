@@ -61,6 +61,7 @@ from .media_helpers import (
 )
 from .media_processing import ImageProcessingError, convert_to_webp
 from .media_storage import StorageError, StorageSaveResult, get_media_storage
+from .permissions import IsOwnerOrTeamMember
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -807,6 +808,57 @@ class VerifyPasswordResetTokenView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class ChangePasswordView(APIView):
+    """Change password for authenticated user (including temporary password)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        """Change password for the currently logged-in user."""
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        
+        if not new_password:
+            return Response({
+                'detail': 'Nowe hasło jest wymagane.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate password strength
+        if len(new_password) < 8:
+            return Response({
+                'detail': 'Hasło musi mieć minimum 8 znaków.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = request.user
+        
+        # If user has temporary password, don't require current password
+        # (they may have logged in with the temp password and want to change it)
+        if not user.is_temporary_password:
+            # Normal password change - require current password
+            if not current_password:
+                return Response({
+                    'detail': 'Aktualne hasło jest wymagane.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify current password
+            if not user.check_password(current_password):
+                return Response({
+                    'detail': 'Aktualne hasło jest nieprawidłowe.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Change password
+        user.set_password(new_password)
+        user.is_temporary_password = False
+        user.password_changed_at = timezone.now()
+        user.save()
+        
+        logger.info(f"User {user.email} changed password successfully")
+        
+        return Response({
+            'detail': 'Hasło zostało zmienione pomyślnie!',
+            'email': user.email
+        }, status=status.HTTP_200_OK)
+
+
 class IsOwnerOrStaff(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
@@ -850,7 +902,7 @@ class PlatformUserViewSet(viewsets.ModelViewSet):
 @tag_viewset('Sites')
 class SiteViewSet(viewsets.ModelViewSet):
     serializer_class = SiteSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrStaff]
+    permission_classes = [IsAuthenticated, IsOwnerOrTeamMember]
 
     def get_queryset(self):
         qs = Site.objects.select_related('owner').all()
@@ -905,6 +957,44 @@ class SiteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         return super().destroy(request, *args, **kwargs)
+    
+    def perform_update(self, serializer):
+        """Control update permissions based on team member role."""
+        site = self.get_object()
+        user = self.request.user
+        
+        logger.info(f"[SiteViewSet.perform_update] User {user.id} ({user.email}) attempting to update site {site.id}")
+        
+        # Owner and staff can always update
+        if site.owner == user or user.is_staff:
+            logger.info(f"[SiteViewSet.perform_update] User is owner or staff - allowing update")
+            serializer.save()
+            return
+        
+        # Check team member role
+        role, membership = resolve_site_role(user, site)
+        logger.info(f"[SiteViewSet.perform_update] Resolved role: {role}, membership: {membership}")
+        
+        # Manager can update site
+        if role == TeamMember.PermissionRole.MANAGER:
+            logger.info(f"[SiteViewSet.perform_update] User is manager - allowing update")
+            serializer.save()
+            return
+        
+        # Contributor and Viewer cannot update site configuration
+        logger.warning(f"[SiteViewSet.perform_update] User role {role} cannot update site configuration")
+        raise PermissionDenied('Only site owner and managers can modify site configuration.')
+    
+    def perform_destroy(self, instance):
+        """Only owner can delete site. Protects showcase site."""
+        # Protect showcase site (ID=1) from deletion
+        if instance.id == 1:
+            raise PermissionDenied('The showcase site cannot be deleted.')
+        
+        if instance.owner != self.request.user and not self.request.user.is_staff:
+            raise PermissionDenied('Only site owner can delete the site.')
+        
+        instance.delete()
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated], url_path='calendar-roster')
     def calendar_roster(self, request, pk=None):
@@ -1014,19 +1104,6 @@ class SiteViewSet(viewsets.ModelViewSet):
             serializer.save(owner=self.request.user, color_index=next_color_index)
         else:
             serializer.save(owner=self.request.user)
-
-    def perform_update(self, serializer):
-        if serializer.instance.owner != self.request.user and not self.request.user.is_staff:
-            raise PermissionDenied('You cannot modify a site you do not own.')
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        # Protect showcase site (ID=1) from deletion
-        if instance.id == 1:
-            raise PermissionDenied('The showcase site (Pokazowa) cannot be deleted.')
-        if instance.owner != self.request.user and not self.request.user.is_staff:
-            raise PermissionDenied('You cannot delete a site you do not own.')
-        instance.delete()
 
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated, IsOwnerOrStaff])
     def update_color(self, request, pk=None):
@@ -3192,7 +3269,16 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='send-invitation')
     def send_invitation(self, request, pk=None):
-        """Send invitation to team member."""
+        """Send invitation to team member.
+        
+        Logic:
+        1. If user exists AND is_active AND (password_changed_at is set OR not is_temporary_password):
+           -> Send project invitation (PENDING status)
+        2. If user exists BUT (not active OR has temporary password):
+           -> Send registration invitation with temporary credentials (INVITED status)
+        3. If user doesn't exist:
+           -> Create account and send registration invitation (INVITED status)
+        """
         team_member = self.get_object()
         
         # Validate ownership
@@ -3210,49 +3296,116 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         existing_user = PlatformUser.objects.filter(email__iexact=team_member.email).first()
         
         if existing_user:
-            # User has account - set status to 'pending' and link user
-            team_member.invitation_status = 'pending'
-            team_member.invited_at = timezone.now()
-            team_member.linked_user = existing_user
-            team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
-            
-            # Create magic link for invitation acceptance (valid for 7 days)
-            magic_link = MagicLink.objects.create(
-                user=existing_user,
-                email=existing_user.email,
-                token=get_random_string(64),
-                action_type=MagicLink.ActionType.TEAM_INVITATION,
-                team_member=team_member,
-                expires_at=timezone.now() + timedelta(days=7)
+            # Check if user is active and has changed password at least once
+            # (not a temporary password or has password_changed_at set)
+            is_fully_registered = (
+                existing_user.is_active and 
+                (existing_user.password_changed_at is not None or not existing_user.is_temporary_password)
             )
             
-            # Send email notification to existing user with invitation link
-            invitation_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/accept-invitation/{magic_link.token}"
-            context = {
-                'site_name': team_member.site.name,
-                'permission_role': team_member.get_permission_role_display(),
-                'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
-                'invitation_link': invitation_url,
-            }
-            html_message = render_to_string('emails/team_invitation_existing_user.html', context)
-            plain_message = strip_tags(html_message)
-            
-            send_mail(
-                subject=f'Zaproszenie do zespołu: {team_member.site.name}',
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[team_member.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-            
-            return Response({
-                'message': 'Invitation sent to existing user.',
-                'status': 'pending'
-            })
+            if is_fully_registered:
+                # User is active and has confirmed account - send project invitation
+                team_member.invitation_status = 'pending'
+                team_member.invited_at = timezone.now()
+                team_member.linked_user = existing_user
+                team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
+                
+                # Create magic link for invitation acceptance (valid for 7 days)
+                magic_link = MagicLink.objects.create(
+                    user=existing_user,
+                    email=existing_user.email,
+                    token=get_random_string(64),
+                    action_type=MagicLink.ActionType.TEAM_INVITATION,
+                    team_member=team_member,
+                    expires_at=timezone.now() + timedelta(days=7)
+                )
+                
+                # Send email notification to existing user with invitation link
+                invitation_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/accept-invitation/{magic_link.token}"
+                context = {
+                    'site_name': team_member.site.name,
+                    'permission_role': team_member.get_permission_role_display(),
+                    'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
+                    'invitation_link': invitation_url,
+                }
+                html_message = render_to_string('emails/team_invitation_existing_user.html', context)
+                plain_message = strip_tags(html_message)
+                
+                send_mail(
+                    subject=f'Zaproszenie do zespołu: {team_member.site.name}',
+                    message=plain_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[team_member.email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+                
+                return Response({
+                    'message': 'Invitation sent to existing active user.',
+                    'status': 'pending'
+                })
+            else:
+                # User exists but is not fully registered (inactive or has temporary password)
+                # Send registration invitation with new temporary password
+                import secrets
+                import string
+                
+                # Generate new temporary password
+                alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
+                temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+                
+                # Update user with new temporary password
+                existing_user.set_password(temp_password)
+                existing_user.is_temporary_password = True
+                existing_user.password_changed_at = None
+                existing_user.is_active = False  # Keep inactive until password changed
+                existing_user.save()
+                
+                # Link team member
+                team_member.invitation_status = 'invited'
+                team_member.invited_at = timezone.now()
+                team_member.linked_user = existing_user
+                team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
+                
+                # Create magic link for password change (valid for 7 days)
+                # This link also confirms email
+                magic_link = MagicLink.objects.create(
+                    user=existing_user,
+                    email=existing_user.email,
+                    token=get_random_string(64),
+                    action_type=MagicLink.ActionType.PASSWORD_RESET,
+                    team_member=team_member,
+                    expires_at=timezone.now() + timedelta(days=7)
+                )
+                
+                # Send registration invitation email
+                setup_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/setup-account/{magic_link.token}"
+                context = {
+                    'site_name': team_member.site.name,
+                    'permission_role': team_member.get_permission_role_display(),
+                    'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
+                    'email': existing_user.email,
+                    'temp_password': temp_password,
+                    'setup_link': setup_url,
+                }
+                html_message = render_to_string('emails/team_invitation_new_user.html', context)
+                plain_message = strip_tags(html_message)
+                
+                send_mail(
+                    subject=f'Zaproszenie do zespołu: {team_member.site.name}',
+                    message=plain_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[team_member.email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+                
+                return Response({
+                    'message': 'Registration invitation sent (user exists but not fully registered).',
+                    'status': 'invited'
+                })
         else:
             # User doesn't have account - create account with temporary password
-            from django.utils.crypto import get_random_string
             import secrets
             import string
             
@@ -3267,6 +3420,8 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                 source_tag=PlatformUser.SourceTag.TEAM_INVITATION,
                 account_type=PlatformUser.AccountType.FREE,
                 is_active=False,  # Account inactive until password is changed
+                is_temporary_password=True,
+                password_changed_at=None,
             )
             new_user.set_password(temp_password)
             new_user.save()
@@ -3310,7 +3465,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             )
             
             return Response({
-                'message': 'Account created and invitation sent to new user.',
+                'message': 'Account created and registration invitation sent to new user.',
                 'status': 'invited'
             })
     
@@ -4770,17 +4925,31 @@ def setup_account(request, token):
         # Set new password and activate account
         user.set_password(new_password)
         user.is_active = True
+        user.is_temporary_password = False
+        user.password_changed_at = timezone.now()
         user.save()
         
         # Mark magic link as used
         magic_link.mark_as_used()
         
         # Auto-accept team invitation if this was a team invitation flow
+        # Email confirmation is also done by clicking the link
         if magic_link.team_member:
             team_member = magic_link.team_member
             team_member.invitation_status = 'linked'
             team_member.save(update_fields=['invitation_status'])
-            logger.info(f"Auto-accepted team invitation for {user.email}")
+            
+            # Mark email as verified
+            email_address, created = EmailAddress.objects.get_or_create(
+                user=user,
+                email=user.email,
+                defaults={'verified': True, 'primary': True}
+            )
+            if not email_address.verified:
+                email_address.verified = True
+                email_address.save(update_fields=['verified'])
+            
+            logger.info(f"Auto-accepted team invitation and verified email for {user.email}")
         
         logger.info(f"Account setup completed for {user.email}")
         

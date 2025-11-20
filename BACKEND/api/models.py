@@ -91,6 +91,8 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
         help_text='The ToS version this user has accepted'
     )
     terms_agreement_date = models.DateTimeField(null=True, blank=True, help_text='When the user accepted the ToS')
+    is_temporary_password = models.BooleanField(default=False, help_text='Whether the user has a temporary password that must be changed')
+    password_changed_at = models.DateTimeField(null=True, blank=True, help_text='When the user last changed their password')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)
