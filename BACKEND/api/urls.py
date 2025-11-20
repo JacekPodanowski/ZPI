@@ -1,5 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .payment_views import (
+    create_payment,
+    payment_webhook,
+    payment_status,
+    payment_history,
+)
 from .views import (
     PlatformUserViewSet,
     SiteViewSet,
@@ -134,4 +140,9 @@ urlpatterns = [
     # AI Assistant endpoints
     path('ai-task/', AITaskView.as_view(), name='ai-task'),
     path('ai-task/<str:task_id>/poll/', poll_ai_task_result, name='poll-ai-task'),
+    # Payment endpoints
+    path('payments/create/', create_payment, name='create-payment'),
+    path('payments/webhook/', payment_webhook, name='payment-webhook'),
+    path('payments/status/<str:session_id>/', payment_status, name='payment-status'),
+    path('payments/history/', payment_history, name='payment-history'),
 ]

@@ -42,6 +42,14 @@ GOOGLE_CLOUD_DOMAIN = os.environ.get('GOOGLE_CLOUD_DOMAIN')  # Cloud Run / App E
 # --- AI Models API Keys ---
 FLASH_API_KEY = os.environ.get('FLASH_API_KEY')
 
+# --- Przelewy24 Payment Gateway ---
+PRZELEWY24_MERCHANT_ID = os.environ.get('PRZELEWY24_MERCHANT_ID')
+PRZELEWY24_POS_ID = os.environ.get('PRZELEWY24_POS_ID')
+PRZELEWY24_CRC_KEY = os.environ.get('PRZELEWY24_CRC_KEY')
+PRZELEWY24_API_URL = os.environ.get('PRZELEWY24_API_URL', 'https://sandbox.przelewy24.pl')
+PRZELEWY24_RETURN_URL = os.environ.get('PRZELEWY24_RETURN_URL', f'{FRONTEND_URL}/studio/payment/success')
+PRZELEWY24_STATUS_URL = os.environ.get('PRZELEWY24_STATUS_URL', 'https://yourdomain.com/api/v1/payments/webhook/')
+
 SUPABASE_URL = os.environ.get('supabase_url')
 SUPABASE_ANON_KEY = os.environ.get('supabase_api_key')
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')

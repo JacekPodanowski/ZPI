@@ -26,6 +26,7 @@ from .models import (
     DomainOrder,
     Testimonial,
     TestimonialSummary,
+    Payment,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -726,3 +727,16 @@ class TestimonialSummarySerializer(serializers.ModelSerializer):
             'average_rating', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    """Serializer for Przelewy24 payments."""
+    
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'user', 'session_id', 'amount', 'currency', 'description',
+            'email', 'plan_id', 'token', 'status', 'p24_order_id',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'token', 'p24_order_id', 'created_at', 'updated_at']

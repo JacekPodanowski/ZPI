@@ -20,6 +20,8 @@ import SettingsPage from './pages/Settings/SettingsPage';
 import NotificationsPage from './pages/Settings/NotificationsPage';
 import MailsPage from './pages/Settings/MailsPage';
 import ToastTestPage from './pages/Settings/ToastTestPage';
+import PaymentSuccessPage from './pages/Settings/PaymentSuccessPage';
+import PaymentFailedPage from './pages/Settings/PaymentFailedPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import TeamPage from './pages/Team/TeamPage';
@@ -81,6 +83,10 @@ const StudioApp = () => (
     <Route element={<StudioLayout />}>
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
     </Route>
+
+    {/* Payment success/failed pages - PUBLIC routes */}
+    <Route path="payment/success" element={<PaymentSuccessPage />} />
+    <Route path="payment/failed" element={<PaymentFailedPage />} />
 
     {/* Account settings routes with shared layout */}
     <Route path="account" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>
