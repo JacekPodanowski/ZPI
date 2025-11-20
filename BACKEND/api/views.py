@@ -5,16 +5,19 @@ import hashlib
 import logging
 import os
 import re
+from datetime import timedelta
 from typing import Any, Dict
 
 import ovh
 import requests
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db import transaction, models
 from django.db.models import Sum, Q
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from allauth.account.models import EmailAddress, EmailConfirmation, EmailConfirmationHMAC
 from allauth.account.utils import send_email_confirmation
 from rest_framework import viewsets, permissions, status, generics, serializers
@@ -89,6 +92,7 @@ from .serializers import (
     TestEmailSerializer,
     TeamMemberSerializer,
     TeamMemberInfoSerializer,
+    PublicTeamMemberSerializer,
     DomainOrderSerializer,
 )
 from .tasks import send_custom_email_task_async
@@ -2656,6 +2660,31 @@ from datetime import datetime, time, timedelta
 class PublicAvailabilityView(APIView):
     permission_classes = [AllowAny]
 
+    def _get_assignee_info(self, obj):
+        """Helper method to extract assignee information from Event or AvailabilityBlock"""
+        if hasattr(obj, 'assigned_to_team_member') and obj.assigned_to_team_member:
+            member = obj.assigned_to_team_member
+            return {
+                'type': 'team_member',
+                'id': member.id,
+                'name': f"{member.first_name} {member.last_name}"
+            }
+        elif hasattr(obj, 'assigned_to_owner') and obj.assigned_to_owner:
+            owner = obj.assigned_to_owner
+            return {
+                'type': 'owner',
+                'id': owner.id,
+                'name': owner.get_full_name() or owner.email
+            }
+        else:
+            # Fallback to creator or site owner
+            creator = getattr(obj, 'creator', None) or getattr(obj, 'site', None).owner
+            return {
+                'type': 'owner',
+                'id': creator.id if creator else None,
+                'name': creator.get_full_name() if creator else 'Instruktor'
+            }
+
     def get(self, request, site_id, *args, **kwargs):
         try:
             site = Site.objects.get(pk=site_id)
@@ -2710,6 +2739,9 @@ class PublicAvailabilityView(APIView):
             current_time = timezone.make_aware(block_start, tz)
             end_time = timezone.make_aware(block_end, tz)
             
+            # Get assignee info for this block
+            assignee_info = self._get_assignee_info(block)
+            
             while current_time + timedelta(minutes=meeting_length) <= end_time:
                 slot_start = current_time
                 slot_end = slot_start + timedelta(minutes=meeting_length)
@@ -2744,15 +2776,21 @@ class PublicAvailabilityView(APIView):
                             event_type = 'individual'
                             event_id = None
                         
-                        slot_map[slot_key] = {
-                            'start': slot_key,
-                            'end': slot_end.isoformat(),
-                            'duration': meeting_length,
-                            'capacity': capacity,
-                            'available_spots': available_spots,
-                            'event_type': event_type,
-                            'event_id': event_id
-                        }
+            if slot_key not in slot_map:
+                # Get assignee info from event if it exists, otherwise from block
+                event_assignee_info = self._get_assignee_info(matching_event) if matching_event else assignee_info
+                slot_map[slot_key] = {
+                    'start': slot_key,
+                    'end': slot_end.isoformat(),
+                    'duration': meeting_length,
+                    'capacity': capacity,
+                    'available_spots': available_spots,
+                    'event_type': event_type,
+                    'event_id': event_id,
+                    'assignee_type': event_assignee_info['type'],
+                    'assignee_id': event_assignee_info['id'],
+                    'assignee_name': event_assignee_info['name']
+                }
 
                 # Przesuń czas o interwał "przyciągania" (time_snapping)
                 current_time += timedelta(minutes=block.time_snapping)
@@ -2767,6 +2805,8 @@ class PublicAvailabilityView(APIView):
             if available_spots <= 0:
                 continue
 
+            event_assignee_info = self._get_assignee_info(event)
+
             if slot_key not in slot_map:
                 slot_map[slot_key] = {
                     'start': slot_key,
@@ -2775,7 +2815,10 @@ class PublicAvailabilityView(APIView):
                     'capacity': capacity,
                     'available_spots': available_spots,
                     'event_type': event.event_type,
-                    'event_id': event.id
+                    'event_id': event.id,
+                    'assignee_type': event_assignee_info['type'],
+                    'assignee_id': event_assignee_info['id'],
+                    'assignee_name': event_assignee_info['name']
                 }
             else:
                 # Upewnij się, że dane eventu mają pierwszeństwo (np. większa pojemność)
@@ -2784,6 +2827,9 @@ class PublicAvailabilityView(APIView):
                 existing_slot['available_spots'] = available_spots
                 existing_slot['event_type'] = event.event_type
                 existing_slot['event_id'] = event.id
+                existing_slot['assignee_type'] = event_assignee_info['type']
+                existing_slot['assignee_id'] = event_assignee_info['id']
+                existing_slot['assignee_name'] = event_assignee_info['name']
 
         sorted_slots = sorted(slot_map.values(), key=lambda x: x['start'])
 
@@ -2800,6 +2846,8 @@ class PublicAvailabilityView(APIView):
             'duration': serializers.IntegerField(),
             'guest_name': serializers.CharField(),
             'guest_email': serializers.EmailField(),
+            'assignee_type': serializers.ChoiceField(choices=['owner', 'team_member'], required=False),
+            'assignee_id': serializers.IntegerField(required=False),
         }
     ),
     responses={201: BookingSerializer}
@@ -2817,6 +2865,8 @@ class PublicBookingView(APIView):
         duration = request.data.get('duration')
         guest_name = request.data.get('guest_name')
         guest_email = request.data.get('guest_email')
+        assignee_type = request.data.get('assignee_type', 'owner')
+        assignee_id = request.data.get('assignee_id')
 
         if not all([start_time_str, duration, guest_name, guest_email]):
             return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
@@ -2834,6 +2884,28 @@ class PublicBookingView(APIView):
             defaults={'name': guest_name}
         )
 
+        # Determine assignee for the event
+        assigned_to_owner = None
+        assigned_to_team_member = None
+        
+        if assignee_type == 'team_member' and assignee_id:
+            try:
+                team_member = TeamMember.objects.get(id=assignee_id, site=site, is_active=True, invitation_status='linked')
+                assigned_to_team_member = team_member
+            except TeamMember.DoesNotExist:
+                return Response({'error': 'Invalid team member'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Default to owner if assignee_id provided
+            if assignee_id:
+                try:
+                    assigned_to_owner = PlatformUser.objects.get(id=assignee_id)
+                    if assigned_to_owner != site.owner:
+                        return Response({'error': 'Invalid owner assignment'}, status=status.HTTP_400_BAD_REQUEST)
+                except PlatformUser.DoesNotExist:
+                    assigned_to_owner = site.owner
+            else:
+                assigned_to_owner = site.owner
+
         # Sprawdź, czy istnieje już wydarzenie grupowe na ten slot, które ma wolne miejsca
         # Zgodnie z sugestią, traktujemy wszystkie wydarzenia jako grupowe. Indywidualne mają po prostu `capacity=1`.
         event, created = Event.objects.get_or_create(
@@ -2845,6 +2917,8 @@ class PublicBookingView(APIView):
                 'title': f'Sesja z {guest_name}',
                 'capacity': 1, # Domyślnie sesja indywidualna. Można to pobrać z konfiguracji modułu w przyszłości.
                 'event_type': 'individual', # lub 'group'
+                'assigned_to_owner': assigned_to_owner,
+                'assigned_to_team_member': assigned_to_team_member
             }
         )
 
@@ -2879,6 +2953,36 @@ class PublicBookingView(APIView):
 
         serializer = BookingSerializer(booking)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    tags=['Public Team'],
+    summary='Get public team members for a site',
+    description='Returns active team members for display on public site',
+    responses={
+        200: PublicTeamMemberSerializer(many=True),
+        404: OpenApiResponse(description='Site not found')
+    }
+)
+class PublicTeamView(APIView):
+    """Public endpoint to get team members for a site."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, site_id, *args, **kwargs):
+        try:
+            site = Site.objects.get(pk=site_id)
+        except Site.DoesNotExist:
+            return Response({'error': 'Site not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get active team members with linked status (fully confirmed members)
+        team_members = TeamMember.objects.filter(
+            site=site,
+            is_active=True,
+            invitation_status='linked'
+        ).order_by('created_at')
+        
+        serializer = PublicTeamMemberSerializer(team_members, many=True)
+        return Response(serializer.data)
 
 
 # Team Member Views
@@ -2969,33 +3073,87 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             )
         
         # Check if user already has account
-        from .models import PlatformUser
-        existing_user = PlatformUser.objects.filter(email=team_member.email).first()
+        existing_user = PlatformUser.objects.filter(email__iexact=team_member.email).first()
         
         if existing_user:
-            # User has account - set status to 'pending'
+            # User has account - set status to 'pending' and link user
             team_member.invitation_status = 'pending'
             team_member.invited_at = timezone.now()
-            team_member.save(update_fields=['invitation_status', 'invited_at'])
+            team_member.linked_user = existing_user
+            team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
             
-            # TODO: Send 'pending' email notification
-            # Email should contain link to /studio/sites
+            # Send email notification to existing user
+            context = {
+                'site_name': team_member.site.name,
+                'permission_role': team_member.get_permission_role_display(),
+                'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
+            }
+            html_message = render_to_string('emails/team_invitation_existing_user.html', context)
+            plain_message = strip_tags(html_message)
+            
+            send_mail(
+                subject=f'Zaproszenie do zespołu: {team_member.site.name}',
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[team_member.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
             
             return Response({
                 'message': 'Invitation sent to existing user.',
                 'status': 'pending'
             })
         else:
-            # User doesn't have account - set status to 'invited'
+            # User doesn't have account - create account with unusable password
+            new_user = PlatformUser.objects.create(
+                email=team_member.email,
+                first_name=team_member.first_name or '',
+                last_name=team_member.last_name or '',
+                source_tag=PlatformUser.SourceTag.TEAM_INVITATION,
+                account_type=PlatformUser.AccountType.FREE,
+            )
+            new_user.set_unusable_password()
+            new_user.save()
+            
+            # Link team member to new user
             team_member.invitation_status = 'invited'
             team_member.invited_at = timezone.now()
-            team_member.save(update_fields=['invitation_status', 'invited_at'])
+            team_member.linked_user = new_user
+            team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
             
-            # TODO: Send 'invited' email with registration link
-            # Email should contain link to /accept-invitation/{TOKEN}
+            # Create magic link for account setup (valid for 7 days)
+            magic_link = MagicLink.objects.create(
+                user=new_user,
+                email=new_user.email,
+                token=get_random_string(64),
+                action_type=MagicLink.ActionType.TEAM_INVITATION,
+                team_member=team_member,
+                expires_at=timezone.now() + timedelta(days=7)
+            )
+            
+            # Send invitation email with setup link
+            invitation_url = f"{settings.FRONTEND_URL}/accept-invitation/{magic_link.token}"
+            context = {
+                'site_name': team_member.site.name,
+                'permission_role': team_member.get_permission_role_display(),
+                'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
+                'invitation_link': invitation_url,
+            }
+            html_message = render_to_string('emails/team_invitation_new_user.html', context)
+            plain_message = strip_tags(html_message)
+            
+            send_mail(
+                subject=f'Zaproszenie do zespołu: {team_member.site.name}',
+                message=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[team_member.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
             
             return Response({
-                'message': 'Invitation sent to new user.',
+                'message': 'Account created and invitation sent to new user.',
                 'status': 'invited'
             })
     

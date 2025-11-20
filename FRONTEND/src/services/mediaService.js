@@ -57,3 +57,28 @@ export const deleteMediaAsset = async (url = '', options = {}) => {
     return { asset_id: null, detached_usages: 0, removed: false, error: error?.message }
   }
 }
+
+export const uploadMedia = async (file, options = {}) => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    if (options.usage) {
+      formData.append('usage', options.usage)
+    }
+    if (options.siteId) {
+      formData.append('site_id', options.siteId)
+    }
+
+    const response = await apiClient.post('/upload/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+
+    return response.data
+  } catch (error) {
+    console.error('Failed to upload media', error)
+    throw error
+  }
+}

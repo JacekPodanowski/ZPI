@@ -3,8 +3,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const AccordionFAQ = ({ content, style }) => {
-  const { title = 'Najczęstsze pytania', intro = '', items = [], bgColor, textColor, backgroundImage, backgroundOverlayColor } = content;
-  const [openId, setOpenId] = useState(items[0]?.id || null);
+  const { 
+    title = 'Najczęstsze pytania', 
+    intro = '', 
+    items = [], 
+    showContactOption = false,
+    contactFormLink = '#kontakt',
+    bgColor, 
+    textColor, 
+    backgroundImage, 
+    backgroundOverlayColor 
+  } = content;
+  
+  // Ensure items have unique IDs for accordion state management
+  const itemsWithIds = items.map((item, index) => ({
+    ...item,
+    id: item.id || `faq-${index}`
+  }));
+  
+  const [openId, setOpenId] = useState(itemsWithIds[0]?.id || null);
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
 
   const handleToggle = (id) => {
@@ -31,7 +48,7 @@ const AccordionFAQ = ({ content, style }) => {
         )}
 
         <div className="space-y-3">
-          {items.map((item) => (
+          {itemsWithIds.map((item) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 8 }}
@@ -76,10 +93,63 @@ const AccordionFAQ = ({ content, style }) => {
             </motion.div>
           ))}
 
-          {items.length === 0 && (
+          {itemsWithIds.length === 0 && (
             <div className="text-center py-10 text-sm text-black/40">
               Dodaj pytania w konfiguratorze.
             </div>
+          )}
+          
+          {/* Special "Didn't find your answer" option */}
+          {showContactOption && itemsWithIds.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.3 }}
+              className={`${style.rounded} border border-black/5 bg-white/80 ${style.shadows}`}
+            >
+              <button
+                onClick={() => handleToggle('contact-option')}
+                className="w-full text-left px-4 py-4 sm:px-6 sm:py-5 flex items-center justify-between gap-4 sm:gap-6"
+                style={{ color: textColor || style.text }}
+              >
+                <span className="text-base sm:text-lg font-medium">🔍 Nie znalazłeś odpowiedzi na swoje pytanie?</span>
+                <motion.span
+                  animate={{ rotate: openId === 'contact-option' ? 45 : 0 }}
+                  className="text-2xl leading-none"
+                  style={{ color: textColor || style.text }}
+                >
+                  +
+                </motion.span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {openId === 'contact-option' && (
+                  <motion.div
+                    key="contact-option-answer"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="px-6 pb-6 overflow-hidden"
+                  >
+                    <p 
+                      className="text-sm mb-4"
+                      style={{ color: textColor || style.text }}
+                    >
+                      Nie martw się! Skontaktuj się z nami bezpośrednio, a chętnie odpowiemy na wszystkie Twoje pytania.
+                    </p>
+                    <a 
+                      href={contactFormLink}
+                      className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white transition-all hover:opacity-90"
+                      style={{ backgroundColor: style?.primary || 'rgb(146, 0, 32)' }}
+                    >
+                      Przejź do formularza kontaktowego →
+                    </a>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
         </div>
       </div>

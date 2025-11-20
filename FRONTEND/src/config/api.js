@@ -37,6 +37,27 @@ export const MEDIA_BASE_URL = deriveMediaBaseUrl()
 export const resolveMediaUrl = (input) => {
   if (!input) return ''
 
+  // If input is an object, try to extract URL string
+  if (typeof input === 'object' && input !== null) {
+    // Handle File objects
+    if (input instanceof File) {
+      console.warn('⚠️ File object passed to resolveMediaUrl - this should be converted to blob URL first:', input.name)
+      return ''
+    }
+    // Handle objects with url or path property
+    if (input.url) {
+      console.log('📦 Extracting URL from object:', input.url)
+      return resolveMediaUrl(input.url) // Recursive call with extracted string
+    }
+    if (input.path) {
+      console.log('📦 Extracting path from object:', input.path)
+      return resolveMediaUrl(input.path) // Recursive call with extracted string
+    }
+    // Unknown object structure
+    console.error('❌ Invalid object passed to resolveMediaUrl:', input)
+    return ''
+  }
+
   const url = String(input).trim()
   if (!url) return ''
 

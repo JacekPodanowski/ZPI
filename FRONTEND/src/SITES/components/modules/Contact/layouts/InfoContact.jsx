@@ -1,11 +1,16 @@
 // layouts/InfoContact.jsx - Information-focused layout
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
+
 const InfoContact = ({ content, style }) => {
+  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.25)' : undefined);
+
   return (
     <section 
-  className={`${style.spacing} ${style.rounded}`}
+  className={`${style.spacing} ${style.rounded} relative overflow-hidden`}
   style={{ backgroundColor: style.background }}
     >
-      <div className="max-w-4xl mx-auto">
+      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <div className="max-w-4xl mx-auto relative z-10">
         <h2 
           className={`${style.headingSize} text-center`}
           style={{ color: style.primary }}

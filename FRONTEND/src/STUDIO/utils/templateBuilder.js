@@ -13,7 +13,7 @@ export const createDefaultTemplateConfig = () => {
     pageOrder: [
     'home',
     'about',
-    'servicesAndPricing',
+    'services',
     'calendar',
     'events',
     'faq',
@@ -129,14 +129,14 @@ export const createDefaultTemplateConfig = () => {
         }
       ]
     },
-    servicesAndPricing: {
-      id: 'servicesAndPricing',
+    services: {
+      id: 'services',
       name: 'Oferta',
       path: '/oferta',
       modules: [
         {
-          id: 'default_services_and_pricing',
-          type: 'servicesAndPricing',
+          id: 'default_services',
+          type: 'services',
           name: 'Oferta',
           enabled: true,
           order: 0,
@@ -292,7 +292,8 @@ export const buildTemplateFromModules = (moduleIds, siteName = 'Moja Strona', ca
     publicCalendarSmall: 'calendar',
     calendar: 'calendar',
     about: 'about',
-    servicesAndPricing: 'servicesAndPricing',
+    services: 'services',
+    servicesAndPricing: 'services',
     events: 'events',
     faq: 'faq',
     team: 'team',

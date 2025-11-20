@@ -22,16 +22,24 @@ const BookingModal = ({ isOpen, onClose, onSuccess, slot, siteId }) => {
     setStatus('loading');
     setError('');
 
+    const bookingData = {
+      start_time: slot.start,
+      duration: slot.duration,
+      guest_name: name,
+      guest_email: email,
+    };
+
+    // Include assignee information if available
+    if (slot.assignee_type && slot.assignee_id) {
+      bookingData.assignee_type = slot.assignee_type;
+      bookingData.assignee_id = slot.assignee_id;
+    }
+
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/v1/public-sites/${siteId}/bookings/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start_time: slot.start,
-          duration: slot.duration,
-          guest_name: name,
-          guest_email: email,
-        }),
+        body: JSON.stringify(bookingData),
       });
 
       if (!response.ok) {
@@ -74,9 +82,14 @@ const BookingModal = ({ isOpen, onClose, onSuccess, slot, siteId }) => {
         ) : (
           <>
             <h2 className="text-2xl font-bold mb-2">Potwierdź rezerwację</h2>
-            <p className="text-neutral-600 mb-6">
+            <p className="text-neutral-600 mb-2">
               Termin: {format(new Date(slot.start), 'd MMMM yyyy, HH:mm')}
             </p>
+            {slot.assignee_name && (
+              <p className="text-neutral-600 mb-6">
+                Instruktor: <span className="font-semibold">{slot.assignee_name}</span>
+              </p>
+            )}
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="name" className="block text-sm font-medium text-neutral-700 mb-1">

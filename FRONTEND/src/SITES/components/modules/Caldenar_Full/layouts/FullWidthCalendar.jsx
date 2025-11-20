@@ -174,7 +174,10 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
       title: event.title,
       event_type: event.event_type,
       capacity: event.capacity,
-      available_spots: event.availableSpots
+      available_spots: event.availableSpots,
+      assignee_type: event.assignee_type,
+      assignee_id: event.assignee_id,
+      assignee_name: event.assignee_name
     });
     setIsModalOpen(true);
   }, []);
@@ -321,12 +324,6 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
                       <p className="mt-2 text-sm" style={{ color: neutralText }}>{event.location}</p>
                     )}
 
-                    {event.creator_name && (
-                      <p className="mt-2 text-sm font-medium" style={{ color: neutralText }}>
-                        Prowadzący: {event.creator_name}
-                      </p>
-                    )}
-
                     {event.description && (
                       <p className="mt-4 text-sm leading-relaxed" style={{ color: subtleText }}>{event.description}</p>
                     )}
@@ -334,6 +331,12 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
                     {typeof event.capacity === 'number' && (
                       <p className="mt-4 text-xs font-semibold uppercase tracking-wider" style={{ color: neutralText }}>
                         Dostępne miejsca: {event.availableSpots ?? event.capacity}/{event.capacity}
+                      </p>
+                    )}
+                    
+                    {event.assignee_name && (
+                      <p className="mt-2 text-sm" style={{ color: neutralText }}>
+                        Prowadzący: <span className="font-semibold" style={{ color: textColor }}>{event.assignee_name}</span>
                       </p>
                     )}
 

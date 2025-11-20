@@ -2,21 +2,33 @@
 const randomSeed = () => Math.random().toString(36).substring(7);
 
 export const SERVICES_DESCRIPTOR = {
-  type: 'servicesAndPricing',
+  type: 'services',
   desc: 'Sekcja oferty i cennika',
   fields: {
     title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
     services: { t: 'array', req: true, d: 'Lista usług', category: 'content' },
-    offers: { t: 'array', req: true, d: 'Lista ofert (deprecated - użyj services)', category: 'content' },
+    offers: { t: 'array', d: 'Lista ofert (deprecated - użyj services)', category: 'content' },
     currency: { t: 'text', d: 'Waluta', category: 'content' },
-  bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
-  backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
-  backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },
-  textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
+    substyle: {
+      t: 'enum',
+      d: 'Wariant wizualny',
+      options: ['default', 'minimal', 'elegant', 'bold'],
+      category: 'layout'
+    },
+    flipStyle: {
+      t: 'enum',
+      d: 'Styl animacji kart (tylko dla layoutu cards)',
+      options: ['flip', 'slide', 'fade', 'rotate3d', 'cube'],
+      category: 'layout'
+    },
+    bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
+    backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
+    backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },
+    textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
     accentColor: { t: 'color', d: 'Kolor akcentu', category: 'appearance' }
   },
-  layouts: ['cards', 'list', 'table']
+  layouts: ['cards', 'list', 'accordion']
 };
 
 export const SERVICES_DEFAULTS = {
@@ -337,189 +349,20 @@ export const SERVICES_DEFAULTS = {
   ]
 };
 
-export const SERVICES_AND_PRICING_DEFAULTS = {
-  cards: [
-    {
-      title: 'Pakiety Wellness',
-      subtitle: 'Połącz indywidualną praktykę z regeneracją ciała i głowy',
-      currency: 'PLN',
-      bgColor: '#FDFCF9',
-      textColor: 'rgb(30, 30, 30)',
-      accentColor: 'rgb(146, 0, 32)',
-      offers: [
-        {
-          id: 'spa-essence',
-          name: 'Essence 1:1',
-          category: 'Indywidualnie',
-          description: '<p>60 minut pracy nad oddechem, uważnością i rozluźnieniem powięziowym.</p>',
-          price: '220',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        },
-        {
-          id: 'spa-ritual',
-          name: 'Weekend Ritual',
-          category: 'Weekend',
-          description: '<p>2 noclegi, 4 sesje jogi, sauna i kuchnia roślinna w kameralnej grupie.</p>',
-          price: '960',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        },
-        {
-          id: 'spa-retreat',
-          name: 'Full Retreat',
-          category: 'Retreat',
-          description: '<p>Autorski wyjazd od piątku do niedzieli z warsztatami i konsultacją 1:1.</p>',
-          price: '1480',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        }
-      ]
-    },
-    {
-      title: 'Programy Coachingowe',
-      subtitle: 'Wybierz ścieżkę dopasowaną do Twoich potrzeb biznesowych',
-      currency: 'PLN',
-      bgColor: '#FFFFFF',
-      textColor: 'rgb(30, 30, 30)',
-      accentColor: 'rgb(39, 70, 144)',
-      offers: [
-        {
-          id: 'coach-focus',
-          name: 'Focus Sprint',
-          category: '4 tygodnie',
-          description: '<p>4 sesje po 75 minut + plan działania i check-in na Slacku.</p>',
-          price: '2800',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        },
-        {
-          id: 'coach-growth',
-          name: 'Growth Lab',
-          category: '3 miesiące',
-          description: '<p>12 spotkań, dostęp do materiałów premium i warsztatów Q&A.</p>',
-          price: '7200',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        },
-        {
-          id: 'coach-exec',
-          name: 'Executive Circle',
-          category: 'Elitarny',
-          description: '<p>Indywidualny mentoring dla liderów + sesje zespołowe i audyty.</p>',
-          price: '14800',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        }
-      ]
-    },
-    {
-      title: 'Studio Kreatywne',
-      subtitle: 'Oferta fotograficzna + pakiety contentowe',
-      currency: 'PLN',
-      bgColor: '#FAFBFF',
-      textColor: 'rgb(30, 30, 30)',
-      accentColor: 'rgb(13, 90, 150)',
-      offers: [
-        {
-          id: 'studio-basic',
-          name: 'Basic Branding',
-          category: 'Sesja',
-          description: '<p>2h zdjęć studyjnych + 30 ujęć po retuszu i moodboard brandowy.</p>',
-          price: '980',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        },
-        {
-          id: 'studio-pro',
-          name: 'Pro Content Day',
-          category: 'Dzień zdjęciowy',
-          description: '<p>6h pracy, wideo behind-the-scenes, pakiet stories + 60 zdjęć ready-to-post.</p>',
-          price: '2100',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        },
-        {
-          id: 'studio-subscription',
-          name: 'Monthly Subscription',
-          category: 'Abonament',
-          description: '<p>Stała obsługa contentowa: 1 dzień zdjęciowy / mc + strategia.</p>',
-          price: '3500',
-          image: `https://picsum.photos/seed/${randomSeed()}/600/400`
-        }
-      ]
-    }
-  ],
-  list: [
-    {
-      title: 'Oferta Indywidualna',
-      subtitle: 'Zaprojektowana dla osób, które chcą wrócić do formy we własnym tempie',
-      currency: 'PLN',
-      offers: [
-        { id: 'list-dropin', name: 'Sesja drop-in', category: 'Jednorazowo', description: '50 minut dopasowanej praktyki', price: '180' },
-        { id: 'list-pass', name: 'Pakiet 4 spotkań', category: 'Pakiet', description: 'Cykle tygodniowe + materiały PDF', price: '640' },
-        { id: 'list-intensive', name: 'Intensywny miesiąc', category: 'Program', description: '8 spotkań + plan praktyki + kontakt na Whatsapp', price: '1180' }
-      ]
-    },
-    {
-      title: 'Oferta dla firm',
-      subtitle: 'Outsourcing dobrostanu dla zespołów pracujących hybrydowo',
-      currency: 'PLN',
-      offers: [
-        { id: 'b2b-stretch', name: 'Stretch & Focus', category: 'Warsztat 90 min', description: 'Łączy ruch, oddech i ergonomię pracy przy biurku', price: '850' },
-        { id: 'b2b-cycle', name: 'Program 6 tygodni', category: 'Program', description: '6 spotkań online, workbook, raport wdrożeń', price: '4200' },
-        { id: 'b2b-offsite', name: 'Mindful Offsite', category: 'Event', description: 'Całodniowy wyjazd integracyjny z praktyką i cateringiem', price: '8900' }
-      ]
-    },
-    {
-      title: 'Studio Contentowe',
-      subtitle: 'Kompleksowe pakiety foto + social copy dla marek osobistych',
-      currency: 'PLN',
-      offers: [
-        { id: 'content-mini', name: 'Mini content day', category: '2h', description: '25 zdjęć + 5 gotowych opisów na IG', price: '890' },
-        { id: 'content-standard', name: 'Standard content day', category: '4h', description: '40 zdjęć + 10 opisów + plan publikacji', price: '1650' },
-        { id: 'content-premium', name: 'Premium storytelling', category: '8h', description: '60 zdjęć, reels, strategie highlightów i newsletter', price: '3100' }
-      ]
-    }
-  ],
-  table: [
-    {
-      title: 'Porównanie pakietów',
-      subtitle: 'Wszystkie pakiety zawierają materiały video i wsparcie mailowe',
-      currency: 'PLN',
-      offers: [
-        { id: 'table-basic', name: 'Basic', category: 'Starter', description: '4 spotkania, plan PDF, dostęp do biblioteki', price: '640' },
-        { id: 'table-regular', name: 'Regular', category: 'Popularne', description: '8 spotkań, konsultacja dietetyczna, check-in audio', price: '1180' },
-        { id: 'table-premium', name: 'Premium', category: 'VIP', description: '12 spotkań, wsparcie 24/7, warsztat oddechowy', price: '1780' }
-      ]
-    },
-    {
-      title: 'Pakiety sesji foto',
-      subtitle: 'Cena zawiera retusz i gotowe pliki do social media',
-      currency: 'PLN',
-      offers: [
-        { id: 'photo-mini', name: 'Mini', category: 'Studio', description: '60 minut, 20 zdjęć, 1 stylizacja', price: '650' },
-        { id: 'photo-brand', name: 'Brand Day', category: 'Lokalizacja', description: '3h, 45 zdjęć, moodboard, stories BTS', price: '1650' },
-        { id: 'photo-team', name: 'Team Deluxe', category: 'Firma', description: '5h, zdjęcia dla 6 osób + zdjęcia wnętrz', price: '3150' }
-      ]
-    },
-    {
-      title: 'Program mentoringowy',
-      subtitle: 'Łączy sesje strategiczne z pracą wdrożeniową',
-      currency: 'PLN',
-      offers: [
-        { id: 'mentor-start', name: 'Start', category: '1 miesiąc', description: '4 spotkania, plan rozwoju, audyt komunikacji', price: '3900' },
-        { id: 'mentor-grow', name: 'Grow', category: '3 miesiące', description: '12 spotkań, proces celów OKR, warsztaty zespołowe', price: '9400' },
-        { id: 'mentor-elite', name: 'Elite', category: '6 miesięcy', description: '24 spotkania, sesje shadowing, roadmap marketingowa', price: '16800' }
-      ]
-    }
-  ]
-};
-
 export const TEAM_DESCRIPTOR = {
   type: 'team',
-  desc: 'Sekcja prezentująca zespół',
+  desc: 'Sekcja prezentująca zespół - członkowie zarządzani w /studio/team',
   fields: {
     title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
-    members: { t: 'array', req: true, d: 'Lista członków zespołu', category: 'content' },
     bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
+    backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
+    backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },
     textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
     accentColor: { t: 'color', d: 'Kolor akcentu', category: 'appearance' }
   },
-  layouts: ['grid', 'carousel', 'list']
+  layouts: ['grid'],
+  note: 'Aby zarządzać członkami zespołu, przejdź do Zespół w menu strony.'
 };
 
 export const TEAM_DEFAULTS = {

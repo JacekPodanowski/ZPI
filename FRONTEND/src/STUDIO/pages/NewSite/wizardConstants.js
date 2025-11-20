@@ -41,8 +41,8 @@ export const MODULE_DEFINITIONS = {
         enabled: true,
         isAdditional: false
     },
-    servicesAndPricing: {
-        id: 'servicesAndPricing',
+    services: {
+        id: 'services',
         name: 'Oferta',
         icon: ListAltIcon,
         description: 'Oferta z cenami',
@@ -93,20 +93,20 @@ export const MODULE_DEFINITIONS = {
 
 // Category to module mapping
 export const CATEGORY_MODULE_CONFIGS = {
-    wellness: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    education: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    creative: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    health: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    default: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery', 'blog', 'contact', 'faq']
+    wellness: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    education: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    creative: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    health: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
+    default: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq']
 };
 
 // Which modules should be ENABLED by default per category
 export const CATEGORY_DEFAULT_ENABLED = {
-    wellness: ['publicCalendarBig', 'about', 'servicesAndPricing', 'events', 'gallery'],
-    education: ['publicCalendarBig', 'about', 'servicesAndPricing'],
-    creative: ['publicCalendarBig', 'about', 'servicesAndPricing', 'gallery', 'blog'],
-    health: ['publicCalendarBig', 'about', 'servicesAndPricing'],
-    default: ['publicCalendarBig', 'about', 'servicesAndPricing']
+    wellness: ['publicCalendarBig', 'about', 'services', 'events', 'gallery'],
+    education: ['publicCalendarBig', 'about', 'services'],
+    creative: ['publicCalendarBig', 'about', 'services', 'gallery', 'blog'],
+    health: ['publicCalendarBig', 'about', 'services'],
+    default: ['publicCalendarBig', 'about', 'services']
 };
 
 // Site name validation

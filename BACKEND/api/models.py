@@ -59,6 +59,7 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     class SourceTag(models.TextChoices):
         JACEK = 'JACEK', 'Jacek Campaign'
         WEB = 'WEB', 'Organic Web'
+        TEAM_INVITATION = 'TEAM_INV', 'Team Invitation'
 
     username = models.CharField(
         max_length=150,
@@ -506,6 +507,7 @@ class MagicLink(models.Model):
     class ActionType(models.TextChoices):
         LOGIN = 'login', 'Login'
         PASSWORD_RESET = 'password_reset', 'Password Reset'
+        TEAM_INVITATION = 'team_invitation', 'Team Invitation'
     
     user = models.ForeignKey(
         PlatformUser, 
@@ -514,6 +516,14 @@ class MagicLink(models.Model):
         null=True,
         blank=True,
         help_text='User associated with this magic link'
+    )
+    team_member = models.ForeignKey(
+        'TeamMember',
+        on_delete=models.CASCADE,
+        related_name='invitation_links',
+        null=True,
+        blank=True,
+        help_text='Team member associated with this invitation link'
     )
     email = models.EmailField(max_length=254)
     token = models.CharField(max_length=64, unique=True, db_index=True)

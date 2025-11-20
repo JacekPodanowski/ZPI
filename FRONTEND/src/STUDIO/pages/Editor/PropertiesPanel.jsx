@@ -960,7 +960,7 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     );
   }
   
-  // Service items - for servicesAndPricing module (serviceItems field)
+  // Service items - for services module (services field)
   if (fieldKey === 'serviceItems') {
     return (
       <Box key={fieldKey}>
@@ -1528,6 +1528,7 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   // Filter fields by category
   const fields = moduleDef?.descriptor?.fields || {};
   const contentFields = Object.entries(fields).filter(([, def]) => def.category === 'content' || !def.category);
+  const layoutFields = Object.entries(fields).filter(([, def]) => def.category === 'layout');
   const appearanceFields = Object.entries(fields).filter(([, def]) => def.category === 'appearance');
   const advancedFields = Object.entries(fields).filter(([, def]) => def.category === 'advanced');
 
@@ -1687,6 +1688,22 @@ const PropertiesPanel = ({ placement = 'right' }) => {
                     ))}
                   </Select>
                 </FormControl>
+                
+                {/* Layout-specific fields (substyle, flipStyle, etc.) */}
+                {layoutFields.length > 0 && (
+                  <Stack spacing={2.5} sx={{ mt: 2.5 }}>
+                    {layoutFields.map(([key, def]) => (
+                      <FieldRenderer
+                        key={key}
+                        fieldKey={key}
+                        fieldDef={def}
+                        module={module}
+                        pageId={page.id}
+                        onContentChange={handleContentChange}
+                      />
+                    ))}
+                  </Stack>
+                )}
               </Box>
             )}
             

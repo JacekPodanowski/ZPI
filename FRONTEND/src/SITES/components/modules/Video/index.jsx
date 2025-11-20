@@ -3,11 +3,13 @@ import { VIDEO_DESCRIPTOR } from './descriptor';
 import StandardVideo from './layouts/StandardVideo';
 import FullWidthVideo from './layouts/FullWidthVideo';
 import CompactVideo from './layouts/CompactVideo';
+import SplitVideo from './layouts/SplitVideo';
 
 const LAYOUTS = {
   standard: StandardVideo,
   fullWidth: FullWidthVideo,
-  compact: CompactVideo
+  compact: CompactVideo,
+  split: SplitVideo
 };
 
 const VideoModule = ({ layout = 'embedded', content = {}, style }) => {

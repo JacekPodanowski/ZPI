@@ -1,11 +1,16 @@
 // layouts/SplitContact.jsx - Split layout with info and form
+import BackgroundMedia from '../../../../../components/BackgroundMedia';
+
 const SplitContact = ({ content, style }) => {
+  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.25)' : undefined);
+
   return (
     <section 
-  className={`${style.spacing} ${style.rounded} py-12 px-4 md:py-20 md:px-6`}
+  className={`${style.spacing} ${style.rounded} py-12 px-4 md:py-20 md:px-6 relative overflow-hidden`}
   style={{ backgroundColor: style.background }}
     >
-      <div className="max-w-6xl mx-auto">
+      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <div className="max-w-6xl mx-auto relative z-10">
         <h2 
           className={`${style.headingSize} text-center`}
           style={{ color: style.primary }}

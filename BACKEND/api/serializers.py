@@ -556,6 +556,36 @@ class TeamMemberInfoSerializer(serializers.ModelSerializer):
         return get_avatar_letter(obj.first_name)
 
 
+class PublicTeamMemberSerializer(serializers.ModelSerializer):
+    """Public serializer for team members displayed on public sites."""
+    avatar_color = serializers.SerializerMethodField()
+    avatar_letter = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    role = serializers.CharField(source='role_description')
+    description = serializers.CharField(source='bio')
+    image = serializers.CharField(source='avatar_url')
+    
+    class Meta:
+        model = TeamMember
+        fields = [
+            'id', 'name', 'role', 'bio', 'description', 'image',
+            'avatar_url', 'avatar_color', 'avatar_letter'
+        ]
+    
+    def get_name(self, obj):
+        """Get full name."""
+        return f"{obj.first_name} {obj.last_name}"
+    
+    def get_avatar_color(self, obj):
+        from .utils import get_avatar_color
+        full_name = f"{obj.first_name} {obj.last_name}"
+        return get_avatar_color(full_name)
+    
+    def get_avatar_letter(self, obj):
+        from .utils import get_avatar_letter
+        return get_avatar_letter(obj.first_name)
+
+
 class SiteWithTeamSerializer(serializers.ModelSerializer):
     """Extended Site serializer that includes team member info."""
     owner = PlatformUserSerializer(read_only=True)

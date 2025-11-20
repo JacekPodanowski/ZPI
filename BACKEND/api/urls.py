@@ -18,6 +18,7 @@ from .views import (
     PublicSiteListView,
     PublicSiteView,
     PublicSiteByIdView,
+    PublicTeamView,
     demo_config_view,
     publish_site,
     FileUploadView,
@@ -106,6 +107,7 @@ urlpatterns = [
     path('admin/sites/', AdminSitesListView.as_view(), name='admin-sites-list'),
     path('public-sites/<int:site_id>/bookings/', PublicBookingView.as_view(), name='public_booking'),
     path('public-sites/<int:site_id>/availability/', PublicAvailabilityView.as_view(), name='public_availability'),
+    path('public-sites/<int:site_id>/team/', PublicTeamView.as_view(), name='public_team'),
     # Team invitation endpoints
     path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
     path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),

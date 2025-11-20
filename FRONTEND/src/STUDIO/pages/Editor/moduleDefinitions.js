@@ -24,7 +24,7 @@ import { CONTACT_DEFAULTS } from '../../../SITES/components/modules/Contact/defa
 import { EVENTS_DEFAULTS } from '../../../SITES/components/modules/Events/defaults';
 import { FAQ_DEFAULTS } from '../../../SITES/components/modules/FAQ/defaults';
 import { GALLERY_DEFAULTS } from '../../../SITES/components/modules/Gallery/defaults';
-import { SERVICES_AND_PRICING_DEFAULTS, SERVICES_DEFAULTS, TEAM_DEFAULTS } from '../../../SITES/components/modules/_descriptors';
+import { SERVICES_DEFAULTS, TEAM_DEFAULTS } from '../../../SITES/components/modules/_descriptors';
 import { SPACER_DEFAULTS } from '../../../SITES/components/modules/Spacer/defaults';
 import { TEXT_DEFAULTS } from '../../../SITES/components/modules/Text/defaults';
 import { VIDEO_DEFAULTS } from '../../../SITES/components/modules/Video/defaults';
@@ -39,9 +39,7 @@ const slugify = (value = '') => {
     || 'page';
 };
 
-const MODULE_TYPE_ALIASES = {
-  servicesandpricing: 'servicesAndPricing'
-};
+const MODULE_TYPE_ALIASES = {};
 
 const normalizeModuleType = (type = '') => {
   const raw = (type || '').toString();
@@ -93,16 +91,6 @@ export const MODULE_DEFINITIONS = {
     category: 'content',
     defaultHeight: 800, // px - large section with cards
     quickAddOrder: 3
-  },
-  servicesAndPricing: {
-    type: 'servicesAndPricing',
-    label: 'Services + Pricing',
-    icon: RequestQuote,
-    color: '#A66DD4',
-    description: 'Blend detailed service cards with transparent pricing tables and upsell callouts.',
-    category: 'content',
-    defaultHeight: 820,
-    quickAddOrder: 4
   },
   gallery: {
     type: 'gallery',
@@ -270,7 +258,6 @@ export const getDefaultModuleContent = (moduleType) => {
     hero: pickRandom(HERO_DEFAULTS, 'centered'),
     about: pickRandom(ABOUT_DEFAULTS, 'imageRight'),
     services: pickRandom(SERVICES_DEFAULTS, 'cards'),
-    servicesAndPricing: pickRandom(SERVICES_AND_PRICING_DEFAULTS, 'cards'),
     team: pickRandom(TEAM_DEFAULTS, 'grid'),
     gallery: pickRandom(GALLERY_DEFAULTS, 'grid'),
     blog: pickRandom(BLOG_DEFAULTS, 'grid'),

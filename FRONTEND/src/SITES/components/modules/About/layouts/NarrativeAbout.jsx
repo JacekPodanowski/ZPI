@@ -44,18 +44,16 @@ const NarrativeAbout = ({ content, style }) => {
         
         <div className="grid md:grid-cols-3 gap-8 md:gap-12 items-start mt-8 md:mt-12">
           {/* Image */}
-          {imageUrl && (
-            <div className="md:col-span-1">
-              <img 
-                src={imageUrl} 
-                alt={content.title}
-                className={`w-full h-auto ${roundedClass} ${shadowClass} sticky top-8`}
-              />
-            </div>
-          )}
+          <div className="md:col-span-1">
+            <img 
+              src={imageUrl || 'https://picsum.photos/seed/about-narrative-placeholder/600/800'} 
+              alt={content.title}
+              className={`w-full h-auto ${roundedClass} ${shadowClass} sticky top-8`}
+            />
+          </div>
           
           {/* Narrative Text */}
-          <div className={imageUrl ? 'md:col-span-2' : 'md:col-span-3'}>
+          <div className="md:col-span-2">
             {/* Description */}
             <div 
               className={`${textClass} leading-relaxed prose prose-lg max-w-none`}

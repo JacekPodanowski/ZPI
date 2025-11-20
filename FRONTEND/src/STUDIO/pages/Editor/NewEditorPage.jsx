@@ -22,7 +22,7 @@ const convertModuleNameToObject = (moduleName, index) => {
     'publicCalendarSmall': 'publicCalendarSmall',
     'calendar': 'publicCalendarSmall',
     'about': 'about',
-    'servicesAndPricing': 'services',
+
     'services': 'services',
     'pricing': 'pricing',
     'gallery': 'gallery',

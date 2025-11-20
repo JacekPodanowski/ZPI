@@ -15,7 +15,6 @@ import VideoModule from './Video';
 import FAQModule from './FAQ';
 import BlogModule from './Blog';
 import EventsModule from './Events';
-import ServicesAndPricingModule from './ServicesAndPricing';
 import TeamModule from './Team';
 import ContainerModule from './Container';
 import ReactComponentModule from './ReactComponent';
@@ -182,27 +181,29 @@ export const MODULE_REGISTRY = {
     category: 'content'
   },
   servicesAndPricing: {
-    component: ServicesAndPricingModule,
-    descriptor: ServicesAndPricingModule.descriptor,
-    layouts: ['cards', 'list', 'table'],
-    defaultLayout: 'cards',
-    category: 'content'
-  },
-  servicesandpricing: {
-    component: ServicesAndPricingModule,
-    descriptor: ServicesAndPricingModule.descriptor,
-    layouts: ['cards', 'list', 'table'],
+    component: ServicesSection,
+    descriptor: ServicesSection.descriptor,
+    layouts: ['cards', 'list', 'accordion'],
     defaultLayout: 'cards',
     category: 'content',
-    legacyAlias: true
+    legacyAlias: true // Backward compatibility - maps to 'services'
+  },
+  servicesandpricing: {
+    component: ServicesSection,
+    descriptor: ServicesSection.descriptor,
+    layouts: ['cards', 'list', 'accordion'],
+    defaultLayout: 'cards',
+    category: 'content',
+    legacyAlias: true // Backward compatibility - maps to 'services'
   },
   // Alias for backward compatibility with legacy configurations
   pricing: {
-    component: ServicesAndPricingModule,
-    descriptor: ServicesAndPricingModule.descriptor,
-    layouts: ['cards', 'list', 'table'],
+    component: ServicesSection,
+    descriptor: ServicesSection.descriptor,
+    layouts: ['cards', 'list', 'accordion'],
     defaultLayout: 'cards',
-    category: 'content'
+    category: 'content',
+    legacyAlias: true // Backward compatibility - maps to 'services'
   },
   team: {
     component: TeamModule,

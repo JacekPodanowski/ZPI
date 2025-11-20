@@ -4,7 +4,10 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Movement Practices",
       subtitle: "Discover our comprehensive practice offerings",
-      items: [
+      currency: 'PLN',
+      substyle: 'default',
+      flipStyle: 'flip',
+      services: [
         {
           name: "Hatha Foundation",
           description: "Traditional practice combining postures with breath awareness for beginners.",
@@ -34,7 +37,8 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Professional Development",
       subtitle: "Comprehensive coaching and mentoring services",
-      items: [
+      currency: 'PLN',
+      services: [
         {
           name: "Business Strategy",
           description: "Strategic planning and actionable roadmaps for sustainable growth.",
@@ -64,7 +68,8 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Visual Storytelling",
       subtitle: "Professional photography for personal brands and businesses",
-      items: [
+      currency: 'PLN',
+      services: [
         {
           name: "Brand Portraits",
           description: "Professional session capturing your authentic personal brand.",
@@ -96,7 +101,9 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Our Services",
       subtitle: "Complete practice support and community access",
-      items: [
+      currency: 'PLN',
+      substyle: 'default',
+      services: [
         {
           name: "Group Classes",
           description: "Regular sessions in small groups with various styles.",
@@ -122,7 +129,8 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Service Scope",
       subtitle: "From discovery to implementation and beyond",
-      items: [
+      currency: 'PLN',
+      services: [
         {
           name: "Diagnostic Session",
           description: "Comprehensive analysis of your situation.",
@@ -148,7 +156,8 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Photography Services",
       subtitle: "End-to-end visual content creation",
-      items: [
+      currency: 'PLN',
+      services: [
         {
           name: "Consultation",
           description: "Pre-shoot planning and vision development.",
@@ -176,7 +185,9 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Membership Packages",
       subtitle: "Choose the plan that fits your practice rhythm",
-      items: [
+      currency: 'PLN',
+      substyle: 'default',
+      services: [
         {
           name: "Starter Package",
           description: "Perfect for beginning your practice journey",
@@ -197,7 +208,8 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Coaching Programs",
       subtitle: "Select your development pathway",
-      items: [
+      currency: 'PLN',
+      services: [
         {
           name: "Foundation Program",
           description: "For emerging entrepreneurs",
@@ -218,7 +230,8 @@ export const SERVICES_DEFAULTS = {
     {
       title: "Photography Packages",
       subtitle: "Tailored sessions for every need",
-      items: [
+      currency: 'PLN',
+      services: [
         {
           name: "Essential Session",
           description: "Foundational photography package",

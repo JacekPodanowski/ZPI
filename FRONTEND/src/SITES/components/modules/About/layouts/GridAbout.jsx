@@ -36,13 +36,11 @@ const GridAbout = ({ content, style }) => {
         
         {/* Image and Description Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-8 md:mt-12">
-          {imageUrl && (
-            <img 
-              src={imageUrl} 
-              alt={content.title}
-              className={`w-full h-auto ${roundedClass} ${shadowClass}`}
-            />
-          )}
+          <img 
+            src={imageUrl || 'https://picsum.photos/seed/about-placeholder/800/600'} 
+            alt={content.title}
+            className={`w-full h-auto ${roundedClass} ${shadowClass}`}
+          />
           
           <div>
             <p 

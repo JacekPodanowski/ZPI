@@ -10,7 +10,7 @@ const FormContact = ({ content, style }) => {
   style={{ backgroundColor: content.bgColor || style.background }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto relative z-10">
         <h2 
           className={`${style.headingSize} text-center`}
           style={{ color: style.primary }}

@@ -1,25 +1,29 @@
 // descriptor.js
 export const SERVICES_DESCRIPTOR = {
   type: 'services',
-  desc: 'Showcase offerings section',
+  desc: 'Sekcja oferty i cennika',
   fields: {
-    title: { t: 'text', req: true, d: 'Section title', category: 'content' },
-    subtitle: { t: 'text', d: 'Section subtitle', category: 'content' },
-    items: { 
-      t: 'array', 
-      req: true, 
-      d: 'Service items', 
-      category: 'content'
+    title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
+    subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
+    services: { t: 'array', req: true, d: 'Lista usług', category: 'content' },
+    currency: { t: 'text', d: 'Waluta', category: 'content' },
+    substyle: {
+      t: 'enum',
+      d: 'Wariant wizualny',
+      options: ['default', 'minimal', 'elegant', 'bold'],
+      category: 'layout'
     },
     flipStyle: {
       t: 'enum',
-      d: 'Card flip animation style',
+      d: 'Styl animacji kart (tylko dla layoutu cards)',
       options: ['flip', 'slide', 'fade', 'rotate3d', 'cube'],
-      category: 'appearance'
+      category: 'layout'
     },
-    bgColor: { t: 'color', d: 'Background color', category: 'appearance' },
-    backgroundImage: { t: 'image', d: 'Background image', category: 'appearance' },
-    backgroundOverlayColor: { t: 'color', d: 'Background overlay color', category: 'appearance' }
+    bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
+    backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
+    backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },
+    textColor: { t: 'color', d: 'Kolor tekstu', category: 'appearance' },
+    accentColor: { t: 'color', d: 'Kolor akcentu', category: 'appearance' }
   },
   layouts: ['cards', 'list', 'accordion']
 };

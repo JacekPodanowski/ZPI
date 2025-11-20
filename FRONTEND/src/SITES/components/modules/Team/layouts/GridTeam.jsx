@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 
-const GridTeam = ({ content, style }) => {
+const GridTeam = ({ content, style, siteId }) => {
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const {
     title = 'Poznaj nasz zespół',
     subtitle = 'Ludzie, którzy wspierają Cię w drodze do równowagi',
-    members = [],
     bgColor = style?.background || '#FFFFFF',
     backgroundImage,
     backgroundOverlayColor,
@@ -17,6 +20,36 @@ const GridTeam = ({ content, style }) => {
   } = content || {};
 
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
+
+  // Fetch team members from API
+  useEffect(() => {
+    if (!siteId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchTeamMembers = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/v1/public-sites/${siteId}/team/`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch team members');
+        }
+        const data = await response.json();
+        setTeamMembers(data);
+      } catch (err) {
+        console.error('Error fetching team members:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeamMembers();
+  }, [siteId]);
+
+  // Use fetched members if available, otherwise fallback to content.members for preview
+  const members = teamMembers.length > 0 ? teamMembers : (content?.members || []);
 
   return (
     <section className={`${style.spacing} relative overflow-hidden`} style={{ backgroundColor: bgColor }}>
@@ -38,7 +71,18 @@ const GridTeam = ({ content, style }) => {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {members.map((member) => {
+          {loading && (
+            <div className="col-span-full text-center py-12 text-sm text-black/40">
+              Ładowanie zespołu...
+            </div>
+          )}
+          {error && (
+            <div className="col-span-full text-center py-12 text-sm text-red-600">
+              Nie udało się załadować członków zespołu
+            </div>
+          )}
+          {!loading && !error && members.map((member) => {
+            // Use 'image' field from API (avatar_url mapped to image in PublicTeamMemberSerializer)
             const resolvedImage = resolveMediaUrl(member.image);
             const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
             
@@ -119,9 +163,9 @@ const GridTeam = ({ content, style }) => {
           })}
         </div>
 
-        {members.length === 0 && (
+        {!loading && !error && members.length === 0 && (
           <div className="text-center py-12 text-sm text-black/40">
-            Dodaj członków w konfiguratorze, aby zaprezentować zespół.
+            Nie dodano jeszcze członków zespołu. Przejdź do zarządzania stroną, aby dodać członków zespołu.
           </div>
         )}
       </div>

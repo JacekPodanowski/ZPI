@@ -66,17 +66,11 @@ const SplitHero = ({ content, style }) => {
         
         {/* Image */}
         <div className={`relative w-full h-full ${imageOnLeft ? 'md:col-start-1 md:row-start-1' : ''}`}>
-          {imageUrl ? (
-            <img 
-              src={imageUrl} 
-              alt={content.title || content.heading || 'Hero image'}
-              className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
-            />
-          ) : (
-            <div 
-              className={`w-full h-full min-h-[260px] ${roundedClass} ${shadowClass} bg-neutral-200`}
-            />
-          )}
+          <img 
+            src={imageUrl || 'https://picsum.photos/seed/hero-placeholder/800/600'} 
+            alt={content.title || content.heading || 'Hero image'}
+            className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+          />
         </div>
       </div>
     </section>

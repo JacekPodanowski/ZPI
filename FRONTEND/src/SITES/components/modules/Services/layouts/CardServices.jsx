@@ -1,131 +1,226 @@
-// layouts/CardServices.jsx - Card grid layout with background media support and flip cards
+// layouts/CardServices.jsx - Card grid layout with elegant styling and flip option
+import React from 'react';
+import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import FlipCard from '../../../../../components/FlipCard';
 import { resolveMediaUrl } from '../../../../../config/api';
+import { isVideoUrl } from '../../../../../utils/mediaUtils';
 
 const CardServices = ({ content, style }) => {
-  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.25)' : undefined);
-  const flipStyle = content.flipStyle || 'flip';
+  const {
+    title = 'Oferta',
+    subtitle = 'Sprawdź naszą ofertę i przejrzyste ceny',
+    services,  // Primary field
+    items,     // Fallback for old data
+    currency = 'PLN',
+    bgColor = style?.background || '#FFFFFF',
+    textColor = style?.text || 'rgb(30, 30, 30)',
+    accentColor = style?.primary || 'rgb(146, 0, 32)',
+    backgroundImage,
+    backgroundOverlayColor,
+    flipStyle = 'flip',
+    substyle = 'default'
+  } = content || {};
+
+  // Get substyle classes based on selected variant
+  const getSubstyleClasses = () => {
+    const baseClasses = 'overflow-hidden bg-white shadow-lg border';
+    
+    switch (substyle) {
+      case 'minimal':
+        return `${baseClasses} border-black/5 rounded-none shadow-sm`;
+      case 'elegant':
+        return `${baseClasses} border-black/10 rounded-2xl shadow-xl`;
+      case 'bold':
+        return `${baseClasses} border-2 rounded-lg shadow-2xl`;
+      default: // 'default'
+        return `${baseClasses} border-black/5 rounded-lg`;
+    }
+  };
+
+  const cardClasses = getSubstyleClasses();
+
+  // Use services if available, otherwise fall back to items for backward compatibility
+  const serviceList = services || items || [];
+  const hasServices = serviceList && serviceList.length > 0;
 
   return (
-    <section 
-      className={`${style.spacing} ${style.rounded} relative overflow-hidden py-12 px-4 md:py-20 md:px-6`}
-      style={{ backgroundColor: content.bgColor || style.background }}
-    >
-      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
-      <div className="max-w-7xl mx-auto">
-        <h2 
-          className={`text-3xl md:text-4xl lg:text-5xl text-center`}
-          style={{ color: style.primary }}
-        >
-          {content.title}
-        </h2>
-        
-        {content.subtitle && (
-          <p 
-            className={`${style.textSize} text-center mt-4 md:mt-6`}
-            style={{ color: style.text }}
-          >
-            {content.subtitle}
-          </p>
+    <section className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor }}>
+      <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
+      <div className="relative z-10 max-w-6xl mx-auto space-y-10">
+        {/* Header */}
+        {(title || subtitle) && (
+          <div className="text-center space-y-3">
+            {title && (
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                {title}
+              </h2>
+            )}
+            {subtitle && (
+              <p className="text-base opacity-70" style={{ color: textColor }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
         )}
-        
-        {/* Service Cards Grid - Equal height rows */}
-        <div 
-          className="mt-10 md:mt-12"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '2rem',
-            gridAutoRows: 'minmax(400px, auto)'
-          }}
-        >
-          {content.items?.map((item, index) => {
-            const itemImageUrl = item.image ? resolveMediaUrl(item.image) : '';
-            
-            // Front content
-            const frontContent = (
-              <div 
-                className={`${style.cardStyle} ${style.animations} h-full flex flex-col overflow-hidden`}
-                style={{ borderColor: style.secondary }}
-              >
-                {itemImageUrl && (
-                  <img 
-                    src={itemImageUrl} 
-                    alt={item.name}
-                    className={`w-full h-48 object-cover ${style.rounded} mb-4 flex-shrink-0`}
-                  />
-                )}
+
+        {/* Services Grid */}
+        {hasServices ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {serviceList.map((service, index) => {
+              const resolvedImage = resolveMediaUrl(service.image);
+              const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
               
-                {item.icon && (
-                  <div className="text-3xl md:text-4xl mb-3 flex-shrink-0">
-                    {item.icon}
+              // If service has details field, show as FlipCard, otherwise simple card
+              if (service.details) {
+                // Front content
+                const frontContent = (
+                  <div 
+                    className={`${style.cardStyle} h-full flex flex-col ${cardClasses}`}
+                  >
+                    {hasValidImage && (
+                      <div className="aspect-video overflow-hidden bg-black flex-shrink-0">
+                        {isVideoUrl(service.image) ? (
+                          <video
+                            src={resolvedImage}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover"
+                          >
+                            Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                          </video>
+                        ) : (
+                          <img src={resolvedImage} alt={service.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                    )}
+                  
+                    {service.icon && (
+                      <div className="text-3xl md:text-4xl mb-3 px-6 pt-4 flex-shrink-0">
+                        {service.icon}
+                      </div>
+                    )}
+                  
+                    <div className="p-6 space-y-3 flex-grow flex flex-col" style={{ color: textColor }}>
+                      <div className="flex-grow">
+                        {service.category && (
+                          <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
+                            {service.category}
+                          </span>
+                        )}
+                        <h3 className="text-xl font-semibold mb-2">{service.name || 'Nowa usługa'}</h3>
+                        {service.description && (
+                          <p className="text-sm opacity-75 leading-relaxed" dangerouslySetInnerHTML={{ __html: service.description }} />
+                        )}
+                      </div>
+                      {service.price && service.price.trim() !== '' && (
+                        <div className="flex items-baseline justify-between pt-2 border-t border-black/10">
+                          <span className="text-sm uppercase tracking-[0.2em] opacity-60">Cena</span>
+                          <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                            {service.price} {currency}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              
-                <h3 
-                  className="text-xl md:text-2xl font-semibold mb-3 break-words px-1 flex-shrink-0"
-                  style={{ color: style.primary }}
-                >
-                  {item.name}
-                </h3>
-              
-                <p 
-                  className={`${style.textSize} break-words px-1 pb-2 flex-grow`}
-                  style={{ color: style.text }}
-                >
-                  {item.description}
-                </p>
-              </div>
-            );
+                );
 
-            // Back content - shows details and service name
-            const backContent = (
-              <div 
-                className={`${style.cardStyle} ${style.animations} h-full flex flex-col overflow-hidden`}
-                style={{ 
-                  borderColor: style.secondary,
-                  backgroundColor: style.surface || '#ffffff'
-                }}
-              >
-                <h3 
-                  className="text-xl md:text-2xl font-semibold mb-4 text-center break-words px-2 flex-shrink-0"
-                  style={{ color: style.primary }}
-                >
-                  {item.name}
-                </h3>
-                
-                <div 
-                  className={`${style.textSize} px-4 overflow-y-auto flex-grow`}
-                  style={{ color: style.text }}
-                >
-                  {item.details ? (
-                    <p className="whitespace-pre-line break-words">{item.details}</p>
-                  ) : (
-                    <p className="text-center opacity-60">No additional details available</p>
-                  )}
-                </div>
-                
-                <p 
-                  className="text-xs text-center mt-4 opacity-50 flex-shrink-0 pb-2"
-                  style={{ color: style.text }}
-                >
-                  Click to flip back
-                </p>
-              </div>
-            );
+                // Back content - shows details
+                const backContent = (
+                  <div 
+                    className={`${style.cardStyle} h-full flex flex-col ${cardClasses}`}
+                  >
+                    <h3 
+                      className="text-xl md:text-2xl font-semibold mb-4 text-center break-words px-6 pt-6 flex-shrink-0"
+                      style={{ color: accentColor }}
+                    >
+                      {service.name}
+                    </h3>
+                    
+                    <div 
+                      className="px-6 text-sm overflow-y-auto flex-grow"
+                      style={{ color: textColor }}
+                    >
+                      <p className="whitespace-pre-line break-words">{service.details}</p>
+                    </div>
+                    
+                    <p 
+                      className="text-xs text-center mt-4 opacity-50 flex-shrink-0 pb-4"
+                      style={{ color: textColor }}
+                    >
+                      Kliknij aby wrócić
+                    </p>
+                  </div>
+                );
 
-            return (
-              <div key={index} style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
-                <FlipCard
-                  frontContent={frontContent}
-                  backContent={backContent}
-                  flipStyle={flipStyle}
-                />
-              </div>
-            );
-          })}
-        </div>
+                return (
+                  <div key={service.id || index} style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+                    <FlipCard
+                      frontContent={frontContent}
+                      backContent={backContent}
+                      flipStyle={flipStyle}
+                    />
+                  </div>
+                );
+              } else {
+                // Simple non-flipping card
+                return (
+                  <motion.article
+                    key={service.id || index}
+                    whileHover={{ y: -6 }}
+                    className={`${style.cardStyle} ${cardClasses}`}
+                  >
+                    {hasValidImage && (
+                      <div className="aspect-video overflow-hidden bg-black">
+                        {isVideoUrl(service.image) ? (
+                          <video
+                            src={resolvedImage}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="w-full h-full object-cover"
+                          >
+                            Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                          </video>
+                        ) : (
+                          <img src={resolvedImage} alt={service.name} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                    )}
+                    <div className="p-6 space-y-4" style={{ color: textColor }}>
+                      <div>
+                        {service.category && (
+                          <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
+                            {service.category}
+                          </span>
+                        )}
+                        <h3 className="text-xl font-semibold">{service.name || 'Nowa usługa'}</h3>
+                        {service.description && (
+                          <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: service.description }} />
+                        )}
+                      </div>
+                      {service.price && service.price.trim() !== '' && (
+                        <div className="flex items-baseline justify-between pt-2 border-t border-black/10">
+                          <span className="text-sm uppercase tracking-[0.2em] opacity-60">Cena</span>
+                          <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                            {service.price} {currency}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.article>
+                );
+              }
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-sm text-black/40">
+            Dodaj usługi w konfiguratorze, aby wypełnić sekcję.
+          </div>
+        )}
       </div>
     </section>
   );

@@ -50,5 +50,29 @@ export const VIDEO_DEFAULTS = {
       caption: 'Timelapse sesji w studio',
       muted: true
     }
+  ],
+  split: [
+    {
+      videoUrl: 'https://www.youtube.com/watch?v=v7AYKMP6rOE',
+      title: 'Poznaj Praktykę Jogi',
+      description: 'Yoga to nie tylko ćwiczenia fizyczne - to holistyczne podejście do zdrowia ciała i umysłu. W tym filmie przedstawiam podstawy praktyki, które pomogą Ci zacząć swoją przygodę z jogą.',
+      videoPosition: 'left',
+      muted: false
+    },
+    {
+      videoUrl: 'https://www.youtube.com/watch?v=inpok4MKVLM',
+      title: 'Strategia dla Sukcesu',
+      description: 'Dowiedz się, jak zbudować solidną strategię biznesową, która poprowadzi Twoją firmę do sukcesu. Praktyczne wskazówki oparte na latach doświadczenia.',
+      sideImage: 'https://picsum.photos/seed/video-split-biz/800/600',
+      videoPosition: 'right',
+      muted: false
+    },
+    {
+      videoUrl: 'https://www.youtube.com/watch?v=BI-rlIZeLWs',
+      title: 'Jak Powstają Profesjonalne Zdjęcia',
+      description: 'Zajrzyj za kulisy sesji fotograficznej i zobacz, ile pracy włożono w stworzenie perfekcyjnego ujęcia. Od przygotowań po post-produkcję.',
+      videoPosition: 'left',
+      muted: false
+    }
   ]
 };

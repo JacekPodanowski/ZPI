@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers } from '../../../services/siteService';
 import Avatar from '../../../components/Avatar/Avatar';
 import AddTeamMemberDialog from '../../components_STUDIO/Team/AddTeamMemberDialog';
+import EditTeamMemberDialog from '../../components_STUDIO/Team/EditTeamMemberDialog';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 
 const TeamPage = () => {
@@ -14,6 +15,8 @@ const TeamPage = () => {
     const [site, setSite] = useState(null);
     const [teamMembers, setTeamMembers] = useState([]);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editingMember, setEditingMember] = useState(null);
 
     useEffect(() => {
         const loadSiteData = async () => {
@@ -59,6 +62,28 @@ const TeamPage = () => {
             setSite(updatedSite);
         } catch (error) {
             console.error('Failed to add team member:', error);
+            throw error;
+        }
+    };
+
+    const handleEditMember = (member) => {
+        setEditingMember(member);
+        setEditDialogOpen(true);
+    };
+
+    const handleEditDialogClose = () => {
+        setEditDialogOpen(false);
+        setEditingMember(null);
+    };
+
+    const handleEditDialogSave = async (memberId, memberData) => {
+        try {
+            const updatedMember = await updateTeamMember(memberId, memberData);
+            setTeamMembers(prev => prev.map(member =>
+                member.id === memberId ? { ...member, ...updatedMember } : member
+            ));
+        } catch (error) {
+            console.error('Failed to update team member:', error);
             throw error;
         }
     };
@@ -318,6 +343,20 @@ const TeamPage = () => {
                                     sx={{ minWidth: 80 }}
                                 />
 
+                                <Tooltip title="Edytuj">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => handleEditMember(member)}
+                                        sx={{
+                                            color: (theme) => theme.palette.mode === 'light'
+                                                ? 'rgb(146, 0, 32)'
+                                                : 'rgb(114, 0, 21)'
+                                        }}
+                                    >
+                                        <EditIcon />
+                                    </IconButton>
+                                </Tooltip>
+
                                 {member.invitation_status === 'mock' && member.email && (
                                     <Tooltip title="Wyślij zaproszenie">
                                         <IconButton
@@ -411,6 +450,14 @@ const TeamPage = () => {
                 open={dialogOpen}
                 onClose={handleDialogClose}
                 onAdd={handleDialogAdd}
+            />
+
+            {/* Edit Team Member Dialog */}
+            <EditTeamMemberDialog
+                open={editDialogOpen}
+                onClose={handleEditDialogClose}
+                onSave={handleEditDialogSave}
+                member={editingMember}
             />
         </REAL_DefaultLayout>
     );
