@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0010_convert_mock_to_invited'),
+        ('api', '0011_availabilityblock_assigned_to_owner_and_more'),
     ]
 
     operations = [
