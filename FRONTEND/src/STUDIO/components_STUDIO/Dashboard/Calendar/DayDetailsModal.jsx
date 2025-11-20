@@ -21,7 +21,9 @@ import {
     ToggleButton,
     Alert,
     Divider,
-    Avatar
+    Avatar,
+    FormControlLabel,
+    Checkbox
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -198,7 +200,8 @@ const createDefaultFormState = (siteId = null) => ({
     bufferTime: '0',
     siteId: siteId || null,
     assigneeType: 'owner',
-    assigneeId: null
+    assigneeId: null,
+    showHost: false
 });
 
 const AvailabilityBlockDisplay = ({ block, siteColor, siteName, onClick, dayStartMinutes, dayEndMinutes, column = 0, totalColumns = 1 }) => {
@@ -247,7 +250,7 @@ const AvailabilityBlockDisplay = ({ block, siteColor, siteName, onClick, dayStar
                             position: 'absolute',
                             top: 4,
                             left: 6,
-                            color: 'rgba(56, 142, 60, 0.8)',
+                            color: siteColor,
                             fontWeight: 700,
                             fontSize: '9px',
                             textTransform: 'uppercase',
@@ -806,7 +809,8 @@ const DayDetailsModal = ({
             bufferTime: '0',
             siteId: event.site || selectedSiteId || null,
             assigneeType: derivedAssigneeType,
-            assigneeId: derivedAssigneeType === 'team_member' ? event.assigned_to_team_member : null
+            assigneeId: derivedAssigneeType === 'team_member' ? event.assigned_to_team_member : null,
+            showHost: event.show_host ?? false
         });
         setView('editEvent');
     };
@@ -1148,24 +1152,69 @@ const DayDetailsModal = ({
         const isEditing = view === 'editEvent' || view === 'editAvailability';
         const hasBookings = isEditing && editingItem?.bookings && editingItem.bookings.length > 0;
 
+        const siteColorHex = (activeSite && activeSite.color) ? getSiteColorHex(activeSite.color) : theme.palette.primary.main;
+        
         return (
-            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                {/* Form fields */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                    <Alert severity="info" sx={{ mb: 1 }}>
-                        {isEvent ? (
-                            <>
-                                <EventNoteIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
-                                {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>konkretne spotkanie</strong>
-                            </>
-                        ) : (
-                            <>
-                                <ScheduleIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
-                                {isEditing ? 'Edytujesz' : 'Tworzysz'} <strong>okno dostępności</strong> - klienci będą mogli zarezerwować w tym czasie
-                            </>
-                        )}
-                    </Alert>
+            <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                {/* Background pattern overlay on dialog background */}
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        opacity: 0.1,
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                        backgroundImage: isEvent
+                            ? `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(146, 0, 32, 0.1) 10px, rgba(146, 0, 32, 0.1) 20px)`
+                            : `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(76, 175, 80, 0.1) 10px, rgba(76, 175, 80, 0.1) 20px)`
+                    }}
+                />
 
+                {/* Header content */}
+                <Box
+                    sx={{
+                        position: 'relative',
+                        zIndex: 1,
+                        mt: 1,
+                        px: 2
+                    }}
+                >
+                    <Typography
+                        sx={{
+                            fontFamily: 'Montserrat, sans-serif',
+                            fontSize: '32px',
+                            fontWeight: 700,
+                            color: isEvent ? 'rgb(146, 0, 32)' : 'rgb(76, 175, 80)',
+                            mb: 0.5,
+                            letterSpacing: '-0.5px',
+                            textAlign: 'left'
+                        }}
+                    >
+                        {isEvent ? 'Wydarzenie' : 'Dostępność'}
+                    </Typography>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: theme.palette.text.secondary,
+                            lineHeight: 1.5,
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%'
+                        }}
+                    >
+                        {isEvent 
+                            ? 'Ustaw konkretną datę i czas spotkania z określonym uczestnikiem lub grupą.'
+                            : 'Określ przedział czasu, w którym klienci mogą samodzielnie zarezerwować spotkanie.'}
+                    </Typography>
+                </Box>
+
+                {/* Form fields */}
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2.5, px: 2 }}>
                     {isEvent && !canCreateEvents && (
                         <Alert severity="warning">
                             Nie masz uprawnień do tworzenia wydarzeń na tej stronie. Poproś właściciela o rozszerzenie roli lub wybierz inną stronę.
@@ -1178,170 +1227,241 @@ const DayDetailsModal = ({
                     )}
 
                 {!hasSingleSite && (
-                    <FormControl fullWidth required>
-                        <InputLabel>Strona</InputLabel>
-                        <Select
-                            value={formData.siteId || ''}
-                            label="Strona"
-                            onChange={(e) => {
-                                const rawValue = e.target.value;
-                                const parsedValue = Number(rawValue);
-                                setFormData({
-                                    ...formData,
-                                    siteId: Number.isNaN(parsedValue) ? rawValue : parsedValue,
-                                    assigneeType: 'owner',
-                                    assigneeId: null
-                                });
+                    <Box>
+                        <Typography 
+                            variant="subtitle2" 
+                            fontWeight={600} 
+                            sx={{ 
+                                mb: 1,
+                                color: theme.palette.text.secondary
                             }}
                         >
-                            {sites.map((site) => (
-                                <MenuItem key={site.id} value={site.id}>
-                                    {site.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                            Strona
+                        </Typography>
+                        <FormControl fullWidth size="small">
+                            <Select
+                                value={formData.siteId || ''}
+                                onChange={(e) => {
+                                    const rawValue = e.target.value;
+                                    const parsedValue = Number(rawValue);
+                                    setFormData({
+                                        ...formData,
+                                        siteId: Number.isNaN(parsedValue) ? rawValue : parsedValue,
+                                        assigneeType: 'owner',
+                                        assigneeId: null
+                                    });
+                                }}
+                                displayEmpty
+                                renderValue={(selected) => {
+                                    if (!selected) return 'Wybierz stronę';
+                                    const site = sites.find(s => s.id === selected);
+                                    return site?.name || 'Wybierz stronę';
+                                }}
+                            >
+                                {sites.map((site) => {
+                                    const siteColor = (site && site.color) ? getSiteColorHex(site.color) : theme.palette.primary.main;
+                                    return (
+                                        <MenuItem key={site.id} value={site.id}>
+                                            <Typography sx={{ color: siteColor, fontWeight: 600 }}>
+                                                {site.name}
+                                            </Typography>
+                                        </MenuItem>
+                                    );
+                                })}
+                            </Select>
+                        </FormControl>
+                    </Box>
                 )}
 
-                <TextField
-                    fullWidth
-                    label="Tytuł"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder={isEvent ? 'np. Spotkanie z klientem' : 'Dostępny'}
-                />
+                <Box>
+                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
+                        Tytuł wydarzenia
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder={isEvent ? 'np. Spotkanie z klientem' : 'Dostępny'}
+                        size="small"
+                    />
+                </Box>
 
-                <Stack direction="row" spacing={2}>
-                    <TextField
-                        fullWidth
-                        label="Od"
-                        type="time"
-                        value={formData.startTime}
-                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                    <TextField
-                        fullWidth
-                        label="Do"
-                        type="time"
-                        value={formData.endTime}
-                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                </Stack>
+                <Box>
+                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
+                        Czas
+                    </Typography>
+                    <Stack direction="row" spacing={2}>
+                        <TextField
+                            fullWidth
+                            label="Od"
+                            type="time"
+                            value={formData.startTime}
+                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                            InputLabelProps={{ shrink: true }}
+                            size="small"
+                        />
+                        <TextField
+                            fullWidth
+                            label="Do"
+                            type="time"
+                            value={formData.endTime}
+                            onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                            InputLabelProps={{ shrink: true }}
+                            size="small"
+                        />
+                    </Stack>
+                </Box>
 
                 {isEvent && (
                     <>
-                        <ToggleButtonGroup
-                            fullWidth
-                            exclusive
-                            value={formData.type}
-                            onChange={(e, val) => val && setFormData({ ...formData, type: val })}
-                        >
-                            <ToggleButton value="online">Online</ToggleButton>
-                            <ToggleButton value="local">Stacjonarnie</ToggleButton>
-                        </ToggleButtonGroup>
-
-                        {formData.type === 'local' && (
-                            <TextField
-                                fullWidth
-                                label="Lokalizacja"
-                                value={formData.location}
-                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                placeholder="np. ul. Kwiatowa 5, Warszawa"
-                            />
-                        )}
-
-                        <ToggleButtonGroup
-                            fullWidth
-                            exclusive
-                            value={formData.meetingType}
-                            onChange={(e, val) => val && setFormData({ ...formData, meetingType: val })}
-                        >
-                            <ToggleButton value="individual">Indywidualne</ToggleButton>
-                            <ToggleButton value="group">Grupowe</ToggleButton>
-                        </ToggleButtonGroup>
-
-                        {formData.meetingType === 'group' && (
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Maksymalna liczba osób"
-                                value={formData.capacity}
-                                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                                inputProps={{ min: 1 }}
-                            />
-                        )}
-
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 1 }}>
-                                Prowadzący
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
+                                Typ spotkania
                             </Typography>
-                            {rosterLoading && (
-                                <Chip
-                                    label="Ładuję listę zespołu..."
+                            <ToggleButtonGroup
+                                fullWidth
+                                exclusive
+                                value={formData.type}
+                                onChange={(e, val) => val && setFormData({ ...formData, type: val })}
+                                size="small"
+                            >
+                                <ToggleButton value="online">Online</ToggleButton>
+                                <ToggleButton value="local">Stacjonarnie</ToggleButton>
+                            </ToggleButtonGroup>
+
+                            {formData.type === 'local' && (
+                                <TextField
+                                    fullWidth
+                                    label="Lokalizacja"
+                                    value={formData.location}
+                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                    placeholder="np. ul. Kwiatowa 5, Warszawa"
                                     size="small"
-                                    sx={{ alignSelf: 'flex-start' }}
+                                    sx={{ mt: 1.5 }}
                                 />
                             )}
-                            <FormControl fullWidth disabled={disableAssignmentSelect}>
-                                <InputLabel>Prowadzący wydarzenie</InputLabel>
-                                <Select
-                                    value={assignmentValue}
-                                    label="Prowadzący wydarzenie"
-                                    onChange={(e) => handleAssigneeSelection(e.target.value)}
-                                    renderValue={(value) => {
-                                        const option = assignmentOptions.find((opt) => opt.key === value);
-                                        return option ? option.label : 'Właściciel strony';
-                                    }}
+                        </Box>
+
+                        <>
+                            <Box>
+                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
+                                    Forma spotkania
+                                </Typography>
+                                <ToggleButtonGroup
+                                    fullWidth
+                                    exclusive
+                                    value={formData.meetingType}
+                                    onChange={(e, val) => val && setFormData({ ...formData, meetingType: val })}
+                                    size="small"
                                 >
-                                    {assignmentOptions.map((option) => (
-                                        <MenuItem key={option.key} value={option.key}>
-                                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                                <Avatar
-                                                    src={option.avatar_url || undefined}
-                                                    sx={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        bgcolor: option.avatar_url ? 'transparent' : (option.avatar_color || 'primary.main'),
-                                                        color: option.avatar_url ? 'inherit' : '#fff',
-                                                        fontSize: '0.875rem',
-                                                        fontWeight: 600
+                                    <ToggleButton value="individual">Indywidualne</ToggleButton>
+                                    <ToggleButton value="group">Grupowe</ToggleButton>
+                                </ToggleButtonGroup>
+
+                                {formData.meetingType === 'group' && (
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="Maksymalna liczba osób"
+                                        value={formData.capacity}
+                                        onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                                        inputProps={{ min: 1 }}
+                                        size="small"
+                                        sx={{ mt: 1.5 }}
+                                    />
+                                )}
+                            </Box>
+
+                            <Box>
+                                <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={formData.showHost}
+                                                onChange={(e) => setFormData({ ...formData, showHost: e.target.checked })}
+                                                size="small"
+                                            />
+                                        }
+                                        label={
+                                            <Typography variant="body2" fontWeight={600}>
+                                                Pokaż prowadzącego
+                                            </Typography>
+                                        }
+                                    />
+                                    
+                                    {formData.showHost && (
+                                        <>
+                                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: theme.palette.text.secondary }}>
+                                                Prowadzący
+                                            </Typography>
+                                            {rosterLoading && (
+                                                <Chip
+                                                    label="Ładuję listę zespołu..."
+                                                    size="small"
+                                                    sx={{ alignSelf: 'flex-start', mb: 1 }}
+                                                />
+                                            )}
+                                            <FormControl fullWidth disabled={disableAssignmentSelect} size="small">
+                                                <InputLabel>Prowadzący wydarzenie</InputLabel>
+                                                <Select
+                                                    value={assignmentValue}
+                                                    label="Prowadzący wydarzenie"
+                                                    onChange={(e) => handleAssigneeSelection(e.target.value)}
+                                                    renderValue={(value) => {
+                                                        const option = assignmentOptions.find((opt) => opt.key === value);
+                                                        return option ? option.label : 'Właściciel strony';
                                                     }}
                                                 >
-                                                    {!option.avatar_url ? (option.avatar_letter || option.label?.charAt(0) || '•') : null}
-                                                </Avatar>
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight={600}>
-                                                        {option.label}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {option.role}
-                                                    </Typography>
-                                                </Box>
-                                            </Stack>
-                                        </MenuItem>
-                                    ))}
-                                    {assignmentOptions.length === 0 && (
-                                        <MenuItem value="owner:auto" disabled>
-                                            Brak dostępnych prowadzących
-                                        </MenuItem>
+                                                    {assignmentOptions.map((option) => (
+                                                        <MenuItem key={option.key} value={option.key}>
+                                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                                <Avatar
+                                                                    src={option.avatar_url || undefined}
+                                                                    sx={{
+                                                                        width: 32,
+                                                                        height: 32,
+                                                                        bgcolor: option.avatar_url ? 'transparent' : (option.avatar_color || 'primary.main'),
+                                                                        color: option.avatar_url ? 'inherit' : '#fff',
+                                                                        fontSize: '0.875rem',
+                                                                        fontWeight: 600
+                                                                    }}
+                                                                >
+                                                                    {!option.avatar_url ? (option.avatar_letter || option.label?.charAt(0) || '•') : null}
+                                                                </Avatar>
+                                                                <Box>
+                                                                    <Typography variant="body2" fontWeight={600}>
+                                                                        {option.label}
+                                                                    </Typography>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        {option.role}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Stack>
+                                                        </MenuItem>
+                                                    ))}
+                                                    {assignmentOptions.length === 0 && (
+                                                        <MenuItem value="owner:auto" disabled>
+                                                            Brak dostępnych prowadzących
+                                                        </MenuItem>
+                                                    )}
+                                                </Select>
+                                            </FormControl>
+                                            {(!canAssignAnyone || assignmentOptions.length <= 1) && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                    {!canAssignAnyone
+                                                        ? 'Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.'
+                                                        : 'Na razie tylko właściciel strony może prowadzić spotkania.'}
+                                                </Typography>
+                                            )}
+                                            {rosterUnavailable && !rosterLoading && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                    Dodaj aktywnych członków zespołu, aby przypisywać wydarzenia do konkretnej osoby.
+                                                </Typography>
+                                            )}
+                                        </>
                                     )}
-                                </Select>
-                            </FormControl>
-                            {(!canAssignAnyone || assignmentOptions.length <= 1) && (
-                                <Typography variant="caption" color="text.secondary">
-                                    {!canAssignAnyone
-                                        ? 'Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.'
-                                        : 'Na razie tylko właściciel strony może prowadzić spotkania.'}
-                                </Typography>
-                            )}
-                            {rosterUnavailable && !rosterLoading && (
-                                <Typography variant="caption" color="text.secondary">
-                                    Dodaj aktywnych członków zespołu, aby przypisywać wydarzenia do konkretnej osoby.
-                                </Typography>
-                            )}
-                        </Box>
+                                </Box>
+                        </>
+
                     </>
                 )}
 
@@ -1497,6 +1617,9 @@ const DayDetailsModal = ({
         );
     };
 
+    const isFormView = view === 'createEvent' || view === 'editEvent' || view === 'createAvailability' || view === 'editAvailability';
+    const isEventForm = view === 'createEvent' || view === 'editEvent';
+
     return (
         <>
         <Dialog
@@ -1514,11 +1637,19 @@ const DayDetailsModal = ({
                     maxWidth: '95vw',
                     display: 'flex',
                     flexDirection: 'column',
-                    p: 1.5  // Reduced padding on the paper itself
+                    p: 1.5,  // Reduced padding on the paper itself
+                    overflow: 'hidden',  // Clip gradient to dialog bounds
+                    position: 'relative',
+                    backgroundColor: theme.palette.background.paper,
+                    ...(isFormView && {
+                        backgroundImage: isEventForm 
+                            ? `linear-gradient(180deg, rgba(146, 0, 32, 0.12) 0%, rgba(146, 0, 32, 0.08) 15%, rgba(146, 0, 32, 0.04) 30%, rgba(146, 0, 32, 0.02) 50%, rgba(146, 0, 32, 0.01) 70%, transparent 100%)`
+                            : `linear-gradient(180deg, rgba(76, 175, 80, 0.12) 0%, rgba(76, 175, 80, 0.08) 15%, rgba(76, 175, 80, 0.04) 30%, rgba(76, 175, 80, 0.02) 50%, rgba(76, 175, 80, 0.01) 70%, transparent 100%)`
+                    })
                 }
             }}
         >
-            <DialogTitle sx={{ pb: 1 }}>
+            <DialogTitle sx={{ pb: 1, position: 'relative', zIndex: 1 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Box>
                         <Typography variant="h6" sx={{ fontWeight: 600, mb: 0, mt: 0 }}>
@@ -1614,7 +1745,7 @@ const DayDetailsModal = ({
 
             <Divider sx={{ mx: -1.5 }} />
 
-            <DialogContent sx={{ pb: 2, px: 2, pt: 2, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <DialogContent sx={{ pb: 2, px: 0, pt: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <AnimatePresence mode="wait">
                     {view === 'timeline' && (
                         <motion.div
