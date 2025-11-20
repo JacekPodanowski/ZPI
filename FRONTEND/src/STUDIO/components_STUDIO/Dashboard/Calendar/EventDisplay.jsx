@@ -57,7 +57,7 @@ export const EventBlock = ({
     // Available space: ~110px tile - 20px day header - 5px padding = ~85px
     // 3 events (3×18) + 2 gaps (2×1) + collapsed (24px) = 54 + 2 + 24 = 80px ✓
     const height = 18;
-    const fontSize = isSelectedSite ? (isHovered ? '10.5px' : '10px') : (isHovered ? '9px' : '8.5px');
+    const fontSize = isSelectedSite ? '10px' : '8.5px';
 
     return (
         <Box
@@ -70,7 +70,6 @@ export const EventBlock = ({
                 borderLeft: `2px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 cursor: 'pointer',
-                transition: 'all 250ms cubic-bezier(0.34, 1.15, 0.64, 1)',
                 overflow: 'hidden',
                 pointerEvents: isSelectedSite ? 'auto' : 'none',
                 filter: isSelectedSite ? 'none' : 'grayscale(40%)',
@@ -78,28 +77,20 @@ export const EventBlock = ({
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 0.5,
-                '&:hover': {
-                    backgroundColor: alpha(baseColor, 0.18),
-                    transform: 'translateY(-2px) scale(1.03)',
-                    boxShadow: `0 3px 12px ${alpha(baseColor, 0.25)}`,
-                    zIndex: 50,
-                    overflow: 'visible',
-                }
+                gap: 0.5
             }}
         >
             <Typography
                 variant="caption"
                 sx={{
-                    fontWeight: isHovered ? 600 : 500,
+                    fontWeight: 500,
                     fontSize: fontSize,
                     color: textColor,
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     flex: 1,
-                    lineHeight: 1.2,
-                    transition: 'all 250ms ease'
+                    lineHeight: 1.2
                 }}
             >
                 <Box component="span" sx={{ fontWeight: 600, mr: 0.5 }}>
@@ -164,17 +155,10 @@ export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, si
                 backgroundColor: 'rgba(248, 248, 245, 0.95)',
                 border: `1px solid rgba(146, 0, 32, 0.3)`,
                 cursor: 'pointer',
-                transition: 'all 180ms cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 0.5,
-                '&:hover': {
-                    backgroundColor: 'rgba(240, 240, 235, 1)',
-                    borderColor: 'rgba(146, 0, 32, 0.5)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: `0 2px 8px rgba(0, 0, 0, 0.1)`,
-                }
+                gap: 0.5
             }}
         >
             {/* Expandable icon (like time in regular events) */}
