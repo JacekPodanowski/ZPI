@@ -3,7 +3,7 @@ import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import moment from 'moment';
 import { fetchSites, fetchSiteCalendarRoster, fetchSiteCalendarData } from '../../../services/siteService';
-import { createEvent, createAvailabilityBlock, deleteEvent } from '../../../services/eventService';
+import { createEvent, createAvailabilityBlock, deleteEvent, updateEvent, updateAvailabilityBlock } from '../../../services/eventService';
 import { fetchTemplates, createTemplate } from '../../../services/templateService';
 import CalendarGridControlled from '../../components_STUDIO/Dashboard/Calendar/CalendarGridControlled';
 import RealTemplateBrowser from '../../components_STUDIO/Dashboard/Templates/RealTemplateBrowser';
@@ -445,6 +445,7 @@ const CreatorCalendarApp = () => {
                 site_id: siteId,
                 assigned_to_owner: assignedOwner,
                 assigned_to_team_member: assignedMember,
+                show_host: eventData.showHost ?? false,
             };
 
             const newEvent = await createEvent(eventWithSite);
@@ -496,10 +497,32 @@ const CreatorCalendarApp = () => {
                 return;
             }
             
-            // Add site_id to availability data
+            // Process assignee data
+            const { assignee, ...restPayload } = availabilityData;
+            let assignedOwner = null;
+            let assignedMember = null;
+
+            if (assignee?.type === 'team_member' && assignee?.id) {
+                assignedMember = Number(assignee.id) || assignee.id;
+            } else if (assignee?.type === 'owner') {
+                assignedOwner = targetSite?.owner?.id ?? null;
+            }
+
+            if (!assignedOwner && !assignedMember) {
+                if (permissions.autoAssignSelf && targetSite?.calendarMembershipId) {
+                    assignedMember = targetSite.calendarMembershipId;
+                } else {
+                    assignedOwner = targetSite?.owner?.id ?? null;
+                }
+            }
+
+            // Add site_id and assignment to availability data
             const availabilityWithSite = {
-                ...availabilityData,
-                site_id: siteId
+                ...restPayload,
+                site_id: siteId,
+                assigned_to_owner: assignedOwner,
+                assigned_to_team_member: assignedMember,
+                show_host: availabilityData.showHost ?? false,
             };
             
             const newBlock = await createAvailabilityBlock(availabilityWithSite);
@@ -524,6 +547,138 @@ const CreatorCalendarApp = () => {
         } catch (error) {
             console.error('Error creating availability block:', error);
             setError('Nie udało się utworzyć bloku dostępności. Spróbuj ponownie.');
+        }
+    };
+
+    const handleUpdateEvent = async (eventData) => {
+        try {
+            const siteId = eventData.siteId || selectedSiteId || sites[0]?.id;
+
+            if (!siteId) {
+                setError('Wybierz stronę dla której chcesz zaktualizować wydarzenie.');
+                return;
+            }
+
+            const targetSite = sites.find((site) => site.id === siteId);
+            const siteRole = targetSite?.calendarRole ?? 'viewer';
+            const permissions = sitePermissions[siteId] || ROLE_PERMISSIONS[siteRole] || ROLE_PERMISSIONS.viewer;
+
+            if (!permissions.canCreateEvents) {
+                setError('Nie masz uprawnień do edycji wydarzeń na tej stronie.');
+                return;
+            }
+
+            const { assignee, ...restPayload } = eventData;
+            let assignedOwner = null;
+            let assignedMember = null;
+
+            if (assignee?.type === 'team_member' && assignee?.id) {
+                assignedMember = Number(assignee.id) || assignee.id;
+            } else if (assignee?.type === 'owner') {
+                assignedOwner = targetSite?.owner?.id ?? null;
+            }
+
+            const updatePayload = {
+                title: restPayload.title,
+                description: restPayload.description || '',
+                start_time: `${eventData.date}T${restPayload.startTime}:00`,
+                end_time: `${eventData.date}T${restPayload.endTime}:00`,
+                capacity: restPayload.meetingType === 'group' ? (restPayload.capacity || 1) : 1,
+                event_type: restPayload.meetingType || 'individual',
+                site: siteId,
+                assigned_to_owner: assignedOwner,
+                assigned_to_team_member: assignedMember,
+                show_host: eventData.showHost ?? false,
+            };
+
+            const updatedEvent = await updateEvent(eventData.id, updatePayload);
+
+            const transformedEvent = {
+                ...updatedEvent,
+                site_color: getSiteColorHex(
+                    sites.find((s) => s.id === updatedEvent.site)?.color_index ?? 0
+                ),
+                site_id: updatedEvent.site,
+                date: new Date(updatedEvent.start_time).toISOString().split('T')[0],
+                start_time: new Date(updatedEvent.start_time).toTimeString().substring(0, 5),
+                end_time: new Date(updatedEvent.end_time).toTimeString().substring(0, 5),
+            };
+
+            setEvents((prevEvents) => {
+                const updatedEvents = prevEvents.map(e => e.id === eventData.id ? transformedEvent : e);
+                if (user?.id) {
+                    setCache(`${CACHE_KEYS.EVENTS}_${user.id}`, updatedEvents, 1000 * 60 * 5);
+                }
+                return updatedEvents;
+            });
+        } catch (error) {
+            console.error('Error updating event:', error);
+            setError('Nie udało się zaktualizować wydarzenia. Spróbuj ponownie.');
+        }
+    };
+
+    const handleUpdateAvailability = async (availabilityData) => {
+        try {
+            const siteId = availabilityData.siteId || selectedSiteId || sites[0]?.id;
+            
+            if (!siteId) {
+                setError('Wybierz stronę dla której chcesz zaktualizować dostępność.');
+                return;
+            }
+
+            const targetSite = sites.find((site) => site.id === siteId);
+            const siteRole = targetSite?.calendarRole ?? 'viewer';
+            const permissions = sitePermissions[siteId] || ROLE_PERMISSIONS[siteRole] || ROLE_PERMISSIONS.viewer;
+
+            if (!permissions.canManageAvailability) {
+                setError('Nie masz uprawnień do edycji dostępności zespołu.');
+                return;
+            }
+            
+            const { assignee, ...restPayload } = availabilityData;
+            let assignedOwner = null;
+            let assignedMember = null;
+
+            if (assignee?.type === 'team_member' && assignee?.id) {
+                assignedMember = Number(assignee.id) || assignee.id;
+            } else if (assignee?.type === 'owner') {
+                assignedOwner = targetSite?.owner?.id ?? null;
+            }
+
+            const updatePayload = {
+                title: restPayload.title || 'Dostępny',
+                date: availabilityData.date,
+                start_time: restPayload.startTime,
+                end_time: restPayload.endTime,
+                meeting_length: restPayload.meeting_length || parseInt(restPayload.meetingDuration) || 60,
+                time_snapping: restPayload.time_snapping || parseInt(restPayload.timeSnapping) || 30,
+                buffer_time: restPayload.buffer_time || parseInt(restPayload.bufferTime) || 0,
+                site: siteId,
+                assigned_to_owner: assignedOwner,
+                assigned_to_team_member: assignedMember,
+                show_host: availabilityData.showHost ?? false,
+            };
+            
+            const updatedBlock = await updateAvailabilityBlock(availabilityData.id, updatePayload);
+            
+            const transformedBlock = {
+                ...updatedBlock,
+                site_color: getSiteColorHex(
+                    sites.find(s => s.id === updatedBlock.site)?.color_index ?? 0
+                ),
+                site_id: updatedBlock.site
+            };
+            
+            setAvailabilityBlocks(prevBlocks => {
+                const updatedBlocks = prevBlocks.map(b => b.id === availabilityData.id ? transformedBlock : b);
+                if (user?.id) {
+                    setCache(`${CACHE_KEYS.AVAILABILITY_BLOCKS}_${user.id}`, updatedBlocks, 1000 * 60 * 5);
+                }
+                return updatedBlocks;
+            });
+        } catch (error) {
+            console.error('Error updating availability block:', error);
+            setError('Nie udało się zaktualizować dostępności. Spróbuj ponownie.');
         }
     };
 
@@ -1098,6 +1253,8 @@ const CreatorCalendarApp = () => {
                 onClose={() => setModalOpen(false)}
                 onCreateEvent={handleCreateEvent}
                 onCreateAvailability={handleCreateAvailability}
+                onUpdateEvent={handleUpdateEvent}
+                onUpdateAvailability={handleUpdateAvailability}
                 operatingStartHour={operatingStartHour}
                 operatingEndHour={operatingEndHour}
                 onBookingRemoved={handleBookingRemoved}

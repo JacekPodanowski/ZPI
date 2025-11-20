@@ -1616,18 +1616,47 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         site = serializer.validated_data['site']
-        creator = serializer.validated_data.get('creator', self.request.user)
-        if not self.request.user.is_staff and creator != self.request.user:
-            raise PermissionDenied('You can only create availability blocks as yourself.')
-        self._ensure_site_access(site)
+        user = self.request.user
+        creator = user
+
+        if user.is_staff:
+            serializer.save(creator=creator)
+            return
+
+        role, membership = resolve_site_role(user, site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        if role == TeamMember.PermissionRole.VIEWER:
+            raise PermissionDenied('Viewers cannot create availability blocks.')
+
+        if role == TeamMember.PermissionRole.CONTRIBUTOR and membership:
+            serializer.validated_data['assigned_to_owner'] = None
+            serializer.validated_data['assigned_to_team_member'] = membership
+
         serializer.save(creator=creator)
 
     def perform_update(self, serializer):
-        site = serializer.validated_data.get('site', serializer.instance.site)
-        creator = serializer.validated_data.get('creator', serializer.instance.creator)
-        if not self.request.user.is_staff and creator != self.request.user:
-            raise PermissionDenied('You can only manage your own availability blocks.')
-        self._ensure_site_access(site)
+        user = self.request.user
+        block = serializer.instance
+
+        if user.is_staff:
+            serializer.save()
+            return
+
+        role, membership = resolve_site_role(user, block.site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        if role == TeamMember.PermissionRole.VIEWER:
+            raise PermissionDenied('Viewers cannot edit availability blocks.')
+
+        if role == TeamMember.PermissionRole.CONTRIBUTOR:
+            if not membership or block.assigned_to_team_member_id != membership.id:
+                raise PermissionDenied('Contributors can only edit their own availability blocks.')
+            serializer.validated_data['assigned_to_owner'] = None
+            serializer.validated_data['assigned_to_team_member'] = membership
+
         serializer.save()
 
     def perform_destroy(self, instance):

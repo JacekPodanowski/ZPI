@@ -45,6 +45,10 @@ export const createEvent = async (eventData) => {
         if (eventData.assigned_to_team_member) {
             apiEventData.assigned_to_team_member = eventData.assigned_to_team_member;
         }
+
+        if (eventData.show_host !== undefined) {
+            apiEventData.show_host = eventData.show_host;
+        }
         
         console.log('Sending event data to API:', apiEventData);
         const response = await apiClient.post('/events/', apiEventData);
@@ -91,6 +95,18 @@ export const createAvailabilityBlock = async (availabilityData) => {
             buffer_time: availabilityData.buffer_time || parseInt(availabilityData.bufferTime) || 0,
             site: availabilityData.site_id,
         };
+
+        if (availabilityData.assigned_to_owner) {
+            apiAvailabilityData.assigned_to_owner = availabilityData.assigned_to_owner;
+        }
+
+        if (availabilityData.assigned_to_team_member) {
+            apiAvailabilityData.assigned_to_team_member = availabilityData.assigned_to_team_member;
+        }
+
+        if (availabilityData.show_host !== undefined) {
+            apiAvailabilityData.show_host = availabilityData.show_host;
+        }
         
         const response = await apiClient.post('/availability-blocks/', apiAvailabilityData);
         return response.data;

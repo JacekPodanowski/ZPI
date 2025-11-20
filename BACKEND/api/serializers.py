@@ -263,7 +263,7 @@ class EventSerializer(serializers.ModelSerializer):
             'start_time', 'end_time', 'capacity', 'event_type',
             'attendees', 'bookings', 'created_at', 'updated_at',
             'assigned_to_owner', 'assigned_to_team_member',
-            'assignment_type', 'assignment_label'
+            'assignment_type', 'assignment_label', 'show_host'
         ]
         read_only_fields = ['created_at', 'updated_at', 'attendees', 'creator', 'bookings', 'assignment_type', 'assignment_label']
 
@@ -370,14 +370,42 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class AvailabilityBlockSerializer(serializers.ModelSerializer):
+    assignment_type = serializers.SerializerMethodField()
+    assignment_label = serializers.SerializerMethodField()
+    
     class Meta:
         model = AvailabilityBlock
         fields = [
             'id', 'site', 'creator', 'title', 'date', 'start_time', 'end_time',
-            'meeting_length', 'time_snapping', 'buffer_time', 'created_at', 'updated_at'
+            'meeting_length', 'time_snapping', 'buffer_time', 'created_at', 'updated_at',
+            'assigned_to_owner', 'assigned_to_team_member', 'assignment_type', 'assignment_label', 'show_host'
         ]
-        read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'creator', 'created_at', 'updated_at', 'assignment_type', 'assignment_label']
 
+    def get_assignment_type(self, obj):
+        """Return 'owner' or 'team_member' based on which assignment field is filled"""
+        if obj.assigned_to_owner_id:
+            return 'owner'
+        elif obj.assigned_to_team_member_id:
+            return 'team_member'
+        return None
+    
+    def get_assignment_label(self, obj):
+        """Return human-readable label for the assigned person"""
+        if obj.assigned_to_owner:
+            user = obj.assigned_to_owner
+            name = f"{user.first_name} {user.last_name}".strip() or user.email
+            return f"{name} (Właściciel)"
+        elif obj.assigned_to_team_member:
+            member = obj.assigned_to_team_member
+            if member.linked_user:
+                user = member.linked_user
+                name = f"{user.first_name} {user.last_name}".strip() or user.email
+            else:
+                name = member.email
+            return f"{name} (Zespół)"
+        return None
+    
     def create(self, validated_data):
         # Automatically set creator to the current user
         validated_data['creator'] = self.context['request'].user

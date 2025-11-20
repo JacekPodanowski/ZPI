@@ -466,6 +466,8 @@ const DayDetailsModal = ({
     onClose, 
     onCreateEvent, 
     onCreateAvailability,
+    onUpdateEvent,
+    onUpdateAvailability,
     operatingStartHour = 6,
     operatingEndHour = 22,
     onBookingRemoved,
@@ -832,6 +834,7 @@ const DayDetailsModal = ({
         setEditingItem(block);
         // Get single duration from meeting_length field
         const duration = String(block.meeting_length || 60);
+        const derivedAssigneeType = block.assignment_type || (block.assigned_to_team_member ? 'team_member' : 'owner');
         
         setFormData({
             title: block.title || 'Dostępny',
@@ -844,7 +847,10 @@ const DayDetailsModal = ({
             meetingDuration: duration,
             timeSnapping: String(block.time_snapping || 30),
             bufferTime: String(block.buffer_time || 0),
-            siteId: block.site || selectedSiteId || null
+            siteId: block.site || selectedSiteId || null,
+            assigneeType: derivedAssigneeType,
+            assigneeId: derivedAssigneeType === 'team_member' ? block.assigned_to_team_member : null,
+            showHost: block.show_host ?? false
         });
         setView('editAvailability');
     };
@@ -939,6 +945,33 @@ const DayDetailsModal = ({
         setBookingModalOpen(false);
     }, [editingItem, onBookingRemoved, selectedBooking, setSelectedBooking, setBookingModalOpen]);
 
+    const handleDeleteItem = async () => {
+        const isEvent = view === 'editEvent';
+        const itemType = isEvent ? 'wydarzenie' : 'dostępność';
+        
+        if (!window.confirm(`Czy na pewno chcesz usunąć to ${itemType}?`)) {
+            return;
+        }
+
+        try {
+            if (isEvent) {
+                await eventService.deleteEvent(editingItem.id);
+                addToast('Wydarzenie zostało usunięte', { variant: 'success' });
+            } else {
+                await eventService.deleteAvailabilityBlock(editingItem.id);
+                addToast('Dostępność została usunięta', { variant: 'success' });
+            }
+            
+            if (onDataRefresh) {
+                await onDataRefresh();
+            }
+            handleClose();
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            addToast(`Nie udało się usunąć ${itemType}`, { variant: 'error' });
+        }
+    };
+
     const handleSubmit = () => {
         const { assigneeType, assigneeId, meetingDuration, ...restFormData } = formData;
         
@@ -963,18 +996,55 @@ const DayDetailsModal = ({
                 date: dateKey,
                 assignee: assigneePayload
             });
+        } else if (view === 'editEvent') {
+            if (!canCreateEvents) {
+                addToast('Nie masz uprawnień do edycji wydarzeń na tej stronie.', { variant: 'warning' });
+                return;
+            }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
+            onUpdateEvent?.({
+                id: editingItem.id,
+                ...restFormData,
+                siteId: targetSiteId,
+                date: dateKey,
+                assignee: assigneePayload
+            });
         } else if (view === 'createAvailability') {
             if (!canManageAvailability) {
                 addToast('Nie masz uprawnień do zarządzania dostępnością zespołu.', { variant: 'warning' });
                 return;
             }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
             onCreateAvailability?.({
                 ...restFormData,
                 meeting_length: parseInt(meetingDuration) || 60,
                 time_snapping: parseInt(restFormData.timeSnapping) || 30,
                 buffer_time: parseInt(restFormData.bufferTime) || 0,
                 siteId: targetSiteId,
-                date: dateKey
+                date: dateKey,
+                assignee: assigneePayload
+            });
+        } else if (view === 'editAvailability') {
+            if (!canManageAvailability) {
+                addToast('Nie masz uprawnień do edycji dostępności zespołu.', { variant: 'warning' });
+                return;
+            }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
+            onUpdateAvailability?.({
+                id: editingItem.id,
+                ...restFormData,
+                meeting_length: parseInt(meetingDuration) || 60,
+                time_snapping: parseInt(restFormData.timeSnapping) || 30,
+                buffer_time: parseInt(restFormData.bufferTime) || 0,
+                siteId: targetSiteId,
+                date: dateKey,
+                assignee: assigneePayload
             });
         }
         
@@ -1230,7 +1300,7 @@ const DayDetailsModal = ({
                 </Box>
 
                 {/* Form fields */}
-                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2.5, px: 2 }}>
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2.25, px: 2 }}>
                     {isEvent && !canCreateEvents && (
                         <Alert severity="warning">
                             Nie masz uprawnień do tworzenia wydarzeń na tej stronie. Poproś właściciela o rozszerzenie roli lub wybierz inną stronę.
@@ -1425,7 +1495,7 @@ const DayDetailsModal = ({
                             </FormControl>
                         </Box>
 
-                        <Box sx={{ position: 'relative' }}>
+                        <Box sx={{ position: 'relative', mb: -1.5 }}>
                             <TextField
                                 fullWidth
                                 type="number"
@@ -1491,11 +1561,11 @@ const DayDetailsModal = ({
                                         sx={{ alignSelf: 'flex-start', mb: 1 }}
                                     />
                                 )}
-                                <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 2 }}>
-                                    <InputLabel sx={{ fontWeight: 600 }}>{isEvent ? 'Prowadzący wydarzenie' : 'Osoba dostępna'}</InputLabel>
+                                <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 0.5 }}>
+                                    <InputLabel sx={{ fontWeight: 600 }}>{isEvent ? 'Prowadzący wydarzenie' : 'Prowadzący wydarzenia'}</InputLabel>
                                     <Select
                                         value={assignmentValue}
-                                        label={isEvent ? 'Prowadzący wydarzenie' : 'Osoba dostępna'}
+                                        label={isEvent ? 'Prowadzący wydarzenie' : 'Prowadzący wydarzenia'}
                                         onChange={(e) => handleAssigneeSelection(e.target.value)}
                                         renderValue={(value) => {
                                             const option = assignmentOptions.find((opt) => opt.key === value);
@@ -1508,7 +1578,7 @@ const DayDetailsModal = ({
                                                         user={option}
                                                         size={28}
                                                     />
-                                                    <Typography variant="body2" component="span">
+                                                    <Typography variant="body2" component="span" sx={{ fontFamily: 'inherit', fontSize: '14px' }}>
                                                         {option.label}
                                                     </Typography>
                                                 </Stack>
@@ -1525,10 +1595,10 @@ const DayDetailsModal = ({
                                                         size={32}
                                                     />
                                                     <Box>
-                                                        <Typography variant="body2" fontWeight={600}>
+                                                        <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'inherit', fontSize: '14px' }}>
                                                             {option.label}
                                                         </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'inherit', fontSize: '12px' }}>
                                                             {option.role}
                                                         </Typography>
                                                     </Box>
@@ -1723,8 +1793,8 @@ const DayDetailsModal = ({
             }}
         >
             <DialogTitle sx={{ pb: 1, position: 'relative', zIndex: 1 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Box sx={{ mt: 0.5 }}>
                         <Typography variant="h6" sx={{ fontWeight: 600, mb: 0, mt: 0 }}>
                             {dateFormatted}
                         </Typography>
@@ -1733,6 +1803,23 @@ const DayDetailsModal = ({
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
+                        {(view === 'editEvent' || view === 'editAvailability') && (
+                            <Tooltip title={view === 'editEvent' ? "Usuń wydarzenie" : "Usuń dostępność"}>
+                                <IconButton
+                                    onClick={handleDeleteItem}
+                                    sx={{
+                                        color: 'error.main',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                                            transform: 'scale(1.1)'
+                                        }
+                                    }}
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Tooltip>
+                        )}
                         {view === 'timeline' && (
                             <>
                                 <Tooltip title="Usuń wszystkie wydarzenia z tego dnia">
