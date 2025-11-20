@@ -96,6 +96,7 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
         />
       );
     
+    case 'select':
     case 'enum':
       return (
         <FormControl fullWidth size="small">
@@ -103,7 +104,7 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
             {fieldDef.d || fieldKey}
           </InputLabel>
           <Select
-            value={value || (fieldDef.options && fieldDef.options[0])}
+            value={value || (fieldDef.options && (Array.isArray(fieldDef.options) ? fieldDef.options[0] : fieldDef.options[0].value))}
             label={fieldDef.d || fieldKey}
             onChange={(e) => onContentChange(fieldKey, e.target.value)}
             sx={{
@@ -112,9 +113,16 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
             }}
           >
-            {(fieldDef.options || []).map(option => (
-              <MenuItem key={option} value={option}>{option}</MenuItem>
-            ))}
+            {(fieldDef.options || []).map(option => {
+              // Support both string options and {value, label} objects
+              const optionValue = typeof option === 'string' ? option : option.value;
+              const optionLabel = typeof option === 'string' ? option : option.label;
+              return (
+                <MenuItem key={optionValue} value={optionValue}>
+                  {optionLabel}
+                </MenuItem>
+              );
+            })}
           </Select>
         </FormControl>
       );
@@ -1707,8 +1715,84 @@ const PropertiesPanel = ({ placement = 'right' }) => {
               </Box>
             )}
             
-            {/* Divider after layout selector if content exists */}
-            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && contentFields.length > 0 && <Divider />}
+            {/* Divider after layout selector if layout fields or content exists */}
+            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && (layoutFields.length > 0 || contentFields.length > 0) && <Divider />}
+            
+            {/* LAYOUT OPTIONS Section */}
+            {layoutFields.length > 0 && (
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'rgba(30, 30, 30, 0.5)',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    mb: 2
+                  }}
+                >
+                  Layout Options
+                </Typography>
+                <Stack spacing={2.5}>
+                  {layoutFields.map(([key, def]) => {
+                    const value = module.content?.[key];
+                    
+                    if (def.t === 'number') {
+                      // Get default value from defaults based on current layout
+                      const defaultValue = key === 'cardWidth' ? 320 : key === 'cardHeight' ? 420 : undefined;
+                      return (
+                        <TextField
+                          key={key}
+                          fullWidth
+                          size="small"
+                          type="number"
+                          label={def.d || key}
+                          value={value ?? defaultValue ?? ''}
+                          onChange={(e) => handleContentChange(key, e.target.value ? Number(e.target.value) : null)}
+                          InputLabelProps={{
+                            sx: { '&.Mui-focused': { color: 'rgb(146, 0, 32)' } }
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: '8px',
+                              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' },
+                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
+                            }
+                          }}
+                        />
+                      );
+                    }
+                    
+                    return (
+                      <FormControl key={key} fullWidth size="small">
+                        <InputLabel sx={{ '&.Mui-focused': { color: 'rgb(146, 0, 32)' } }}>
+                          {def.d || key}
+                        </InputLabel>
+                        <Select
+                          value={value || (def.options && def.options[0]?.value)}
+                          label={def.d || key}
+                          onChange={(e) => handleContentChange(key, e.target.value)}
+                          sx={{
+                            borderRadius: '8px',
+                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
+                          }}
+                        >
+                          {(def.options || []).map(option => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Divider after layout options if content exists */}
+            {layoutFields.length > 0 && contentFields.length > 0 && <Divider />}
             
             {/* CONTENT Section */}
             {contentFields.length > 0 && (

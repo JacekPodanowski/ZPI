@@ -355,6 +355,17 @@ export const TEAM_DESCRIPTOR = {
   fields: {
     title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
+    cardWidth: { 
+      t: 'number', 
+      d: 'Szerokość okienka (px)', 
+      category: 'layout'
+    },
+    cardHeight: { 
+      t: 'number', 
+      d: 'Wysokość okienka (px)', 
+      category: 'layout'
+    },
+    members: { t: 'array', req: true, d: 'Lista członków zespołu', category: 'content' },
     bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
     backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },
     backgroundOverlayColor: { t: 'color', d: 'Kolor nakładki na tło', category: 'appearance' },

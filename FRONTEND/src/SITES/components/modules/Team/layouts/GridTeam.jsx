@@ -12,6 +12,9 @@ const GridTeam = ({ content, style, siteId }) => {
   const {
     title = 'Poznaj nasz zespół',
     subtitle = 'Ludzie, którzy wspierają Cię w drodze do równowagi',
+    members = [],
+    cardWidth = 320,
+    cardHeight = 420,
     bgColor = style?.background || '#FFFFFF',
     backgroundImage,
     backgroundOverlayColor,
@@ -52,9 +55,9 @@ const GridTeam = ({ content, style, siteId }) => {
   const members = teamMembers.length > 0 ? teamMembers : (content?.members || []);
 
   return (
-    <section className={`${style.spacing} relative overflow-hidden`} style={{ backgroundColor: bgColor }}>
+    <section className="py-4 relative overflow-hidden" style={{ backgroundColor: bgColor }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
-      <div className="max-w-6xl mx-auto space-y-10 relative z-10">
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10 px-4">
         {(title || subtitle) && (
           <div className="text-center space-y-3">
             {title && (
@@ -70,29 +73,30 @@ const GridTeam = ({ content, style, siteId }) => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {loading && (
-            <div className="col-span-full text-center py-12 text-sm text-black/40">
-              Ładowanie zespołu...
-            </div>
-          )}
-          {error && (
-            <div className="col-span-full text-center py-12 text-sm text-red-600">
-              Nie udało się załadować członków zespołu
-            </div>
-          )}
-          {!loading && !error && members.map((member) => {
-            // Use 'image' field from API (avatar_url mapped to image in PublicTeamMemberSerializer)
+        <div 
+          className="justify-items-center"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fit, minmax(${cardWidth}px, ${cardWidth}px))`,
+            justifyContent: 'center',
+            gap: '1.25rem'
+          }}
+        >
+          {members.map((member) => {
             const resolvedImage = resolveMediaUrl(member.image);
             const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
             
             return (
               <motion.article
                 key={member.id}
-                className="relative rounded-3xl overflow-hidden shadow-lg group h-full bg-white"
+                className="relative rounded-3xl overflow-hidden shadow-lg group bg-white"
+                style={{ width: `${cardWidth}px`, minHeight: `${cardHeight}px` }}
                 whileHover={{ y: -8 }}
               >
-                <div className="relative aspect-[3/4] overflow-hidden bg-black">
+                <div 
+                  className="relative overflow-hidden bg-black"
+                  style={{ height: `${Math.round(cardHeight * 0.6)}px` }}
+                >
                   {hasValidImage ? (
                     isVideoUrl(member.image) ? (
                       <video
@@ -124,7 +128,7 @@ const GridTeam = ({ content, style, siteId }) => {
                     )}
                   </div>
                 </div>
-                <div className="p-6 space-y-2" style={{ color: textColor }}>
+                <div className="p-4 space-y-2" style={{ color: textColor }}>
                   <div>
                     <h3 className="text-xl font-semibold">{member.name || 'Nowa osoba'}</h3>
                     {member.role && (
@@ -135,7 +139,7 @@ const GridTeam = ({ content, style, siteId }) => {
                   </div>
                   {member.description && (
                     <p 
-                      className="text-sm opacity-70 line-clamp-4 group/desc cursor-pointer relative"
+                      className="text-sm opacity-70 transition-all duration-300"
                       dangerouslySetInnerHTML={{ __html: member.description }}
                       style={{
                         overflow: 'hidden',
@@ -144,16 +148,12 @@ const GridTeam = ({ content, style, siteId }) => {
                         WebkitBoxOrient: 'vertical'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.overflow = 'visible';
                         e.currentTarget.style.display = 'block';
-                        e.currentTarget.style.position = 'relative';
-                        e.currentTarget.style.zIndex = '20';
+                        e.currentTarget.style.WebkitLineClamp = 'unset';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.overflow = 'hidden';
                         e.currentTarget.style.display = '-webkit-box';
-                        e.currentTarget.style.position = 'static';
-                        e.currentTarget.style.zIndex = 'auto';
+                        e.currentTarget.style.WebkitLineClamp = '4';
                       }}
                     />
                   )}
