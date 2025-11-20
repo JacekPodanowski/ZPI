@@ -33,6 +33,7 @@ import SetupAccountPage from './pages/Auth/SetupAccountPage';
 import BuildingLoginPage from './pages/Auth/BuildingLoginPage';
 import TermsAdminPage from './pages/Admin/TermsAdminPage';
 import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
+import ForceChangePasswordPage from './pages/Auth/ForceChangePasswordPage';
 
 const StudioApp = () => (
   <Routes>
@@ -56,6 +57,9 @@ const StudioApp = () => (
     
     {/* Password reset - PUBLIC route, no auth required */}
     <Route path="reset-password/:token" element={<ChangePasswordPage />} />
+    
+    {/* Force change password - for users with temporary password */}
+    <Route path="change-password" element={<ProtectedRoute><ForceChangePasswordPage /></ProtectedRoute>} />
     
     {/* Building login page - shown during site creation flow */}
     <Route path="building-login" element={<BuildingLoginPage />} />

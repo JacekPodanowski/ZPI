@@ -332,15 +332,29 @@ const SitesPage = () => {
                             ))}
                             
                             {/* Team Member Sites (linked) */}
-                            {showTeamSites && teamMemberSites.map((teamSite, index) => (
-                                <TeamMemberSiteTile
-                                    key={teamSite.id}
-                                    site={teamSite}
-                                    teamMemberInfo={teamSite.team_member_info}
-                                    index={ownedSites.length + pendingInvitations.length + index}
-                                    onInvitationUpdate={handleInvitationUpdate}
-                                />
-                            ))}
+                            {showTeamSites && teamMemberSites.map((teamSite, index) => {
+                                // Manager gets full SiteTile with analytics
+                                if (teamSite.team_member_info?.permission_role === 'manager') {
+                                    return (
+                                        <SiteTile
+                                            key={teamSite.id}
+                                            site={teamSite}
+                                            index={ownedSites.length + pendingInvitations.length + index}
+                                            onSiteDeleted={handleSiteDeleted}
+                                        />
+                                    );
+                                }
+                                // Contributor and Viewer get simplified TeamMemberSiteTile
+                                return (
+                                    <TeamMemberSiteTile
+                                        key={teamSite.id}
+                                        site={teamSite}
+                                        teamMemberInfo={teamSite.team_member_info}
+                                        index={ownedSites.length + pendingInvitations.length + index}
+                                        onInvitationUpdate={handleInvitationUpdate}
+                                    />
+                                );
+                            })}
                         </AnimatePresence>
                     </Box>
                 )}

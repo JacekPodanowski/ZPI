@@ -163,6 +163,9 @@ const TeamPage = () => {
                 setTeamMembers(prev => prev.map(member =>
                     member.id === memberId ? { ...member, ...updatedMember } : member
                 ));
+                // Refresh site data to get updated team_member_info if user is editing themselves
+                const updatedSite = await fetchSiteById(siteId);
+                setSite(updatedSite);
             }
         } catch (error) {
             console.error('Failed to update member:', error);
@@ -184,6 +187,9 @@ const TeamPage = () => {
             setTeamMembers(prev => prev.map(member =>
                 member.id === memberId ? { ...member, ...updatedMember } : member
             ));
+            // Refresh site data to get updated team_member_info
+            const updatedSite = await fetchSiteById(siteId);
+            setSite(updatedSite);
         } catch (error) {
             console.error('Failed to update role:', error);
             alert(error.response?.data?.detail || 'Nie udało się zmienić roli.');
