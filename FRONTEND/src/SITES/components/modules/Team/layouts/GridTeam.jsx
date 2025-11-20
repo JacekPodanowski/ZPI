@@ -51,8 +51,8 @@ const GridTeam = ({ content, style, siteId }) => {
     fetchTeamMembers();
   }, [siteId]);
 
-  // Use fetched members if available, otherwise fallback to content.members for preview
-  const members = teamMembers.length > 0 ? teamMembers : (content?.members || []);
+  // Use fetched members if available, otherwise fallback to destructured members for preview
+  const displayMembers = teamMembers.length > 0 ? teamMembers : members;
 
   return (
     <section className="py-4 relative overflow-hidden" style={{ backgroundColor: bgColor }}>
@@ -82,7 +82,7 @@ const GridTeam = ({ content, style, siteId }) => {
             gap: '1.25rem'
           }}
         >
-          {members.map((member) => {
+          {displayMembers.map((member) => {
             const resolvedImage = resolveMediaUrl(member.image);
             const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
             
@@ -163,7 +163,7 @@ const GridTeam = ({ content, style, siteId }) => {
           })}
         </div>
 
-        {!loading && !error && members.length === 0 && (
+        {!loading && !error && displayMembers.length === 0 && (
           <div className="text-center py-12 text-sm text-black/40">
             Nie dodano jeszcze członków zespołu. Przejdź do zarządzania stroną, aby dodać członków zespołu.
           </div>
