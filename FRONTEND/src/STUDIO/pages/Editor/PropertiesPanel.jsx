@@ -398,6 +398,19 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 }}
                 sx={{ mb: 2 }}
               />
+
+              <TextField
+                label="Biografia"
+                fullWidth
+                size="small"
+                value={member.bio || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], bio: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+              />
               
               <TextField
                 label="Opis"

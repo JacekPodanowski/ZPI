@@ -90,7 +90,28 @@ const GridTeam = ({ content, style }) => {
                     )}
                   </div>
                   {member.description && (
-                    <p className="text-sm opacity-70" dangerouslySetInnerHTML={{ __html: member.description }} />
+                    <p 
+                      className="text-sm opacity-70 line-clamp-4 group/desc cursor-pointer relative"
+                      dangerouslySetInnerHTML={{ __html: member.description }}
+                      style={{
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 4,
+                        WebkitBoxOrient: 'vertical'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.overflow = 'visible';
+                        e.currentTarget.style.display = 'block';
+                        e.currentTarget.style.position = 'relative';
+                        e.currentTarget.style.zIndex = '20';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.overflow = 'hidden';
+                        e.currentTarget.style.display = '-webkit-box';
+                        e.currentTarget.style.position = 'static';
+                        e.currentTarget.style.zIndex = 'auto';
+                      }}
+                    />
                   )}
                 </div>
               </motion.article>

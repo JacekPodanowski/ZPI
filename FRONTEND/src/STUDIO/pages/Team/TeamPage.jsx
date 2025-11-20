@@ -242,7 +242,48 @@ const TeamPage = () => {
                                         </Box>
                                     )}
                                     {member.role_description && (
-                                        <Typography variant="caption" sx={{ opacity: 0.6 }}>
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                opacity: 0.6,
+                                                maxHeight: '3.6em',
+                                                lineHeight: '1.2em',
+                                                overflow: 'hidden',
+                                                display: 'block',
+                                                position: 'relative',
+                                                transition: 'all 0.3s ease',
+                                                cursor: 'pointer',
+                                                '&::after': {
+                                                    content: '"..."',
+                                                    position: 'absolute',
+                                                    bottom: 0,
+                                                    right: 0,
+                                                    bgcolor: (theme) => theme.palette.mode === 'light'
+                                                        ? 'rgba(255, 255, 255, 0.9)'
+                                                        : 'rgba(40, 40, 40, 0.9)',
+                                                    pl: 0.5
+                                                },
+                                                '&:hover': {
+                                                    maxHeight: 'none',
+                                                    overflow: 'visible',
+                                                    bgcolor: (theme) => theme.palette.mode === 'light'
+                                                        ? 'rgba(255, 255, 255, 0.98)'
+                                                        : 'rgba(50, 50, 50, 0.98)',
+                                                    p: 1.5,
+                                                    ml: -1.5,
+                                                    mr: -1.5,
+                                                    borderRadius: 1,
+                                                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                                                    border: (theme) => theme.palette.mode === 'light'
+                                                        ? '1px solid rgba(188, 186, 179, 0.4)'
+                                                        : '1px solid rgba(70, 70, 68, 0.6)',
+                                                    zIndex: 10,
+                                                    '&::after': {
+                                                        display: 'none'
+                                                    }
+                                                }
+                                            }}
+                                        >
                                             {member.role_description}
                                         </Typography>
                                     )}

@@ -185,7 +185,7 @@ const DetailCanvas = () => {
         <AddModuleButton
           variant="inline"
           insertIndex={0}
-          label="Add section above"
+          label="Wstaw sekcję powyżej"
           buttonSx={{
             mt: { xs: 0.75, md: 1.5 },
             mb: { xs: 1.25, md: 2 },
@@ -231,7 +231,7 @@ const DetailCanvas = () => {
             <AddModuleButton
               variant="inline"
               insertIndex={index + 1}
-              label={index === page.modules.length - 1 ? 'Add section below' : 'Add section here'}
+              label={index === page.modules.length - 1 ? 'Wstaw sekcję poniżej' : 'Wstaw sekcję tutaj'}
               buttonSx={{
                 mt: { xs: 1.1, md: 1.75 },
                 mb: index === page.modules.length - 1 ? { xs: 2.5, md: 3 } : { xs: 1.1, md: 1.75 }
