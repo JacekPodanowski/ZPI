@@ -1228,19 +1228,11 @@ const DayDetailsModal = ({
 
                 {!hasSingleSite && (
                     <Box>
-                        <Typography 
-                            variant="subtitle2" 
-                            fontWeight={600} 
-                            sx={{ 
-                                mb: 1,
-                                color: theme.palette.text.secondary
-                            }}
-                        >
-                            Strona
-                        </Typography>
                         <FormControl fullWidth size="small">
+                            <InputLabel>Strona</InputLabel>
                             <Select
                                 value={formData.siteId || ''}
+                                label="Strona"
                                 onChange={(e) => {
                                     const rawValue = e.target.value;
                                     const parsedValue = Number(rawValue);
@@ -1255,11 +1247,19 @@ const DayDetailsModal = ({
                                 renderValue={(selected) => {
                                     if (!selected) return 'Wybierz stronę';
                                     const site = sites.find(s => s.id === selected);
-                                    return site?.name || 'Wybierz stronę';
+                                    if (!site) return 'Wybierz stronę';
+                                    const colorIndex = site.color_index !== undefined ? site.color_index : (site.color !== undefined ? site.color : 0);
+                                    const siteColor = getSiteColorHex(colorIndex);
+                                    return (
+                                        <Typography component="span" sx={{ color: siteColor, fontWeight: 600 }}>
+                                            {site.name}
+                                        </Typography>
+                                    );
                                 }}
                             >
                                 {sites.map((site) => {
-                                    const siteColor = (site && site.color) ? getSiteColorHex(site.color) : theme.palette.primary.main;
+                                    const colorIndex = site.color_index !== undefined ? site.color_index : (site.color !== undefined ? site.color : 0);
+                                    const siteColor = getSiteColorHex(colorIndex);
                                     return (
                                         <MenuItem key={site.id} value={site.id}>
                                             <Typography sx={{ color: siteColor, fontWeight: 600 }}>
@@ -1274,10 +1274,8 @@ const DayDetailsModal = ({
                 )}
 
                 <Box>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
-                        Tytuł wydarzenia
-                    </Typography>
                     <TextField
+                        label="Tytuł"
                         fullWidth
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -1287,9 +1285,6 @@ const DayDetailsModal = ({
                 </Box>
 
                 <Box>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
-                        Czas
-                    </Typography>
                     <Stack direction="row" spacing={2}>
                         <TextField
                             fullWidth
@@ -1315,7 +1310,7 @@ const DayDetailsModal = ({
                 {isEvent && (
                     <>
                         <Box>
-                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
+                            <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
                                 Typ spotkania
                             </Typography>
                             <ToggleButtonGroup
@@ -1344,7 +1339,7 @@ const DayDetailsModal = ({
 
                         <>
                             <Box>
-                                <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, color: theme.palette.text.secondary }}>
+                                <Typography variant="caption" sx={{ mb: 0.5, display: 'block', color: theme.palette.text.secondary }}>
                                     Forma spotkania
                                 </Typography>
                                 <ToggleButtonGroup
@@ -1390,9 +1385,6 @@ const DayDetailsModal = ({
                                     
                                     {formData.showHost && (
                                         <>
-                                            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1, mt: 2, color: theme.palette.text.secondary }}>
-                                                Prowadzący
-                                            </Typography>
                                             {rosterLoading && (
                                                 <Chip
                                                     label="Ładuję listę zespołu..."
@@ -1400,7 +1392,7 @@ const DayDetailsModal = ({
                                                     sx={{ alignSelf: 'flex-start', mb: 1 }}
                                                 />
                                             )}
-                                            <FormControl fullWidth disabled={disableAssignmentSelect} size="small">
+                                            <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 2 }}>
                                                 <InputLabel>Prowadzący wydarzenie</InputLabel>
                                                 <Select
                                                     value={assignmentValue}
