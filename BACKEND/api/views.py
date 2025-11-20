@@ -2974,15 +2974,32 @@ class PublicTeamView(APIView):
         except Site.DoesNotExist:
             return Response({'error': 'Site not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Get active team members with linked status (fully confirmed members)
+        # Get all active team members (including mock, invited, pending, and linked)
+        # This allows displaying team members on the public site even if they haven't accepted invitations
         team_members = TeamMember.objects.filter(
             site=site,
-            is_active=True,
-            invitation_status='linked'
+            is_active=True
         ).order_by('created_at')
         
-        serializer = PublicTeamMemberSerializer(team_members, many=True)
-        return Response(serializer.data)
+        members_data = list(PublicTeamMemberSerializer(team_members, many=True).data)
+        
+        # Add site owner as the first team member
+        owner = site.owner
+        owner_data = {
+            'id': f'owner-{owner.id}',
+            'name': f'{owner.first_name} {owner.last_name}' if owner.first_name or owner.last_name else owner.email,
+            'first_name': owner.first_name or '',
+            'last_name': owner.last_name or '',
+            'role': owner.role_description or 'Właściciel',
+            'bio': owner.bio or '',
+            'image': owner.public_image_url or owner.avatar_url or '',
+            'is_owner': True
+        }
+        
+        # Insert owner at the beginning
+        members_data.insert(0, owner_data)
+        
+        return Response(members_data)
 
 
 # Team Member Views
@@ -3026,10 +3043,19 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         return Response(result)
     
     def perform_create(self, serializer):
-        """Validate site ownership before creating team member."""
+        """Validate site ownership before creating team member (Owner and Manager only)."""
         site = serializer.validated_data.get('site')
-        if site.owner != self.request.user:
-            raise PermissionDenied('You can only add team members to your own sites.')
+        user = self.request.user
+        
+        # Check if user is owner
+        if site.owner == user:
+            # Owner can add team members
+            pass
+        else:
+            # Check if user is a Manager
+            role, _ = resolve_site_role(user, site)
+            if role != TeamMember.PermissionRole.MANAGER:
+                raise PermissionDenied('Only site owner and managers can add team members.')
         
         team_member = serializer.save()
         
@@ -3038,23 +3064,91 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         site.save(update_fields=['team_size'])
     
     def perform_update(self, serializer):
-        """Validate site ownership before updating team member."""
+        """Validate permissions before updating team member.
+        
+        Rules:
+        - Owner: Can edit all team members
+        - Manager: Can edit all team members EXCEPT owner, can change roles of others
+        - Contributor/Viewer: Can only edit themselves (name, bio, image), cannot change roles
+        """
         team_member = self.get_object()
-        if team_member.site.owner != self.request.user:
-            raise PermissionDenied('You can only update team members of your own sites.')
+        user = self.request.user
+        site = team_member.site
+        
+        # Check if user is owner
+        is_owner = site.owner == user
+        
+        # Check if editing self
+        is_self = team_member.linked_user == user
+        
+        # Get user's role
+        role, membership = resolve_site_role(user, site)
+        
+        # Owner can edit everyone
+        if is_owner:
+            serializer.save()
+            return
+        
+        # Check if trying to edit owner's profile
+        if team_member.linked_user == site.owner:
+            raise PermissionDenied('Only the owner can edit their own profile.')
+        
+        # Manager can edit all team members (except owner)
+        if role == TeamMember.PermissionRole.MANAGER:
+            # Check if trying to change permission_role
+            if 'permission_role' in serializer.validated_data:
+                # Manager can change roles of others
+                pass
+            serializer.save()
+            return
+        
+        # Contributor/Viewer can only edit themselves
+        if not is_self:
+            raise PermissionDenied('You can only edit your own profile.')
+        
+        # They cannot change their own permission_role
+        if 'permission_role' in serializer.validated_data:
+            raise PermissionDenied('You cannot change your own role. Contact site owner or manager.')
+        
         serializer.save()
     
     def perform_destroy(self, instance):
-        """Validate site ownership before deleting team member."""
-        if instance.site.owner != self.request.user:
-            raise PermissionDenied('You can only delete team members from your own sites.')
+        """Validate permissions before deleting team member.
         
+        Rules:
+        - Owner: Can delete all team members
+        - Manager: Can delete all team members EXCEPT owner
+        - Others: Cannot delete team members (must use 'leave' action instead)
+        """
+        user = self.request.user
         site = instance.site
-        instance.delete()
         
-        # Update site team_size
-        site.team_size = site.team_members.filter(is_active=True).count() + 1  # +1 for owner
-        site.save(update_fields=['team_size'])
+        # Check if user is owner
+        is_owner = site.owner == user
+        
+        # Owner can delete anyone
+        if is_owner:
+            site = instance.site
+            instance.delete()
+            # Update site team_size
+            site.team_size = site.team_members.filter(is_active=True).count() + 1  # +1 for owner
+            site.save(update_fields=['team_size'])
+            return
+        
+        # Check if trying to delete owner
+        if instance.linked_user == site.owner:
+            raise PermissionDenied('Cannot delete site owner.')
+        
+        # Check if user is manager
+        role, _ = resolve_site_role(user, site)
+        if role == TeamMember.PermissionRole.MANAGER:
+            instance.delete()
+            # Update site team_size
+            site.team_size = site.team_members.filter(is_active=True).count() + 1  # +1 for owner
+            site.save(update_fields=['team_size'])
+            return
+        
+        raise PermissionDenied('Only site owner and managers can delete team members. Use "leave" action to remove yourself.')
     
     @action(detail=True, methods=['post'], url_path='send-invitation')
     def send_invitation(self, request, pk=None):
@@ -3082,11 +3176,23 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             team_member.linked_user = existing_user
             team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
             
-            # Send email notification to existing user
+            # Create magic link for invitation acceptance (valid for 7 days)
+            magic_link = MagicLink.objects.create(
+                user=existing_user,
+                email=existing_user.email,
+                token=get_random_string(64),
+                action_type=MagicLink.ActionType.TEAM_INVITATION,
+                team_member=team_member,
+                expires_at=timezone.now() + timedelta(days=7)
+            )
+            
+            # Send email notification to existing user with invitation link
+            invitation_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/accept-invitation/{magic_link.token}"
             context = {
                 'site_name': team_member.site.name,
                 'permission_role': team_member.get_permission_role_display(),
                 'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
+                'invitation_link': invitation_url,
             }
             html_message = render_to_string('emails/team_invitation_existing_user.html', context)
             plain_message = strip_tags(html_message)
@@ -3105,15 +3211,24 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                 'status': 'pending'
             })
         else:
-            # User doesn't have account - create account with unusable password
+            # User doesn't have account - create account with temporary password
+            from django.utils.crypto import get_random_string
+            import secrets
+            import string
+            
+            # Generate temporary password (12 characters: letters, digits, special chars)
+            alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
+            temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+            
             new_user = PlatformUser.objects.create(
                 email=team_member.email,
                 first_name=team_member.first_name or '',
                 last_name=team_member.last_name or '',
                 source_tag=PlatformUser.SourceTag.TEAM_INVITATION,
                 account_type=PlatformUser.AccountType.FREE,
+                is_active=False,  # Account inactive until password is changed
             )
-            new_user.set_unusable_password()
+            new_user.set_password(temp_password)
             new_user.save()
             
             # Link team member to new user
@@ -3122,23 +3237,25 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             team_member.linked_user = new_user
             team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
             
-            # Create magic link for account setup (valid for 7 days)
+            # Create magic link for password change (valid for 7 days)
             magic_link = MagicLink.objects.create(
                 user=new_user,
                 email=new_user.email,
                 token=get_random_string(64),
-                action_type=MagicLink.ActionType.TEAM_INVITATION,
+                action_type=MagicLink.ActionType.PASSWORD_RESET,
                 team_member=team_member,
                 expires_at=timezone.now() + timedelta(days=7)
             )
             
-            # Send invitation email with setup link
-            invitation_url = f"{settings.FRONTEND_URL}/accept-invitation/{magic_link.token}"
+            # Send invitation email with credentials and setup link
+            setup_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/setup-account/{magic_link.token}"
             context = {
                 'site_name': team_member.site.name,
                 'permission_role': team_member.get_permission_role_display(),
                 'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
-                'invitation_link': invitation_url,
+                'email': new_user.email,
+                'temp_password': temp_password,
+                'setup_link': setup_url,
             }
             html_message = render_to_string('emails/team_invitation_new_user.html', context)
             plain_message = strip_tags(html_message)
@@ -3253,38 +3370,65 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def accept_invitation(request, token):
-    """Handle invitation acceptance via token link."""
-    from .models import TeamMember
-    
+    """Handle invitation acceptance via magic link token."""
     try:
-        team_member = TeamMember.objects.select_related('site').get(
-            invitation_token=token,
-            invitation_status='invited'
+        # Find magic link with TEAM_INVITATION action type
+        magic_link = MagicLink.objects.select_related('team_member', 'team_member__site', 'user').get(
+            token=token,
+            action_type=MagicLink.ActionType.TEAM_INVITATION,
+            used=False
         )
-    except TeamMember.DoesNotExist:
+    except MagicLink.DoesNotExist:
         return Response(
-            {'error': 'Invalid or expired invitation.'},
+            {'error': 'Link jest nieprawidłowy lub został już użyty.'},
             status=status.HTTP_404_NOT_FOUND
         )
     
-    # If user is not authenticated, save token in session and redirect to OAuth
-    if not request.user.is_authenticated:
-        request.session['invitation_token'] = str(token)
-        # TODO: Redirect to OAuth registration
-        return Response({
-            'message': 'Please login or register to accept invitation.',
-            'redirect': '/auth/google'  # Adjust based on OAuth setup
-        })
+    # Check if expired
+    if magic_link.expires_at < timezone.now():
+        return Response(
+            {'error': 'Link wygasł. Poproś właściciela zespołu o wysłanie nowego zaproszenia.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
-    # User is authenticated - link the account
+    team_member = magic_link.team_member
+    if not team_member:
+        return Response(
+            {'error': 'Zaproszenie nie zostało znalezione.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # If user is not authenticated, require login
+    if not request.user.is_authenticated:
+        return Response({
+            'message': 'Zaloguj się, aby zaakceptować zaproszenie.',
+            'auth_required': True,
+            'site_name': team_member.site.name,
+            'permission_role': team_member.get_permission_role_display(),
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    # Check if logged-in user matches invitation email
+    if request.user.email.lower() != team_member.email.lower():
+        return Response(
+            {'error': f'To zaproszenie jest dla {team_member.email}, a Ty jesteś zalogowany jako {request.user.email}.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Accept invitation - link the account
     team_member.linked_user = request.user
     team_member.invitation_status = 'linked'
     team_member.save(update_fields=['linked_user', 'invitation_status'])
     
+    # Mark magic link as used
+    magic_link.mark_as_used()
+    
+    logger.info(f"User {request.user.email} accepted invitation to team {team_member.site.name}")
+    
     return Response({
-        'message': 'Invitation accepted successfully.',
+        'message': f'Zaproszenie zaakceptowane! Jesteś teraz członkiem zespołu {team_member.site.name}.',
         'site_id': team_member.site.id,
-        'site_name': team_member.site.name
+        'site_name': team_member.site.name,
+        'permission_role': team_member.get_permission_role_display(),
     })
 
 
@@ -4501,3 +4645,113 @@ def resolve_domain(request, domain):
             {'error': 'Internal server error'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def validate_setup_token(request, token):
+    """Validate account setup token and return user info."""
+    try:
+        magic_link = MagicLink.objects.get(
+            token=token,
+            action_type=MagicLink.ActionType.PASSWORD_RESET,
+            used=False
+        )
+        
+        # Check if expired
+        if magic_link.expires_at < timezone.now():
+            return Response(
+                {'error': 'Link wygasł. Skontaktuj się z właścicielem zespołu, aby wysłał nowe zaproszenie.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if user exists and is inactive (account setup pending)
+        user = magic_link.user
+        if not user:
+            return Response(
+                {'error': 'Użytkownik nie został znaleziony.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Return user info
+        return Response({
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        })
+        
+    except MagicLink.DoesNotExist:
+        return Response(
+            {'error': 'Link jest nieprawidłowy lub wygasł.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def setup_account(request, token):
+    """Complete account setup by setting password and activating account."""
+    new_password = request.data.get('new_password')
+    
+    if not new_password:
+        return Response(
+            {'error': 'Nowe hasło jest wymagane.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate password strength
+    if len(new_password) < 8:
+        return Response(
+            {'error': 'Hasło musi mieć minimum 8 znaków.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        magic_link = MagicLink.objects.get(
+            token=token,
+            action_type=MagicLink.ActionType.PASSWORD_RESET,
+            used=False
+        )
+        
+        # Check if expired
+        if magic_link.expires_at < timezone.now():
+            return Response(
+                {'error': 'Link wygasł.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = magic_link.user
+        if not user:
+            return Response(
+                {'error': 'Użytkownik nie został znaleziony.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Set new password and activate account
+        user.set_password(new_password)
+        user.is_active = True
+        user.save()
+        
+        # Mark magic link as used
+        magic_link.mark_as_used()
+        
+        # Auto-accept team invitation if this was a team invitation flow
+        if magic_link.team_member:
+            team_member = magic_link.team_member
+            team_member.invitation_status = 'linked'
+            team_member.save(update_fields=['invitation_status'])
+            logger.info(f"Auto-accepted team invitation for {user.email}")
+        
+        logger.info(f"Account setup completed for {user.email}")
+        
+        return Response({
+            'message': 'Konto zostało skonfigurowane pomyślnie!',
+            'email': user.email,
+        })
+        
+    except MagicLink.DoesNotExist:
+        return Response(
+            {'error': 'Link jest nieprawidłowy lub wygasł.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+

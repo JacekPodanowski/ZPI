@@ -49,20 +49,17 @@ team_size: IntegerField (default=1)      # Cached count for calendar optimizatio
 
 ## Invitation Status States
 
-### 1. Mock (`'mock'`)
-- Created by owner in Team Page
-- No account connection
-- Generic avatar (first letter + deterministic color)
+### 1. Invited (`'invited'`)
+- Created by owner in Team Page (user has NO account)
+- Account is created automatically with unusable password
+- Token generated, email sent with link: `/accept-invitation/{TOKEN}`
+- Leads to OAuth registration/login
+- After registration: auto-links, status → `'linked'`
+- Generic avatar (first letter + deterministic color) until user uploads one
 - Visible on public site
 - Can be assigned to events
 
-### 2. Invited (`'invited'`)
-- Owner clicks "Send Invitation" (user has NO account)
-- Token generated, email sent with link: `/accept-invitation/{TOKEN}`
-- Leads to OAuth registration
-- After registration: auto-links, status → `'linked'`
-
-### 3. Pending (`'pending'`)
+### 2. Pending (`'pending'`)
 - Owner clicks "Send Invitation" (user HAS account - email exists in DB)
 - Token generated, notification email sent
 - TeamMemberSiteTile appears in user's Sites panel with accept/reject buttons
@@ -70,11 +67,15 @@ team_size: IntegerField (default=1)      # Cached count for calendar optimizatio
   - ✓ Accept → status: `'linked'`, linked_user filled, full access
   - ✗ Reject → status: `'rejected'`, tile disappears
 
-### 4. Linked (`'linked'`)
+### 3. Linked (`'linked'`)
 - Connected to PlatformUser account
 - permission_role activates
 - Full Studio access based on role
 - Can leave team (status → `'rejected'`, linked_user → null)
+
+### 4. Rejected (`'rejected'`)
+- User rejected invitation or left the team
+- Can be deleted by owner/manager
 
 ---
 
@@ -103,9 +104,19 @@ team_size: IntegerField (default=1)      # Cached count for calendar optimizatio
 
 ### Owner (Implicit Role)
 - ✅ All Manager permissions
-- ✅ Team member CRUD + role changes
+- ✅ Team member CRUD + role changes (can edit everyone including self)
 - ✅ Full editor + site settings access
 - ✅ Subscription management
+- ✅ Only owner can edit owner's profile
+
+## Edit Permissions Matrix
+
+| Who \ What       | Edit Self | Edit Others | Edit Owner | Change Roles (Others) | Change Own Role | Delete Members |
+|------------------|-----------|-------------|------------|-----------------------|-----------------|----------------|
+| **Owner**        | ✅        | ✅          | ✅         | ✅                    | ✅              | ✅             |
+| **Manager**      | ✅        | ✅          | ❌         | ✅                    | ❌              | ✅ (not owner) |
+| **Contributor**  | ✅        | ❌          | ❌         | ❌                    | ❌              | ❌             |
+| **Viewer**       | ✅        | ❌          | ❌         | ❌                    | ❌              | ❌             |
 
 ---
 

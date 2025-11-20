@@ -59,6 +59,8 @@ from .views import (
     AITaskView,
     poll_ai_task_result,
     resolve_domain,
+    validate_setup_token,
+    setup_account,
 )
 
 
@@ -112,6 +114,9 @@ urlpatterns = [
     path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
     path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),
     path('team-invitations/<uuid:token>/reject/', reject_invitation_studio, name='reject-invitation-studio'),
+    # Account setup (new team members)
+    path('validate-setup-token/<str:token>/', validate_setup_token, name='validate-setup-token'),
+    path('setup-account/<str:token>/', setup_account, name='setup-account'),
     # Domain checking endpoints
     path('domains/check-availability/', check_domain_availability, name='check-domain-availability'),
     path('domains/purchase/', purchase_domain, name='purchase-domain'),

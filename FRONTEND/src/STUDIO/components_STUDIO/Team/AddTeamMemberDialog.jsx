@@ -11,20 +11,26 @@ import {
     FormControl,
     InputLabel,
     Box,
-    Typography
+    Typography,
+    IconButton,
+    CircularProgress
 } from '@mui/material';
-import { motion } from 'framer-motion';
+import { PhotoCamera, Delete as DeleteIcon } from '@mui/icons-material';
+import { uploadMedia } from '../../../services/mediaService';
 
-const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
+const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
         email: '',
         role_description: '',
-        permission_role: 'viewer'
+        bio: '',
+        permission_role: 'viewer',
+        public_image_url: ''
     });
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -32,6 +38,44 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: null }));
         }
+    };
+
+    const handleAvatarUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            setErrors(prev => ({ ...prev, image: 'Proszę wybrać plik obrazu' }));
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setErrors(prev => ({ ...prev, image: 'Plik jest za duży (max 5MB)' }));
+            return;
+        }
+
+        setUploadingImage(true);
+        setErrors(prev => ({ ...prev, image: null }));
+
+        try {
+            const uploadedMedia = await uploadMedia(file, {
+                usage: 'site_content',
+                siteId: siteId
+            });
+            
+            handleChange('public_image_url', uploadedMedia.url);
+        } catch (error) {
+            console.error('Image upload failed:', error);
+            setErrors(prev => ({ ...prev, image: 'Nie udało się przesłać zdjęcia' }));
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+    const handleRemoveAvatar = () => {
+        handleChange('public_image_url', '');
     };
 
     const validate = () => {
@@ -67,7 +111,9 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
                 last_name: '',
                 email: '',
                 role_description: '',
-                permission_role: 'viewer'
+                bio: '',
+                permission_role: 'viewer',
+                avatar_url: ''
             });
             setErrors({});
             onClose();
@@ -86,7 +132,9 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
                 last_name: '',
                 email: '',
                 role_description: '',
-                permission_role: 'viewer'
+                bio: '',
+                permission_role: 'viewer',
+                public_image_url: ''
             });
             setErrors({});
             onClose();
@@ -128,6 +176,7 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
 
             <DialogContent>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 2 }}>
+
                     <TextField
                         label="Imię"
                         value={formData.first_name}
@@ -171,6 +220,18 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
                         disabled={submitting}
                     />
 
+                    <TextField
+                        label="Bio"
+                        value={formData.bio}
+                        onChange={(e) => handleChange('bio', e.target.value)}
+                        placeholder="Krótki opis doświadczenia i specjalizacji"
+                        helperText="Opcjonalne - wyświetlane na stronie publicznej"
+                        fullWidth
+                        multiline
+                        rows={3}
+                        disabled={submitting}
+                    />
+
                     <FormControl fullWidth disabled={submitting}>
                         <InputLabel>Uprawnienia</InputLabel>
                         <Select
@@ -211,6 +272,92 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
                         </Select>
                     </FormControl>
 
+                    {/* Public Image Upload Section */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 2,
+                        p: 2,
+                        borderRadius: 2,
+                        border: (theme) => `1px solid ${theme.palette.divider}`,
+                        bgcolor: (theme) => theme.palette.mode === 'light' 
+                            ? 'rgba(228, 229, 218, 0.3)' 
+                            : 'rgba(30, 30, 30, 0.3)'
+                    }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            Zdjęcie publiczne
+                        </Typography>
+                        
+                        {formData.public_image_url ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                <Box
+                                    component="img"
+                                    src={formData.public_image_url}
+                                    sx={{
+                                        width: '100%',
+                                        maxHeight: 200,
+                                        objectFit: 'cover',
+                                        borderRadius: 2,
+                                        border: (theme) => `1px solid ${theme.palette.divider}`
+                                    }}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Button
+                                        component="label"
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<PhotoCamera />}
+                                        disabled={uploadingImage || submitting}
+                                        fullWidth
+                                    >
+                                        Zmień zdjęcie
+                                        <input
+                                            type="file"
+                                            hidden
+                                            accept="image/*"
+                                            onChange={handleAvatarUpload}
+                                        />
+                                    </Button>
+                                    <IconButton
+                                        onClick={handleRemoveAvatar}
+                                        disabled={uploadingImage || submitting}
+                                        size="small"
+                                        color="error"
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Box>
+                            </Box>
+                        ) : (
+                            <Button
+                                component="label"
+                                variant="outlined"
+                                size="small"
+                                startIcon={uploadingImage ? <CircularProgress size={16} /> : <PhotoCamera />}
+                                disabled={uploadingImage || submitting}
+                                fullWidth
+                            >
+                                {uploadingImage ? 'Wgrywanie...' : 'Dodaj zdjęcie'}
+                                <input
+                                    type="file"
+                                    hidden
+                                    accept="image/*"
+                                    onChange={handleAvatarUpload}
+                                />
+                            </Button>
+                        )}
+                        
+                        {errors.image && (
+                            <Typography variant="caption" color="error">
+                                {errors.image}
+                            </Typography>
+                        )}
+                        
+                        <Typography variant="caption" color="text.secondary">
+                            Zdjęcie będzie wyświetlane na stronie publicznej (opcjonalne)
+                        </Typography>
+                    </Box>
+
                     {errors.submit && (
                         <Typography variant="body2" color="error" sx={{ textAlign: 'center' }}>
                             {errors.submit}
@@ -230,7 +377,7 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd }) => {
                 <Button
                     onClick={handleSubmit}
                     variant="contained"
-                    disabled={submitting}
+                    disabled={submitting || uploadingImage}
                     sx={{
                         bgcolor: 'rgb(146, 0, 32)',
                         '&:hover': {

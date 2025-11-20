@@ -31,23 +31,30 @@
                             </p>
                             
                             <p style="margin: 0 0 30px; color: #333; font-size: 16px; line-height: 1.6;">
-                                Zaloguj się do swojego konta, aby zaakceptować lub odrzucić zaproszenie:
+                                Kliknij poniższy przycisk, aby zaakceptować lub odrzucić zaproszenie:
                             </p>
                             
                             <!-- CTA Button -->
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center; padding: 20px 0;">
-                                        <a href="https://youreasysite.com/studio/sites" 
+                                        <a href="{{ invitation_link }}" 
                                            style="display: inline-block; padding: 16px 32px; background-color: #920015; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; transition: background-color 0.3s;">
-                                            Przejdź do panelu
+                                            Otwórz zaproszenie
                                         </a>
                                     </td>
                                 </tr>
                             </table>
                             
-                            <p style="margin: 30px 0 0; color: #666; font-size: 14px; line-height: 1.6;">
-                                Zaproszenie znajdziesz w swoim panelu Sites.
+                            <p style="margin: 30px 0 10px; color: #666; font-size: 14px; line-height: 1.6;">
+                                Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:
+                            </p>
+                            <p style="margin: 0 0 20px; color: #920015; font-size: 13px; word-break: break-all; font-family: monospace; background: #f8f9fa; padding: 12px; border-radius: 4px;">
+                                {{ invitation_link }}
+                            </p>
+                            
+                            <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">
+                                Link jest ważny przez 7 dni.
                             </p>
                         </td>
                     </tr>

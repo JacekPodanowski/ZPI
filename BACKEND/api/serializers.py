@@ -91,6 +91,7 @@ class PlatformUserSerializer(serializers.ModelSerializer):
         model = PlatformUser
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name', 'avatar_url',
+            'public_image_url', 'role_description', 'bio',
             'account_type', 'source_tag', 'is_staff', 'is_active',
             'preferences', 'created_at', 'updated_at'
         ]
@@ -511,7 +512,7 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         model = TeamMember
         fields = [
             'id', 'site', 'first_name', 'last_name', 'email', 'role_description', 
-            'bio', 'avatar_url', 'is_active', 'linked_user', 'invitation_status',
+            'bio', 'avatar_url', 'public_image_url', 'is_active', 'linked_user', 'invitation_status',
             'invitation_token', 'invited_at', 'permission_role', 'created_at',
             'updated_at', 'avatar_color', 'avatar_letter'
         ]
@@ -563,7 +564,7 @@ class PublicTeamMemberSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     role = serializers.CharField(source='role_description')
     description = serializers.CharField(source='bio')
-    image = serializers.CharField(source='avatar_url')
+    image = serializers.CharField(source='public_image_url')  # Use public_image_url for public display
     
     class Meta:
         model = TeamMember
