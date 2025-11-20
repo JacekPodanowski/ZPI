@@ -1207,7 +1207,9 @@ const DayDetailsModal = ({
                             fontStyle: 'italic'
                         }}
                     >
-                        {isEvent ? 'Wydarzenie' : 'Dostępność'}
+                        {isEvent 
+                            ? (isEditing ? 'Wydarzenie' : 'Nowe Wydarzenie')
+                            : (isEditing ? 'Dostępność' : 'Nowa Dostępność')}
                     </Typography>
                     <Typography
                         variant="body2"
