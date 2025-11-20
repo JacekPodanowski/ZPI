@@ -821,13 +821,15 @@ def regenerate_testimonial_summary(self, site_id: int):
         flash_service = get_flash_service()
         
         # Generate public summary (short, for site visitors)
-        public_prompt = f"""Na podstawie poniższych {total_count} opinii klientów, wygeneruj krótkie podsumowanie (max 2-3 zdania) 
-co klienci najbardziej cenią i co im się nie podoba. Podsumowanie powinno być pozytywne i zachęcające.
+        public_prompt = f"""Na podstawie poniższych {total_count} opinii napisz krótkie podsumowanie (2-3 zdania) w formie stwierdzenia.
+Skoncentruj się na tym, co klienci najbardziej podkreślają i cenią. Odpowiedź ma być konkretna i pozytywna.
+
+Przykład: "Klienci szczególnie cenią profesjonalizm i indywidualne podejście. Recenzenci podkreślają atmosferę oraz widoczne efekty po sesjach."
 
 Opinie:
 {testimonials_text}
 
-Wygeneruj tylko samo podsumowanie, bez dodatkowych komentarzy."""
+Odpowiedz tylko samym podsumowaniem, bez wstępów i komentarzy."""
         
         public_result = flash_service.process_task(
             public_prompt,

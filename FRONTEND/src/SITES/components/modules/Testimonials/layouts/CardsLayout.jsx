@@ -115,7 +115,7 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
                 </div>
 
                 {/* AI Summary */}
-                {showSummary && summary && (
+                {showSummary && summary && summary.average_rating !== undefined && (
                     <div className="mb-12 p-6 rounded-xl" style={{
                         backgroundColor: 'rgba(146, 0, 32, 0.05)',
                         border: `1px solid ${primaryColor}33`
@@ -127,7 +127,7 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
                                     {summary.average_rating.toFixed(1)}
                                 </span>
                                 <span className="text-yellow-500">★</span>
-                                <span className="text-sm opacity-70">({summary.total_count} opinii)</span>
+                                <span className="text-sm opacity-70">({summary.total_count || 0} opinii)</span>
                             </div>
                         </div>
                         <p className="text-base leading-relaxed opacity-90">
