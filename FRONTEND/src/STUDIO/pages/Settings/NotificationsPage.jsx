@@ -12,7 +12,9 @@ import {
   IconButton,
   Box,
   Toolbar,
-  Tooltip
+  Tooltip,
+  ToggleButtonGroup,
+  ToggleButton
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -32,6 +34,7 @@ const NotificationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState([]);
+  const [filter, setFilter] = useState('all'); // 'all', 'read', 'unread'
 
   const fetchNotifications = async () => {
     try {
@@ -54,7 +57,7 @@ const NotificationsPage = () => {
 
   const handleSelectAll = (event) => {
     if (event.target.checked) {
-      setSelected(notifications.map(n => n.id));
+      setSelected(filteredNotifications.map(n => n.id));
     } else {
       setSelected([]);
     }
@@ -103,8 +106,16 @@ const NotificationsPage = () => {
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
-  const allSelected = notifications.length > 0 && selected.length === notifications.length;
-  const someSelected = selected.length > 0 && selected.length < notifications.length;
+  
+  // Filter notifications based on selected filter
+  const filteredNotifications = notifications.filter(n => {
+    if (filter === 'read') return n.is_read;
+    if (filter === 'unread') return !n.is_read;
+    return true; // 'all'
+  });
+  
+  const allSelected = filteredNotifications.length > 0 && selected.length === filteredNotifications.length;
+  const someSelected = selected.length > 0 && selected.length < filteredNotifications.length;
 
   return (
     <Paper
@@ -123,13 +134,13 @@ const NotificationsPage = () => {
       <Stack 
         direction="row"
         alignItems="center" 
-        sx={{ mb: 3 }}
+        justifyContent="space-between"
+        sx={{ mb: 3, flexWrap: 'wrap', gap: 2 }}
       >
         <Typography
           variant="h5"
           sx={{
             fontWeight: 600,
-            flex: 1,
             color: theme.colors?.text?.primary || theme.palette.text.primary,
             fontSize: { xs: '1.25rem', md: '1.5rem' }
           }}
@@ -149,6 +160,37 @@ const NotificationsPage = () => {
             </Typography>
           )}
         </Typography>
+        
+        <ToggleButtonGroup
+          value={filter}
+          exclusive
+          onChange={(e, newFilter) => {
+            if (newFilter !== null) {
+              setFilter(newFilter);
+              setSelected([]);
+            }
+          }}
+          size="small"
+          sx={{
+            '& .MuiToggleButton-root': {
+              textTransform: 'none',
+              px: 2,
+              py: 0.5,
+              fontSize: '0.875rem',
+              '&.Mui-selected': {
+                backgroundColor: theme.palette.primary.main,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: theme.palette.primary.dark,
+                }
+              }
+            }
+          }}
+        >
+          <ToggleButton value="all">Wszystkie</ToggleButton>
+          <ToggleButton value="unread">Nieprzeczytane</ToggleButton>
+          <ToggleButton value="read">Przeczytane</ToggleButton>
+        </ToggleButtonGroup>
       </Stack>
 
       {loading ? (
@@ -159,11 +201,13 @@ const NotificationsPage = () => {
         <Typography color="error" sx={{ textAlign: 'center', py: 8 }}>
           {error}
         </Typography>
-      ) : notifications.length === 0 ? (
+      ) : filteredNotifications.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <MailOutlineIcon sx={{ fontSize: 64, color: theme.palette.text.disabled, mb: 2 }} />
           <Typography color={theme.palette.text.secondary}>
-            brak powiadomień
+            {filter === 'all' ? 'brak powiadomień' : 
+             filter === 'unread' ? 'brak nieprzeczytanych powiadomień' :
+             'brak przeczytanych powiadomień'}
           </Typography>
         </Box>
       ) : (
@@ -229,7 +273,7 @@ const NotificationsPage = () => {
 
           {/* Notifications List */}
           <List sx={{ width: '100%' }}>
-            {notifications.map((n) => {
+            {filteredNotifications.map((n) => {
               const isSelected = selected.includes(n.id);
               return (
                 <ListItem
