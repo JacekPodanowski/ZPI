@@ -899,3 +899,42 @@ Wygeneruj analizę w następującym formacie:
             raise self.retry(exc=exc)
         return {"status": "error", "message": str(exc)}
 
+
+@shared_task
+def send_random_test_notification():
+    """
+    Send a random test notification to all platform users.
+    This task runs every 15 minutes for testing purposes.
+    """
+    import random
+    from .models import PlatformUser, Notification
+    
+    test_messages = [
+        "🎉 Nowa rezerwacja na jutro o 10:00",
+        "📧 Otrzymałeś nową wiadomość od klienta",
+        "⏰ Przypomnienie: spotkanie za 30 minut",
+        "✅ Twoja strona została zaktualizowana",
+        "👤 Nowy użytkownik dołączył do zespołu",
+        "📊 Raport miesięczny jest gotowy",
+        "🔔 Masz 3 nowe powiadomienia",
+        "💡 Sprawdź nowe funkcje w edytorze",
+    ]
+    
+    try:
+        users = PlatformUser.objects.all()
+        message = random.choice(test_messages)
+        
+        for user in users:
+            Notification.objects.create(
+                user=user,
+                message=message,
+                is_read=False
+            )
+        
+        logger.info(f"[Celery] Sent test notification to {users.count()} users: {message}")
+        return {"status": "success", "users_count": users.count(), "message": message}
+    
+    except Exception as exc:
+        logger.exception(f"[Celery] Failed to send test notification: {exc}")
+        return {"status": "error", "message": str(exc)}
+
