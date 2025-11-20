@@ -35,8 +35,6 @@ const CalendarGridControlled = ({
     selectedAssigneeFilter,
     onAssigneeFilterChange
 }) => {
-    const [hoveredEventId, setHoveredEventId] = useState(null);
-    const [hoveredEventDayKey, setHoveredEventDayKey] = useState(null); // Track which day the hovered event is in
     const [hoveredDayKey, setHoveredDayKey] = useState(null); // Track which day is being hovered
     const [hoveredWeekKey, setHoveredWeekKey] = useState(null); // Track which week is being hovered (for week template creation)
     const [draggedOverDay, setDraggedOverDay] = useState(null); // Track day being dragged over
@@ -853,8 +851,8 @@ const CalendarGridControlled = ({
                         }
                     }
                     
-                    // Day hover should be blocked when hovering an event or when drag interaction is blocked
-                    const isDayHovered = hoveredDayKey === dateKey && !hoveredEventId;
+                    // Day hover should be blocked when drag interaction is blocked
+                    const isDayHovered = hoveredDayKey === dateKey;
                     const isBeingDraggedOverWithEffect = isBeingDraggedOver && allowDragInteraction;
                     
                     // Week template logic - Use draggingTemplate from parent to determine type
@@ -1243,54 +1241,28 @@ const CalendarGridControlled = ({
                                         pointerEvents: 'auto'
                                     }}>
                                         {/* Show first 3 events */}
-                                        {visibleEvents.map((event, index) => {
-                                            const isHovered = !creatingTemplateMode && hoveredEventId === event.id;
-                                            const shouldShrink = !creatingTemplateMode && hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
-
-                                            return (
-                                                <motion.div
-                                                    key={event.id}
-                                                    animate={{
-                                                        scale: shouldShrink ? 0.92 : 1,
-                                                        opacity: shouldShrink ? 0.7 : 1
-                                                    }}
-                                                    transition={{ 
-                                                        duration: 0.25, 
-                                                        ease: [0.25, 0.1, 0.25, 1]
-                                                    }}
-                                                    style={{ 
-                                                        zIndex: isHovered ? 50 : 10 + index,
-                                                        position: 'relative',
-                                                        pointerEvents: 'auto',
-                                                        overflow: 'visible'
-                                                    }}
-                                                    onMouseEnter={() => {
-                                                        if (!creatingTemplateMode) {
-                                                            setHoveredEventId(event.id);
-                                                            setHoveredEventDayKey(dateKey);
+                                        {visibleEvents.map((event, index) => (
+                                            <Box
+                                                key={event.id}
+                                                style={{ 
+                                                    zIndex: 10 + index,
+                                                    position: 'relative',
+                                                    pointerEvents: 'auto'
+                                                }}
+                                            >
+                                                <EventBlock
+                                                    event={event}
+                                                    isSelectedSite={event.isFromSelectedSite}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (!creatingTemplateMode && onEventClick) {
+                                                            onEventClick(event);
                                                         }
                                                     }}
-                                                    onMouseLeave={() => {
-                                                        if (!creatingTemplateMode) {
-                                                            setHoveredEventId(null);
-                                                            setHoveredEventDayKey(null);
-                                                        }
-                                                    }}
-                                                >
-                                                    <EventBlock
-                                                        event={event}
-                                                        isSelectedSite={event.isFromSelectedSite}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (!creatingTemplateMode && onEventClick) {
-                                                                onEventClick(event);
-                                                            }
-                                                        }}
-                                                        isHovered={isHovered}
-                                                    />
-                                                </motion.div>
-                                            );
-                                        })}
+                                                    isHovered={false}
+                                                />
+                                            </Box>
+                                        ))}
                                         
                                         {/* Collapsed block showing remaining events */}
                                         <CollapsedEventsBlock
@@ -1373,51 +1345,28 @@ const CalendarGridControlled = ({
                                             zIndex: 1,
                                             pointerEvents: eventCount <= 1 ? 'none' : 'auto'
                                         }}>
-                                        {visibleEvents.map((event, index) => {
-                                            const isHovered = hoveredEventId === event.id;
-                                            // Only shrink events in the SAME day as the hovered event
-                                            const shouldShrink = hoveredEventId && !isHovered && hoveredEventDayKey === dateKey;
-
-                                            return (
-                                                <motion.div
-                                                    key={event.id}
-                                                    animate={{
-                                                        scale: shouldShrink ? 0.92 : 1,
-                                                        opacity: shouldShrink ? 0.7 : 1
+                                        {visibleEvents.map((event, index) => (
+                                            <Box
+                                                key={event.id}
+                                                style={{ 
+                                                    zIndex: 10 + index,
+                                                    position: 'relative',
+                                                    pointerEvents: 'auto'
+                                                }}
+                                            >
+                                                <EventBlock
+                                                    event={event}
+                                                    isSelectedSite={event.isFromSelectedSite}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onEventClick) {
+                                                            onEventClick(event);
+                                                        }
                                                     }}
-                                                    transition={{ 
-                                                        duration: 0.25, 
-                                                        ease: [0.25, 0.1, 0.25, 1]
-                                                    }}
-                                                    style={{ 
-                                                        zIndex: isHovered ? 50 : 10 + index,
-                                                        position: 'relative',
-                                                        pointerEvents: 'auto',
-                                                        overflow: 'visible'
-                                                    }}
-                                                    onMouseEnter={() => {
-                                                        setHoveredEventId(event.id);
-                                                        setHoveredEventDayKey(dateKey);
-                                                    }}
-                                                    onMouseLeave={() => {
-                                                        setHoveredEventId(null);
-                                                        setHoveredEventDayKey(null);
-                                                    }}
-                                                >
-                                                    <EventBlock
-                                                        event={event}
-                                                        isSelectedSite={event.isFromSelectedSite}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (onEventClick) {
-                                                                onEventClick(event);
-                                                            }
-                                                        }}
-                                                        isHovered={isHovered}
-                                                    />
-                                                </motion.div>
-                                            );
-                                        })}
+                                                    isHovered={false}
+                                                />
+                                            </Box>
+                                        ))}
                                         </Box>
                                     </>
                                 )}

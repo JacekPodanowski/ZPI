@@ -34,9 +34,9 @@ import {
     Delete as DeleteIcon,
     Person as PersonIcon,
     ZoomIn as ZoomInIcon,
-    ZoomOut as ZoomOutIcon,
-    CleaningServices as MopIcon
+    ZoomOut as ZoomOutIcon
 } from '@mui/icons-material';
+import { BiSolidEraser  } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 import PropTypes from 'prop-types';
@@ -332,44 +332,45 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                     boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 6px rgba(0,0,0,0.1)',
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'visible',
+                    overflow: 'hidden',
                     position: 'relative'
                 }}
             >
-                {/* Time in top-right corner */}
-                <Typography
-                    variant="caption"
-                    sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '10px',
-                        fontWeight: 500,
-                        backgroundColor: 'rgba(0, 0, 0, 0.15)',
-                        px: 0.5,
-                        py: 0.25,
-                        borderRadius: 0.5,
-                        lineHeight: 1.2
-                    }}
-                >
-                    {event.start_time} - {event.end_time}
-                </Typography>
-                
-                {/* Title */}
-                <Typography
-                    variant="subtitle2"
-                    sx={{
-                        fontWeight: 600,
-                        color: '#fff',
-                        fontSize: '13px',
-                        mb: 0.5,
-                        pr: 7 // Add padding to avoid overlap with time
-                    }}
-                >
-                    {event.title}
-                </Typography>
-                {event.bookings && event.bookings.length > 0 ? (
+                {/* Title and Capacity in same line */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: event.bookings && event.bookings.length > 0 ? 0.5 : 0 }}>
+                    <Typography
+                        variant="subtitle2"
+                        sx={{
+                            fontWeight: 600,
+                            color: '#fff',
+                            fontSize: {
+                                xs: 'clamp(9px, 1.8vh, 13px)'
+                            },
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            lineHeight: 1.2,
+                            flex: 1
+                        }}
+                    >
+                        {event.title}
+                    </Typography>
+                    <Typography
+                        variant="subtitle2"
+                        sx={{
+                            fontWeight: 600,
+                            color: 'rgba(255, 255, 255, 0.9)',
+                            fontSize: {
+                                xs: 'clamp(9px, 1.8vh, 13px)'
+                            },
+                            lineHeight: 1.2,
+                            flexShrink: 0
+                        }}
+                    >
+                        {event.bookings?.length || 0}/{event.max_capacity || event.capacity || 1}
+                    </Typography>
+                </Box>
+                {event.bookings && event.bookings.length > 0 && (
                     <Box sx={{ 
                         mt: 0.5, 
                         display: 'flex', 
@@ -423,19 +424,6 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                             />
                         ))}
                     </Box>
-                ) : (
-                    <Chip
-                        size="small"
-                        label="Wolne"
-                        sx={{
-                            mt: 0.5,
-                            height: 18,
-                            fontSize: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                            color: '#fff',
-                            opacity: 0.7
-                        }}
-                    />
                 )}
             </Box>
         </motion.div>
@@ -1577,7 +1565,7 @@ const DayDetailsModal = ({
                                             }
                                         }}
                                     >
-                                        <MopIcon sx={{ transform: 'rotate(15deg)' }} />
+                                        <BiSolidEraser />
                                     </IconButton>
                                 </Tooltip>
                                 <Tooltip title={isZoomedTimeline ? "Pokaż pełną oś czasu" : "Przybliż do wydarzeń"}>
