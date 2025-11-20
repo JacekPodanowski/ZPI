@@ -1203,7 +1203,8 @@ const DayDetailsModal = ({
                             color: isEvent ? 'rgb(146, 0, 32)' : 'rgb(76, 175, 80)',
                             mb: 0.5,
                             letterSpacing: '-0.5px',
-                            textAlign: 'left'
+                            textAlign: 'left',
+                            fontStyle: 'italic'
                         }}
                     >
                         {isEvent ? 'Wydarzenie' : 'Dostępność'}
@@ -1382,127 +1383,6 @@ const DayDetailsModal = ({
                                     />
                                 )}
                             </Box>
-
-                            <Box>
-                                <Tooltip 
-                                    title="Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie."
-                                    placement="top"
-                                    arrow
-                                >
-                                    <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={formData.showHost}
-                                                    onChange={(e) => setFormData({ ...formData, showHost: e.target.checked })}
-                                                    size="small"
-                                                />
-                                            }
-                                            label={
-                                                <Typography variant="body2" fontWeight={600}>
-                                                    Pokaż prowadzącego
-                                                </Typography>
-                                            }
-                                        />
-                                </Tooltip>
-                                    
-                                    {formData.showHost && (
-                                        <>
-                                            {rosterLoading && (
-                                                <Chip
-                                                    label="Ładuję listę zespołu..."
-                                                    size="small"
-                                                    sx={{ alignSelf: 'flex-start', mb: 1 }}
-                                                />
-                                            )}
-                                            <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 2 }}>
-                                                <InputLabel sx={{ fontWeight: 600 }}>Prowadzący wydarzenie</InputLabel>
-                                                <Select
-                                                    value={assignmentValue}
-                                                    label="Prowadzący wydarzenie"
-                                                    onChange={(e) => handleAssigneeSelection(e.target.value)}
-                                                    renderValue={(value) => {
-                                                        const option = assignmentOptions.find((opt) => opt.key === value);
-                                                        if (!option) return 'Właściciel strony';
-                                                        return (
-                                                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                                                <Avatar
-                                                                    key={`${option.key}-${option.avatar_url || 'no-avatar'}-${option.first_name || ''}-${option.last_name || ''}`}
-                                                                    avatarUrl={option.avatar_url}
-                                                                    user={option}
-                                                                    size={28}
-                                                                />
-                                                                <Typography variant="body2" component="span">
-                                                                    {option.label}
-                                                                </Typography>
-                                                            </Stack>
-                                                        );
-                                                    }}
-                                                >
-                                                    {assignmentOptions.map((option) => (
-                                                        <MenuItem key={option.key} value={option.key}>
-                                                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                                                <Avatar
-                                                                    key={`${option.key}-${option.avatar_url || 'no-avatar'}-${option.first_name || ''}-${option.last_name || ''}`}
-                                                                    avatarUrl={option.avatar_url}
-                                                                    user={option}
-                                                                    size={32}
-                                                                />
-                                                                <Box>
-                                                                    <Typography variant="body2" fontWeight={600}>
-                                                                        {option.label}
-                                                                    </Typography>
-                                                                    <Typography variant="caption" color="text.secondary">
-                                                                        {option.role}
-                                                                    </Typography>
-                                                                </Box>
-                                                            </Stack>
-                                                        </MenuItem>
-                                                    ))}
-                                                    {assignmentOptions.length === 1 && canAssignAnyone && (
-                                                        <MenuItem 
-                                                            value="add_team_member"
-                                                            sx={{ 
-                                                                color: 'primary.main',
-                                                                fontWeight: 600
-                                                            }}
-                                                        >
-                                                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                                                <Avatar
-                                                                    sx={{
-                                                                        width: 32,
-                                                                        height: 32,
-                                                                        bgcolor: 'primary.main',
-                                                                        color: '#fff'
-                                                                    }}
-                                                                >
-                                                                    <AddIcon fontSize="small" />
-                                                                </Avatar>
-                                                                <Typography variant="body2" fontWeight={600} color="primary.main">
-                                                                    Dodaj członka zespołu
-                                                                </Typography>
-                                                            </Stack>
-                                                        </MenuItem>
-                                                    )}
-                                                    {assignmentOptions.length === 0 && (
-                                                        <MenuItem value="owner:auto" disabled>
-                                                            Brak dostępnych prowadzących
-                                                        </MenuItem>
-                                                    )}
-                                                </Select>
-                                            </FormControl>
-                                            {!canAssignAnyone && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                    Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.
-                                                </Typography>
-                                            )}
-                                            {rosterUnavailable && !rosterLoading && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                    Dodaj aktywnych członków zespołu, aby przypisywać wydarzenia do konkretnej osoby.
-                                                </Typography>
-                                            )}
-                                        </>
-                                    )}
-                                </Box>
                         </>
 
                     </>
@@ -1551,6 +1431,130 @@ const DayDetailsModal = ({
                         />
                     </>
                 )}
+
+                {/* Host selection - available for both events and availability */}
+                <Box>
+                    <Tooltip 
+                        title={isEvent 
+                            ? "Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto prowadzi to wydarzenie."
+                            : "Gdy zaznaczone, użytkownicy będą mogli zobaczyć kto jest dostępny w tym terminie."}
+                        placement="top"
+                        arrow
+                    >
+                        <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.showHost}
+                                        onChange={(e) => setFormData({ ...formData, showHost: e.target.checked })}
+                                        size="small"
+                                    />
+                                }
+                                label={
+                                    <Typography variant="body2" fontWeight={600}>
+                                        Pokaż prowadzącego
+                                    </Typography>
+                                }
+                            />
+                    </Tooltip>
+                        
+                        {formData.showHost && (
+                            <>
+                                {rosterLoading && (
+                                    <Chip
+                                        label="Ładuję listę zespołu..."
+                                        size="small"
+                                        sx={{ alignSelf: 'flex-start', mb: 1 }}
+                                    />
+                                )}
+                                <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 2 }}>
+                                    <InputLabel sx={{ fontWeight: 600 }}>{isEvent ? 'Prowadzący wydarzenie' : 'Osoba dostępna'}</InputLabel>
+                                    <Select
+                                        value={assignmentValue}
+                                        label={isEvent ? 'Prowadzący wydarzenie' : 'Osoba dostępna'}
+                                        onChange={(e) => handleAssigneeSelection(e.target.value)}
+                                        renderValue={(value) => {
+                                            const option = assignmentOptions.find((opt) => opt.key === value);
+                                            if (!option) return 'Właściciel strony';
+                                            return (
+                                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                                    <Avatar
+                                                        key={`${option.key}-${option.avatar_url || 'no-avatar'}-${option.first_name || ''}-${option.last_name || ''}`}
+                                                        avatarUrl={option.avatar_url}
+                                                        user={option}
+                                                        size={28}
+                                                    />
+                                                    <Typography variant="body2" component="span">
+                                                        {option.label}
+                                                    </Typography>
+                                                </Stack>
+                                            );
+                                        }}
+                                    >
+                                        {assignmentOptions.map((option) => (
+                                            <MenuItem key={option.key} value={option.key}>
+                                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                                    <Avatar
+                                                        key={`${option.key}-${option.avatar_url || 'no-avatar'}-${option.first_name || ''}-${option.last_name || ''}`}
+                                                        avatarUrl={option.avatar_url}
+                                                        user={option}
+                                                        size={32}
+                                                    />
+                                                    <Box>
+                                                        <Typography variant="body2" fontWeight={600}>
+                                                            {option.label}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {option.role}
+                                                        </Typography>
+                                                    </Box>
+                                                </Stack>
+                                            </MenuItem>
+                                        ))}
+                                        {assignmentOptions.length === 1 && canAssignAnyone && (
+                                            <MenuItem 
+                                                value="add_team_member"
+                                                sx={{ 
+                                                    color: 'primary.main',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                                    <Avatar
+                                                        sx={{
+                                                            width: 32,
+                                                            height: 32,
+                                                            bgcolor: 'primary.main',
+                                                            color: '#fff'
+                                                        }}
+                                                    >
+                                                        <AddIcon fontSize="small" />
+                                                    </Avatar>
+                                                    <Typography variant="body2" fontWeight={600} color="primary.main">
+                                                        Dodaj członka zespołu
+                                                    </Typography>
+                                                </Stack>
+                                            </MenuItem>
+                                        )}
+                                        {assignmentOptions.length === 0 && (
+                                            <MenuItem value="owner:auto" disabled>
+                                                Brak dostępnych prowadzących
+                                            </MenuItem>
+                                        )}
+                                    </Select>
+                                </FormControl>
+                                {!canAssignAnyone && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                        Twoja rola nie pozwala na zmianę prowadzącego – wydarzenia przypiszemy automatycznie.
+                                    </Typography>
+                                )}
+                                {rosterUnavailable && !rosterLoading && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                        Dodaj aktywnych członków zespołu, aby przypisywać wydarzenia do konkretnej osoby.
+                                    </Typography>
+                                )}
+                            </>
+                        )}
+                    </Box>
                 </Box>
 
                 {/* Participants list at the bottom */}
@@ -1812,73 +1816,141 @@ const DayDetailsModal = ({
                             exit={{ opacity: 0, scale: 1.1 }}
                             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                         >
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 2,
-                                    mt: 4,
-                                    alignItems: 'center'
-                                }}
-                            >
-                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
-                                    Jak chcesz to zaplanować?
-                                </Typography>
-                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ width: '100%', maxWidth: 600 }}>
-                                    <Box
-                                        onClick={() => handleCreateChoice('event')}
-                                        sx={{
-                                            flex: 1,
-                                            p: 4,
-                                            border: '2px solid',
-                                            borderColor: 'primary.main',
-                                            borderRadius: 3,
-                                            cursor: 'pointer',
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                {/* Question header */}
+                                <Box sx={{ px: 2, pt: 2 }}>
+                                    <Typography 
+                                        variant="h5" 
+                                        sx={{ 
+                                            fontWeight: 600,
+                                            color: theme.palette.text.primary,
                                             textAlign: 'center',
-                                            transition: 'all 200ms',
-                                            '&:hover': {
-                                                backgroundColor: 'rgba(146, 0, 32, 0.05)',
-                                                transform: 'translateY(-4px)',
-                                                boxShadow: '0 8px 20px rgba(146, 0, 32, 0.2)'
-                                            }
+                                            mb: 3
                                         }}
                                     >
-                                        <CalendarIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                                            📅 Konkretne spotkanie
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                            Ustaw konkretną datę i czas spotkania
-                                        </Typography>
-                                    </Box>
+                                        Jak chcesz to zaplanować?
+                                    </Typography>
+                                </Box>
 
+                                {/* Dostępność - with graphic intro */}
+                                <Box
+                                    onClick={() => handleCreateChoice('availability')}
+                                    sx={{
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        borderRadius: 2,
+                                        overflow: 'hidden',
+                                        transition: 'all 200ms',
+                                        minHeight: '180px',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 8px 20px rgba(76, 175, 80, 0.2)'
+                                        }
+                                    }}
+                                >
+                                    {/* Gradient background */}
                                     <Box
-                                        onClick={() => handleCreateChoice('availability')}
                                         sx={{
-                                            flex: 1,
-                                            p: 4,
-                                            border: '2px solid',
-                                            borderColor: 'success.main',
-                                            borderRadius: 3,
-                                            cursor: 'pointer',
-                                            textAlign: 'center',
-                                            transition: 'all 200ms',
-                                            '&:hover': {
-                                                backgroundColor: 'rgba(76, 175, 80, 0.05)',
-                                                transform: 'translateY(-4px)',
-                                                boxShadow: '0 8px 20px rgba(76, 175, 80, 0.2)'
-                                            }
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '100%',
+                                            background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.05) 100%)',
+                                            zIndex: 0
                                         }}
-                                    >
-                                        <TimeIcon sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
-                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                                            🕐 Godziny dostępności
+                                    />
+                                    
+                                    {/* Content */}
+                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                                        <Typography
+                                            sx={{
+                                                fontFamily: 'Montserrat, sans-serif',
+                                                fontSize: '32px',
+                                                fontWeight: 700,
+                                                color: 'rgb(76, 175, 80)',
+                                                mb: 1,
+                                                letterSpacing: '-0.5px',
+                                                textAlign: 'left',
+                                                fontStyle: 'italic'
+                                            }}
+                                        >
+                                            Dostępność
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                            Pozwól klientom rezerwować w tym czasie
+                                        <Typography
+                                            variant="body1"
+                                            sx={{
+                                                color: theme.palette.text.secondary,
+                                                lineHeight: 1.6,
+                                                textAlign: 'left',
+                                                fontSize: '15px'
+                                            }}
+                                        >
+                                            Określ przedział czasu, w którym klienci mogą samodzielnie zarezerwować spotkanie. 
+                                            Idealne rozwiązanie gdy chcesz dać klientom swobodę wyboru godziny w dostępnym przedziale czasowym.
                                         </Typography>
                                     </Box>
-                                </Stack>
+                                </Box>
+
+                                {/* Wydarzenie - with graphic intro */}
+                                <Box
+                                    onClick={() => handleCreateChoice('event')}
+                                    sx={{
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        borderRadius: 2,
+                                        overflow: 'hidden',
+                                        transition: 'all 200ms',
+                                        minHeight: '180px',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 8px 20px rgba(146, 0, 32, 0.2)'
+                                        }
+                                    }}
+                                >
+                                    {/* Gradient background */}
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '100%',
+                                            background: 'linear-gradient(135deg, rgba(146, 0, 32, 0.15) 0%, rgba(146, 0, 32, 0.05) 100%)',
+                                            zIndex: 0
+                                        }}
+                                    />
+                                    
+                                    {/* Content */}
+                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                                        <Typography
+                                            sx={{
+                                                fontFamily: 'Montserrat, sans-serif',
+                                                fontSize: '32px',
+                                                fontWeight: 700,
+                                                color: 'rgb(146, 0, 32)',
+                                                mb: 1,
+                                                letterSpacing: '-0.5px',
+                                                textAlign: 'left',
+                                                fontStyle: 'italic'
+                                            }}
+                                        >
+                                            Wydarzenie
+                                        </Typography>
+                                        <Typography
+                                            variant="body1"
+                                            sx={{
+                                                color: theme.palette.text.secondary,
+                                                lineHeight: 1.6,
+                                                textAlign: 'left',
+                                                fontSize: '15px'
+                                            }}
+                                        >
+                                            Ustaw konkretną datę i czas spotkania z określonym uczestnikiem lub grupą. 
+                                            Możesz wybrać spotkanie indywidualne lub grupowe oraz zaznaczyć prowadzącego.
+                                        </Typography>
+                                    </Box>
+                                </Box>
                             </Box>
                         </motion.div>
                     )}
