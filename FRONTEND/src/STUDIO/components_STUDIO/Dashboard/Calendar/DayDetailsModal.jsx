@@ -36,9 +36,9 @@ import {
     Delete as DeleteIcon,
     Person as PersonIcon,
     ZoomIn as ZoomInIcon,
-    ZoomOut as ZoomOutIcon
+    ZoomOut as ZoomOutIcon,
+    Clear as ClearIcon
 } from '@mui/icons-material';
-import { BiSolidEraser  } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
 import moment from 'moment';
 import PropTypes from 'prop-types';
@@ -1738,7 +1738,7 @@ const DayDetailsModal = ({
                                             }
                                         }}
                                     >
-                                        <BiSolidEraser />
+                                        <ClearIcon />
                                     </IconButton>
                                 </Tooltip>
                                 <Tooltip title={isZoomedTimeline ? "Pokaż pełną oś czasu" : "Przybliż do wydarzeń"}>
