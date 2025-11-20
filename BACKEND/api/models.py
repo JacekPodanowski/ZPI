@@ -302,6 +302,7 @@ class Event(models.Model):
     capacity = models.PositiveIntegerField(default=1)
     event_type = models.CharField(max_length=32, choices=EventType.choices, default=EventType.INDIVIDUAL)
     attendees = models.ManyToManyField(Client, related_name='events', blank=True)
+    show_host = models.BooleanField(default=False, help_text='Whether to display the host/assigned person publicly')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -331,6 +332,25 @@ class AvailabilityBlock(models.Model):
     """
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='availability_blocks')
     creator = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='created_availability_blocks')
+    
+    # Dual assignment: exactly one must be filled (optional for availability blocks)
+    assigned_to_team_member = models.ForeignKey(
+        'TeamMember',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='assigned_availability_blocks',
+        help_text='Team member assigned to this availability block'
+    )
+    assigned_to_owner = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_availability_blocks',
+        help_text='Owner assigned to this availability block'
+    )
+    
     title = models.CharField(max_length=255, default='Dostępny')
     date = models.DateField()
     start_time = models.TimeField()
@@ -347,6 +367,7 @@ class AvailabilityBlock(models.Model):
         default=0,
         help_text='Minimum time between meetings in minutes'
     )
+    show_host = models.BooleanField(default=False, help_text='Whether to display the host/assigned person publicly')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -356,6 +377,15 @@ class AvailabilityBlock(models.Model):
             models.CheckConstraint(
                 check=models.Q(end_time__gt=models.F('start_time')),
                 name='availability_end_after_start'
+            ),
+            # Optional assignment: either both are null, or exactly one is filled
+            models.CheckConstraint(
+                check=(
+                    models.Q(assigned_to_team_member__isnull=True, assigned_to_owner__isnull=True) |
+                    models.Q(assigned_to_team_member__isnull=False, assigned_to_owner__isnull=True) |
+                    models.Q(assigned_to_team_member__isnull=True, assigned_to_owner__isnull=False)
+                ),
+                name='availability_optional_single_assignment'
             ),
         ]
 

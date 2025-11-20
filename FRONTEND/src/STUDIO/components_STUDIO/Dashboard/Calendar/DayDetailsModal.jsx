@@ -466,6 +466,8 @@ const DayDetailsModal = ({
     onClose, 
     onCreateEvent, 
     onCreateAvailability,
+    onUpdateEvent,
+    onUpdateAvailability,
     operatingStartHour = 6,
     operatingEndHour = 22,
     onBookingRemoved,
@@ -832,6 +834,7 @@ const DayDetailsModal = ({
         setEditingItem(block);
         // Get single duration from meeting_length field
         const duration = String(block.meeting_length || 60);
+        const derivedAssigneeType = block.assignment_type || (block.assigned_to_team_member ? 'team_member' : 'owner');
         
         setFormData({
             title: block.title || 'Dostępny',
@@ -844,7 +847,10 @@ const DayDetailsModal = ({
             meetingDuration: duration,
             timeSnapping: String(block.time_snapping || 30),
             bufferTime: String(block.buffer_time || 0),
-            siteId: block.site || selectedSiteId || null
+            siteId: block.site || selectedSiteId || null,
+            assigneeType: derivedAssigneeType,
+            assigneeId: derivedAssigneeType === 'team_member' ? block.assigned_to_team_member : null,
+            showHost: block.show_host ?? false
         });
         setView('editAvailability');
     };
@@ -939,6 +945,33 @@ const DayDetailsModal = ({
         setBookingModalOpen(false);
     }, [editingItem, onBookingRemoved, selectedBooking, setSelectedBooking, setBookingModalOpen]);
 
+    const handleDeleteItem = async () => {
+        const isEvent = view === 'editEvent';
+        const itemType = isEvent ? 'wydarzenie' : 'dostępność';
+        
+        if (!window.confirm(`Czy na pewno chcesz usunąć to ${itemType}?`)) {
+            return;
+        }
+
+        try {
+            if (isEvent) {
+                await eventService.deleteEvent(editingItem.id);
+                addToast('Wydarzenie zostało usunięte', { variant: 'success' });
+            } else {
+                await eventService.deleteAvailabilityBlock(editingItem.id);
+                addToast('Dostępność została usunięta', { variant: 'success' });
+            }
+            
+            if (onDataRefresh) {
+                await onDataRefresh();
+            }
+            handleClose();
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            addToast(`Nie udało się usunąć ${itemType}`, { variant: 'error' });
+        }
+    };
+
     const handleSubmit = () => {
         const { assigneeType, assigneeId, meetingDuration, ...restFormData } = formData;
         
@@ -963,18 +996,55 @@ const DayDetailsModal = ({
                 date: dateKey,
                 assignee: assigneePayload
             });
+        } else if (view === 'editEvent') {
+            if (!canCreateEvents) {
+                addToast('Nie masz uprawnień do edycji wydarzeń na tej stronie.', { variant: 'warning' });
+                return;
+            }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
+            onUpdateEvent?.({
+                id: editingItem.id,
+                ...restFormData,
+                siteId: targetSiteId,
+                date: dateKey,
+                assignee: assigneePayload
+            });
         } else if (view === 'createAvailability') {
             if (!canManageAvailability) {
                 addToast('Nie masz uprawnień do zarządzania dostępnością zespołu.', { variant: 'warning' });
                 return;
             }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
             onCreateAvailability?.({
                 ...restFormData,
                 meeting_length: parseInt(meetingDuration) || 60,
                 time_snapping: parseInt(restFormData.timeSnapping) || 30,
                 buffer_time: parseInt(restFormData.bufferTime) || 0,
                 siteId: targetSiteId,
-                date: dateKey
+                date: dateKey,
+                assignee: assigneePayload
+            });
+        } else if (view === 'editAvailability') {
+            if (!canManageAvailability) {
+                addToast('Nie masz uprawnień do edycji dostępności zespołu.', { variant: 'warning' });
+                return;
+            }
+            const assigneePayload = assigneeType === 'team_member'
+                ? { type: 'team_member', id: assigneeId }
+                : { type: 'owner', id: ownerIdForSite };
+            onUpdateAvailability?.({
+                id: editingItem.id,
+                ...restFormData,
+                meeting_length: parseInt(meetingDuration) || 60,
+                time_snapping: parseInt(restFormData.timeSnapping) || 30,
+                buffer_time: parseInt(restFormData.bufferTime) || 0,
+                siteId: targetSiteId,
+                date: dateKey,
+                assignee: assigneePayload
             });
         }
         
@@ -1207,7 +1277,9 @@ const DayDetailsModal = ({
                             fontStyle: 'italic'
                         }}
                     >
-                        {isEvent ? 'Wydarzenie' : 'Dostępność'}
+                        {isEvent 
+                            ? (isEditing ? 'Wydarzenie' : 'Nowe Wydarzenie')
+                            : (isEditing ? 'Dostępność' : 'Nowa Dostępność')}
                     </Typography>
                     <Typography
                         variant="body2"
@@ -1228,7 +1300,7 @@ const DayDetailsModal = ({
                 </Box>
 
                 {/* Form fields */}
-                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2.5, px: 2 }}>
+                <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 2.25, px: 2 }}>
                     {isEvent && !canCreateEvents && (
                         <Alert severity="warning">
                             Nie masz uprawnień do tworzenia wydarzeń na tej stronie. Poproś właściciela o rozszerzenie roli lub wybierz inną stronę.
@@ -1390,45 +1462,68 @@ const DayDetailsModal = ({
 
                 {!isEvent && (
                     <>
-                        <FormControl fullWidth sx={{ mb: 2 }}>
-                            <InputLabel sx={{ fontWeight: 600 }}>Długość spotkania</InputLabel>
-                            <Select
-                                value={formData.meetingDuration || '60'}
-                                label="Długość spotkania"
-                                onChange={(e) => setFormData({ ...formData, meetingDuration: e.target.value })}
-                            >
-                                <MenuItem value="30">30 minut</MenuItem>
-                                <MenuItem value="45">45 minut</MenuItem>
-                                <MenuItem value="60">1 godzina</MenuItem>
-                                <MenuItem value="90">1,5 godziny</MenuItem>
-                                <MenuItem value="120">2 godziny</MenuItem>
-                            </Select>
-                        </FormControl>
+                        <Box>
+                            <FormControl fullWidth>
+                                <InputLabel sx={{ fontWeight: 600 }}>Długość spotkania</InputLabel>
+                                <Select
+                                    value={formData.meetingDuration || '60'}
+                                    label="Długość spotkania"
+                                    onChange={(e) => setFormData({ ...formData, meetingDuration: e.target.value })}
+                                >
+                                    <MenuItem value="30">30 minut</MenuItem>
+                                    <MenuItem value="45">45 minut</MenuItem>
+                                    <MenuItem value="60">1 godzina</MenuItem>
+                                    <MenuItem value="90">1,5 godziny</MenuItem>
+                                    <MenuItem value="120">2 godziny</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
 
-                        <FormControl fullWidth>
-                            <InputLabel sx={{ fontWeight: 600 }}>Spotkania mogą zaczynać się co</InputLabel>
-                            <Select
-                                value={formData.timeSnapping}
-                                label="Spotkania mogą zaczynać się co"
-                                onChange={(e) => setFormData({ ...formData, timeSnapping: e.target.value })}
-                            >
-                                <MenuItem value="15">15 minut</MenuItem>
-                                <MenuItem value="30">30 minut</MenuItem>
-                                <MenuItem value="60">60 minut</MenuItem>
-                                <MenuItem value="0">Dowolnie</MenuItem>
-                            </Select>
-                        </FormControl>
+                        <Box>
+                            <FormControl fullWidth>
+                                <InputLabel sx={{ fontWeight: 600 }}>Spotkania mogą zaczynać się co</InputLabel>
+                                <Select
+                                    value={formData.timeSnapping}
+                                    label="Spotkania mogą zaczynać się co"
+                                    onChange={(e) => setFormData({ ...formData, timeSnapping: e.target.value })}
+                                >
+                                    <MenuItem value="15">15 minut</MenuItem>
+                                    <MenuItem value="30">30 minut</MenuItem>
+                                    <MenuItem value="60">60 minut</MenuItem>
+                                    <MenuItem value="0">Dowolnie</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
 
-                        <TextField
-                            fullWidth
-                            type="number"
-                            label="Przerwa między spotkaniami (min)"
-                            InputLabelProps={{ sx: { fontWeight: 600 } }}
-                            value={formData.bufferTime}
-                            onChange={(e) => setFormData({ ...formData, bufferTime: e.target.value })}
-                            inputProps={{ min: 0 }}
-                            helperText="Minimalny czas między spotkaniami"
-                        />
+                        <Box sx={{ position: 'relative', mb: -1.5 }}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Minimalna przerwa między spotkaniami"
+                                InputLabelProps={{ sx: { fontWeight: 600 } }}
+                                value={formData.bufferTime}
+                                onChange={(e) => setFormData({ ...formData, bufferTime: e.target.value })}
+                                inputProps={{ min: 0 }}
+                                size="small"
+                            />
+                            {formData.bufferTime && (
+                                <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: `calc(14px + ${String(formData.bufferTime).length * 8.5}px + 4px)`,
+                                        transform: 'translateY(-50%)',
+                                        color: 'text.primary',
+                                        pointerEvents: 'none',
+                                        fontSize: '16px',
+                                        fontFamily: 'inherit'
+                                    }}
+                                >
+                                    min
+                                </Typography>
+                            )}
+                        </Box>
                     </>
                 )}
 
@@ -1466,11 +1561,11 @@ const DayDetailsModal = ({
                                         sx={{ alignSelf: 'flex-start', mb: 1 }}
                                     />
                                 )}
-                                <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 2 }}>
-                                    <InputLabel sx={{ fontWeight: 600 }}>{isEvent ? 'Prowadzący wydarzenie' : 'Osoba dostępna'}</InputLabel>
+                                <FormControl fullWidth disabled={disableAssignmentSelect} size="small" sx={{ mt: 0.5 }}>
+                                    <InputLabel sx={{ fontWeight: 600 }}>{isEvent ? 'Prowadzący wydarzenie' : 'Prowadzący wydarzenia'}</InputLabel>
                                     <Select
                                         value={assignmentValue}
-                                        label={isEvent ? 'Prowadzący wydarzenie' : 'Osoba dostępna'}
+                                        label={isEvent ? 'Prowadzący wydarzenie' : 'Prowadzący wydarzenia'}
                                         onChange={(e) => handleAssigneeSelection(e.target.value)}
                                         renderValue={(value) => {
                                             const option = assignmentOptions.find((opt) => opt.key === value);
@@ -1483,7 +1578,7 @@ const DayDetailsModal = ({
                                                         user={option}
                                                         size={28}
                                                     />
-                                                    <Typography variant="body2" component="span">
+                                                    <Typography variant="body2" component="span" sx={{ fontFamily: 'inherit', fontSize: '14px' }}>
                                                         {option.label}
                                                     </Typography>
                                                 </Stack>
@@ -1500,10 +1595,10 @@ const DayDetailsModal = ({
                                                         size={32}
                                                     />
                                                     <Box>
-                                                        <Typography variant="body2" fontWeight={600}>
+                                                        <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'inherit', fontSize: '14px' }}>
                                                             {option.label}
                                                         </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'inherit', fontSize: '12px' }}>
                                                             {option.role}
                                                         </Typography>
                                                     </Box>
@@ -1698,8 +1793,8 @@ const DayDetailsModal = ({
             }}
         >
             <DialogTitle sx={{ pb: 1, position: 'relative', zIndex: 1 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                    <Box sx={{ mt: 0.5 }}>
                         <Typography variant="h6" sx={{ fontWeight: 600, mb: 0, mt: 0 }}>
                             {dateFormatted}
                         </Typography>
@@ -1708,6 +1803,23 @@ const DayDetailsModal = ({
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
+                        {(view === 'editEvent' || view === 'editAvailability') && (
+                            <Tooltip title={view === 'editEvent' ? "Usuń wydarzenie" : "Usuń dostępność"}>
+                                <IconButton
+                                    onClick={handleDeleteItem}
+                                    sx={{
+                                        color: 'error.main',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(211, 47, 47, 0.08)',
+                                            transform: 'scale(1.1)'
+                                        }
+                                    }}
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Tooltip>
+                        )}
                         {view === 'timeline' && (
                             <>
                                 <Tooltip title="Usuń wszystkie wydarzenia z tego dnia">
@@ -1832,7 +1944,7 @@ const DayDetailsModal = ({
                                     </Typography>
                                 </Box>
 
-                                {/* Dostępność - with graphic intro */}
+                                {/* Dostępność - with graphic intro and visualization */}
                                 <Box
                                     onClick={() => handleCreateChoice('availability')}
                                     sx={{
@@ -1841,7 +1953,8 @@ const DayDetailsModal = ({
                                         borderRadius: 2,
                                         overflow: 'hidden',
                                         transition: 'all 200ms',
-                                        minHeight: '180px',
+                                        minHeight: '220px',
+                                        display: 'flex',
                                         '&:hover': {
                                             transform: 'translateY(-2px)',
                                             boxShadow: '0 8px 20px rgba(76, 175, 80, 0.2)'
@@ -1861,15 +1974,15 @@ const DayDetailsModal = ({
                                         }}
                                     />
                                     
-                                    {/* Content */}
-                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                                    {/* Content - Left side */}
+                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4, flex: 1 }}>
                                         <Typography
                                             sx={{
                                                 fontFamily: 'Montserrat, sans-serif',
-                                                fontSize: '32px',
+                                                fontSize: '36px',
                                                 fontWeight: 700,
                                                 color: 'rgb(76, 175, 80)',
-                                                mb: 1,
+                                                mb: 1.5,
                                                 letterSpacing: '-0.5px',
                                                 textAlign: 'left',
                                                 fontStyle: 'italic'
@@ -1883,16 +1996,45 @@ const DayDetailsModal = ({
                                                 color: theme.palette.text.secondary,
                                                 lineHeight: 1.6,
                                                 textAlign: 'left',
-                                                fontSize: '15px'
+                                                fontSize: '15px',
+                                                pr: 2
                                             }}
                                         >
                                             Określ przedział czasu, w którym klienci mogą samodzielnie zarezerwować spotkanie. 
                                             Idealne rozwiązanie gdy chcesz dać klientom swobodę wyboru godziny w dostępnym przedziale czasowym.
                                         </Typography>
                                     </Box>
+
+                                    {/* Visualization - Right side */}
+                                    <Box 
+                                        sx={{ 
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            pr: 4,
+                                            py: 4
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: '140px',
+                                                height: '160px',
+                                                border: '3px dashed rgb(76, 175, 80)',
+                                                borderRadius: 2,
+                                                bgcolor: 'rgba(76, 175, 80, 0.08)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                        >
+                                            <ScheduleIcon sx={{ fontSize: 60, color: 'rgb(76, 175, 80)', opacity: 0.6 }} />
+                                        </Box>
+                                    </Box>
                                 </Box>
 
-                                {/* Wydarzenie - with graphic intro */}
+                                {/* Wydarzenie - with graphic intro and visualization */}
                                 <Box
                                     onClick={() => handleCreateChoice('event')}
                                     sx={{
@@ -1901,7 +2043,8 @@ const DayDetailsModal = ({
                                         borderRadius: 2,
                                         overflow: 'hidden',
                                         transition: 'all 200ms',
-                                        minHeight: '180px',
+                                        minHeight: '220px',
+                                        display: 'flex',
                                         '&:hover': {
                                             transform: 'translateY(-2px)',
                                             boxShadow: '0 8px 20px rgba(146, 0, 32, 0.2)'
@@ -1921,15 +2064,15 @@ const DayDetailsModal = ({
                                         }}
                                     />
                                     
-                                    {/* Content */}
-                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4 }}>
+                                    {/* Content - Left side */}
+                                    <Box sx={{ position: 'relative', zIndex: 1, p: 4, flex: 1 }}>
                                         <Typography
                                             sx={{
                                                 fontFamily: 'Montserrat, sans-serif',
-                                                fontSize: '32px',
+                                                fontSize: '36px',
                                                 fontWeight: 700,
                                                 color: 'rgb(146, 0, 32)',
-                                                mb: 1,
+                                                mb: 1.5,
                                                 letterSpacing: '-0.5px',
                                                 textAlign: 'left',
                                                 fontStyle: 'italic'
@@ -1943,12 +2086,53 @@ const DayDetailsModal = ({
                                                 color: theme.palette.text.secondary,
                                                 lineHeight: 1.6,
                                                 textAlign: 'left',
-                                                fontSize: '15px'
+                                                fontSize: '15px',
+                                                pr: 2
                                             }}
                                         >
                                             Ustaw konkretną datę i czas spotkania z określonym uczestnikiem lub grupą. 
                                             Możesz wybrać spotkanie indywidualne lub grupowe oraz zaznaczyć prowadzącego.
                                         </Typography>
+                                    </Box>
+
+                                    {/* Visualization - Right side - 3 red blocks */}
+                                    <Box 
+                                        sx={{ 
+                                            position: 'relative',
+                                            zIndex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            pr: 4,
+                                            py: 4
+                                        }}
+                                    >
+                                        <Stack spacing={1} sx={{ width: '140px' }}>
+                                            <Box
+                                                sx={{
+                                                    height: '45px',
+                                                    bgcolor: 'rgb(146, 0, 32)',
+                                                    borderRadius: 1,
+                                                    opacity: 0.85
+                                                }}
+                                            />
+                                            <Box
+                                                sx={{
+                                                    height: '45px',
+                                                    bgcolor: 'rgb(146, 0, 32)',
+                                                    borderRadius: 1,
+                                                    opacity: 0.85
+                                                }}
+                                            />
+                                            <Box
+                                                sx={{
+                                                    height: '45px',
+                                                    bgcolor: 'rgb(146, 0, 32)',
+                                                    borderRadius: 1,
+                                                    opacity: 0.85
+                                                }}
+                                            />
+                                        </Stack>
                                     </Box>
                                 </Box>
                             </Box>
