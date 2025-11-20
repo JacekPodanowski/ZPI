@@ -182,20 +182,12 @@ const StyleSelectionPage = () => {
 
         const enabledModules = wizardData.modules || [];
         const templateConfig = buildTemplateFromModules(enabledModules, wizardData.name, wizardData.category);
-        templateConfig.modules = enabledModules;
-        templateConfig.category = wizardData.category;
 
         const styleId = styleDefinition.id || DEFAULT_STYLE_ID;
-        const styleSnapshot = composeSiteStyle(styleId);
 
-        templateConfig.styleId = styleId;
-        templateConfig.styleOverrides = {};
-        templateConfig.style = styleSnapshot;
-        delete templateConfig.vibe;
-        delete templateConfig.vibeId;
-        delete templateConfig.theme;
-        delete templateConfig.themeId;
-        delete templateConfig.themeOverrides;
+        // Update the style in the template config
+        templateConfig.site.styleId = styleId;
+        templateConfig.site.styleOverrides = {};
 
         // Complete this stage
         completeStage(WIZARD_STAGES.STYLE, {

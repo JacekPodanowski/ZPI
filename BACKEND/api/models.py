@@ -838,3 +838,69 @@ class TestimonialSummary(models.Model):
     
     def __str__(self):
         return f"Summary for {self.site.name} ({self.total_count} testimonials)"
+
+
+class NewsletterSubscription(models.Model):
+    """Newsletter subscriptions for event notifications per site."""
+    class Frequency(models.TextChoices):
+        DAILY = 'daily', 'Codziennie'
+        WEEKLY = 'weekly', 'Raz w tygodniu'
+        MONTHLY = 'monthly', 'Raz w miesiącu'
+    
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='newsletter_subscriptions')
+    email = models.EmailField()
+    frequency = models.CharField(max_length=20, choices=Frequency.choices, default=Frequency.WEEKLY)
+    is_active = models.BooleanField(default=True)
+    is_confirmed = models.BooleanField(default=False)  # Double opt-in confirmation
+    confirmation_token = models.CharField(max_length=64, unique=True, editable=False, null=True, blank=True)
+    unsubscribe_token = models.CharField(max_length=64, unique=True, editable=False)
+    subscribed_at = models.DateTimeField(default=timezone.now)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    
+    # Analytics tracking
+    emails_sent = models.IntegerField(default=0)
+    emails_opened = models.IntegerField(default=0)
+    emails_clicked = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = [('site', 'email')]
+        indexes = [
+            models.Index(fields=['site', 'is_active']),
+            models.Index(fields=['unsubscribe_token']),
+            models.Index(fields=['confirmation_token']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.unsubscribe_token:
+            self.unsubscribe_token = get_random_string(64)
+        if not self.confirmation_token and not self.is_confirmed:
+            self.confirmation_token = get_random_string(64)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.email} - {self.site.name} ({self.get_frequency_display()})"
+
+
+class NewsletterAnalytics(models.Model):
+    """Track individual newsletter email analytics - opens and clicks."""
+    subscription = models.ForeignKey(NewsletterSubscription, on_delete=models.CASCADE, related_name='analytics')
+    sent_at = models.DateTimeField(auto_now_add=True)
+    opened_at = models.DateTimeField(null=True, blank=True)
+    clicked_at = models.DateTimeField(null=True, blank=True)
+    tracking_token = models.CharField(max_length=64, unique=True, editable=False)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['tracking_token']),
+            models.Index(fields=['subscription', 'sent_at']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.tracking_token:
+            self.tracking_token = get_random_string(64)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Analytics for {self.subscription.email} sent at {self.sent_at}"
+

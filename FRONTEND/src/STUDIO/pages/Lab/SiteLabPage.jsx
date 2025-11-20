@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { fetchSiteById } from '../../../services/siteService';
 import TestimonialsManager from '../../components_STUDIO/Lab/TestimonialsManager';
+import NewsletterStats from '../../components_STUDIO/Lab/NewsletterStats';
 
 const generateSampleSeries = (seed) => {
     const base = Number(String(seed ?? 17).replace(/\D/g, '')) || 17;
@@ -335,6 +336,7 @@ const SiteLabPage = () => {
                 <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)}>
                     <Tab label="Przegląd" />
                     <Tab label="Opinie klientów" />
+                    <Tab label="Newsletter Analytics" />
                 </Tabs>
             </Box>
 
@@ -396,6 +398,10 @@ const SiteLabPage = () => {
 
             {currentTab === 1 && (
                 <TestimonialsManager siteId={siteId} />
+            )}
+
+            {currentTab === 2 && (
+                <NewsletterStats siteId={siteId} />
             )}
         </Box>
     );

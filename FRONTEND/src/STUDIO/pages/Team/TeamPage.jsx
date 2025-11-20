@@ -444,7 +444,7 @@ const TeamPage = () => {
 
                                 {userPermissions.canChangeRoles ? (
                                     <Select
-                                        value={member.permission_role}
+                                        value={member.permission_role || ''}
                                         onChange={(e) => handleRoleChange(member.id, e.target.value)}
                                         size="small"
                                         sx={{ minWidth: 140 }}

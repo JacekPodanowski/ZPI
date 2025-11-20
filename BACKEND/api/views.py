@@ -5157,3 +5157,264 @@ class TestimonialViewSet(viewsets.ModelViewSet):
             'monthly_frequency': monthly_freq,
         })
 
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def newsletter_subscribe(request):
+    """Subscribe to site newsletter with double opt-in."""
+    from .serializers import NewsletterSubscriptionSerializer
+    from .models import NewsletterSubscription, Site
+    
+    serializer = NewsletterSubscriptionSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+    site_identifier = serializer.validated_data['site_identifier']
+    email = serializer.validated_data['email']
+    frequency = serializer.validated_data['frequency']
+    
+    try:
+        site = Site.objects.get(identifier=site_identifier)
+    except Site.DoesNotExist:
+        return Response({'error': 'Strona nie istnieje'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Check if already subscribed
+    existing = NewsletterSubscription.objects.filter(site=site, email=email).first()
+    if existing:
+        if existing.is_confirmed and existing.is_active:
+            return Response(
+                {'error': 'Ten email jest już zapisany na newsletter', 'already_subscribed': True}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        elif not existing.is_confirmed:
+            # Resend confirmation email via Celery
+            from .tasks import send_confirmation_email
+            send_confirmation_email.delay(existing.id)
+            
+            return Response(
+                {'message': 'Wysłaliśmy ponownie link potwierdzający na Twój email', 'resent': True}, 
+                status=status.HTTP_200_OK
+            )
+        else:
+            # Reactivate subscription (was unsubscribed)
+            existing.is_active = True
+            existing.frequency = frequency
+            existing.save()
+            return Response(
+                {'message': 'Subskrypcja została ponownie aktywowana', 'reactivated': True}, 
+                status=status.HTTP_200_OK
+            )
+    
+    # Create new subscription (not confirmed yet)
+    subscription = NewsletterSubscription.objects.create(
+        site=site,
+        email=email,
+        frequency=frequency,
+        is_active=False,  # Will be activated after confirmation
+        is_confirmed=False
+    )
+    
+    # Send confirmation email via Celery
+    from .tasks import send_confirmation_email
+    send_confirmation_email.delay(subscription.id)
+    
+    return Response({
+        'message': 'Sprawdź swoją skrzynkę email i kliknij link potwierdzający!'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def newsletter_unsubscribe(request, token):
+    """Unsubscribe from newsletter using magic token."""
+    from .models import NewsletterSubscription
+    
+    try:
+        subscription = NewsletterSubscription.objects.get(unsubscribe_token=token)
+        subscription.is_active = False
+        subscription.save()
+        return Response({'message': 'Zostałeś wypisany z newslettera'}, status=status.HTTP_200_OK)
+    except NewsletterSubscription.DoesNotExist:
+        return Response({'error': 'Nieprawidłowy link'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def newsletter_confirm(request, token):
+    """Confirm newsletter subscription using confirmation token."""
+    from .models import NewsletterSubscription
+    from django.utils import timezone
+    
+    try:
+        subscription = NewsletterSubscription.objects.get(confirmation_token=token)
+        
+        if subscription.is_confirmed:
+            return Response({'message': 'Subskrypcja już została potwierdzona'}, status=status.HTTP_200_OK)
+        
+        subscription.is_confirmed = True
+        subscription.is_active = True
+        subscription.confirmed_at = timezone.now()
+        subscription.save()
+        
+        # Trigger immediate welcome newsletter send
+        from .tasks import send_welcome_newsletter
+        send_welcome_newsletter.delay(subscription.id)
+        
+        return Response({
+            'message': 'Dziękujemy! Subskrypcja newslettera została potwierdzona.',
+            'site_name': subscription.site.name
+        }, status=status.HTTP_200_OK)
+    except NewsletterSubscription.DoesNotExist:
+        return Response({'error': 'Nieprawidłowy link potwierdzający'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def newsletter_track_open(request, token):
+    """Track newsletter email open using pixel."""
+    from .models import NewsletterAnalytics
+    from django.utils import timezone
+    from django.http import HttpResponse
+    
+    try:
+        analytics = NewsletterAnalytics.objects.get(tracking_token=token)
+        
+        if not analytics.opened_at:
+            analytics.opened_at = timezone.now()
+            analytics.save()
+            
+            # Update subscription stats
+            subscription = analytics.subscription
+            subscription.emails_opened += 1
+            subscription.save()
+        
+        # Return 1x1 transparent pixel
+        pixel = b'\\x47\\x49\\x46\\x38\\x39\\x61\\x01\\x00\\x01\\x00\\x80\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x21\\xF9\\x04\\x01\\x00\\x00\\x00\\x00\\x2C\\x00\\x00\\x00\\x00\\x01\\x00\\x01\\x00\\x00\\x02\\x02\\x44\\x01\\x00\\x3B'
+        return HttpResponse(pixel, content_type='image/gif')
+    except NewsletterAnalytics.DoesNotExist:
+        pixel = b'\\x47\\x49\\x46\\x38\\x39\\x61\\x01\\x00\\x01\\x00\\x80\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x21\\xF9\\x04\\x01\\x00\\x00\\x00\\x00\\x2C\\x00\\x00\\x00\\x00\\x01\\x00\\x01\\x00\\x00\\x02\\x02\\x44\\x01\\x00\\x3B'
+        return HttpResponse(pixel, content_type='image/gif')
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def newsletter_track_click(request, token):
+    """Track newsletter link click and redirect."""
+    from .models import NewsletterAnalytics
+    from django.utils import timezone
+    from django.shortcuts import redirect
+    
+    url = request.GET.get('url', '/')
+    
+    try:
+        analytics = NewsletterAnalytics.objects.get(tracking_token=token)
+        
+        if not analytics.clicked_at:
+            analytics.clicked_at = timezone.now()
+            analytics.save()
+            
+            # Update subscription stats
+            subscription = analytics.subscription
+            subscription.emails_clicked += 1
+            subscription.save()
+    except NewsletterAnalytics.DoesNotExist:
+        pass
+    
+    return redirect(url)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def newsletter_stats(request, site_id):
+    """Get newsletter statistics for a specific site."""
+    from .models import NewsletterSubscription, NewsletterAnalytics, Site
+    from django.db.models import Count, Q, Avg
+    
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response({'error': 'Strona nie istnieje lub nie masz do niej dostępu'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get all subscriptions for this site
+    subscriptions = NewsletterSubscription.objects.filter(site=site)
+    
+    # Calculate stats
+    total_subscribers = subscriptions.count()
+    active_subscribers = subscriptions.filter(is_active=True, is_confirmed=True).count()
+    pending_confirmation = subscriptions.filter(is_confirmed=False).count()
+    
+    # Frequency breakdown
+    frequency_breakdown = {
+        'daily': subscriptions.filter(frequency='daily', is_active=True, is_confirmed=True).count(),
+        'weekly': subscriptions.filter(frequency='weekly', is_active=True, is_confirmed=True).count(),
+        'monthly': subscriptions.filter(frequency='monthly', is_active=True, is_confirmed=True).count(),
+    }
+    
+    # Analytics stats
+    total_sent = sum(sub.emails_sent for sub in subscriptions)
+    total_opened = sum(sub.emails_opened for sub in subscriptions)
+    total_clicked = sum(sub.emails_clicked for sub in subscriptions)
+    
+    # Calculate rates
+    open_rate = (total_opened / total_sent * 100) if total_sent > 0 else 0
+    click_rate = (total_clicked / total_sent * 100) if total_sent > 0 else 0
+    click_to_open_rate = (total_clicked / total_opened * 100) if total_opened > 0 else 0
+    
+    # Get recent analytics (last 30 days)
+    from datetime import timedelta
+    from django.utils import timezone
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    
+    recent_analytics = NewsletterAnalytics.objects.filter(
+        subscription__site=site,
+        sent_at__gte=thirty_days_ago
+    )
+    
+    recent_sent = recent_analytics.count()
+    recent_opened = recent_analytics.filter(opened_at__isnull=False).count()
+    recent_clicked = recent_analytics.filter(clicked_at__isnull=False).count()
+    
+    recent_open_rate = (recent_opened / recent_sent * 100) if recent_sent > 0 else 0
+    recent_click_rate = (recent_clicked / recent_sent * 100) if recent_sent > 0 else 0
+    
+    # Top performers (subscribers with highest engagement)
+    top_subscribers = subscriptions.filter(
+        emails_sent__gt=0
+    ).order_by('-emails_opened', '-emails_clicked')[:5]
+    
+    top_subscribers_data = [{
+        'email': sub.email,
+        'emails_sent': sub.emails_sent,
+        'emails_opened': sub.emails_opened,
+        'emails_clicked': sub.emails_clicked,
+        'open_rate': (sub.emails_opened / sub.emails_sent * 100) if sub.emails_sent > 0 else 0,
+        'click_rate': (sub.emails_clicked / sub.emails_sent * 100) if sub.emails_sent > 0 else 0,
+    } for sub in top_subscribers]
+    
+    return Response({
+        'site_id': site.id,
+        'site_name': site.name,
+        'subscribers': {
+            'total': total_subscribers,
+            'active': active_subscribers,
+            'pending_confirmation': pending_confirmation,
+            'frequency_breakdown': frequency_breakdown,
+        },
+        'all_time': {
+            'emails_sent': total_sent,
+            'emails_opened': total_opened,
+            'emails_clicked': total_clicked,
+            'open_rate': round(open_rate, 2),
+            'click_rate': round(click_rate, 2),
+            'click_to_open_rate': round(click_to_open_rate, 2),
+        },
+        'last_30_days': {
+            'emails_sent': recent_sent,
+            'emails_opened': recent_opened,
+            'emails_clicked': recent_clicked,
+            'open_rate': round(recent_open_rate, 2),
+            'click_rate': round(recent_click_rate, 2),
+        },
+        'top_subscribers': top_subscribers_data,
+    }, status=status.HTTP_200_OK)
+

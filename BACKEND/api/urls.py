@@ -63,6 +63,12 @@ from .views import (
     validate_setup_token,
     setup_account,
     TestimonialViewSet,
+    newsletter_subscribe,
+    newsletter_unsubscribe,
+    newsletter_confirm,
+    newsletter_track_open,
+    newsletter_track_click,
+    newsletter_stats,
 )
 
 
@@ -136,4 +142,11 @@ urlpatterns = [
     # AI Assistant endpoints
     path('ai-task/', AITaskView.as_view(), name='ai-task'),
     path('ai-task/<str:task_id>/poll/', poll_ai_task_result, name='poll-ai-task'),
+    # Newsletter endpoints
+    path('newsletter/subscribe/', newsletter_subscribe, name='newsletter-subscribe'),
+    path('newsletter/unsubscribe/<str:token>/', newsletter_unsubscribe, name='newsletter-unsubscribe'),
+    path('newsletter/confirm/<str:token>/', newsletter_confirm, name='newsletter-confirm'),
+    path('newsletter/track/open/<str:token>/', newsletter_track_open, name='newsletter-track-open'),
+    path('newsletter/track/click/<str:token>/', newsletter_track_click, name='newsletter-track-click'),
+    path('newsletter/stats/<int:site_id>/', newsletter_stats, name='newsletter-stats'),
 ]

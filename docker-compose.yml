@@ -98,6 +98,24 @@ services:
       redis:
         condition: service_healthy
 
+  # --- Serwis Celery Beat (Periodic tasks scheduler) ---
+  celery-beat:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_beat
+    restart: unless-stopped
+    command: celery -A site_project beat --loglevel=info
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      backend-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
 
   # --- Serwis Studio Frontendu (React) ---
   studio-frontend:

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import NewsletterSubscription from '../NewsletterSubscription';
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -17,9 +18,34 @@ const formatDate = (dateString) => {
   }
 };
 
-const ListEvents = ({ content, style }) => {
-  const { title, subtitle, events = [], bgColor, accentColor, textColor, backgroundImage, backgroundOverlayColor } = content;
+const isEventPast = (dateString) => {
+  if (!dateString) return false;
+  try {
+    const eventDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return eventDate < today;
+  } catch (error) {
+    return false;
+  }
+};
+
+const ListEvents = ({ content, style, siteIdentifier }) => {
+  const { 
+    title, 
+    subtitle, 
+    events = [], 
+    showNewsletter = false,
+    bgColor, 
+    accentColor, 
+    textColor, 
+    backgroundImage, 
+    backgroundOverlayColor 
+  } = content;
   const [activeEvent, setActiveEvent] = useState(null);
+
+  // Filter out past events
+  const upcomingEvents = events.filter(event => !isEventPast(event.date));
 
   return (
     <section className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor || style.background }}>
@@ -41,7 +67,7 @@ const ListEvents = ({ content, style }) => {
         )}
 
         <div className="space-y-4">
-          {events.map((event) => (
+          {upcomingEvents.map((event) => (
             <motion.button
               key={event.id}
               onClick={() => setActiveEvent(event)}
@@ -73,10 +99,18 @@ const ListEvents = ({ content, style }) => {
           ))}
         </div>
 
-        {events.length === 0 && (
+        {upcomingEvents.length === 0 && (
           <div className="text-center py-10 text-sm text-black/40">
-            Dodaj wydarzenia w konfiguratorze.
+            Brak nadchodzących wydarzeń.
           </div>
+        )}
+
+        {showNewsletter && (
+          <NewsletterSubscription 
+            siteIdentifier={siteIdentifier}
+            accentColor={accentColor || style.primary}
+            textColor={textColor || style.text}
+          />
         )}
       </div>
 

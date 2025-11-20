@@ -1643,7 +1643,7 @@ const PropertiesPanel = ({ placement = 'right' }) => {
                           {def.d || key}
                         </InputLabel>
                         <Select
-                          value={value || (def.options && def.options[0]?.value)}
+                          value={value ?? (def.options?.[0]?.value ?? '')}
                           label={def.d || key}
                           onChange={(e) => handleContentChange(key, e.target.value)}
                           sx={{
@@ -1652,11 +1652,15 @@ const PropertiesPanel = ({ placement = 'right' }) => {
                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
                           }}
                         >
-                          {(def.options || []).map(option => (
-                            <MenuItem key={option.value} value={option.value}>
-                              {option.label}
-                            </MenuItem>
-                          ))}
+                          {(def.options || []).map(option => {
+                            const optionValue = typeof option === 'string' ? option : option.value;
+                            const optionLabel = typeof option === 'string' ? option : option.label;
+                            return (
+                              <MenuItem key={optionValue} value={optionValue}>
+                                {optionLabel}
+                              </MenuItem>
+                            );
+                          })}
                         </Select>
                       </FormControl>
                     );

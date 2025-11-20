@@ -26,6 +26,7 @@ from .models import (
     DomainOrder,
     Testimonial,
     TestimonialSummary,
+    NewsletterSubscription,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -727,3 +728,24 @@ class TestimonialSummarySerializer(serializers.ModelSerializer):
             'average_rating', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class NewsletterSubscriptionSerializer(serializers.Serializer):
+    """Serializer for newsletter subscription."""
+    
+    site_identifier = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
+    frequency = serializers.ChoiceField(
+        choices=['daily', 'weekly', 'monthly'],
+        default='weekly'
+    )
+    
+    def validate_site_identifier(self, value):
+        """Validate that the site exists."""
+        from .models import Site
+        try:
+            Site.objects.get(identifier=value)
+        except Site.DoesNotExist:
+            raise serializers.ValidationError('Site not found.')
+        return value
+

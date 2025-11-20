@@ -8,6 +8,7 @@ import CancelBookingPage from './SITES/pages/CancelBookingPage';
 import PublicSiteRendererPage from './SITES/pages/PublicSiteRendererPage';
 import SiteListPage from './SITES/pages/SiteListPage';
 import NavigationLayout from './STUDIO/layouts/NavigationLayout';
+import NewsletterConfirmPage from './STUDIO/pages/Newsletter/NewsletterConfirmPage';
 
 const App = () => {
     // Sprawdź tryb routingu ze zmiennej środowiskowej
@@ -20,6 +21,7 @@ const App = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/cancel-booking/:bookingId" element={<CancelBookingPage />} />
+            <Route path="/newsletter/confirm/:token" element={<NewsletterConfirmPage />} />
             <Route path="/studio/*" element={<StudioRoutes />} />
 
             {/* Warunkowa ścieżka dla trybu deweloperskiego */}
