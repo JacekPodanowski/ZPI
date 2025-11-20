@@ -13,75 +13,50 @@ import {
   ListItemIcon,
   ListItemText,
   Alert,
-  Divider
+  Divider,
+  TextField,
+  CircularProgress
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import PaymentIcon from '@mui/icons-material/Payment';
 import useTheme from '../../../theme/useTheme';
+import apiClient from '../../../services/apiClient';
 
 const plans = [
   {
     id: 'free',
     name: 'Free',
-    price: '$0',
-    description: 'Perfect for trying out the platform',
-    color: 'grey',
-    features: [
-      { text: '1 site limit', available: true },
-      { text: '30 days site lifetime', available: true },
-      { text: 'No backups', available: false },
-      { text: 'AI Assistant (30 requests/month)', available: true },
-      { text: 'Basic templates', available: true },
-      { text: 'Community support', available: true },
-      { text: 'Analytics', available: false },
-      { text: 'Custom domain', available: false }
-    ]
+    price: '0 PLN',
+    color: 'grey'
   },
   {
     id: 'pro',
     name: 'PRO',
-    price: '$0',
-    priceNote: '/month',
-    description: 'For professionals',
+    price: '49 PLN',
+    priceNote: '/miesiąc',
     color: 'primary',
     popular: true,
-    features: [
-      { text: '3 sites (unlimited lifetime)', available: true },
-      { text: 'Automatic backups', available: true },
-      { text: 'AI Assistant (300 requests/month)', available: true },
-      { text: 'All templates', available: true },
-      { text: 'Priority support', available: true },
-      { text: 'Advanced analytics', available: true },
-      { text: 'Custom domain', available: true },
-      { text: 'SEO tools', available: true }
-    ]
+    testAmount: 4900
   },
   {
     id: 'pro-plus',
     name: 'PRO+',
-    price: '$0',
-    priceNote: '/month',
-    description: 'For agencies and power users',
+    price: '99 PLN',
+    priceNote: '/miesiąc',
     color: 'primary',
-    features: [
-      { text: '10 sites (unlimited lifetime)', available: true },
-      { text: 'Automatic backups + version history', available: true },
-      { text: 'AI Assistant (1000 requests/month)', available: true },
-      { text: 'All templates + custom templates', available: true },
-      { text: 'Dedicated support', available: true },
-      { text: 'Advanced analytics + exports', available: true },
-      { text: 'Multiple custom domains', available: true },
-      { text: 'Advanced SEO tools', available: true },
-      { text: 'White-label options', available: true },
-      { text: 'API access', available: true }
-    ]
+    testAmount: 9900
   }
 ];
 
 const BillingPage = () => {
   const { colors, muiTheme } = useTheme();
   const [currentPlan, setCurrentPlan] = useState('free');
+  const [testAmount, setTestAmount] = useState('100');
+  const [testDescription, setTestDescription] = useState('Test payment');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const palette = muiTheme?.palette || {};
   const backgroundPalette = palette.background || {};
@@ -96,9 +71,60 @@ const BillingPage = () => {
     || backgroundPalette.default
     || '#f5f5f5';
 
-  const handleChoosePlan = (planId) => {
-    setCurrentPlan(planId);
-    console.log('Plan selected:', planId);
+  const handleChoosePlan = async (planId, amount) => {
+    if (planId === 'free' || !amount) {
+      setCurrentPlan(planId);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await apiClient.post('/payments/create/', {
+        amount: amount,
+        description: `Plan ${plans.find(p => p.id === planId)?.name} - miesięczna subskrypcja`,
+        plan_id: planId
+      });
+      
+      if (response.data.payment_url) {
+        window.location.href = response.data.payment_url;
+      }
+    } catch (err) {
+      console.error('Payment creation error:', err);
+      setError(err.response?.data?.error || 'Błąd podczas tworzenia płatności');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestPayment = async () => {
+    const amountInGrosze = parseInt(testAmount) * 100;
+    
+    if (!testAmount || amountInGrosze <= 0) {
+      setError('Wprowadź poprawną kwotę');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await apiClient.post('/payments/create/', {
+        amount: amountInGrosze,
+        description: testDescription,
+        plan_id: null
+      });
+      
+      if (response.data.payment_url) {
+        window.location.href = response.data.payment_url;
+      }
+    } catch (err) {
+      console.error('Test payment error:', err);
+      setError(err.response?.data?.error || 'Błąd podczas tworzenia płatności testowej');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -118,9 +144,68 @@ const BillingPage = () => {
         Wybierz plan odpowiedni dla Twoich potrzeb
       </Typography>
 
-      <Alert severity="warning" sx={{ mb: 4, borderRadius: '12px', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-        <strong>Tryb deweloperski:</strong> API Płatności nie jest podłączone. Zmiany planów są tylko symulowane.
-      </Alert>
+      {/* Payment Testing Section */}
+      <Card
+        elevation={0}
+        sx={{
+          mb: 4,
+          border: `2px solid ${accentColor}`,
+          borderRadius: '16px',
+          backgroundColor: alpha(accentColor, 0.05)
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <PaymentIcon sx={{ color: accentColor, mr: 1 }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Test Płatności Przelewy24
+            </Typography>
+          </Box>
+          
+          <Typography variant="body2" sx={{ mb: 3, color: colors?.text?.secondary }}>
+            Przetestuj integrację z Przelewy24. Po kliknięciu "Testuj płatność" zostaniesz przekierowany do sandbox Przelewy24.
+          </Typography>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '8px' }}>
+              {error}
+            </Alert>
+          )}
+
+          <Stack spacing={2}>
+            <TextField
+              label="Kwota (PLN)"
+              type="number"
+              value={testAmount}
+              onChange={(e) => setTestAmount(e.target.value)}
+              size="small"
+              sx={{ maxWidth: 200 }}
+            />
+            <TextField
+              label="Opis płatności"
+              value={testDescription}
+              onChange={(e) => setTestDescription(e.target.value)}
+              size="small"
+              fullWidth
+            />
+            <Button
+              variant="contained"
+              onClick={handleTestPayment}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : <PaymentIcon />}
+              sx={{
+                borderRadius: '12px',
+                backgroundColor: accentColor,
+                '&:hover': {
+                  backgroundColor: alpha(accentColor, 0.9)
+                }
+              }}
+            >
+              {loading ? 'Przygotowywanie...' : 'Testuj płatność'}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {/* Current Plan Info */}
       <Box sx={{ mb: 4 }}>
@@ -145,10 +230,9 @@ const BillingPage = () => {
           display: 'grid',
           gridTemplateColumns: {
             xs: '1fr',
-            md: 'repeat(2, 1fr)',
-            lg: 'repeat(3, 1fr)'
+            sm: 'repeat(3, 1fr)'
           },
-          gap: { xs: 2, sm: 2.5, md: 3 }
+          gap: { xs: 2, sm: 2 }
         }}
       >
         {plans.map((plan) => {
@@ -165,18 +249,15 @@ const BillingPage = () => {
               sx={{
                 position: 'relative',
                 border: `2px solid ${isCurrentPlan ? accentColor : borderColor}`,
-                borderRadius: '16px',
+                borderRadius: '12px',
                 backgroundColor: isPrimary
                   ? alpha(accentColor, 0.03)
                   : defaultBackground,
                 transition: 'all 0.3s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
                 '&:hover': {
                   borderColor: accentColor,
-                  transform: 'translateY(-4px)',
-                  boxShadow: `0 12px 24px ${alpha(accentColor, 0.15)}`
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 8px 16px ${alpha(accentColor, 0.1)}`
                 }
               }}
             >
@@ -184,95 +265,65 @@ const BillingPage = () => {
                 <Box
                   sx={{
                     position: 'absolute',
-                    top: -12,
-                    right: 24,
+                    top: -10,
+                    right: 12,
                     backgroundColor: accentColor,
                     color: 'white',
-                    px: 2,
-                    py: 0.5,
-                    borderRadius: '12px',
-                    fontSize: '0.75rem',
+                    px: 1.5,
+                    py: 0.25,
+                    borderRadius: '8px',
+                    fontSize: '0.65rem',
                     fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
+                    textTransform: 'uppercase'
                   }}
                 >
-                  Najpopularniejszy
+                  Popularne
                 </Box>
               )}
-              <CardContent sx={{ p: { xs: 2.5, sm: 3, md: 4 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <Stack spacing={3} sx={{ flex: 1 }}>
-                  {/* Plan Header */}
+              <CardContent sx={{ p: 2.5 }}>
+                <Stack spacing={2}>
                   <Box>
                     <Typography
-                      variant="h4"
+                      variant="h5"
                       sx={{
                         fontWeight: 700,
                         color: isPrimary ? accentColor : 'text.primary',
-                        mb: 0.5,
-                        fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
+                        mb: 1,
+                        fontSize: { xs: '1.5rem', sm: '1.75rem' }
                       }}
                     >
                       {plan.name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {plan.description}
-                    </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                       <Typography
-                        variant="h3"
+                        variant="h6"
                         sx={{
                           fontWeight: 700,
                           color: isPrimary ? accentColor : 'text.primary',
-                          fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
+                          fontSize: { xs: '1.25rem', sm: '1.5rem' }
                         }}
                       >
                         {plan.price}
                       </Typography>
                       {plan.priceNote && (
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                        <Typography variant="caption" color="text.secondary">
                           {plan.priceNote}
                         </Typography>
                       )}
                     </Box>
                   </Box>
 
-                  {/* Features List */}
-                  <List disablePadding sx={{ flex: 1 }}>
-                    {plan.features.map((feature, index) => (
-                      <ListItem key={index} disablePadding sx={{ py: 1 }}>
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                          {feature.available ? (
-                            <CheckIcon sx={{ color: accentColor, fontSize: 20 }} />
-                          ) : (
-                            <CloseIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
-                          )}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={feature.text}
-                          primaryTypographyProps={{
-                            variant: 'body2',
-                            color: feature.available ? 'text.primary' : 'text.disabled',
-                            sx: {
-                              textDecoration: feature.available ? 'none' : 'line-through'
-                            }
-                          }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-
-                  {/* Action Button */}
                   <Button
                     fullWidth
                     variant={isCurrentPlan ? 'outlined' : isPrimary ? 'contained' : 'outlined'}
-                    disabled={isCurrentPlan}
-                    onClick={() => handleChoosePlan(plan.id)}
+                    disabled={isCurrentPlan || loading}
+                    onClick={() => handleChoosePlan(plan.id, plan.testAmount)}
+                    startIcon={loading ? <CircularProgress size={16} /> : null}
                     sx={{
-                      borderRadius: '12px',
-                      py: { xs: 1.25, sm: 1.5 },
+                      borderRadius: '8px',
+                      py: 1,
                       fontWeight: 600,
-                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      fontSize: '0.875rem',
                       ...(isPrimary && !isCurrentPlan && {
                         backgroundColor: accentColor,
                         '&:hover': {
@@ -281,7 +332,7 @@ const BillingPage = () => {
                       })
                     }}
                   >
-                    {isCurrentPlan ? 'Aktualny plan' : `Wybierz ${plan.name}`}
+                    {isCurrentPlan ? 'Aktualny' : `Wybierz`}
                   </Button>
                 </Stack>
               </CardContent>

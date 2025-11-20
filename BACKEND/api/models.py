@@ -904,3 +904,76 @@ class NewsletterAnalytics(models.Model):
     def __str__(self):
         return f"Analytics for {self.subscription.email} sent at {self.sent_at}"
 
+
+class Payment(models.Model):
+    """Stores Przelewy24 payment transactions."""
+    
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        COMPLETED = 'completed', 'Completed'
+        FAILED = 'failed', 'Failed'
+        CANCELLED = 'cancelled', 'Cancelled'
+    
+    user = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        help_text='User who made the payment'
+    )
+    session_id = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text='Unique session ID for this transaction (order ID)'
+    )
+    amount = models.IntegerField(
+        help_text='Amount in grosz (1 PLN = 100 grosz)'
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='PLN',
+        help_text='Currency code (ISO 4217)'
+    )
+    description = models.CharField(
+        max_length=255,
+        help_text='Payment description'
+    )
+    email = models.EmailField(
+        help_text='Customer email'
+    )
+    plan_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Plan ID being purchased (free, pro, pro-plus)'
+    )
+    token = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Payment token from Przelewy24'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        help_text='Current payment status'
+    )
+    p24_order_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Przelewy24 order ID (returned after payment)'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['session_id']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"Payment {self.session_id} - {self.get_status_display()} ({self.amount/100} PLN)"

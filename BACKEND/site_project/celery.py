@@ -17,6 +17,15 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 
+# Configure periodic tasks
+app.conf.beat_schedule = {
+    'send-test-notification-every-15-minutes': {
+        'task': 'api.tasks.send_random_test_notification',
+        'schedule': 900.0,  # 15 minutes in seconds
+    },
+}
+app.conf.timezone = 'UTC'
+
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):

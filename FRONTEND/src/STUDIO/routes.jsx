@@ -9,7 +9,6 @@ import StyleSelectionPage from './pages/NewSite/StyleSelectionPage';
 import NewEditorPage from './pages/Editor/NewEditorPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
-import StudioLayout from './layouts/StudioLayout';
 import NavigationLayout from './layouts/NavigationLayout';
 import SettingsLayout from './layouts/SettingsLayout';
 import ProfilePage from './pages/Settings/ProfilePage';
@@ -20,6 +19,8 @@ import SettingsPage from './pages/Settings/SettingsPage';
 import NotificationsPage from './pages/Settings/NotificationsPage';
 import MailsPage from './pages/Settings/MailsPage';
 import ToastTestPage from './pages/Settings/ToastTestPage';
+import PaymentSuccessPage from './pages/Settings/PaymentSuccessPage';
+import PaymentFailedPage from './pages/Settings/PaymentFailedPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import TeamPage from './pages/Team/TeamPage';
@@ -70,6 +71,7 @@ const StudioApp = () => (
 
     {/* Pages with persistent Navigation - shared NavigationLayout */}
     <Route element={<NavigationLayout />}>
+      <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
       <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
       <Route path="domain-purchase-success" element={<ProtectedRoute><DomainPurchaseSuccessPage /></ProtectedRoute>} />
@@ -84,11 +86,9 @@ const StudioApp = () => (
       <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
     </Route>
 
-
-    {/* LEGACY LAYOUT - USE NavigationLayout for new pages !!! */}
-    <Route element={<StudioLayout />}>
-      <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
-    </Route>
+    {/* Payment success/failed pages - PUBLIC routes */}
+    <Route path="payment/success" element={<PaymentSuccessPage />} />
+    <Route path="payment/failed" element={<PaymentFailedPage />} />
 
     {/* Account settings routes with shared layout */}
     <Route path="account" element={<ProtectedRoute><SettingsLayout /></ProtectedRoute>}>

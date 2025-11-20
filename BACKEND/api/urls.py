@@ -1,5 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .payment_views import (
+    create_payment,
+    payment_webhook,
+    payment_status,
+    payment_history,
+)
 from .views import (
     PlatformUserViewSet,
     SiteViewSet,
@@ -149,4 +155,9 @@ urlpatterns = [
     path('newsletter/track/open/<str:token>/', newsletter_track_open, name='newsletter-track-open'),
     path('newsletter/track/click/<str:token>/', newsletter_track_click, name='newsletter-track-click'),
     path('newsletter/stats/<int:site_id>/', newsletter_stats, name='newsletter-stats'),
+    # Payment endpoints
+    path('payments/create/', create_payment, name='create-payment'),
+    path('payments/webhook/', payment_webhook, name='payment-webhook'),
+    path('payments/status/<str:session_id>/', payment_status, name='payment-status'),
+    path('payments/history/', payment_history, name='payment-history'),
 ]

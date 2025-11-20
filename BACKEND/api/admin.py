@@ -3,7 +3,7 @@ from django.contrib import admin
 from .models import (
 	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, 
     MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
-    Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics
+    Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics, Payment
 )
 
 
@@ -185,3 +185,17 @@ class NewsletterAnalyticsAdmin(admin.ModelAdmin):
 		return obj.clicked_at is not None
 	is_clicked.boolean = True
 	is_clicked.short_description = 'Clicked'
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+	list_display = ('session_id', 'user', 'amount_pln', 'plan_id', 'status', 'created_at')
+	search_fields = ('session_id', 'user__email', 'email', 'p24_order_id')
+	list_filter = ('status', 'plan_id', 'created_at')
+	ordering = ('-created_at',)
+	autocomplete_fields = ('user',)
+	readonly_fields = ('session_id', 'token', 'p24_order_id', 'created_at', 'updated_at')
+	
+	def amount_pln(self, obj):
+		return f"{obj.amount / 100:.2f} PLN"
+	amount_pln.short_description = 'Amount'
