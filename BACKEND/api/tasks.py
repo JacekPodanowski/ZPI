@@ -998,7 +998,7 @@ def send_event_newsletters(self):
                 
                 # Build tracking URLs
                 tracking_pixel_url = f"{settings.BACKEND_URL}/api/v1/newsletter/track/open/{analytics.tracking_token}/"
-                unsubscribe_url = f"{settings.BACKEND_URL}/api/v1/newsletter/unsubscribe/{subscription.unsubscribe_token}/"
+                unsubscribe_url = f"{settings.FRONTEND_URL}/newsletter/unsubscribe/{subscription.unsubscribe_token}"
                 
                 context = {
                     'site_name': subscription.site.name,
@@ -1183,7 +1183,7 @@ def send_welcome_newsletter(self, subscription_id):
         
         # Build tracking URLs
         tracking_pixel_url = f"{settings.BACKEND_URL}/api/v1/newsletter/track/open/{analytics.tracking_token}/"
-        unsubscribe_url = f"{settings.BACKEND_URL}/api/v1/newsletter/unsubscribe/{subscription.unsubscribe_token}/"
+        unsubscribe_url = f"{settings.FRONTEND_URL}/newsletter/unsubscribe/{subscription.unsubscribe_token}"
         
         context = {
             'site_name': subscription.site.name,

@@ -36,6 +36,7 @@ import TermsAdminPage from './pages/Admin/TermsAdminPage';
 import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
 import ForceChangePasswordPage from './pages/Auth/ForceChangePasswordPage';
 import NewsletterConfirmPage from './pages/Newsletter/NewsletterConfirmPage';
+import NewsletterUnsubscribePage from './pages/Newsletter/NewsletterUnsubscribePage';
 
 const StudioApp = () => (
   <Routes>
@@ -53,6 +54,9 @@ const StudioApp = () => (
     
     {/* Newsletter confirmation - PUBLIC route, no auth required */}
     <Route path="newsletter/confirm/:token" element={<NewsletterConfirmPage />} />
+    
+    {/* Newsletter unsubscribe - PUBLIC route, no auth required */}
+    <Route path="newsletter/unsubscribe/:token" element={<NewsletterUnsubscribePage />} />
     
     {/* Accept team invitation - PUBLIC route, no auth required */}
     <Route path="accept-invitation/:token" element={<AcceptInvitationPage />} />
