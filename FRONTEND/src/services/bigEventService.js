@@ -4,7 +4,7 @@ import apiClient from './apiClient';
  * Fetch all big events for the current user's sites
  */
 export const fetchBigEvents = async () => {
-    const response = await apiClient.get('/api/v1/big-events/');
+    const response = await apiClient.get('/big-events/');
     return response.data;
 };
 
@@ -12,7 +12,7 @@ export const fetchBigEvents = async () => {
  * Fetch a single big event by ID
  */
 export const fetchBigEvent = async (eventId) => {
-    const response = await apiClient.get(`/api/v1/big-events/${eventId}/`);
+    const response = await apiClient.get(`/big-events/${eventId}/`);
     return response.data;
 };
 
@@ -20,7 +20,7 @@ export const fetchBigEvent = async (eventId) => {
  * Create a new big event
  */
 export const createBigEvent = async (eventData) => {
-    const response = await apiClient.post('/api/v1/big-events/', eventData);
+    const response = await apiClient.post('/big-events/', eventData);
     return response.data;
 };
 
@@ -28,7 +28,7 @@ export const createBigEvent = async (eventData) => {
  * Update an existing big event
  */
 export const updateBigEvent = async (eventId, eventData) => {
-    const response = await apiClient.patch(`/api/v1/big-events/${eventId}/`, eventData);
+    const response = await apiClient.patch(`/big-events/${eventId}/`, eventData);
     return response.data;
 };
 
@@ -36,7 +36,7 @@ export const updateBigEvent = async (eventId, eventData) => {
  * Delete a big event
  */
 export const deleteBigEvent = async (eventId) => {
-    const response = await apiClient.delete(`/api/v1/big-events/${eventId}/`);
+    const response = await apiClient.delete(`/big-events/${eventId}/`);
     return response.data;
 };
 
@@ -44,7 +44,7 @@ export const deleteBigEvent = async (eventId) => {
  * Publish a big event (optionally send email notifications)
  */
 export const publishBigEvent = async (eventId, sendEmail = false) => {
-    const response = await apiClient.post(`/api/v1/big-events/${eventId}/publish/`, {
+    const response = await apiClient.post(`/big-events/${eventId}/publish/`, {
         send_email: sendEmail
     });
     return response.data;
@@ -54,6 +54,6 @@ export const publishBigEvent = async (eventId, sendEmail = false) => {
  * Unpublish a big event
  */
 export const unpublishBigEvent = async (eventId) => {
-    const response = await apiClient.post(`/api/v1/big-events/${eventId}/unpublish/`);
+    const response = await apiClient.post(`/big-events/${eventId}/unpublish/`);
     return response.data;
 };

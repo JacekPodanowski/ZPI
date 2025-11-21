@@ -8,7 +8,7 @@ import { useToast } from '../../../contexts/ToastContext';
 
 const EventsPage = () => {
     const navigate = useNavigate();
-    const { showToast } = useToast();
+    const showToast = useToast();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -164,7 +164,7 @@ const EventsPage = () => {
                                 fontSize: { xs: '2rem', md: '2.5rem' }
                             }}
                         >
-                            Wydarzenia
+                            Duże wydarzenia
                         </Typography>
                         <Button
                             variant="contained"
