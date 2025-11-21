@@ -3444,51 +3444,30 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     'status': 'invited'
                 })
         else:
-            # User doesn't have account - create account with temporary password
-            import secrets
-            import string
+            # User doesn't have account - just send invitation email with magic link
+            # No need to create PlatformUser account for team members
             
-            # Generate temporary password (12 characters: letters, digits, special chars)
-            alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
-            temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
-            
-            new_user = PlatformUser.objects.create(
-                email=team_member.email,
-                first_name=team_member.first_name or '',
-                last_name=team_member.last_name or '',
-                source_tag=PlatformUser.SourceTag.TEAM_INVITATION,
-                account_type=PlatformUser.AccountType.FREE,
-                is_active=False,  # Account inactive until password is changed
-                is_temporary_password=True,
-                password_changed_at=None,
-            )
-            new_user.set_password(temp_password)
-            new_user.save()
-            
-            # Link team member to new user
+            # Update team member status
             team_member.invitation_status = 'invited'
             team_member.invited_at = timezone.now()
-            team_member.linked_user = new_user
-            team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
+            team_member.save(update_fields=['invitation_status', 'invited_at'])
             
-            # Create magic link for password change (valid for 7 days)
+            # Create magic link for team invitation (valid for 7 days)
             magic_link = MagicLink.objects.create(
-                user=new_user,
-                email=new_user.email,
+                email=team_member.email,
                 token=get_random_string(64),
-                action_type=MagicLink.ActionType.PASSWORD_RESET,
+                action_type=MagicLink.ActionType.TEAM_INVITATION,
                 team_member=team_member,
                 expires_at=timezone.now() + timedelta(days=7)
             )
             
-            # Send invitation email with credentials and setup link
-            setup_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/setup-account/{magic_link.token}"
+            # Send invitation email with setup link
+            setup_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/team/accept/{magic_link.token}"
             context = {
                 'site_name': team_member.site.name,
                 'permission_role': team_member.get_permission_role_display(),
                 'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
-                'email': new_user.email,
-                'temp_password': temp_password,
+                'email': team_member.email,
                 'setup_link': setup_url,
             }
             html_message = render_to_string('emails/team_invitation_new_user.html', context)
@@ -3504,7 +3483,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             )
             
             return Response({
-                'message': 'Account created and registration invitation sent to new user.',
+                'message': 'Invitation sent to new team member.',
                 'status': 'invited'
             })
     
@@ -3536,6 +3515,68 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         
         return Response({
             'message': 'You have left the team.'
+        })
+    
+    @action(detail=True, methods=['post'], url_path='accept')
+    def accept_invitation(self, request, pk=None):
+        """Accept invitation (for pending status)."""
+        team_member = self.get_object()
+        
+        # Validate user email matches
+        if team_member.email.lower() != request.user.email.lower():
+            raise PermissionDenied('This invitation is not for you.')
+        
+        # Validate status is 'pending'
+        if team_member.invitation_status != 'pending':
+            return Response(
+                {'error': 'This invitation cannot be accepted.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Link the account
+        team_member.linked_user = request.user
+        team_member.invitation_status = 'linked'
+        team_member.save(update_fields=['linked_user', 'invitation_status'])
+        
+        # Update site team_size
+        site = team_member.site
+        site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
+        site.save(update_fields=['team_size'])
+        
+        return Response({
+            'message': 'Invitation accepted successfully.',
+            'site_id': team_member.site.id
+        })
+    
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject_invitation(self, request, pk=None):
+        """Reject invitation (for pending status)."""
+        team_member = self.get_object()
+        
+        # Validate user email matches
+        if team_member.email.lower() != request.user.email.lower():
+            raise PermissionDenied('This invitation is not for you.')
+        
+        # Validate status is 'pending'
+        if team_member.invitation_status != 'pending':
+            return Response(
+                {'error': 'This invitation cannot be rejected.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Reject invitation
+        was_linked = team_member.invitation_status == 'linked'
+        team_member.invitation_status = 'rejected'
+        team_member.save(update_fields=['invitation_status'])
+        
+        # Update site team_size if previously linked
+        if was_linked:
+            site = team_member.site
+            site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
+            site.save(update_fields=['team_size'])
+        
+        return Response({
+            'message': 'Invitation rejected.'
         })
 
 
@@ -3654,68 +3695,6 @@ class AttendanceReportView(APIView):
         if host_member:
             return f"{host_member.first_name} {host_member.last_name}".strip()
         return '---'
-    
-    @action(detail=True, methods=['post'], url_path='accept')
-    def accept_invitation(self, request, pk=None):
-        """Accept invitation (for pending status)."""
-        team_member = self.get_object()
-        
-        # Validate user email matches
-        if team_member.email.lower() != request.user.email.lower():
-            raise PermissionDenied('This invitation is not for you.')
-        
-        # Validate status is 'pending'
-        if team_member.invitation_status != 'pending':
-            return Response(
-                {'error': 'This invitation cannot be accepted.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Link the account
-        team_member.linked_user = request.user
-        team_member.invitation_status = 'linked'
-        team_member.save(update_fields=['linked_user', 'invitation_status'])
-        
-        # Update site team_size
-        site = team_member.site
-        site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
-        site.save(update_fields=['team_size'])
-        
-        return Response({
-            'message': 'Invitation accepted successfully.',
-            'site_id': team_member.site.id
-        })
-    
-    @action(detail=True, methods=['post'], url_path='reject')
-    def reject_invitation(self, request, pk=None):
-        """Reject invitation (for pending status)."""
-        team_member = self.get_object()
-        
-        # Validate user email matches
-        if team_member.email.lower() != request.user.email.lower():
-            raise PermissionDenied('This invitation is not for you.')
-        
-        # Validate status is 'pending'
-        if team_member.invitation_status != 'pending':
-            return Response(
-                {'error': 'This invitation cannot be rejected.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Reject invitation
-        was_linked = team_member.invitation_status == 'linked'
-        team_member.invitation_status = 'rejected'
-        team_member.save(update_fields=['invitation_status'])
-        
-        # Update site team_size if previously linked
-        if was_linked:
-            site = team_member.site
-            site.team_size = site.team_members.filter(is_active=True, invitation_status='linked').count() + 1  # +1 for owner
-            site.save(update_fields=['team_size'])
-        
-        return Response({
-            'message': 'Invitation rejected.'
-        })
 
 
 @api_view(['GET'])
