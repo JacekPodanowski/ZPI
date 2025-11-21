@@ -1,9 +1,10 @@
 from django.contrib import admin
 
 from .models import (
-	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, 
-    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
-    Testimonial, TestimonialSummary, Payment
+	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, AttendedSession,
+	MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
+	Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics, Payment,
+	TeamMember
 )
 
 
@@ -49,6 +50,24 @@ class BookingAdmin(admin.ModelAdmin):
 	list_display = ('event', 'site', 'client', 'guest_email', 'created_at')
 	search_fields = ('guest_email', 'guest_name', 'notes')
 	autocomplete_fields = ('site', 'event', 'client')
+
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+	list_display = ('first_name', 'last_name', 'site', 'permission_role', 'invitation_status', 'is_active')
+	list_filter = ('permission_role', 'invitation_status', 'is_active', 'site')
+	search_fields = ('first_name', 'last_name', 'email', 'site__name')
+	autocomplete_fields = ('site', 'linked_user')
+
+
+@admin.register(AttendedSession)
+class AttendedSessionAdmin(admin.ModelAdmin):
+	list_display = ('title', 'site', 'host_type', 'start_time', 'duration_minutes')
+	search_fields = (
+		'title', 'host_user__email', 'host_team_member__first_name', 'host_team_member__last_name'
+	)
+	list_filter = ('host_type', 'site')
+	autocomplete_fields = ('site', 'event', 'host_user', 'host_team_member')
 
 
 @admin.register(Template)
@@ -140,6 +159,51 @@ class TestimonialSummaryAdmin(admin.ModelAdmin):
 	ordering = ('-updated_at',)
 	autocomplete_fields = ('site',)
 	readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(NewsletterSubscription)
+class NewsletterSubscriptionAdmin(admin.ModelAdmin):
+	list_display = ('email', 'site', 'frequency', 'is_active', 'is_confirmed', 'emails_sent', 'emails_opened', 'emails_clicked', 'open_rate', 'click_rate', 'subscribed_at', 'confirmed_at', 'last_sent_at')
+	search_fields = ('email', 'site__name', 'site__identifier')
+	list_filter = ('frequency', 'is_active', 'is_confirmed', 'subscribed_at')
+	ordering = ('-subscribed_at',)
+	autocomplete_fields = ('site',)
+	readonly_fields = ('subscribed_at', 'confirmed_at', 'unsubscribe_token', 'confirmation_token', 'emails_sent', 'emails_opened', 'emails_clicked', 'open_rate', 'click_rate')
+	
+	def open_rate(self, obj):
+		if obj.emails_sent == 0:
+			return "0%"
+		return f"{(obj.emails_opened / obj.emails_sent * 100):.1f}%"
+	open_rate.short_description = 'Open Rate'
+	
+	def click_rate(self, obj):
+		if obj.emails_sent == 0:
+			return "0%"
+		return f"{(obj.emails_clicked / obj.emails_sent * 100):.1f}%"
+	click_rate.short_description = 'Click Rate'
+
+
+@admin.register(NewsletterAnalytics)
+class NewsletterAnalyticsAdmin(admin.ModelAdmin):
+	list_display = ('subscription_email', 'sent_at', 'opened_at', 'clicked_at', 'is_opened', 'is_clicked')
+	search_fields = ('subscription__email', 'subscription__site__name')
+	list_filter = ('sent_at', 'opened_at', 'clicked_at')
+	ordering = ('-sent_at',)
+	readonly_fields = ('tracking_token', 'sent_at', 'opened_at', 'clicked_at')
+	
+	def subscription_email(self, obj):
+		return obj.subscription.email
+	subscription_email.short_description = 'Email'
+	
+	def is_opened(self, obj):
+		return obj.opened_at is not None
+	is_opened.boolean = True
+	is_opened.short_description = 'Opened'
+	
+	def is_clicked(self, obj):
+		return obj.clicked_at is not None
+	is_clicked.boolean = True
+	is_clicked.short_description = 'Clicked'
 
 
 @admin.register(Payment)

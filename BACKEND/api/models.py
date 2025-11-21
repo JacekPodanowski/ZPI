@@ -415,6 +415,143 @@ class Booking(models.Model):
         subject = self.client.email if self.client else self.guest_email or 'Guest'
         return f"Booking for {subject} on event {self.event_id}"
 
+class AttendedSessionManager(models.Manager):
+    def sync_for_site(self, site, until=None) -> int:
+        """Snapshot finished events into attendance table (idempotent)."""
+        if site is None:
+            raise ValueError('site is required')
+
+        until = until or timezone.now()
+        site_obj = site if isinstance(site, Site) else Site.objects.get(pk=site)
+        site_id = site_obj.pk
+
+        existing_event_ids = list(
+            self.filter(site_id=site_id, event__isnull=False)
+            .values_list('event_id', flat=True)
+        )
+
+        events_qs = Event.objects.filter(
+            site_id=site_id,
+            start_time__lte=until
+        ).select_related('assigned_to_team_member', 'assigned_to_owner')
+
+        if existing_event_ids:
+            events_qs = events_qs.exclude(id__in=existing_event_ids)
+
+        snapshots = []
+        for event in events_qs:
+            host_type = AttendedSession.HostType.TEAM_MEMBER
+            host_user = None
+            host_member = event.assigned_to_team_member
+
+            if host_member is None:
+                host_type = AttendedSession.HostType.OWNER
+                host_user = event.assigned_to_owner
+
+            duration_minutes = max(1, int((event.end_time - event.start_time).total_seconds() // 60))
+
+            snapshots.append(
+                AttendedSession(
+                    site_id=site_id,
+                    event=event,
+                    host_type=host_type,
+                    host_user=host_user,
+                    host_team_member=host_member,
+                    title=event.title,
+                    start_time=event.start_time,
+                    end_time=event.end_time,
+                    duration_minutes=duration_minutes,
+                )
+            )
+
+        if snapshots:
+            self.bulk_create(snapshots, ignore_conflicts=True)
+
+        return len(snapshots)
+
+
+class AttendedSession(models.Model):
+    class HostType(models.TextChoices):
+        OWNER = 'owner', 'Owner'
+        TEAM_MEMBER = 'team_member', 'Team Member'
+
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='attended_sessions')
+    event = models.ForeignKey(Event, on_delete=models.SET_NULL, null=True, blank=True, related_name='attended_sessions')
+    host_type = models.CharField(max_length=20, choices=HostType.choices)
+    host_user = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hosted_sessions'
+    )
+    host_team_member = models.ForeignKey(
+        TeamMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hosted_sessions'
+    )
+    title = models.CharField(max_length=255)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField()
+    recorded_at = models.DateTimeField(default=timezone.now)
+    source = models.CharField(max_length=32, default='event_snapshot')
+
+    objects = AttendedSessionManager()
+
+    class Meta:
+        ordering = ['-start_time']
+        indexes = [
+            models.Index(fields=['site', 'host_type']),
+            models.Index(fields=['start_time']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    (
+                        models.Q(host_type='owner') &
+                        models.Q(host_user__isnull=False) &
+                        models.Q(host_team_member__isnull=True)
+                    ) |
+                    (
+                        models.Q(host_type='team_member') &
+                        models.Q(host_team_member__isnull=False) &
+                        models.Q(host_user__isnull=True)
+                    )
+                ),
+                name='attendedsession_host_guard'
+            ),
+            models.CheckConstraint(
+                check=models.Q(duration_minutes__gte=1),
+                name='attendedsession_positive_duration'
+            ),
+            models.UniqueConstraint(
+                fields=['event', 'host_user'],
+                condition=models.Q(
+                    host_type='owner',
+                    event__isnull=False,
+                    host_user__isnull=False
+                ),
+                name='unique_attendance_owner_per_event'
+            ),
+            models.UniqueConstraint(
+                fields=['event', 'host_team_member'],
+                condition=models.Q(
+                    host_type='team_member',
+                    event__isnull=False,
+                    host_team_member__isnull=False
+                ),
+                name='unique_attendance_member_per_event'
+            ),
+        ]
+
+    def __str__(self):
+        host = self.host_user.email if self.host_type == self.HostType.OWNER and self.host_user else (
+            f"{self.host_team_member.first_name} {self.host_team_member.last_name}" if self.host_team_member else 'Unknown'
+        )
+        return f"{self.title} ({host}) @ {self.start_time.isoformat()}"
 
 class MediaAsset(models.Model):
     class MediaType(models.TextChoices):
@@ -838,6 +975,71 @@ class TestimonialSummary(models.Model):
     
     def __str__(self):
         return f"Summary for {self.site.name} ({self.total_count} testimonials)"
+
+
+class NewsletterSubscription(models.Model):
+    """Newsletter subscriptions for event notifications per site."""
+    class Frequency(models.TextChoices):
+        DAILY = 'daily', 'Codziennie'
+        WEEKLY = 'weekly', 'Raz w tygodniu'
+        MONTHLY = 'monthly', 'Raz w miesiącu'
+    
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='newsletter_subscriptions')
+    email = models.EmailField()
+    frequency = models.CharField(max_length=20, choices=Frequency.choices, default=Frequency.WEEKLY)
+    is_active = models.BooleanField(default=True)
+    is_confirmed = models.BooleanField(default=False)  # Double opt-in confirmation
+    confirmation_token = models.CharField(max_length=64, unique=True, editable=False, null=True, blank=True)
+    unsubscribe_token = models.CharField(max_length=64, unique=True, editable=False)
+    subscribed_at = models.DateTimeField(default=timezone.now)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    
+    # Analytics tracking
+    emails_sent = models.IntegerField(default=0)
+    emails_opened = models.IntegerField(default=0)
+    emails_clicked = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = [('site', 'email')]
+        indexes = [
+            models.Index(fields=['site', 'is_active']),
+            models.Index(fields=['unsubscribe_token']),
+            models.Index(fields=['confirmation_token']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.unsubscribe_token:
+            self.unsubscribe_token = get_random_string(64)
+        if not self.confirmation_token and not self.is_confirmed:
+            self.confirmation_token = get_random_string(64)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.email} - {self.site.name} ({self.get_frequency_display()})"
+
+
+class NewsletterAnalytics(models.Model):
+    """Track individual newsletter email analytics - opens and clicks."""
+    subscription = models.ForeignKey(NewsletterSubscription, on_delete=models.CASCADE, related_name='analytics')
+    sent_at = models.DateTimeField(auto_now_add=True)
+    opened_at = models.DateTimeField(null=True, blank=True)
+    clicked_at = models.DateTimeField(null=True, blank=True)
+    tracking_token = models.CharField(max_length=64, unique=True, editable=False)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['tracking_token']),
+            models.Index(fields=['subscription', 'sent_at']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.tracking_token:
+            self.tracking_token = get_random_string(64)
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Analytics for {self.subscription.email} sent at {self.sent_at}"
 
 
 class Payment(models.Model):

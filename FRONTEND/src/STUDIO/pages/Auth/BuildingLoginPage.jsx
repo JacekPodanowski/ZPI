@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { 
@@ -262,6 +262,7 @@ const BuildingLoginPage = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const siteCreationAttemptedRef = useRef(false);
 
     // Validate stage access on mount
     useEffect(() => {
@@ -274,24 +275,28 @@ const BuildingLoginPage = () => {
         }
     }, [navigate]);
 
-    useEffect(() => {
-        // Sprawdź czy użytkownik jest już zalogowany
-        if (user) {
-            handleCreateSiteAfterLogin();
+    const handleCreateSiteAfterLogin = useCallback(async () => {
+        // Prevent duplicate site creation
+        if (siteCreationAttemptedRef.current) {
+            console.log('[BuildingLoginPage] Site creation already attempted, skipping');
+            return;
         }
-    }, [user]);
 
-    const handleCreateSiteAfterLogin = async () => {
         try {
             // Odczytaj zapisane dane z localStorage
             const wizardData = getWizardData();
             
             if (!wizardData || !wizardData.templateConfig) {
-                navigate(getStageRoute(WIZARD_STAGES.CATEGORY));
+                console.log('[BuildingLoginPage] No wizard data or template config, redirecting to category');
+                navigate(getStageRoute(WIZARD_STAGES.CATEGORY), { replace: true });
                 return;
             }
 
+            // Mark that we're attempting to create a site
+            siteCreationAttemptedRef.current = true;
             setIsSubmitting(true);
+
+            console.log('[BuildingLoginPage] Creating site with name:', wizardData.name);
 
             // Utwórz stronę
             const newSite = await createSite({
@@ -299,17 +304,38 @@ const BuildingLoginPage = () => {
                 template_config: wizardData.templateConfig
             });
 
-            // Wyczyść dane wizard flow
+            console.log('[BuildingLoginPage] Site created successfully:', newSite.id);
+
+            // Wyczyść dane wizard flow - CRITICAL to prevent re-creation
             clearWizardData();
 
             // Przekieruj do listy stron
-            navigate('/studio/sites');
+            navigate('/studio/sites', { replace: true });
         } catch (err) {
-            console.error('Failed to create site:', err);
+            console.error('[BuildingLoginPage] Failed to create site:', err);
+            
+            // Check if error is due to duplicate identifier
+            if (err.response?.data?.identifier) {
+                console.log('[BuildingLoginPage] Duplicate site detected, clearing wizard data and redirecting');
+                clearWizardData();
+                navigate('/studio/sites', { replace: true });
+                return;
+            }
+            
             setError('Nie udało się utworzyć strony. Spróbuj ponownie.');
             setIsSubmitting(false);
+            // Reset flag on error to allow retry
+            siteCreationAttemptedRef.current = false;
         }
-    };
+    }, [navigate]);
+
+    useEffect(() => {
+        // Sprawdź czy użytkownik jest już zalogowany
+        if (user && !siteCreationAttemptedRef.current) {
+            console.log('[BuildingLoginPage] User logged in, creating site');
+            handleCreateSiteAfterLogin();
+        }
+    }, [user, handleCreateSiteAfterLogin]);
 
     const handleGoogle = useGoogleLogin({
         onSuccess: async (tokenResponse) => {

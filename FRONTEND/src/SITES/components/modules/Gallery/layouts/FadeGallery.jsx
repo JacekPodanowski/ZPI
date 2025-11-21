@@ -22,6 +22,8 @@ const FadeGallery = ({ content, style }) => {
   const currentItem = images[currentIndex];
   const imgUrlRaw = typeof currentItem === 'string' ? currentItem : currentItem?.url;
   const caption = typeof currentItem === 'object' ? currentItem?.caption : '';
+  const isMockUrl = imgUrlRaw && imgUrlRaw.includes('picsum.photos/seed/');
+  const shouldShowCaption = isMockUrl || (caption && caption.trim());
 
   return (
   <div className={`${style.spacing} px-4`} style={{ backgroundColor: style.background }}>
@@ -36,8 +38,8 @@ const FadeGallery = ({ content, style }) => {
               transition={{ duration: 1 }}
               className="absolute inset-0"
             >
-              {renderMedia(imgUrlRaw, caption || `Slide ${currentIndex + 1}`, 'w-full h-full object-cover')}
-              {caption && (
+              {renderMedia(imgUrlRaw, caption || '', 'w-full h-full object-cover')}
+              {shouldShowCaption && caption && caption.trim() && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-4">
                   <p className="text-center">{caption}</p>
                 </div>

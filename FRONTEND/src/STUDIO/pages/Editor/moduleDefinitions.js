@@ -13,12 +13,12 @@ import {
   Help,
   Group,
   Menu,
-  RequestQuote
+  RequestQuote,
+  Event
 } from '@mui/icons-material';
 import { PUBLIC_CALENDAR_BIG_DEFAULTS } from '../../../SITES/components/modules/Caldenar_Full/defaults';
 import { HERO_DEFAULTS } from '../../../SITES/components/modules/Hero/defaults';
 import { ABOUT_DEFAULTS } from '../../../SITES/components/modules/About/defaults';
-import { BLOG_DEFAULTS } from '../../../SITES/components/modules/Blog/defaults';
 import { BUTTON_DEFAULTS } from '../../../SITES/components/modules/Button/defaults';
 import { CONTACT_DEFAULTS } from '../../../SITES/components/modules/Contact/defaults';
 import { EVENTS_DEFAULTS } from '../../../SITES/components/modules/Events/defaults';
@@ -101,6 +101,16 @@ export const MODULE_DEFINITIONS = {
     category: 'media',
     defaultHeight: 900, // px - large gallery grid
     quickAddOrder: 5
+  },
+  events: {
+    type: 'events',
+    label: 'Events',
+    icon: Event,
+    color: '#9C27B0',
+    description: 'Showcase upcoming workshops, group sessions, and special events with timeline or grid layouts. Includes newsletter subscription.',
+    category: 'content',
+    defaultHeight: 800, // px - events section
+    quickAddOrder: 4
   },
   calendar: {
     type: 'calendar',
@@ -260,7 +270,6 @@ export const getDefaultModuleContent = (moduleType) => {
     services: pickRandom(SERVICES_DEFAULTS, 'cards'),
     team: pickRandom(TEAM_DEFAULTS, 'grid'),
     gallery: pickRandom(GALLERY_DEFAULTS, 'grid'),
-    blog: pickRandom(BLOG_DEFAULTS, 'grid'),
     events: pickRandom(EVENTS_DEFAULTS, 'list'),
     faq: pickRandom(FAQ_DEFAULTS, 'accordion'),
     contact: pickRandom(CONTACT_DEFAULTS, 'centered'),

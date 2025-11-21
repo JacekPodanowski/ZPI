@@ -20,6 +20,7 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() in ['true', '1', 't', 'yes']
 
 # --- Zmienne specyficzne dla aplikacji ---
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 DISCORD_SERVER_URL = os.environ.get("DISCORD_SERVER_URL")
 
 # --- OVHcloud API (for domain management) ---
@@ -353,6 +354,15 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+
+# Celery Beat Schedule (periodic tasks)
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'send-event-newsletters': {
+        'task': 'api.tasks.send_event_newsletters',
+        'schedule': crontab(hour='9', minute='0'),  # Daily at 9:00 AM UTC
+    },
+}
 
 # --- Konfiguracja Django Cache (Redis) ---
 CACHES = {

@@ -408,7 +408,7 @@ const CreatorCalendarApp = () => {
                 return;
             }
 
-            const targetSite = sites.find((site) => site.id === siteId);
+            const targetSite = sites.find((site) => String(site.id) === String(siteId));
             const siteRole = targetSite?.calendarRole ?? 'viewer';
             const permissions = sitePermissions[siteId] || ROLE_PERMISSIONS[siteRole] || ROLE_PERMISSIONS.viewer;
 
@@ -488,7 +488,7 @@ const CreatorCalendarApp = () => {
                 return;
             }
 
-            const targetSite = sites.find((site) => site.id === siteId);
+            const targetSite = sites.find((site) => String(site.id) === String(siteId));
             const siteRole = targetSite?.calendarRole ?? 'viewer';
             const permissions = sitePermissions[siteId] || ROLE_PERMISSIONS[siteRole] || ROLE_PERMISSIONS.viewer;
 
@@ -559,7 +559,7 @@ const CreatorCalendarApp = () => {
                 return;
             }
 
-            const targetSite = sites.find((site) => site.id === siteId);
+            const targetSite = sites.find((site) => String(site.id) === String(siteId));
             const siteRole = targetSite?.calendarRole ?? 'viewer';
             const permissions = sitePermissions[siteId] || ROLE_PERMISSIONS[siteRole] || ROLE_PERMISSIONS.viewer;
 
@@ -626,7 +626,7 @@ const CreatorCalendarApp = () => {
                 return;
             }
 
-            const targetSite = sites.find((site) => site.id === siteId);
+            const targetSite = sites.find((site) => String(site.id) === String(siteId));
             const siteRole = targetSite?.calendarRole ?? 'viewer';
             const permissions = sitePermissions[siteId] || ROLE_PERMISSIONS[siteRole] || ROLE_PERMISSIONS.viewer;
 

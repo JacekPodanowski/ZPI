@@ -4,7 +4,6 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import ArticleIcon from '@mui/icons-material/Article';
 import EmailIcon from '@mui/icons-material/Email';
 
 const BASE_PUBLIC_CALENDAR_MODULE = {
@@ -65,14 +64,6 @@ export const MODULE_DEFINITIONS = {
         enabled: false,
         isAdditional: false
     },
-    blog: {
-        id: 'blog',
-        name: 'Blog',
-        icon: ArticleIcon,
-        description: 'Artykuły i aktualności',
-        enabled: false,
-        isAdditional: false
-    },
     contact: {
         id: 'contact',
         name: 'Formularz kontaktowy',
@@ -93,18 +84,18 @@ export const MODULE_DEFINITIONS = {
 
 // Category to module mapping
 export const CATEGORY_MODULE_CONFIGS = {
-    wellness: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    education: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    creative: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    health: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq'],
-    default: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'blog', 'contact', 'faq']
+    wellness: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'contact', 'faq'],
+    education: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'contact', 'faq'],
+    creative: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'contact', 'faq'],
+    health: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'contact', 'faq'],
+    default: ['publicCalendarBig', 'about', 'services', 'events', 'gallery', 'contact', 'faq']
 };
 
 // Which modules should be ENABLED by default per category
 export const CATEGORY_DEFAULT_ENABLED = {
     wellness: ['publicCalendarBig', 'about', 'services', 'events', 'gallery'],
     education: ['publicCalendarBig', 'about', 'services'],
-    creative: ['publicCalendarBig', 'about', 'services', 'gallery', 'blog'],
+    creative: ['publicCalendarBig', 'about', 'services', 'gallery'],
     health: ['publicCalendarBig', 'about', 'services'],
     default: ['publicCalendarBig', 'about', 'services']
 };

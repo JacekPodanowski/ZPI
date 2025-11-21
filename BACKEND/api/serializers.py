@@ -23,9 +23,11 @@ from .models import (
     TermsOfService,
     EmailTemplate,
     TeamMember,
+    AttendedSession,
     DomainOrder,
     Testimonial,
     TestimonialSummary,
+    NewsletterSubscription,
     Payment,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
@@ -625,6 +627,26 @@ class PublicTeamMemberSerializer(serializers.ModelSerializer):
         return get_avatar_letter(obj.first_name)
 
 
+class AttendedSessionSerializer(serializers.ModelSerializer):
+    """Serializer for attendance report rows."""
+    host_display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AttendedSession
+        fields = [
+            'id', 'title', 'start_time', 'end_time', 'duration_minutes',
+            'event', 'host_type', 'host_display_name'
+        ]
+        read_only_fields = fields
+
+    def get_host_display_name(self, obj):
+        if obj.host_type == AttendedSession.HostType.OWNER and obj.host_user:
+            return obj.host_user.get_full_name() or obj.host_user.email
+        if obj.host_team_member:
+            return f"{obj.host_team_member.first_name} {obj.host_team_member.last_name}".strip()
+        return ''
+
+
 class SiteWithTeamSerializer(serializers.ModelSerializer):
     """Extended Site serializer that includes team member info."""
     owner = PlatformUserSerializer(read_only=True)
@@ -734,6 +756,26 @@ class TestimonialSummarySerializer(serializers.ModelSerializer):
             'average_rating', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class NewsletterSubscriptionSerializer(serializers.Serializer):
+    """Serializer for newsletter subscription."""
+    
+    site_identifier = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
+    frequency = serializers.ChoiceField(
+        choices=['daily', 'weekly', 'monthly'],
+        default='weekly'
+    )
+    
+    def validate_site_identifier(self, value):
+        """Validate that the site exists."""
+        from .models import Site
+        try:
+            Site.objects.get(identifier=value)
+        except Site.DoesNotExist:
+            raise serializers.ValidationError('Site not found.')
+        return value
 
 
 class PaymentSerializer(serializers.ModelSerializer):

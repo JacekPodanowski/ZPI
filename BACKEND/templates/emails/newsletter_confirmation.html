@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potwierdź subskrypcję newslettera</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 40px 40px 30px; text-align: center; background: linear-gradient(135deg, rgba(146,0,32,0.1) 0%, rgba(228,229,218,0.2) 100%); border-radius: 12px 12px 0 0;">
+                            <h1 style="margin: 0; color: rgb(146, 0, 32); font-size: 28px; font-weight: 600;">
+                                ✉️ Potwierdź subskrypcję
+                            </h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 20px; color: rgb(30, 30, 30); font-size: 16px; line-height: 1.6;">
+                                Witaj! 👋
+                            </p>
+                            
+                            <p style="margin: 0 0 20px; color: rgb(30, 30, 30); font-size: 16px; line-height: 1.6;">
+                                Dziękujemy za zapisanie się na newsletter <strong>{{ site_name }}</strong>.
+                            </p>
+                            
+                            <p style="margin: 0 0 20px; color: rgb(30, 30, 30); font-size: 16px; line-height: 1.6;">
+                                Aby potwierdzić swoją subskrypcję i zacząć otrzymywać aktualizacje o wydarzeniach <strong>{{ frequency|lower }}</strong>, kliknij poniższy przycisk:
+                            </p>
+                            
+                            <!-- CTA Button -->
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 30px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ confirmation_url }}" style="display: inline-block; padding: 16px 40px; background-color: rgb(146, 0, 32); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 8px rgba(146,0,32,0.3);">
+                                            Potwierdź subskrypcję
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin: 0 0 20px; color: rgb(70, 70, 68); font-size: 14px; line-height: 1.6;">
+                                Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:
+                            </p>
+                            
+                            <p style="margin: 0 0 20px; padding: 12px; background-color: rgba(228,229,218,0.3); border-radius: 6px; color: rgb(30, 30, 30); font-size: 13px; word-break: break-all;">
+                                {{ confirmation_url }}
+                            </p>
+                            
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(188, 186, 179, 0.3);">
+                                <p style="margin: 0; color: rgb(70, 70, 68); font-size: 14px; line-height: 1.6;">
+                                    <strong>ℹ️ Dlaczego otrzymujesz ten email?</strong><br>
+                                    Ktoś (miejmy nadzieję Ty!) zapisał ten adres email na newsletter strony {{ site_name }}. Jeśli to nie Ty, po prostu zignoruj tę wiadomość.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; text-align: center; background-color: rgba(228,229,218,0.2); border-radius: 0 0 12px 12px;">
+                            <p style="margin: 0; color: rgb(70, 70, 68); font-size: 13px; line-height: 1.6;">
+                                Link potwierdzający jest ważny przez 7 dni.<br>
+                                <strong>{{ site_name }}</strong>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

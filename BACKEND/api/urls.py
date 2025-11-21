@@ -69,6 +69,13 @@ from .views import (
     validate_setup_token,
     setup_account,
     TestimonialViewSet,
+    newsletter_subscribe,
+    newsletter_unsubscribe,
+    newsletter_confirm,
+    newsletter_track_open,
+    newsletter_track_click,
+    newsletter_stats,
+    AttendanceReportView,
 )
 
 
@@ -120,6 +127,7 @@ urlpatterns = [
     path('public-sites/<int:site_id>/bookings/', PublicBookingView.as_view(), name='public_booking'),
     path('public-sites/<int:site_id>/availability/', PublicAvailabilityView.as_view(), name='public_availability'),
     path('public-sites/<int:site_id>/team/', PublicTeamView.as_view(), name='public_team'),
+    path('sites/<int:site_id>/attendance-report/', AttendanceReportView.as_view(), name='attendance-report'),
     # Team invitation endpoints
     path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
     path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),
@@ -142,6 +150,13 @@ urlpatterns = [
     # AI Assistant endpoints
     path('ai-task/', AITaskView.as_view(), name='ai-task'),
     path('ai-task/<str:task_id>/poll/', poll_ai_task_result, name='poll-ai-task'),
+    # Newsletter endpoints
+    path('newsletter/subscribe/', newsletter_subscribe, name='newsletter-subscribe'),
+    path('newsletter/unsubscribe/<str:token>/', newsletter_unsubscribe, name='newsletter-unsubscribe'),
+    path('newsletter/confirm/<str:token>/', newsletter_confirm, name='newsletter-confirm'),
+    path('newsletter/track/open/<str:token>/', newsletter_track_open, name='newsletter-track-open'),
+    path('newsletter/track/click/<str:token>/', newsletter_track_click, name='newsletter-track-click'),
+    path('newsletter/stats/<int:site_id>/', newsletter_stats, name='newsletter-stats'),
     # Payment endpoints
     path('payments/create/', create_payment, name='create-payment'),
     path('payments/webhook/', payment_webhook, name='payment-webhook'),

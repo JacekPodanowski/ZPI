@@ -14,7 +14,7 @@ const fetchPublicSiteConfig = async (identifier) => {
 };
 
 // NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
-const renderModule = (module, style, siteId, activePageKey) => {
+const renderModule = (module, style, siteId, siteIdentifier, activePageKey) => {
   if (module?.enabled === false) return null;
   
   const moduleType = (module.type || module.id || '').toLowerCase();
@@ -37,6 +37,7 @@ const renderModule = (module, style, siteId, activePageKey) => {
         content={content}
         style={style}
         siteId={siteId}
+        siteIdentifier={siteIdentifier}
       />
     );
   } else {
@@ -299,13 +300,13 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
   return (
     <main>
       {/* Renderuj automatyczną nawigację jeśli nie ma zdefiniowanej */}
-      {autoNavigation && renderModule(autoNavigation, style, siteId, activePageKey)}
+      {autoNavigation && renderModule(autoNavigation, style, siteId, siteIdentifier, activePageKey)}
       
       {/* Renderuj globalne moduły (nawigacja, stopka) */}
-      {globalModules.map((module) => renderModule(module, style, siteId, activePageKey))}
+      {globalModules.map((module) => renderModule(module, style, siteId, siteIdentifier, activePageKey))}
       
       {/* Następnie renderuj moduły specyficzne dla strony */}
-      {modulesToRender.map((module) => renderModule(module, style, siteId, activePageKey))}
+      {modulesToRender.map((module) => renderModule(module, style, siteId, siteIdentifier, activePageKey))}
     </main>
   );
 };

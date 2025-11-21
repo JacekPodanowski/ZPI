@@ -1,14 +1,18 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, Tooltip, Button } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon, Edit as EditIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers } from '../../../services/siteService';
+import * as XLSX from 'xlsx';
+import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers, fetchAttendanceReport } from '../../../services/siteService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Avatar from '../../../components/Avatar/Avatar';
 import AddTeamMemberDialog from '../../components_STUDIO/Team/AddTeamMemberDialog';
 import EditTeamMemberDialog from '../../components_STUDIO/Team/EditTeamMemberDialog';
+import AttendanceReportDialog from '../../components_STUDIO/Team/AttendanceReportDialog';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
+
+const REPORT_PREVIEW_LIMIT = 25;
 
 const TeamPage = () => {
     const { siteId } = useParams();
@@ -19,6 +23,18 @@ const TeamPage = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingMember, setEditingMember] = useState(null);
+    const [reportDialog, setReportDialog] = useState({
+        open: false,
+        loading: false,
+        rows: [],
+        total: 0,
+        limit: REPORT_PREVIEW_LIMIT,
+        hostType: null,
+        hostId: null,
+        hostLabel: '',
+        error: null,
+        downloading: null,
+    });
 
     // Calculate current user's role and permissions
     const userPermissions = useMemo(() => {
@@ -64,6 +80,146 @@ const TeamPage = () => {
 
         return { role: null, canEditOwner: false, canEditOthers: false, canChangeRoles: false, canDelete: false, canAdd: false };
     }, [site, currentUser, teamMembers]);
+
+    const canViewOwnerReport = useMemo(() => {
+        if (!site || !currentUser) return false;
+        if (currentUser.is_staff) return true;
+        if (site.owner?.id === currentUser.id) return true;
+        return userPermissions.role === 'manager';
+    }, [site, currentUser, userPermissions]);
+
+    const canViewMemberReport = (member) => {
+        if (!currentUser) return false;
+        if (currentUser.is_staff) return true;
+        if (site?.owner?.id === currentUser.id) return true;
+        if (userPermissions.role === 'manager') return true;
+        return member.linked_user === currentUser.id;
+    };
+
+    const getDisplayName = (entity) => {
+        if (!entity) return '';
+        const fullName = `${entity.first_name || ''} ${entity.last_name || ''}`.trim();
+        return fullName || entity.email || '';
+    };
+
+    const formatDateForExport = (value) => {
+        if (!value) return '-';
+        try {
+            return new Intl.DateTimeFormat('pl-PL', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(new Date(value));
+        } catch (error) {
+            return value;
+        }
+    };
+
+    const sanitizeFileName = (label, extension) => {
+        const base = (label || 'raport').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'raport';
+        const stamp = new Date().toISOString().slice(0, 10);
+        return `${base}-${stamp}.${extension}`;
+    };
+
+    const exportRowsToCsv = (rows, hostLabel) => {
+        const headers = ['Zajęcie', 'Czas trwania (min)', 'Data rozpoczęcia'];
+        const csvLines = [headers.join(';')];
+
+        rows.forEach((row) => {
+            const values = [
+                (row.title || '').replace(/"/g, '""'),
+                row.duration_minutes,
+                formatDateForExport(row.start_time)
+            ];
+            csvLines.push(values.map((value) => `"${value}"`).join(';'));
+        });
+
+        const blob = new Blob([`\ufeff${csvLines.join('\n')}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = sanitizeFileName(hostLabel, 'csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    };
+
+    const exportRowsToXlsx = (rows, hostLabel) => {
+        const worksheetData = rows.map((row) => ({
+            'Zajęcie': row.title,
+            'Czas trwania (min)': row.duration_minutes,
+            'Data rozpoczęcia': formatDateForExport(row.start_time)
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Raport');
+        XLSX.writeFile(workbook, sanitizeFileName(hostLabel, 'xlsx'));
+    };
+
+    const openReportDialog = async (hostType, hostId, hostLabel) => {
+        setReportDialog((prev) => ({
+            ...prev,
+            open: true,
+            loading: true,
+            rows: [],
+            total: 0,
+            limit: REPORT_PREVIEW_LIMIT,
+            hostType,
+            hostId,
+            hostLabel,
+            error: null,
+        }));
+
+        try {
+            const data = await fetchAttendanceReport(siteId, {
+                hostType,
+                hostId,
+                limit: REPORT_PREVIEW_LIMIT,
+            });
+            setReportDialog((prev) => ({
+                ...prev,
+                loading: false,
+                rows: data.rows || [],
+                total: data.total || 0,
+                limit: data.limit,
+            }));
+        } catch (error) {
+            console.error('Failed to load attendance report', error);
+            setReportDialog((prev) => ({
+                ...prev,
+                loading: false,
+                error: 'Nie udało się pobrać raportu. Spróbuj ponownie.',
+            }));
+        }
+    };
+
+    const handleReportDialogClose = () => {
+        setReportDialog((prev) => ({ ...prev, open: false }));
+    };
+
+    const handleReportDownload = async (format) => {
+        if (!reportDialog.hostType || !reportDialog.hostId) return;
+        setReportDialog((prev) => ({ ...prev, downloading: format }));
+        try {
+            const data = await fetchAttendanceReport(siteId, {
+                hostType: reportDialog.hostType,
+                hostId: reportDialog.hostId,
+                limit: 'all',
+            });
+            if (format === 'csv') {
+                exportRowsToCsv(data.rows || [], reportDialog.hostLabel);
+            } else {
+                exportRowsToXlsx(data.rows || [], reportDialog.hostLabel);
+            }
+        } catch (error) {
+            console.error('Failed to download report', error);
+            alert('Nie udało się pobrać raportu. Spróbuj ponownie.');
+        } finally {
+            setReportDialog((prev) => ({ ...prev, downloading: null }));
+        }
+    };
 
     useEffect(() => {
         const loadSiteData = async () => {
@@ -315,31 +471,43 @@ const TeamPage = () => {
                                         </Typography>
                                     )}
                                 </Box>
-
-                                {userPermissions.canEditOwner && (
-                                    <Tooltip title="Edytuj profil właściciela">
-                                        <IconButton
-                                            onClick={() => handleEditMember({ 
-                                                ...site.owner, 
-                                                id: `owner-${site.owner.id}`,
-                                                is_owner: true 
-                                            })}
-                                            sx={{ color: 'rgb(146, 0, 32)' }}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                    {canViewOwnerReport && (
+                                        <Button
+                                            size="small"
+                                            variant="outlined"
+                                            startIcon={<FileDownloadIcon />}
+                                            onClick={() => openReportDialog('owner', site.owner.id, getDisplayName(site.owner))}
                                         >
-                                            <EditIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
+                                            Pobierz raport
+                                        </Button>
+                                    )}
 
-                                <Chip
-                                    label="Owner"
-                                    sx={{
-                                        bgcolor: 'rgba(146, 0, 32, 0.15)',
-                                        color: 'rgb(146, 0, 32)',
-                                        fontWeight: 600,
-                                        border: '1px solid rgba(146, 0, 32, 0.3)'
-                                    }}
-                                />
+                                    {userPermissions.canEditOwner && (
+                                        <Tooltip title="Edytuj profil właściciela">
+                                            <IconButton
+                                                onClick={() => handleEditMember({ 
+                                                    ...site.owner, 
+                                                    id: `owner-${site.owner.id}`,
+                                                    is_owner: true 
+                                                })}
+                                                sx={{ color: 'rgb(146, 0, 32)' }}
+                                            >
+                                                <EditIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+
+                                    <Chip
+                                        label="Owner"
+                                        sx={{
+                                            bgcolor: 'rgba(146, 0, 32, 0.15)',
+                                            color: 'rgb(146, 0, 32)',
+                                            fontWeight: 600,
+                                            border: '1px solid rgba(146, 0, 32, 0.3)'
+                                        }}
+                                    />
+                                </Box>
                             </Box>
                         </motion.div>
                     )}
@@ -442,9 +610,20 @@ const TeamPage = () => {
                                     )}
                                 </Box>
 
+                                {canViewMemberReport(member) && (
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<FileDownloadIcon />}
+                                        onClick={() => openReportDialog('team_member', member.id, getDisplayName(member))}
+                                    >
+                                        Pobierz raport
+                                    </Button>
+                                )}
+
                                 {userPermissions.canChangeRoles ? (
                                     <Select
-                                        value={member.permission_role}
+                                        value={member.permission_role || ''}
                                         onChange={(e) => handleRoleChange(member.id, e.target.value)}
                                         size="small"
                                         sx={{ minWidth: 140 }}
@@ -610,6 +789,19 @@ const TeamPage = () => {
                 onSave={handleEditDialogSave}
                 member={editingMember}
                 siteId={siteId}
+            />
+
+            <AttendanceReportDialog
+                open={reportDialog.open}
+                onClose={handleReportDialogClose}
+                loading={reportDialog.loading}
+                rows={reportDialog.rows}
+                total={reportDialog.total}
+                limit={reportDialog.limit}
+                hostLabel={reportDialog.hostLabel}
+                error={reportDialog.error}
+                onDownload={handleReportDownload}
+                downloadingFormat={reportDialog.downloading}
             />
         </REAL_DefaultLayout>
     );

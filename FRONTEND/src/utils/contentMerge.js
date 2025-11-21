@@ -13,7 +13,7 @@ export const mergeWithDefaults = (defaults = {}, content = {}) => {
   }
 
   if (defaults === null || typeof defaults !== 'object') {
-    if (content === undefined || content === '') {
+    if (content === undefined || content === null) {
       return defaults;
     }
     return content;
@@ -28,7 +28,7 @@ export const mergeWithDefaults = (defaults = {}, content = {}) => {
   Object.entries(content).forEach(([key, value]) => {
     const defaultValue = defaults[key];
 
-    if ((value === undefined || value === '') && defaultValue !== undefined) {
+    if ((value === undefined || value === null) && defaultValue !== undefined) {
       return;
     }
 
