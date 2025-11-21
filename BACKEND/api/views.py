@@ -3444,56 +3444,30 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     'status': 'invited'
                 })
         else:
-            # User doesn't have account - create account with temporary password
-            import secrets
-            import string
+            # User doesn't have account - just send invitation email with magic link
+            # No need to create PlatformUser account for team members
             
-            # Generate temporary password (12 characters: letters, digits, special chars)
-            alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
-            temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
-            
-            # Split name into first and last name
-            name_parts = (team_member.name or '').split(' ', 1)
-            first_name = name_parts[0] if name_parts else ''
-            last_name = name_parts[1] if len(name_parts) > 1 else ''
-            
-            new_user = PlatformUser.objects.create(
-                email=team_member.email,
-                first_name=first_name,
-                last_name=last_name,
-                source_tag=PlatformUser.SourceTag.TEAM_INVITATION,
-                account_type=PlatformUser.AccountType.FREE,
-                is_active=False,  # Account inactive until password is changed
-                is_temporary_password=True,
-                password_changed_at=None,
-            )
-            new_user.set_password(temp_password)
-            new_user.save()
-            
-            # Link team member to new user
+            # Update team member status
             team_member.invitation_status = 'invited'
             team_member.invited_at = timezone.now()
-            team_member.linked_user = new_user
-            team_member.save(update_fields=['invitation_status', 'invited_at', 'linked_user'])
+            team_member.save(update_fields=['invitation_status', 'invited_at'])
             
-            # Create magic link for password change (valid for 7 days)
+            # Create magic link for team invitation (valid for 7 days)
             magic_link = MagicLink.objects.create(
-                user=new_user,
-                email=new_user.email,
+                email=team_member.email,
                 token=get_random_string(64),
-                action_type=MagicLink.ActionType.PASSWORD_RESET,
+                action_type=MagicLink.ActionType.TEAM_INVITATION,
                 team_member=team_member,
                 expires_at=timezone.now() + timedelta(days=7)
             )
             
-            # Send invitation email with credentials and setup link
-            setup_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/setup-account/{magic_link.token}"
+            # Send invitation email with setup link
+            setup_url = f"{settings.FRONTEND_URL.rstrip('/')}/studio/team/accept/{magic_link.token}"
             context = {
                 'site_name': team_member.site.name,
                 'permission_role': team_member.get_permission_role_display(),
                 'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
-                'email': new_user.email,
-                'temp_password': temp_password,
+                'email': team_member.email,
                 'setup_link': setup_url,
             }
             html_message = render_to_string('emails/team_invitation_new_user.html', context)
@@ -3509,7 +3483,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             )
             
             return Response({
-                'message': 'Account created and registration invitation sent to new user.',
+                'message': 'Invitation sent to new team member.',
                 'status': 'invited'
             })
     
