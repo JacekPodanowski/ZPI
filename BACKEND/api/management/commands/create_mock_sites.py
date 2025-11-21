@@ -145,17 +145,19 @@ class Command(BaseCommand):
             if len(created_sites) >= 3:
                 psychotherapy_site = created_sites[2]  # Gabinet Psychoterapii (ID=4)
                 
+                # Build full name from user fields
+                full_name = f"{admin_user.first_name or 'Admin'} {admin_user.last_name or 'User'}".strip()
+                
                 # Check if team member already exists
                 team_member, tm_created = TeamMember.objects.get_or_create(
                     site=psychotherapy_site,
                     email=admin_user.email,
                     defaults={
-                        'first_name': admin_user.first_name or 'Admin',
-                        'last_name': admin_user.last_name or 'User',
+                        'name': full_name,
                         'role_description': 'Współpracownik techniczny',
                         'permission_role': 'contributor',
                         'invitation_status': 'pending',
-                        'invitation_token': str(uuid.uuid4()),
+                        'invitation_token': uuid.uuid4(),
                         'invited_at': timezone.now(),
                         'linked_user': None  # Don't link until invitation is accepted
                     }
