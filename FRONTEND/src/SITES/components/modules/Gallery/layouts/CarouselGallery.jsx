@@ -33,6 +33,8 @@ const CarouselGallery = ({ content, style }) => {
           {images.map((item, idx) => {
             const imgUrlRaw = typeof item === 'string' ? item : item.url;
             const caption = typeof item === 'object' ? item.caption : '';
+            const isMockUrl = imgUrlRaw && imgUrlRaw.includes('picsum.photos/seed/');
+            const shouldShowCaption = isMockUrl || (caption && caption.trim());
             
             return (
               <motion.div
@@ -40,8 +42,8 @@ const CarouselGallery = ({ content, style }) => {
                 whileHover={{ scale: 1.05 }}
                 className={`flex-shrink-0 w-72 sm:w-80 ${style.rounded} overflow-hidden ${style.shadows} cursor-pointer snap-center bg-white`}
               >
-                {renderMedia(imgUrlRaw, caption || `Carousel ${idx + 1}`, 'w-full h-64 object-cover')}
-                {caption && (
+                {renderMedia(imgUrlRaw, caption || '', 'w-full h-64 object-cover')}
+                {shouldShowCaption && caption && caption.trim() && (
                   <div className="p-3">
                     <p className="text-sm text-center" style={{ color: style.text }}>
                       {caption}

@@ -259,9 +259,17 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
           value=""
           multiple={true}
           onChange={(urls) => {
-            const currentImages = items || [];
-            const newImages = urls.map(url => ({ url, caption: '' }));
-            onContentChange(fieldKey, [...currentImages, ...newImages]);
+            if (!urls || urls.length === 0) {
+              return;
+            }
+
+            const existingImages = (items || []).map(item =>
+              typeof item === 'string' ? { url: item, caption: '' } : item
+            );
+
+            const uploadedImages = urls.map(url => ({ url, caption: '' }));
+
+            onContentChange(fieldKey, [...existingImages, ...uploadedImages]);
           }}
           siteId={pageId}
         />
@@ -305,9 +313,9 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                         onChange={(e) => {
                           const newItems = [...items];
                           if (typeof newItems[index] === 'string') {
-                            newItems[index] = { url: newItems[index], caption: e.target.value };
+                            newItems[index] = { url: newItems[index], caption: e.target.value, isMock: false };
                           } else {
-                            newItems[index] = { ...newItems[index], caption: e.target.value };
+                            newItems[index] = { ...newItems[index], caption: e.target.value, isMock: false };
                           }
                           onContentChange(fieldKey, newItems);
                         }}
