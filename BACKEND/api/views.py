@@ -3452,10 +3452,15 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
             alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
             temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
             
+            # Split name into first and last name
+            name_parts = (team_member.name or '').split(' ', 1)
+            first_name = name_parts[0] if name_parts else ''
+            last_name = name_parts[1] if len(name_parts) > 1 else ''
+            
             new_user = PlatformUser.objects.create(
                 email=team_member.email,
-                first_name=team_member.first_name or '',
-                last_name=team_member.last_name or '',
+                first_name=first_name,
+                last_name=last_name,
                 source_tag=PlatformUser.SourceTag.TEAM_INVITATION,
                 account_type=PlatformUser.AccountType.FREE,
                 is_active=False,  # Account inactive until password is changed
