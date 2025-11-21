@@ -109,7 +109,7 @@ export const EventBlock = ({
                     flexShrink: 0
                 }}
             >
-                {event.bookings?.length || 0}/{event.capacity || 1}
+                {event.bookings?.length || 0}/{event.capacity === -1 ? '∞' : (event.capacity || 1)}
             </Typography>
         </Box>
     );

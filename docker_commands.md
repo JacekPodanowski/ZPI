@@ -29,6 +29,9 @@ docker-compose exec backend python manage.py makemigrations
 # migracje cz.2
 docker-compose exec backend python manage.py migrate
 
+# napraw migracje
+docker-compose exec backend python manage.py makemigrations --merge --noinput  
+
 # backup bazy do json
 docker-compose exec backend python manage.py dumpdata > backup_bazy.json
 

@@ -220,8 +220,7 @@ const createDefaultFormState = (siteId = null) => ({
     type: 'online',
     location: '',
     meetingType: 'individual',
-    capacity: 1,
-    isUnlimitedCapacity: false,
+    capacity: '',
     meetingDuration: '60',
     timeSnapping: '30',
     bufferTime: '0',
@@ -400,7 +399,10 @@ const EventDisplay = ({ event, siteColor, onHover, onClick, onBookingClick, dayS
                             flexShrink: 0
                         }}
                     >
-                        {event.bookings?.length || 0}/{(event.max_capacity === null || event.capacity === null) ? '∞' : (event.max_capacity || event.capacity || 1)}
+                        {(event.max_capacity === -1 || event.capacity === -1) 
+                            ? `${event.bookings?.length || 0} / ∞`
+                            : `${event.bookings?.length || 0}/${event.max_capacity || event.capacity || 1}`
+                        }
                     </Typography>
                 </Box>
                 {event.bookings && event.bookings.length > 0 && (
@@ -523,7 +525,6 @@ const DayDetailsModal = ({
     });
     const [formData, setFormData] = useState(() => createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
     const [validationErrors, setValidationErrors] = useState({});
-    const [isHoveringInfinity, setIsHoveringInfinity] = useState(false);
     const resetFormData = useCallback(() => {
         setFormData(createDefaultFormState(selectedSiteId || sites?.[0]?.id || null));
         setValidationErrors({});
@@ -817,6 +818,8 @@ const DayDetailsModal = ({
     const rosterUnavailable = siteHasTeam && !rosterData;
     const disableAssignmentSelect = !canAssignAnyone || rosterLoading;
     const submitDisabled = (view === 'createEvent' && !canCreateEvents) || (view === 'createAvailability' && !canManageAvailability);
+    const isFormView = view === 'createEvent' || view === 'editEvent' || view === 'createAvailability' || view === 'editAvailability';
+    const isEventForm = view === 'createEvent' || view === 'editEvent';
 
     // Clear validation errors when view changes
     useEffect(() => {
@@ -891,8 +894,7 @@ const DayDetailsModal = ({
             type: event.type || 'online',
             location: event.location || '',
             meetingType: event.event_type || 'individual',
-            capacity: event.capacity || event.max_capacity || 1,
-            isUnlimitedCapacity: event.capacity === null || event.max_capacity === null,
+            capacity: (event.capacity === -1 || event.max_capacity === -1) ? '' : (event.capacity || event.max_capacity || 1),
             meetingDuration: '60',
             timeSnapping: '30',
             bufferTime: '0',
@@ -917,7 +919,7 @@ const DayDetailsModal = ({
             type: 'online',
             location: '',
             meetingType: 'individual',
-            capacity: 1,
+            capacity: '',
             meetingDuration: duration,
             timeSnapping: String(block.time_snapping || 30),
             bufferTime: String(block.buffer_time || 0),
@@ -1120,7 +1122,7 @@ const DayDetailsModal = ({
             return;
         }
 
-        const { assigneeType, assigneeId, meetingDuration, ...restFormData } = formData;
+        const { assigneeType, assigneeId, meetingDuration, capacity, ...restFormData } = formData;
         
         const targetSiteId = restFormData.siteId || activeSiteId;
 
@@ -1137,14 +1139,16 @@ const DayDetailsModal = ({
             const assigneePayload = assigneeType === 'team_member'
                 ? { type: 'team_member', id: assigneeId }
                 : { type: 'owner', id: ownerIdForSite };
-            const finalCapacity = restFormData.isUnlimitedCapacity ? null : restFormData.capacity;
-            onCreateEvent?.({
+            const finalCapacity = (capacity === '' || capacity === null || capacity === undefined) ? -1 : parseInt(capacity);
+            const eventData = {
                 ...restFormData,
                 capacity: finalCapacity,
                 siteId: targetSiteId,
                 date: dateKey,
                 assignee: assigneePayload
-            });
+            };
+            console.log('Creating event with capacity:', finalCapacity, 'Full data:', eventData);
+            onCreateEvent?.(eventData);
         } else if (view === 'editEvent') {
             if (!canCreateEvents) {
                 addToast('Nie masz uprawnień do edycji wydarzeń na tej stronie.', { variant: 'warning' });
@@ -1153,15 +1157,17 @@ const DayDetailsModal = ({
             const assigneePayload = assigneeType === 'team_member'
                 ? { type: 'team_member', id: assigneeId }
                 : { type: 'owner', id: ownerIdForSite };
-            const finalCapacity = restFormData.isUnlimitedCapacity ? null : restFormData.capacity;
-            onUpdateEvent?.({
+            const finalCapacity = (capacity === '' || capacity === null || capacity === undefined) ? -1 : parseInt(capacity);
+            const eventData = {
                 id: editingItem.id,
                 ...restFormData,
                 capacity: finalCapacity,
                 siteId: targetSiteId,
                 date: dateKey,
                 assignee: assigneePayload
-            });
+            };
+            console.log('Updating event with capacity:', finalCapacity, 'Full data:', eventData);
+            onUpdateEvent?.(eventData);
         } else if (view === 'createAvailability') {
             if (!canManageAvailability) {
                 addToast('Nie masz uprawnień do zarządzania dostępnością zespołu.', { variant: 'warning' });
@@ -1202,6 +1208,24 @@ const DayDetailsModal = ({
         resetFormData();
         setView('timeline');
     };
+
+    // Handle Enter key for form submission
+    useEffect(() => {
+        const handleKeyPress = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && isFormView) {
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+
+        if (open && isFormView) {
+            window.addEventListener('keydown', handleKeyPress);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [open, isFormView, handleSubmit]);
 
     const renderTimeline = () => (
         <Box
@@ -1688,63 +1712,25 @@ const DayDetailsModal = ({
                                 </ToggleButtonGroup>
 
                                 {formData.meetingType === 'group' && (
-                                    <Box sx={{ position: 'relative', mt: 1.5 }}>
-                                        <TextField
-                                            fullWidth
-                                            type="number"
-                                            label={formData.isUnlimitedCapacity ? "Nieograniczona" : "Maksymalna liczba osób"}
-                                            InputLabelProps={{ sx: { fontWeight: 600 } }}
-                                            value={formData.isUnlimitedCapacity ? '' : formData.capacity}
-                                            onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                                            inputProps={{ min: 1 }}
-                                            size="small"
-                                            disabled={formData.isUnlimitedCapacity}
-                                            sx={{ 
-                                                '& .MuiInputBase-root': {
-                                                    backgroundColor: formData.isUnlimitedCapacity ? 'action.hover' : 'inherit',
-                                                    opacity: formData.isUnlimitedCapacity ? 0.7 : 1
-                                                }
-                                            }}
-                                        />
-                                        <IconButton
-                                            size="small"
-                                            onMouseEnter={() => setIsHoveringInfinity(true)}
-                                            onMouseLeave={() => setIsHoveringInfinity(false)}
-                                            onClick={() => {
-                                                setFormData({ 
-                                                    ...formData, 
-                                                    isUnlimitedCapacity: !formData.isUnlimitedCapacity,
-                                                    capacity: formData.isUnlimitedCapacity ? 1 : formData.capacity
-                                                });
-                                            }}
-                                            sx={{
-                                                position: 'absolute',
-                                                right: 8,
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                color: formData.isUnlimitedCapacity || isHoveringInfinity 
-                                                    ? theme.palette.primary.main 
-                                                    : theme.palette.text.secondary,
-                                                backgroundColor: formData.isUnlimitedCapacity || isHoveringInfinity
-                                                    ? `${theme.palette.primary.main}15`
-                                                    : 'transparent',
-                                                transition: 'all 0.2s ease',
-                                                '&:hover': {
-                                                    backgroundColor: `${theme.palette.primary.main}20`
-                                                }
-                                            }}
-                                        >
-                                            <Typography
-                                                sx={{
-                                                    fontSize: '20px',
-                                                    fontWeight: 600,
-                                                    lineHeight: 1
-                                                }}
-                                            >
-                                                ∞
-                                            </Typography>
-                                        </IconButton>
-                                    </Box>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="Maksymalna liczba osób"
+                                        placeholder="Nieograniczona"
+                                        helperText={formData.capacity === '' ? 'Pozostaw puste dla nieograniczonej liczby uczestników' : ''}
+                                        InputLabelProps={{ 
+                                            shrink: true,
+                                            sx: { fontWeight: 600 } 
+                                        }}
+                                        value={formData.capacity}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setFormData({ ...formData, capacity: val === '' ? '' : parseInt(val) });
+                                        }}
+                                        inputProps={{ min: 1 }}
+                                        size="small"
+                                        sx={{ mt: 1.5 }}
+                                    />
                                 )}
                             </Box>
                         </>
@@ -2111,9 +2097,6 @@ const DayDetailsModal = ({
             </Box>
         );
     };
-
-    const isFormView = view === 'createEvent' || view === 'editEvent' || view === 'createAvailability' || view === 'editAvailability';
-    const isEventForm = view === 'createEvent' || view === 'editEvent';
 
     return (
         <>

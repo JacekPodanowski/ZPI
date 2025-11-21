@@ -50,7 +50,6 @@ export const createEvent = async (eventData) => {
             apiEventData.show_host = eventData.show_host;
         }
         
-        console.log('Sending event data to API:', apiEventData);
         const response = await apiClient.post('/events/', apiEventData);
         return response.data;
     } catch (error) {

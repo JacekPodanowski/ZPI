@@ -301,7 +301,7 @@ class Event(models.Model):
     description = models.TextField(blank=True)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    capacity = models.PositiveIntegerField(default=1)
+    capacity = models.IntegerField(default=1, help_text='Maximum capacity. Use -1 for unlimited participants.')
     event_type = models.CharField(max_length=32, choices=EventType.choices, default=EventType.INDIVIDUAL)
     attendees = models.ManyToManyField(Client, related_name='events', blank=True)
     show_host = models.BooleanField(default=False, help_text='Whether to display the host/assigned person publicly')
@@ -312,7 +312,7 @@ class Event(models.Model):
         ordering = ['start_time']
         constraints = [
             models.CheckConstraint(check=models.Q(end_time__gt=models.F('start_time')), name='event_end_after_start'),
-            models.CheckConstraint(check=models.Q(capacity__gte=1), name='event_capacity_positive'),
+            models.CheckConstraint(check=models.Q(capacity__gte=1) | models.Q(capacity=-1), name='event_capacity_positive_or_unlimited'),
             # Ensure exactly one assignment field is filled
             models.CheckConstraint(
                 check=(

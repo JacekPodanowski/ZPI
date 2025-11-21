@@ -298,6 +298,12 @@ class EventSerializer(serializers.ModelSerializer):
             return f"{obj.assigned_to_team_member.first_name} {obj.assigned_to_team_member.last_name}"
         return None
 
+    def validate_capacity(self, value):
+        """Validate capacity: must be >= 1 or exactly -1 (unlimited)"""
+        if value != -1 and value < 1:
+            raise serializers.ValidationError("Capacity must be -1 (unlimited) or a positive number >= 1.")
+        return value
+
     def validate(self, attrs):
         site = attrs.get('site') or (self.instance.site if self.instance else None)
         # creator is now read-only, so it won't be in attrs during creation
