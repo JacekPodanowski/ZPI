@@ -174,25 +174,16 @@ const SitesPage = () => {
                 >
                     {teamMemberSites.length > 0 && (
                         <Button
-                            variant="contained"
                             onClick={handleToggleTeamSites}
                             sx={{
-                                bgcolor: showTeamSites ? 'primary.main' : 'grey.400',
-                                color: 'white',
                                 minWidth: 'auto',
-                                px: 2,
-                                py: 1.5,
-                                borderRadius: 2,
-                                boxShadow: showTeamSites 
-                                    ? '0 4px 20px rgba(146, 0, 32, 0.25)' 
-                                    : '0 4px 20px rgba(0, 0, 0, 0.1)',
+                                p: 1,
+                                color: showTeamSites ? 'primary.main' : 'text.secondary',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '&:hover': {
-                                    bgcolor: showTeamSites ? 'primary.dark' : 'grey.500',
-                                    boxShadow: showTeamSites 
-                                        ? '0 6px 30px rgba(146, 0, 32, 0.35)' 
-                                        : '0 6px 30px rgba(0, 0, 0, 0.15)',
-                                    transform: 'translateY(-2px)'
+                                    color: 'primary.main',
+                                    backgroundColor: 'transparent',
+                                    transform: 'scale(1.1)'
                                 }
                             }}
                         >
