@@ -75,6 +75,7 @@ from .views import (
     newsletter_track_open,
     newsletter_track_click,
     newsletter_stats,
+    AttendanceReportView,
 )
 
 
@@ -126,6 +127,7 @@ urlpatterns = [
     path('public-sites/<int:site_id>/bookings/', PublicBookingView.as_view(), name='public_booking'),
     path('public-sites/<int:site_id>/availability/', PublicAvailabilityView.as_view(), name='public_availability'),
     path('public-sites/<int:site_id>/team/', PublicTeamView.as_view(), name='public_team'),
+    path('sites/<int:site_id>/attendance-report/', AttendanceReportView.as_view(), name='attendance-report'),
     # Team invitation endpoints
     path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
     path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),

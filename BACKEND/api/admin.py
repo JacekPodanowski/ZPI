@@ -1,9 +1,10 @@
 from django.contrib import admin
 
 from .models import (
-	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, 
-    MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
-    Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics, Payment
+	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, AttendedSession,
+	MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
+	Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics, Payment,
+	TeamMember
 )
 
 
@@ -49,6 +50,24 @@ class BookingAdmin(admin.ModelAdmin):
 	list_display = ('event', 'site', 'client', 'guest_email', 'created_at')
 	search_fields = ('guest_email', 'guest_name', 'notes')
 	autocomplete_fields = ('site', 'event', 'client')
+
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+	list_display = ('first_name', 'last_name', 'site', 'permission_role', 'invitation_status', 'is_active')
+	list_filter = ('permission_role', 'invitation_status', 'is_active', 'site')
+	search_fields = ('first_name', 'last_name', 'email', 'site__name')
+	autocomplete_fields = ('site', 'linked_user')
+
+
+@admin.register(AttendedSession)
+class AttendedSessionAdmin(admin.ModelAdmin):
+	list_display = ('title', 'site', 'host_type', 'start_time', 'duration_minutes')
+	search_fields = (
+		'title', 'host_user__email', 'host_team_member__first_name', 'host_team_member__last_name'
+	)
+	list_filter = ('host_type', 'site')
+	autocomplete_fields = ('site', 'event', 'host_user', 'host_team_member')
 
 
 @admin.register(Template)

@@ -119,3 +119,19 @@ export const fetchPendingInvitations = async () => {
     const response = await apiClient.get('/team-members/pending-invitations/');
     return response.data;
 };
+
+export const fetchAttendanceReport = async (siteId, { hostType, hostId, limit } = {}) => {
+    const params = new URLSearchParams();
+    if (hostType) params.append('host_type', hostType);
+    if (hostId) params.append('host_id', hostId);
+    if (limit) params.append('limit', limit);
+
+    let url = `/sites/${siteId}/attendance-report/`;
+    const query = params.toString();
+    if (query) {
+        url = `${url}?${query}`;
+    }
+
+    const response = await apiClient.get(url);
+    return response.data;
+};

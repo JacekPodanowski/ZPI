@@ -23,6 +23,7 @@ from .models import (
     TermsOfService,
     EmailTemplate,
     TeamMember,
+    AttendedSession,
     DomainOrder,
     Testimonial,
     TestimonialSummary,
@@ -618,6 +619,26 @@ class PublicTeamMemberSerializer(serializers.ModelSerializer):
     def get_avatar_letter(self, obj):
         from .utils import get_avatar_letter
         return get_avatar_letter(obj.first_name)
+
+
+class AttendedSessionSerializer(serializers.ModelSerializer):
+    """Serializer for attendance report rows."""
+    host_display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AttendedSession
+        fields = [
+            'id', 'title', 'start_time', 'end_time', 'duration_minutes',
+            'event', 'host_type', 'host_display_name'
+        ]
+        read_only_fields = fields
+
+    def get_host_display_name(self, obj):
+        if obj.host_type == AttendedSession.HostType.OWNER and obj.host_user:
+            return obj.host_user.get_full_name() or obj.host_user.email
+        if obj.host_team_member:
+            return f"{obj.host_team_member.first_name} {obj.host_team_member.last_name}".strip()
+        return ''
 
 
 class SiteWithTeamSerializer(serializers.ModelSerializer):

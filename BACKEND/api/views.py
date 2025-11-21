@@ -40,6 +40,7 @@ from .models import (
     Client,
     Event,
     Booking,
+    AttendedSession,
     Template,
     CustomReactComponent,
     MediaAsset,
@@ -96,6 +97,7 @@ from .serializers import (
     TeamMemberSerializer,
     TeamMemberInfoSerializer,
     PublicTeamMemberSerializer,
+    AttendedSessionSerializer,
     DomainOrderSerializer,
     TestimonialSerializer,
     TestimonialSummarySerializer,
@@ -1210,42 +1212,42 @@ def get_role_permissions(role: str, is_staff: bool = False) -> dict:
     """Map calendar capabilities for a given site role."""
     if is_staff:
         return {
-            'can_create_events': True,
-            'can_assign_anyone': True,
-            'can_edit_all_events': True,
-            'can_manage_availability': True,
-            'auto_assign_self': False,
+            'canCreateEvents': True,
+            'canAssignAnyone': True,
+            'canEditAllEvents': True,
+            'canManageAvailability': True,
+            'autoAssignSelf': False,
         }
 
     role = role or 'viewer'
     permissions_map = {
         'owner': {
-            'can_create_events': True,
-            'can_assign_anyone': True,
-            'can_edit_all_events': True,
-            'can_manage_availability': True,
-            'auto_assign_self': False,
+            'canCreateEvents': True,
+            'canAssignAnyone': True,
+            'canEditAllEvents': True,
+            'canManageAvailability': True,
+            'autoAssignSelf': False,
         },
         'manager': {
-            'can_create_events': True,
-            'can_assign_anyone': True,
-            'can_edit_all_events': True,
-            'can_manage_availability': True,
-            'auto_assign_self': False,
+            'canCreateEvents': True,
+            'canAssignAnyone': True,
+            'canEditAllEvents': True,
+            'canManageAvailability': True,
+            'autoAssignSelf': False,
         },
         'contributor': {
-            'can_create_events': True,
-            'can_assign_anyone': False,
-            'can_edit_all_events': False,
-            'can_manage_availability': False,
-            'auto_assign_self': True,
+            'canCreateEvents': True,
+            'canAssignAnyone': False,
+            'canEditAllEvents': False,
+            'canManageAvailability': False,
+            'autoAssignSelf': True,
         },
         'viewer': {
-            'can_create_events': False,
-            'can_assign_anyone': False,
-            'can_edit_all_events': False,
-            'can_manage_availability': False,
-            'auto_assign_self': False,
+            'canCreateEvents': False,
+            'canAssignAnyone': False,
+            'canEditAllEvents': False,
+            'canManageAvailability': False,
+            'autoAssignSelf': False,
         },
     }
     return permissions_map.get(role, permissions_map['viewer'])
@@ -1662,6 +1664,22 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
     
     # Disable bulk list endpoint - use Site.calendar_data instead for fetching availability blocks
     http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
+
+    def _require_manage_availability(self, site):
+        """Ensure the current user can manage availability for the provided site."""
+        user = self.request.user
+        if user.is_staff:
+            return 'owner', None
+
+        role, membership = resolve_site_role(user, site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        permissions = get_role_permissions(role, user.is_staff)
+        if not permissions.get('canManageAvailability'):
+            raise PermissionDenied('Nie masz uprawnień do zarządzania dostępnością zespołu.')
+
+        return role, membership
     
     def list(self, request, *args, **kwargs):
         """
@@ -1704,12 +1722,7 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             serializer.save(creator=creator)
             return
 
-        role, membership = resolve_site_role(user, site)
-        if role is None:
-            raise PermissionDenied('You do not have access to this site.')
-
-        if role == TeamMember.PermissionRole.VIEWER:
-            raise PermissionDenied('Viewers cannot create availability blocks.')
+        role, membership = self._require_manage_availability(site)
 
         if role == TeamMember.PermissionRole.CONTRIBUTOR and membership:
             serializer.validated_data['assigned_to_owner'] = None
@@ -1725,12 +1738,7 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             serializer.save()
             return
 
-        role, membership = resolve_site_role(user, block.site)
-        if role is None:
-            raise PermissionDenied('You do not have access to this site.')
-
-        if role == TeamMember.PermissionRole.VIEWER:
-            raise PermissionDenied('Viewers cannot edit availability blocks.')
+        role, membership = self._require_manage_availability(block.site)
 
         if role == TeamMember.PermissionRole.CONTRIBUTOR:
             if not membership or block.assigned_to_team_member_id != membership.id:
@@ -1741,9 +1749,18 @@ class AvailabilityBlockViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
-        self._ensure_site_access(instance.site)
-        if not self.request.user.is_staff and instance.creator != self.request.user:
-            raise PermissionDenied('You can only delete your own availability blocks.')
+        user = self.request.user
+
+        if user.is_staff:
+            instance.delete()
+            return
+
+        role, membership = self._require_manage_availability(instance.site)
+
+        if role == TeamMember.PermissionRole.CONTRIBUTOR:
+            if not membership or instance.assigned_to_team_member_id != membership.id:
+                raise PermissionDenied('Contributors can only delete their own availability blocks.')
+
         instance.delete()
 
 
@@ -2840,19 +2857,45 @@ class PublicAvailabilityView(APIView):
         
         # Generuj sloty na podstawie bloków dostępności
         for block in availability_blocks:
-            # meeting_length is a single integer, not a list
-            meeting_length = block.meeting_length
+            meeting_length = block.meeting_length or 0
+            if meeting_length <= 0:
+                logger.warning(
+                    "Skipping availability block %s (site=%s) due to invalid meeting_length=%s",
+                    block.id,
+                    site.id,
+                    meeting_length,
+                )
+                continue
+
+            snapping_interval = block.time_snapping or 0
+            if snapping_interval <= 0:
+                logger.warning(
+                    "Falling back to meeting_length for time_snapping in block %s (site=%s); time_snapping=%s",
+                    block.id,
+                    site.id,
+                    block.time_snapping,
+                )
+                snapping_interval = meeting_length
+
             tz = timezone.get_current_timezone()
-            # Use datetime.combine to create datetime objects from date and time
             block_start = datetime.combine(block.date, block.start_time)
             block_end = datetime.combine(block.date, block.end_time)
             current_time = timezone.make_aware(block_start, tz)
             end_time = timezone.make_aware(block_end, tz)
-            
-            # Get assignee info for this block
+
             assignee_info = self._get_assignee_info(block)
-            
+            iterations = 0
+            max_iterations = 1440  # safety guard (max minutes per day)
+
             while current_time + timedelta(minutes=meeting_length) <= end_time:
+                iterations += 1
+                if iterations > max_iterations:
+                    logger.warning(
+                        "Breaking availability block %s (site=%s) due to iteration guard",
+                        block.id,
+                        site.id,
+                    )
+                    break
                 slot_start = current_time
                 slot_end = slot_start + timedelta(minutes=meeting_length)
                 
@@ -2866,13 +2909,11 @@ class PublicAvailabilityView(APIView):
                 
                 # Sprawdź, czy slot nie jest już zajęty
                 if slot_start not in booked_slots:
-                     # Dodatkowa, bardziej precyzyjna weryfikacja kolizji
                     is_conflicting = any(
                         (e.start_time < slot_end and e.end_time > slot_start)
                         for e in existing_events if e.bookings.count() >= e.capacity
                     )
                     if not is_conflicting:
-                        # Oblicz capacity i available_spots
                         if matching_event:
                             capacity = matching_event.capacity
                             booked_count = matching_event.bookings.count()
@@ -2880,30 +2921,27 @@ class PublicAvailabilityView(APIView):
                             event_type = matching_event.event_type
                             event_id = matching_event.id
                         else:
-                            # Domyślne wartości dla nowych slotów (bez utworzonego eventu)
                             capacity = 1
                             available_spots = 1
                             event_type = 'individual'
                             event_id = None
-                        
-            if slot_key not in slot_map:
-                # Get assignee info from event if it exists, otherwise from block
-                event_assignee_info = self._get_assignee_info(matching_event) if matching_event else assignee_info
-                slot_map[slot_key] = {
-                    'start': slot_key,
-                    'end': slot_end.isoformat(),
-                    'duration': meeting_length,
-                    'capacity': capacity,
-                    'available_spots': available_spots,
-                    'event_type': event_type,
-                    'event_id': event_id,
-                    'assignee_type': event_assignee_info['type'],
-                    'assignee_id': event_assignee_info['id'],
-                    'assignee_name': event_assignee_info['name']
-                }
 
-                # Przesuń czas o interwał "przyciągania" (time_snapping)
-                current_time += timedelta(minutes=block.time_snapping)
+                        if slot_key not in slot_map:
+                            event_assignee_info = self._get_assignee_info(matching_event) if matching_event else assignee_info
+                            slot_map[slot_key] = {
+                                'start': slot_key,
+                                'end': slot_end.isoformat(),
+                                'duration': meeting_length,
+                                'capacity': capacity,
+                                'available_spots': available_spots,
+                                'event_type': event_type,
+                                'event_id': event_id,
+                                'assignee_type': event_assignee_info['type'],
+                                'assignee_id': event_assignee_info['id'],
+                                'assignee_name': event_assignee_info['name']
+                            }
+
+                current_time += timedelta(minutes=snapping_interval)
 
         # Dodaj istniejące wydarzenia, które nie były objęte blokami dostępności
         for event in existing_events:
@@ -3498,6 +3536,123 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
         return Response({
             'message': 'You have left the team.'
         })
+
+
+class AttendanceReportView(APIView):
+    """Return historical attendance snapshots for a site host."""
+
+    permission_classes = [IsAuthenticated]
+    DEFAULT_LIMIT = 25
+    MAX_LIMIT = 1000
+
+    def get(self, request, site_id, *args, **kwargs):
+        try:
+            site = Site.objects.get(pk=site_id)
+        except Site.DoesNotExist:
+            return Response({'error': 'Site not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        host_type = (request.query_params.get('host_type') or '').lower()
+        host_id_raw = request.query_params.get('host_id')
+
+        if host_type not in AttendedSession.HostType.values:
+            return Response({'error': 'Invalid host_type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            host_id = int(host_id_raw)
+        except (TypeError, ValueError):
+            return Response({'error': 'host_id must be an integer'}, status=status.HTTP_400_BAD_REQUEST)
+
+        host_user = None
+        host_member = None
+
+        if host_type == AttendedSession.HostType.OWNER:
+            if host_id != site.owner_id:
+                return Response({'error': 'Owner does not belong to this site'}, status=status.HTTP_400_BAD_REQUEST)
+            host_user = site.owner
+        else:
+            try:
+                host_member = TeamMember.objects.get(pk=host_id, site=site)
+            except TeamMember.DoesNotExist:
+                return Response({'error': 'Team member not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            limit = self._parse_limit(request.query_params.get('limit'))
+        except ValueError:
+            return Response({'error': 'limit must be a positive integer or "all"'}, status=status.HTTP_400_BAD_REQUEST)
+
+        self._ensure_report_permission(request.user, site, host_type, host_user, host_member)
+
+        try:
+            AttendedSession.objects.sync_for_site(site)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Failed to sync attendance for site %s", site_id)
+            return Response({'error': 'Unable to build attendance report.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        queryset = AttendedSession.objects.filter(site=site, host_type=host_type)
+        if host_user:
+            queryset = queryset.filter(host_user=host_user)
+        if host_member:
+            queryset = queryset.filter(host_team_member=host_member)
+
+        queryset = queryset.order_by('-start_time')
+        total = queryset.count()
+        if limit is not None:
+            queryset = queryset[:limit]
+
+        serializer = AttendedSessionSerializer(queryset, many=True)
+
+        return Response({
+            'host': {
+                'type': host_type,
+                'id': host_id,
+                'display_name': self._format_host_label(host_user, host_member),
+            },
+            'site': {
+                'id': site.id,
+                'name': site.name,
+            },
+            'total': total,
+            'limit': limit if limit is not None else 'all',
+            'rows': serializer.data,
+        })
+
+    def _parse_limit(self, raw_limit):
+        if not raw_limit:
+            return self.DEFAULT_LIMIT
+        if raw_limit.lower() == 'all':
+            return None
+        value = int(raw_limit)
+        if value <= 0:
+            return None
+        return min(value, self.MAX_LIMIT)
+
+    def _ensure_report_permission(self, user, site, host_type, host_user, host_member):
+        if user.is_staff or site.owner_id == user.id:
+            return
+
+        role, membership = resolve_site_role(user, site)
+        if role is None:
+            raise PermissionDenied('You do not have access to this site.')
+
+        if host_type == AttendedSession.HostType.OWNER:
+            if role != TeamMember.PermissionRole.MANAGER:
+                raise PermissionDenied('Only owner or manager can view this report.')
+            return
+
+        if host_member and host_member.linked_user_id == user.id:
+            return
+
+        if role == TeamMember.PermissionRole.MANAGER:
+            return
+
+        raise PermissionDenied('You can only view your own attendance report.')
+
+    def _format_host_label(self, host_user, host_member):
+        if host_user:
+            return host_user.get_full_name() or host_user.email
+        if host_member:
+            return f"{host_member.first_name} {host_member.last_name}".strip()
+        return '---'
     
     @action(detail=True, methods=['post'], url_path='accept')
     def accept_invitation(self, request, pk=None):
