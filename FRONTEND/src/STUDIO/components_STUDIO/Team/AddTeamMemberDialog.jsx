@@ -11,26 +11,20 @@ import {
     FormControl,
     InputLabel,
     Box,
-    Typography,
-    IconButton,
-    CircularProgress
+    Typography
 } from '@mui/material';
-import { PhotoCamera, Delete as DeleteIcon } from '@mui/icons-material';
-import { uploadMedia } from '../../../services/mediaService';
+import Avatar from '../../../components/Avatar/Avatar';
+import AvatarUploader from '../../../components/Navigation/AvatarUploader';
 
 const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
     const [formData, setFormData] = useState({
-        first_name: '',
-        last_name: '',
+        name: '',
         email: '',
         role_description: '',
-        bio: '',
-        permission_role: 'viewer',
-        public_image_url: ''
+        permission_role: 'viewer'
     });
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
-    const [uploadingImage, setUploadingImage] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -40,53 +34,11 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
         }
     };
 
-    const handleAvatarUpload = async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            setErrors(prev => ({ ...prev, image: 'Proszę wybrać plik obrazu' }));
-            return;
-        }
-
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            setErrors(prev => ({ ...prev, image: 'Plik jest za duży (max 5MB)' }));
-            return;
-        }
-
-        setUploadingImage(true);
-        setErrors(prev => ({ ...prev, image: null }));
-
-        try {
-            const uploadedMedia = await uploadMedia(file, {
-                usage: 'site_content',
-                siteId: siteId
-            });
-            
-            handleChange('public_image_url', uploadedMedia.url);
-        } catch (error) {
-            console.error('Image upload failed:', error);
-            setErrors(prev => ({ ...prev, image: 'Nie udało się przesłać zdjęcia' }));
-        } finally {
-            setUploadingImage(false);
-        }
-    };
-
-    const handleRemoveAvatar = () => {
-        handleChange('public_image_url', '');
-    };
-
     const validate = () => {
         const newErrors = {};
         
-        if (!formData.first_name.trim()) {
-            newErrors.first_name = 'Imię jest wymagane';
-        }
-        
-        if (!formData.last_name.trim()) {
-            newErrors.last_name = 'Nazwisko jest wymagane';
+        if (!formData.name.trim()) {
+            newErrors.name = 'Nazwa jest wymagana';
         }
         
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -107,13 +59,10 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
             await onAdd(formData);
             // Reset form
             setFormData({
-                first_name: '',
-                last_name: '',
+                name: '',
                 email: '',
                 role_description: '',
-                bio: '',
-                permission_role: 'viewer',
-                avatar_url: ''
+                permission_role: 'viewer'
             });
             setErrors({});
             onClose();
@@ -128,13 +77,10 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
     const handleClose = () => {
         if (!submitting) {
             setFormData({
-                first_name: '',
-                last_name: '',
+                name: '',
                 email: '',
                 role_description: '',
-                bio: '',
-                permission_role: 'viewer',
-                public_image_url: ''
+                permission_role: 'viewer'
             });
             setErrors({});
             onClose();
@@ -175,28 +121,41 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
             </DialogTitle>
 
             <DialogContent>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2, alignItems: 'center' }}>
 
-                    <TextField
-                        label="Imię"
-                        value={formData.first_name}
-                        onChange={(e) => handleChange('first_name', e.target.value)}
-                        error={Boolean(errors.first_name)}
-                        helperText={errors.first_name}
-                        required
-                        fullWidth
-                        disabled={submitting}
+                    {/* Avatar at the top center */}
+                    <Avatar
+                        avatarUrl={null}
+                        user={{ name: formData.name }}
+                        size={120}
+                        sx={{
+                            border: (theme) => `3px solid ${
+                                theme.palette.mode === 'light' 
+                                    ? 'rgba(146, 0, 32, 0.2)' 
+                                    : 'rgba(114, 0, 21, 0.3)'
+                            }`
+                        }}
                     />
 
+                    <Typography variant="caption" sx={{ 
+                        color: 'text.secondary', 
+                        textAlign: 'center',
+                        mt: -1.5 
+                    }}>
+                        Bazowy awatar (możesz go zmienić po utworzeniu)
+                    </Typography>
+
+                    {/* Name field - full width */}
                     <TextField
-                        label="Nazwisko"
-                        value={formData.last_name}
-                        onChange={(e) => handleChange('last_name', e.target.value)}
-                        error={Boolean(errors.last_name)}
-                        helperText={errors.last_name}
+                        label="Imię i nazwisko"
+                        value={formData.name}
+                        onChange={(e) => handleChange('name', e.target.value)}
+                        error={Boolean(errors.name)}
+                        helperText={errors.name}
                         required
                         fullWidth
                         disabled={submitting}
+                        sx={{ mt: 1 }}
                     />
 
                     <TextField
@@ -217,18 +176,6 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
                         placeholder="np. Instruktor jogi, Terapeuta"
                         helperText="Opcjonalne - wyświetlane na stronie publicznej"
                         fullWidth
-                        disabled={submitting}
-                    />
-
-                    <TextField
-                        label="Bio"
-                        value={formData.bio}
-                        onChange={(e) => handleChange('bio', e.target.value)}
-                        placeholder="Krótki opis doświadczenia i specjalizacji"
-                        helperText="Opcjonalne - wyświetlane na stronie publicznej"
-                        fullWidth
-                        multiline
-                        rows={3}
                         disabled={submitting}
                     />
 
@@ -272,92 +219,6 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
                         </Select>
                     </FormControl>
 
-                    {/* Public Image Upload Section */}
-                    <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: 2,
-                        p: 2,
-                        borderRadius: 2,
-                        border: (theme) => `1px solid ${theme.palette.divider}`,
-                        bgcolor: (theme) => theme.palette.mode === 'light' 
-                            ? 'rgba(228, 229, 218, 0.3)' 
-                            : 'rgba(30, 30, 30, 0.3)'
-                    }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            Zdjęcie publiczne
-                        </Typography>
-                        
-                        {formData.public_image_url ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                <Box
-                                    component="img"
-                                    src={formData.public_image_url}
-                                    sx={{
-                                        width: '100%',
-                                        maxHeight: 200,
-                                        objectFit: 'cover',
-                                        borderRadius: 2,
-                                        border: (theme) => `1px solid ${theme.palette.divider}`
-                                    }}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                    <Button
-                                        component="label"
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<PhotoCamera />}
-                                        disabled={uploadingImage || submitting}
-                                        fullWidth
-                                    >
-                                        Zmień zdjęcie
-                                        <input
-                                            type="file"
-                                            hidden
-                                            accept="image/*"
-                                            onChange={handleAvatarUpload}
-                                        />
-                                    </Button>
-                                    <IconButton
-                                        onClick={handleRemoveAvatar}
-                                        disabled={uploadingImage || submitting}
-                                        size="small"
-                                        color="error"
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </Box>
-                            </Box>
-                        ) : (
-                            <Button
-                                component="label"
-                                variant="outlined"
-                                size="small"
-                                startIcon={uploadingImage ? <CircularProgress size={16} /> : <PhotoCamera />}
-                                disabled={uploadingImage || submitting}
-                                fullWidth
-                            >
-                                {uploadingImage ? 'Wgrywanie...' : 'Dodaj zdjęcie'}
-                                <input
-                                    type="file"
-                                    hidden
-                                    accept="image/*"
-                                    onChange={handleAvatarUpload}
-                                />
-                            </Button>
-                        )}
-                        
-                        {errors.image && (
-                            <Typography variant="caption" color="error">
-                                {errors.image}
-                            </Typography>
-                        )}
-                        
-                        <Typography variant="caption" color="text.secondary">
-                            Zdjęcie będzie wyświetlane na stronie publicznej (opcjonalne)
-                        </Typography>
-                    </Box>
-
                     {errors.submit && (
                         <Typography variant="body2" color="error" sx={{ textAlign: 'center' }}>
                             {errors.submit}
@@ -377,7 +238,7 @@ const AddTeamMemberDialog = ({ open, onClose, onAdd, siteId }) => {
                 <Button
                     onClick={handleSubmit}
                     variant="contained"
-                    disabled={submitting || uploadingImage}
+                    disabled={submitting}
                     sx={{
                         bgcolor: 'rgb(146, 0, 32)',
                         '&:hover': {

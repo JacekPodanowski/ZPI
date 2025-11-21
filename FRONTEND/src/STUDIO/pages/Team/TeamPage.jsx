@@ -291,11 +291,10 @@ const TeamPage = () => {
                         'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                     },
                     body: JSON.stringify({
-                        first_name: memberData.first_name,
-                        last_name: memberData.last_name,
-                        public_image_url: memberData.public_image_url,
-                        role_description: memberData.role_description,
-                        bio: memberData.bio
+                        first_name: memberData.name ? memberData.name.split(' ')[0] : memberData.first_name,
+                        last_name: memberData.name ? memberData.name.split(' ').slice(1).join(' ') : memberData.last_name,
+                        avatar_url: memberData.avatar_url,
+                        role_description: memberData.role_description
                     })
                 });
                 
@@ -313,6 +312,9 @@ const TeamPage = () => {
                         ...updatedOwner
                     }
                 }));
+                
+                // Update user context so avatar is consistent everywhere
+                updateUser(updatedOwner);
             } else {
                 // Update regular team member
                 const updatedMember = await updateTeamMember(memberId, memberData);
@@ -448,8 +450,8 @@ const TeamPage = () => {
                                 }}
                             >
                                 <Avatar
-                                    avatarUrl={site.owner.avatar_url}
-                                    user={site.owner}
+                                    avatarUrl={site.owner.id === currentUser?.id ? currentUser.avatar_url : site.owner.avatar_url}
+                                    user={site.owner.id === currentUser?.id ? currentUser : site.owner}
                                     size={56}
                                 />
 
@@ -513,15 +515,7 @@ const TeamPage = () => {
                     )}
 
                     {/* Team Members */}
-                    {teamMembers
-                        .filter(member => {
-                            // Filter out owner by ID
-                            if (member.linked_user === site?.owner?.id) return false;
-                            // Filter out duplicates by email
-                            if (member.email && member.email === site?.owner?.email) return false;
-                            return true;
-                        })
-                        .map((member, index) => (
+                    {teamMembers.map((member, index) => (
                         <motion.div
                             key={member.id}
                             initial={{ opacity: 0, y: 20 }}
@@ -552,7 +546,7 @@ const TeamPage = () => {
 
                                 <Box sx={{ flex: 1 }}>
                                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                        {member.first_name} {member.last_name}
+                                        {member.name || `${member.first_name || ''} ${member.last_name || ''}`.trim()}
                                     </Typography>
                                     {member.email && (
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -660,11 +654,25 @@ const TeamPage = () => {
                                     />
                                 )}
 
-                                <Chip
-                                    label={member.invitation_status}
-                                    size="small"
-                                    sx={{ minWidth: 80 }}
-                                />
+                                {member.invitation_status !== 'mock' && (
+                                    <Chip
+                                        label={member.invitation_status}
+                                        size="small"
+                                        sx={{ 
+                                            minWidth: 80,
+                                            bgcolor: member.invitation_status === 'linked' 
+                                                ? 'rgba(76, 175, 80, 0.2)' 
+                                                : member.invitation_status === 'pending'
+                                                ? 'rgba(255, 193, 7, 0.2)'
+                                                : 'rgba(33, 150, 243, 0.2)',
+                                            color: member.invitation_status === 'linked'
+                                                ? 'rgb(46, 125, 50)'
+                                                : member.invitation_status === 'pending'
+                                                ? 'rgb(245, 124, 0)'
+                                                : 'rgb(13, 71, 161)'
+                                        }}
+                                    />
+                                )}
 
                                 {(userPermissions.canEditOthers || member.linked_user === currentUser?.id) && (
                                     <Tooltip title="Edytuj">
@@ -679,6 +687,26 @@ const TeamPage = () => {
                                         >
                                             <EditIcon />
                                         </IconButton>
+                                    </Tooltip>
+                                )}
+
+                                {userPermissions.canEditOthers && member.invitation_status === 'mock' && member.email && (
+                                    <Tooltip title="Wyślij zaproszenie">
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            startIcon={<SendIcon />}
+                                            onClick={() => handleSendInvitation(member.id)}
+                                            sx={{ 
+                                                bgcolor: 'rgb(146, 0, 32)',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    bgcolor: 'rgb(114, 0, 21)'
+                                                }
+                                            }}
+                                        >
+                                            Zaproś
+                                        </Button>
                                     </Tooltip>
                                 )}
 

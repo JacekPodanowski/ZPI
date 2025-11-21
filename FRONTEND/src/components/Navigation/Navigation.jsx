@@ -95,6 +95,7 @@ const Navigation = () => {
             primary.push(
                 { label: 'Strony', to: '/studio/sites', requiresAuth: true },
                 { label: 'Kalendarz', to: '/studio/calendar/creator', requiresAuth: true },
+                { label: 'Wydarzenia', to: '/studio/events', requiresAuth: true },
                 { label: 'Viewer', to: '/viewer', requiresAuth: true }
             );
         }

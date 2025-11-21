@@ -5,7 +5,7 @@ import { alpha } from '@mui/material/styles';
 import apiClient from '../../services/apiClient';
 import { deleteMediaAsset } from '../../services/mediaService';
 
-const AvatarUploader = ({ currentAvatar, onAvatarChange, size = 48 }) => {
+const AvatarUploader = ({ currentAvatar, onAvatarChange, size = 48, uploadEndpoint = null }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef(null);
@@ -95,8 +95,12 @@ const AvatarUploader = ({ currentAvatar, onAvatarChange, size = 48 }) => {
 
       const newAvatarUrl = response.data.url;
       
-      // Update user avatar in backend
-      await apiClient.patch('/users/me/', { avatar_url: newAvatarUrl });
+      // Update avatar in backend using custom endpoint or default user endpoint
+      if (uploadEndpoint) {
+        await apiClient.patch(uploadEndpoint, { avatar_url: newAvatarUrl });
+      } else {
+        await apiClient.patch('/users/me/', { avatar_url: newAvatarUrl });
+      }
       
       // Delete old avatar if it exists
       if (currentAvatar) {
@@ -193,11 +197,13 @@ AvatarUploader.propTypes = {
   currentAvatar: PropTypes.string,
   onAvatarChange: PropTypes.func.isRequired,
   size: PropTypes.number,
+  uploadEndpoint: PropTypes.string,
 };
 
 AvatarUploader.defaultProps = {
   currentAvatar: null,
   size: 48,
+  uploadEndpoint: null,
 };
 
 export default AvatarUploader;

@@ -76,6 +76,7 @@ from .views import (
     newsletter_track_click,
     newsletter_stats,
     AttendanceReportView,
+    BigEventViewSet,
 )
 
 
@@ -92,6 +93,7 @@ router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='avai
 router.register(r'email-templates', EmailTemplateViewSet, basename='emailtemplate')
 router.register(r'team-members', TeamMemberViewSet, basename='teammember')
 router.register(r'testimonials', TestimonialViewSet, basename='testimonial')
+router.register(r'big-events', BigEventViewSet, basename='bigevent')
 
 urlpatterns = [
     path('', include(router.urls)),

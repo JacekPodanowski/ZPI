@@ -8,6 +8,7 @@ import ManageModulesPage from './pages/NewSite/ManageModulesPage';
 import StyleSelectionPage from './pages/NewSite/StyleSelectionPage';
 import NewEditorPage from './pages/Editor/NewEditorPage';
 import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
+import EventsPage from './pages/Events/EventsPage';
 import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import NavigationLayout from './layouts/NavigationLayout';
 import SettingsLayout from './layouts/SettingsLayout';
@@ -76,6 +77,7 @@ const StudioApp = () => (
     {/* Pages with persistent Navigation - shared NavigationLayout */}
     <Route element={<NavigationLayout />}>
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
+      <Route path="events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
       <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
       <Route path="domain-purchase-success" element={<ProtectedRoute><DomainPurchaseSuccessPage /></ProtectedRoute>} />

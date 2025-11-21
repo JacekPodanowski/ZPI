@@ -29,6 +29,7 @@ from .models import (
     TestimonialSummary,
     NewsletterSubscription,
     Payment,
+    BigEvent,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -96,7 +97,7 @@ class PlatformUserSerializer(serializers.ModelSerializer):
         model = PlatformUser
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name', 'avatar_url',
-            'public_image_url', 'role_description', 'bio',
+            'public_image_url', 'role_description',
             'account_type', 'source_tag', 'is_staff', 'is_active',
             'preferences', 'created_at', 'updated_at',
             'is_temporary_password', 'password_changed_at'
@@ -551,8 +552,8 @@ class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamMember
         fields = [
-            'id', 'site', 'first_name', 'last_name', 'email', 'role_description', 
-            'bio', 'avatar_url', 'public_image_url', 'is_active', 'linked_user', 'invitation_status',
+            'id', 'site', 'name', 'email', 'role_description', 
+            'avatar_url', 'is_active', 'linked_user', 'invitation_status',
             'invitation_token', 'invited_at', 'permission_role', 'created_at',
             'updated_at', 'avatar_color', 'avatar_letter'
         ]
@@ -563,16 +564,30 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             'invitation_status': {'read_only': True},
         }
     
+    def to_representation(self, instance):
+        """Override to return linked user's avatar if connected."""
+        data = super().to_representation(instance)
+        
+        # If linked to a user, use their avatar
+        if instance.linked_user:
+            data['avatar_url'] = instance.linked_user.avatar_url or ''
+            # Also update name and color/letter from linked user
+            user_name = f"{instance.linked_user.first_name} {instance.linked_user.last_name}".strip() or instance.linked_user.email
+            from .utils import get_avatar_color, get_avatar_letter
+            data['avatar_color'] = get_avatar_color(user_name)
+            data['avatar_letter'] = get_avatar_letter(instance.linked_user.first_name or instance.linked_user.email)
+        
+        return data
+    
     def get_avatar_color(self, obj):
         """Get deterministic color for avatar based on name."""
         from .utils import get_avatar_color
-        full_name = f"{obj.first_name} {obj.last_name}"
-        return get_avatar_color(full_name)
+        return get_avatar_color(obj.name)
     
     def get_avatar_letter(self, obj):
         """Get first letter for avatar display."""
         from .utils import get_avatar_letter
-        return get_avatar_letter(obj.first_name)
+        return get_avatar_letter(obj.name)
 
 
 class TeamMemberInfoSerializer(serializers.ModelSerializer):
@@ -583,48 +598,65 @@ class TeamMemberInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamMember
         fields = [
-            'id', 'first_name', 'last_name', 'role_description', 'permission_role',
+            'id', 'name', 'role_description', 'permission_role',
             'invitation_status', 'avatar_url', 'avatar_color', 'avatar_letter'
         ]
     
+    def to_representation(self, instance):
+        """Override to return linked user's avatar if connected."""
+        data = super().to_representation(instance)
+        
+        if instance.linked_user:
+            data['avatar_url'] = instance.linked_user.avatar_url or ''
+            user_name = f"{instance.linked_user.first_name} {instance.linked_user.last_name}".strip() or instance.linked_user.email
+            from .utils import get_avatar_color, get_avatar_letter
+            data['avatar_color'] = get_avatar_color(user_name)
+            data['avatar_letter'] = get_avatar_letter(instance.linked_user.first_name or instance.linked_user.email)
+        
+        return data
+    
     def get_avatar_color(self, obj):
         from .utils import get_avatar_color
-        full_name = f"{obj.first_name} {obj.last_name}"
-        return get_avatar_color(full_name)
+        return get_avatar_color(obj.name)
     
     def get_avatar_letter(self, obj):
         from .utils import get_avatar_letter
-        return get_avatar_letter(obj.first_name)
+        return get_avatar_letter(obj.name)
 
 
 class PublicTeamMemberSerializer(serializers.ModelSerializer):
     """Public serializer for team members displayed on public sites."""
     avatar_color = serializers.SerializerMethodField()
     avatar_letter = serializers.SerializerMethodField()
-    name = serializers.SerializerMethodField()
     role = serializers.CharField(source='role_description')
-    description = serializers.CharField(source='bio')
-    image = serializers.CharField(source='public_image_url')  # Use public_image_url for public display
+    image = serializers.SerializerMethodField()  # Use avatar_url or linked_user's avatar
     
     class Meta:
         model = TeamMember
         fields = [
-            'id', 'name', 'role', 'bio', 'description', 'image',
+            'id', 'name', 'role', 'image',
             'avatar_url', 'avatar_color', 'avatar_letter'
         ]
     
-    def get_name(self, obj):
-        """Get full name."""
-        return f"{obj.first_name} {obj.last_name}"
+    def get_image(self, obj):
+        """Return linked user's avatar if connected, otherwise team member's avatar."""
+        if obj.linked_user:
+            return obj.linked_user.avatar_url or ''
+        return obj.avatar_url or ''
     
     def get_avatar_color(self, obj):
         from .utils import get_avatar_color
-        full_name = f"{obj.first_name} {obj.last_name}"
-        return get_avatar_color(full_name)
+        name = obj.name
+        if obj.linked_user:
+            name = f"{obj.linked_user.first_name} {obj.linked_user.last_name}".strip() or obj.linked_user.email
+        return get_avatar_color(name)
     
     def get_avatar_letter(self, obj):
         from .utils import get_avatar_letter
-        return get_avatar_letter(obj.first_name)
+        name = obj.name
+        if obj.linked_user:
+            name = obj.linked_user.first_name or obj.linked_user.email
+        return get_avatar_letter(name)
 
 
 class AttendedSessionSerializer(serializers.ModelSerializer):
@@ -643,7 +675,7 @@ class AttendedSessionSerializer(serializers.ModelSerializer):
         if obj.host_type == AttendedSession.HostType.OWNER and obj.host_user:
             return obj.host_user.get_full_name() or obj.host_user.email
         if obj.host_team_member:
-            return f"{obj.host_team_member.first_name} {obj.host_team_member.last_name}".strip()
+            return obj.host_team_member.name
         return ''
 
 
@@ -789,3 +821,22 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'token', 'p24_order_id', 'created_at', 'updated_at']
+
+
+class BigEventSerializer(serializers.ModelSerializer):
+    """Serializer for big events (trips, workshops, retreats)."""
+    
+    class Meta:
+        model = BigEvent
+        fields = [
+            'id', 'site', 'creator', 'title', 'description', 'location',
+            'start_date', 'end_date', 'max_participants', 'current_participants',
+            'price', 'status', 'send_email_on_publish', 'email_sent', 'email_sent_at',
+            'image_url', 'details', 'created_at', 'updated_at', 'published_at'
+        ]
+        read_only_fields = ['id', 'creator', 'email_sent', 'email_sent_at', 'created_at', 'updated_at', 'published_at']
+    
+    def create(self, validated_data):
+        # Automatically set creator from request user
+        validated_data['creator'] = self.context['request'].user
+        return super().create(validated_data)

@@ -4,7 +4,7 @@ from .models import (
 	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, AttendedSession,
 	MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
 	Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics, Payment,
-	TeamMember
+	TeamMember, BigEvent
 )
 
 
@@ -54,9 +54,9 @@ class BookingAdmin(admin.ModelAdmin):
 
 @admin.register(TeamMember)
 class TeamMemberAdmin(admin.ModelAdmin):
-	list_display = ('first_name', 'last_name', 'site', 'permission_role', 'invitation_status', 'is_active')
+	list_display = ('name', 'email', 'site', 'permission_role', 'invitation_status', 'is_active')
 	list_filter = ('permission_role', 'invitation_status', 'is_active', 'site')
-	search_fields = ('first_name', 'last_name', 'email', 'site__name')
+	search_fields = ('name', 'email', 'site__name')
 	autocomplete_fields = ('site', 'linked_user')
 
 
@@ -218,3 +218,12 @@ class PaymentAdmin(admin.ModelAdmin):
 	def amount_pln(self, obj):
 		return f"{obj.amount / 100:.2f} PLN"
 	amount_pln.short_description = 'Amount'
+
+
+@admin.register(BigEvent)
+class BigEventAdmin(admin.ModelAdmin):
+	list_display = ('title', 'site', 'creator', 'start_date', 'status', 'current_participants', 'max_participants', 'email_sent')
+	search_fields = ('title', 'description', 'location')
+	list_filter = ('status', 'send_email_on_publish', 'email_sent', 'created_at')
+	autocomplete_fields = ('site', 'creator')
+	readonly_fields = ('created_at', 'updated_at', 'published_at', 'email_sent_at')

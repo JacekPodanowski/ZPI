@@ -74,7 +74,6 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='URL to user avatar image')
     public_image_url = models.CharField(max_length=500, blank=True, null=True, help_text='Public image URL displayed on team page')
     role_description = models.CharField(max_length=200, blank=True, null=True, help_text='Role/title displayed on team page (e.g., "Założyciel", "Instruktor")')
-    bio = models.TextField(blank=True, null=True, help_text='Biography displayed on team page')
     account_type = models.CharField(max_length=10, choices=AccountType.choices, default=AccountType.FREE)
     source_tag = models.CharField(max_length=10, choices=SourceTag.choices, default=SourceTag.WEB)
     preferences = models.JSONField(
@@ -226,6 +225,7 @@ class Client(models.Model):
 class TeamMember(models.Model):
     """Represents a team member with invitation and permission management."""
     class InvitationStatus(models.TextChoices):
+        MOCK = 'mock', 'Mock (Not invited)'
         INVITED = 'invited', 'Invited (No account)'
         PENDING = 'pending', 'Pending (Has account)'
         LINKED = 'linked', 'Linked (Connected)'
@@ -237,18 +237,15 @@ class TeamMember(models.Model):
         MANAGER = 'manager', 'Manager'
 
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='team_members')
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
+    name = models.CharField(max_length=300, default='Unnamed', help_text='Full name of the team member')
     email = models.EmailField(blank=True, null=True, help_text='Required for sending invitations')
     role_description = models.CharField(max_length=255, blank=True, help_text='E.g., "Yoga Instructor", "Therapist"')
-    bio = models.TextField(blank=True, help_text='Member bio for public display')
-    avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='Private avatar URL for internal use')
-    public_image_url = models.CharField(max_length=500, blank=True, null=True, help_text='Public image URL displayed on site')
+    avatar_url = models.CharField(max_length=500, blank=True, null=True, help_text='Avatar URL for display')
     is_active = models.BooleanField(default=True)
     
     # Invitation management
     linked_user = models.ForeignKey(PlatformUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='team_memberships')
-    invitation_status = models.CharField(max_length=16, choices=InvitationStatus.choices, default=InvitationStatus.INVITED)
+    invitation_status = models.CharField(max_length=16, choices=InvitationStatus.choices, default=InvitationStatus.MOCK)
     invitation_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     invited_at = models.DateTimeField(null=True, blank=True)
     
@@ -268,7 +265,7 @@ class TeamMember(models.Model):
 
     def __str__(self):
         status = f"({self.get_invitation_status_display()})"
-        return f"{self.first_name} {self.last_name} {status} - {self.site.name}"
+        return f"{self.name} {status} - {self.site.name}"
 
 
 class Event(models.Model):
@@ -1114,3 +1111,51 @@ class Payment(models.Model):
     
     def __str__(self):
         return f"Payment {self.session_id} - {self.get_status_display()} ({self.amount/100} PLN)"
+
+
+class BigEvent(models.Model):
+    """
+    Represents large events like trips, workshops, retreats.
+    These are major events that can be published to the site and sent via newsletter.
+    """
+    class Status(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        PUBLISHED = 'published', 'Published'
+        CANCELLED = 'cancelled', 'Cancelled'
+        COMPLETED = 'completed', 'Completed'
+
+    site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='big_events')
+    creator = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='created_big_events')
+    
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    location = models.CharField(max_length=255, blank=True)
+    start_date = models.DateField()
+    end_date = models.DateField(blank=True, null=True)
+    max_participants = models.IntegerField(help_text='Maximum number of participants')
+    current_participants = models.IntegerField(default=0, help_text='Current number of registered participants')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Price per person')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    
+    # Email notification settings
+    send_email_on_publish = models.BooleanField(default=False, help_text='Send email to subscribers when published')
+    email_sent = models.BooleanField(default=False, help_text='Whether email has been sent')
+    email_sent_at = models.DateTimeField(blank=True, null=True)
+    
+    # Additional details
+    image_url = models.CharField(max_length=500, blank=True, null=True, help_text='Event cover image')
+    details = models.JSONField(default=dict, blank=True, help_text='Additional event details (schedule, requirements, etc.)')
+    
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['site', 'status']),
+            models.Index(fields=['-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.site.identifier}) - {self.get_status_display()}"

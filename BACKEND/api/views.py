@@ -54,6 +54,7 @@ from .models import (
     DomainOrder,
     Testimonial,
     TestimonialSummary,
+    BigEvent,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -101,6 +102,7 @@ from .serializers import (
     DomainOrderSerializer,
     TestimonialSerializer,
     TestimonialSummarySerializer,
+    BigEventSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -3139,7 +3141,6 @@ class PublicTeamView(APIView):
             'first_name': owner.first_name or '',
             'last_name': owner.last_name or '',
             'role': owner.role_description or 'Właściciel',
-            'bio': owner.bio or '',
             'image': owner.public_image_url or owner.avatar_url or '',
             'is_owner': True
         }
@@ -5572,4 +5573,131 @@ def newsletter_stats(request, site_id):
         },
         'top_subscribers': top_subscribers_data,
     }, status=status.HTTP_200_OK)
+
+
+class BigEventViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing big events (trips, workshops, retreats)."""
+    serializer_class = BigEventSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return BigEvent.objects.all()
+        
+        # Get sites the user owns or is a team member of
+        owned_sites = Site.objects.filter(owner=user)
+        team_member_sites = Site.objects.filter(
+            team_members__linked_user=user,
+            team_members__invitation_status='linked'
+        )
+        accessible_sites = owned_sites | team_member_sites
+        
+        return BigEvent.objects.filter(site__in=accessible_sites).select_related('site', 'creator')
+    
+    def perform_create(self, serializer):
+        site = serializer.validated_data.get('site')
+        user = self.request.user
+        
+        # Check if user has permission to create events for this site
+        if not user.is_staff:
+            is_owner = site.owner == user
+            is_team_member = TeamMember.objects.filter(
+                site=site,
+                linked_user=user,
+                invitation_status='linked',
+                permission_role__in=['manager', 'contributor']
+            ).exists()
+            
+            if not (is_owner or is_team_member):
+                raise PermissionDenied('You do not have permission to create events for this site.')
+        
+        serializer.save(creator=user)
+    
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        """Publish a big event and optionally send email notifications."""
+        event = self.get_object()
+        
+        if event.status == 'published':
+            return Response(
+                {'error': 'Event is already published.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        event.status = 'published'
+        event.published_at = timezone.now()
+        
+        # Check if email notification should be sent
+        send_email = request.data.get('send_email', event.send_email_on_publish)
+        
+        if send_email and not event.email_sent:
+            # Get active newsletter subscribers for this site
+            from .models import NewsletterSubscription
+            subscribers = NewsletterSubscription.objects.filter(
+                site=event.site,
+                is_active=True,
+                is_confirmed=True
+            )
+            
+            if subscribers.exists():
+                # Send email to all subscribers
+                subject = f'Nowe wydarzenie: {event.title}'
+                
+                for subscriber in subscribers:
+                    try:
+                        # Prepare email content with unsubscribe link
+                        unsubscribe_url = f'{settings.FRONTEND_URL}/newsletter/unsubscribe/{subscriber.unsubscribe_token}'
+                        context = {
+                            'event': event,
+                            'subscriber': subscriber,
+                            'site': event.site,
+                            'unsubscribe_url': unsubscribe_url,
+                        }
+                        
+                        html_message = render_to_string('emails/new_event_notification.html', context)
+                        plain_message = strip_tags(html_message)
+                        
+                        send_mail(
+                            subject=subject,
+                            message=plain_message,
+                            html_message=html_message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[subscriber.email],
+                            fail_silently=True,
+                        )
+                    except Exception as e:
+                        logger.error(f'Failed to send event notification to {subscriber.email}: {str(e)}')
+                
+                event.email_sent = True
+                event.email_sent_at = timezone.now()
+        
+        event.save()
+        
+        serializer = self.get_serializer(event)
+        return Response({
+            'message': 'Event published successfully.',
+            'email_sent': event.email_sent,
+            'event': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        """Unpublish a big event (change status back to draft)."""
+        event = self.get_object()
+        
+        if event.status != 'published':
+            return Response(
+                {'error': 'Event is not published.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        event.status = 'draft'
+        event.save()
+        
+        serializer = self.get_serializer(event)
+        return Response({
+            'message': 'Event unpublished successfully.',
+            'event': serializer.data
+        }, status=status.HTTP_200_OK)
 

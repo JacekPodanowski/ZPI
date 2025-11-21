@@ -29,8 +29,7 @@ const ProfilePage = () => {
 
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
-    lastName: user?.last_name || '',
-    bio: user?.bio || ''
+    lastName: user?.last_name || ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -43,8 +42,7 @@ const ProfilePage = () => {
     if (user) {
       setFormData({
         firstName: user.first_name || '',
-        lastName: user.last_name || '',
-        bio: user.bio || ''
+        lastName: user.last_name || ''
       });
     }
   }, [user]);
@@ -63,8 +61,7 @@ const ProfilePage = () => {
     try {
       const updatedData = {
         first_name: formData.firstName,
-        last_name: formData.lastName,
-        bio: formData.bio
+        last_name: formData.lastName
       };
 
       const response = await updateUserProfile(updatedData);
@@ -107,8 +104,7 @@ const ProfilePage = () => {
 
   const hasChanges = 
     formData.firstName !== (user?.first_name || '') ||
-    formData.lastName !== (user?.last_name || '') ||
-    formData.bio !== (user?.bio || '');
+    formData.lastName !== (user?.last_name || '');
 
   const avatarUrl = user?.avatar_url ? resolveMediaUrl(user.avatar_url) : null;
 
@@ -217,17 +213,6 @@ const ProfilePage = () => {
                   color: theme.colors?.text?.primary
                 }
               }}
-            />
-
-            <TextField
-              fullWidth
-              label="Bio"
-              value={formData.bio}
-              onChange={handleChange('bio')}
-              multiline
-              rows={4}
-              placeholder="Powiedz nam coś o sobie..."
-              sx={{ borderRadius: '12px' }}
             />
           </Stack>
         </Box>
