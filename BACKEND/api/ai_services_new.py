@@ -356,6 +356,94 @@ Gdy je masz → zwróć api_call z tymi danymi (użyj domyślnych dla reszty pó
 - NIGDY nie zwracaj "status": "success" z polem "site"
 - ZAWSZE używaj "status": "api_call" (gdy masz dane) lub "clarification" (gdy czegoś brakuje)
 
+🔄 AKTUALIZACJA VS TWORZENIE NOWEGO:
+
+1. Sprawdź "Istniejące wydarzenia" w kontekście
+2. Jeśli użytkownik mówi o zmianie istniejącego ("wydłużono termin", "zmień datę", "aktualizuj"):
+   ✅ Użyj PATCH/PUT do aktualizacji istniejącego wydarzenia
+   ❌ NIE TWÓRZ nowego wydarzenia!
+   
+3. Jeśli użytkownik wyraźnie chce nowe ("dodaj wydarzenie", "stwórz nowe"):
+   ✅ Użyj POST do utworzenia nowego
+
+PRZYKŁAD 1 - Zmiana istniejącego:
+Historia: "dodaj wycieczka w góry 10-15 lipca" → utworzono event ID=5
+Polecenie: "wydłużono o tydzień z zachowaniem początku"
+
+ANALIZA:
+- W historii widzę że już utworzono wydarzenie "Wycieczka w góry" (10-15 lipca)
+- User chce zmienić termin na 10-22 lipca
+- To AKTUALIZACJA istniejącego wydarzenia!
+
+ODPOWIEDŹ:
+{
+  "status": "api_call",
+  "endpoint": "/big-events/5/",  ← ID z historii lub z "Istniejące wydarzenia"
+  "method": "PATCH",  ← PATCH, nie POST!
+  "body": {
+    "end_date": "2026-07-22"  ← Zmień TYLKO end_date
+  },
+  "explanation": "Aktualizuję wydarzenie 'Wycieczka w góry' - wydłużam termin do 22 lipca 2026."
+}
+
+PRZYKŁAD 2 - Nowe wydarzenie:
+Polecenie: "dodaj warsztat fotografii 15 sierpnia"
+
+ANALIZA:
+- To nowe wydarzenie (nie wspomina o aktualizacji)
+- Brak podobnego wydarzenia w "Istniejące wydarzenia"
+
+ODPOWIEDŹ:
+{
+  "status": "api_call",
+  "endpoint": "/big-events/",  ← Bez ID
+  "method": "POST",
+  "body": {...}
+}
+
+⚠️ JAK ZNALEŹĆ ID WYDARZENIA DO AKTUALIZACJI:
+1. **PRIORYTET 1 - HISTORIA KONWERSACJI**: Jeśli w historii WŁAŚNIE utworzyłeś wydarzenie → użyj TEGO ID
+   - Sprawdź swoje poprzednie odpowiedzi w historii
+   - Jeśli widzisz "Tworzę wydarzenie 'Wycieczka w góry'" → to NA TO wydarzenie użytkownik się odnosi
+   - Użyj ID z "Istniejące wydarzenia" które pasuje do title/dat z historii
+   
+2. **PRIORYTET 2 - Dopasowanie po nazwie**: Jeśli user wspomina konkretną nazwę → szukaj w "Istniejące wydarzenia"
+
+3. **Jeśli niepewny** → {"status": "clarification", "question": "Które wydarzenie chcesz zaktualizować? Mamy: [lista]"}
+
+⚠️ KRYTYCZNE ZASADY:
+- Jeśli user mówi "wydłużono", "zmień", "aktualizuj" bez nazwy → odnosi się do OSTATNIEGO utworzonego w tej sesji
+- NIGDY nie aktualizuj losowego wydarzenia - zawsze potwierdź które
+- Jeśli historia pokazuje że utworzyłeś "Wycieczka w góry" ID=5, a user mówi "wydłuż termin" → aktualizuj ID=5
+
+PRZYKŁAD Z HISTORIĄ - POPRAWNY:
+Historia:
+1. 👤 "dodaj wycieczka w góry 10-15 lipca 2026"
+   🤖 "Tworzę wydarzenie 'Wycieczka w góry' od 10-15 lipca."
+   [Utworzono wydarzenie ID=5]
+
+Istniejące wydarzenia:
+- ID=5: 'Wycieczka w góry' (2026-07-10 do 2026-07-15)
+- ID=3: 'Warsztat jogi' (2026-06-01 do 2026-06-03)
+
+Polecenie: "wydłużono o tydzień"
+
+ANALIZA:
+- User odnosi się do wydarzenia z poprzedniej wiadomości w historii
+- To było "Wycieczka w góry" ID=5
+- Zachowaj start_date=2026-07-10, zmień end_date na 2026-07-22
+
+ODPOWIEDŹ:
+{
+  "status": "api_call",
+  "endpoint": "/big-events/5/",
+  "method": "PATCH",
+  "body": {
+    "end_date": "2026-07-22"
+  },
+  "explanation": "Aktualizuję wydarzenie 'Wycieczka w góry' (ID=5) - wydłużam termin końcowy o tydzień do 22 lipca 2026, zachowując początek 10 lipca."
+}
+
 📋 FORMAT api_call:
 {
   "status": "api_call",
@@ -425,6 +513,14 @@ ODPOWIEDŹ:
                 site_id = context.get('site_id')
                 if site_id:
                     context_info += f"\n\n📍 Site ID: {site_id} (użyj tego w body.site)"
+                
+                # Add existing events to context
+                existing_events = context.get('existing_events', [])
+                if existing_events:
+                    context_info += "\n\n📅 Istniejące wydarzenia na tej stronie:"
+                    for evt in existing_events:
+                        context_info += f"\n- ID={evt['id']}: '{evt['title']}' ({evt['start_date']} do {evt.get('end_date', 'brak')}) [{evt['status']}]"
+                    context_info += "\n\n⚠️ Jeśli użytkownik mówi o zmianie/aktualizacji istniejącego - użyj PATCH z ID!"
             
             history_context = self._build_history_context(chat_history)
             

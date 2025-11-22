@@ -339,7 +339,11 @@ const AIChatPanel = ({
             
             console.log('[AI] API call successful:', apiResponse.data);
             
-            const successMessage = `✓ ${result.explanation}\n\n**Utworzono wydarzenie:**\n- ID: ${apiResponse.data.id}\n- Tytuł: ${apiResponse.data.title}\n- Data: ${apiResponse.data.start_date}${apiResponse.data.end_date ? ` - ${apiResponse.data.end_date}` : ''}\n\nWydarzenie zostało dodane do Twojego kalendarza!`;
+            // Determine operation type from method
+            const operationType = result.method.toUpperCase() === 'POST' ? 'Utworzono' : 'Zaktualizowano';
+            const operationVerb = result.method.toUpperCase() === 'POST' ? 'dodane' : 'zaktualizowane';
+            
+            const successMessage = `✓ ${result.explanation}\n\n**${operationType} wydarzenie:**\n- ID: ${apiResponse.data.id}\n- Tytuł: ${apiResponse.data.title}\n- Data: ${apiResponse.data.start_date}${apiResponse.data.end_date ? ` - ${apiResponse.data.end_date}` : ''}\n\nWydarzenie zostało ${operationVerb} w Twoim kalendarzu!`;
             
             setMessages((prev) => 
               prev.map(msg => 
@@ -348,7 +352,8 @@ const AIChatPanel = ({
                       ...msg, 
                       text: successMessage,
                       isLoading: false,
-                      sender: 'ai'
+                      sender: 'ai',
+                      eventId: apiResponse.data.id  // Store event ID for history context
                     }
                   : msg
               )

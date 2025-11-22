@@ -477,6 +477,27 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
         # Choose specialized agent based on context_type
         if context_type == 'studio_events':
             logger.info("[Celery] Using EventsManagerAgent")
+            
+            # Get existing events for this site to help AI decide update vs create
+            if site:
+                from .models import BigEvent
+                existing_events = BigEvent.objects.filter(site=site).values(
+                    'id', 'title', 'start_date', 'end_date', 'status'
+                ).order_by('-created_at')[:10]  # Last 10 events
+                
+                # Convert date objects to strings for JSON serialization
+                existing_events_list = []
+                for evt in existing_events:
+                    evt_dict = dict(evt)
+                    if evt_dict.get('start_date'):
+                        evt_dict['start_date'] = evt_dict['start_date'].isoformat()
+                    if evt_dict.get('end_date'):
+                        evt_dict['end_date'] = evt_dict['end_date'].isoformat()
+                    existing_events_list.append(evt_dict)
+                
+                context['existing_events'] = existing_events_list
+                logger.info(f"[Celery] Found {len(existing_events_list)} existing events for context")
+            
             agent_service = get_events_manager_agent()
             result = agent_service.process_task(user_prompt, context, chat_history=chat_history_list)
         else:
