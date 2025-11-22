@@ -18,6 +18,14 @@ const ServicesSection = ({ layout = 'cards', content = {}, style }) => {
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
+  // Preserve explicitly set values from content (don't let defaults override them)
+  if (content.substyle !== undefined) {
+    mergedContent.substyle = content.substyle;
+  }
+  if (content.flipStyle !== undefined) {
+    mergedContent.flipStyle = content.flipStyle;
+  }
+  
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.cards;
   return <LayoutComponent content={mergedContent} style={style} />;
 };

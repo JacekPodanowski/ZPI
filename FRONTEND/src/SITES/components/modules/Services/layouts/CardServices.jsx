@@ -6,6 +6,9 @@ import FlipCard from '../../../../../components/FlipCard';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 
+const getTrimmedText = (value) => (typeof value === 'string' ? value.trim() : '');
+const hasRichText = (value) => typeof value === 'string' && value.trim() !== '';
+
 const CardServices = ({ content, style }) => {
   const {
     title = 'Oferta',
@@ -44,6 +47,9 @@ const CardServices = ({ content, style }) => {
   const serviceList = services || items || [];
   const hasServices = serviceList && serviceList.length > 0;
 
+  // Unified layout - all services in one container
+  // Unified visual style handled by List layout only
+
   return (
     <section className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`} style={{ backgroundColor: bgColor }}>
       <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
@@ -70,9 +76,21 @@ const CardServices = ({ content, style }) => {
             {serviceList.map((service, index) => {
               const resolvedImage = resolveMediaUrl(service.image);
               const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
+              const serviceName = getTrimmedText(service.name);
+              const categoryLabel = getTrimmedText(service.category);
+              const descriptionHtml = hasRichText(service.description) ? service.description : '';
+              const detailedDescription = getTrimmedText(service.detailedDescription);
+              const detailsText = getTrimmedText(service.details);
               
-              // If service has details field, show as FlipCard, otherwise simple card
-              if (service.details) {
+              // Only show flip card if user explicitly filled backContent or backTitle
+              const backContentText = getTrimmedText(service.backContent);
+              const backTitleText = getTrimmedText(service.backTitle);
+              const hasBackContent = !!(backContentText || backTitleText);
+              
+              // If service has explicit back content, show as FlipCard, otherwise simple card
+              if (hasBackContent) {
+                // Use backContent or fall back to detailedDescription/details only if backContent exists
+                const backSideContent = backContentText || detailedDescription || detailsText;
                 // Front content
                 const frontContent = (
                   <div 
@@ -92,7 +110,7 @@ const CardServices = ({ content, style }) => {
                             Twoja przeglądarka nie obsługuje odtwarzania wideo.
                           </video>
                         ) : (
-                          <img src={resolvedImage} alt={service.name} className="w-full h-full object-cover" />
+                          <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
                         )}
                       </div>
                     )}
@@ -105,15 +123,17 @@ const CardServices = ({ content, style }) => {
                   
                     <div className="p-6 space-y-3 flex-grow flex flex-col" style={{ color: textColor }}>
                       <div className="flex-grow">
-                        {service.category && (
+                        {categoryLabel && (
                           <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
-                            {service.category}
+                            {categoryLabel}
                           </span>
                         )}
-                        <h3 className="text-xl font-semibold mb-2">{service.name || 'Nowa usługa'}</h3>
-                        {service.description && (
-                          <p className="text-sm opacity-75 leading-relaxed" dangerouslySetInnerHTML={{ __html: service.description }} />
+                        {serviceName && (
+                          <h3 className="text-xl font-semibold mb-2">{serviceName}</h3>
                         )}
+                      {descriptionHtml && (
+                        <p className="text-sm opacity-75 leading-relaxed" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                      )}
                       </div>
                       {service.price && service.price.trim() !== '' && (
                         <div className="flex items-baseline justify-between pt-2 border-t border-black/10">
@@ -127,23 +147,25 @@ const CardServices = ({ content, style }) => {
                   </div>
                 );
 
-                // Back content - shows details
+                // Back content - shows backContent (or details as fallback)
+                const backTitle = backTitleText || serviceName;
                 const backContent = (
                   <div 
                     className={`${style.cardStyle} h-full flex flex-col ${cardClasses}`}
                   >
-                    <h3 
-                      className="text-xl md:text-2xl font-semibold mb-4 text-center break-words px-6 pt-6 flex-shrink-0"
-                      style={{ color: accentColor }}
-                    >
-                      {service.name}
-                    </h3>
-                    
+                    {backTitle && (
+                      <h3 
+                        className="text-xl md:text-2xl font-semibold mb-4 text-center break-words px-6 pt-6 flex-shrink-0"
+                        style={{ color: accentColor }}
+                      >
+                        {backTitle}
+                      </h3>
+                    )}
                     <div 
                       className="px-6 text-sm overflow-y-auto flex-grow"
                       style={{ color: textColor }}
                     >
-                      <p className="whitespace-pre-line break-words">{service.details}</p>
+                      <p className="whitespace-pre-line break-words">{backSideContent}</p>
                     </div>
                     
                     <p 
@@ -186,20 +208,22 @@ const CardServices = ({ content, style }) => {
                             Twoja przeglądarka nie obsługuje odtwarzania wideo.
                           </video>
                         ) : (
-                          <img src={resolvedImage} alt={service.name} className="w-full h-full object-cover" />
+                          <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
                         )}
                       </div>
                     )}
                     <div className="p-6 space-y-4" style={{ color: textColor }}>
                       <div>
-                        {service.category && (
+                        {categoryLabel && (
                           <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
-                            {service.category}
+                            {categoryLabel}
                           </span>
                         )}
-                        <h3 className="text-xl font-semibold">{service.name || 'Nowa usługa'}</h3>
-                        {service.description && (
-                          <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: service.description }} />
+                        {serviceName && (
+                          <h3 className="text-xl font-semibold">{serviceName}</h3>
+                        )}
+                        {descriptionHtml && (
+                          <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
                         )}
                       </div>
                       {service.price && service.price.trim() !== '' && (

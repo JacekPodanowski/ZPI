@@ -3,6 +3,17 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
+const getTrimmedText = (value) => (typeof value === 'string' ? value.trim() : '');
+const hasRichText = (value) => typeof value === 'string' && value.trim() !== '';
+const formatPriceValue = (price, currency) => {
+  if (!price) return '';
+  const trimmed = price.trim();
+  if (!trimmed) return '';
+  if (!currency) return trimmed;
+  const containsCurrency = trimmed.toUpperCase().includes(currency.toUpperCase());
+  return containsCurrency ? trimmed : `${trimmed}${currency}`;
+};
+
 const AccordionServices = ({ content, style }) => {
   const {
     title = 'Oferta',
@@ -80,79 +91,106 @@ const AccordionServices = ({ content, style }) => {
         {/* Accordion Items */}
         {hasServices ? (
           <div className={spacing}>
-            {serviceList.map((service, index) => (
-              <div 
-                key={service.id || index}
-                className={`${style.cardStyle} ${itemClass} overflow-hidden cursor-pointer hover:shadow-lg transition-all`}
-                onClick={() => setExpandedIndex(expandedIndex === index ? -1 : index)}
-              >
-                {/* Header */}
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    {service.category && (
-                      <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
-                        {service.category}
-                      </span>
-                    )}
-                    <h3 
-                      className="text-xl md:text-2xl font-semibold mb-2"
-                      style={{ color: textColor }}
-                    >
-                      {service.name || 'Nowa usługa'}
-                    </h3>
-                    
-                    {service.description && (
-                      <p 
-                        className="text-sm opacity-75"
-                        style={{ color: textColor }}
-                        dangerouslySetInnerHTML={{ __html: service.description }}
-                      />
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    {service.price && service.price.trim() !== '' && (
-                      <span className="text-2xl font-semibold" style={{ color: accentColor }}>
-                        {service.price} {currency}
-                      </span>
-                    )}
-                    {/* Expand Icon */}
-                    <div 
-                      className={`text-xl transition-transform duration-300 ${
-                        expandedIndex === index ? 'rotate-180' : ''
-                      }`}
-                      style={{ color: accentColor }}
-                    >
-                      ▼
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Expanded Details */}
-                <AnimatePresence>
-                  {expandedIndex === index && service.details && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div 
-                        className={`mt-4 pt-4 ${dividerClass}`}
-                      >
-                        <p 
-                          className="text-sm opacity-75 whitespace-pre-line"
+            {serviceList.map((service, index) => {
+              const serviceName = getTrimmedText(service.name);
+              const categoryLabel = getTrimmedText(service.category);
+              const descriptionHtml = hasRichText(service.description) ? service.description : '';
+              const detailedDescription = getTrimmedText(service.detailedDescription);
+              const backContentText = getTrimmedText(service.backContent);
+              const backTitleText = getTrimmedText(service.backTitle);
+              const priceValue = formatPriceValue(service.price, currency);
+              const hasExpandedContent = !!(backContentText || backTitleText || detailedDescription);
+              const isExpanded = expandedIndex === index && !!hasExpandedContent;
+
+              return (
+                <div 
+                  key={service.id || index}
+                  className={`${style.cardStyle} ${itemClass} overflow-hidden ${hasExpandedContent ? 'cursor-pointer' : ''} hover:shadow-lg transition-all`}
+                  onClick={() => {
+                    if (!hasExpandedContent) return;
+                    setExpandedIndex(expandedIndex === index ? -1 : index);
+                  }}
+                >
+                  {/* Header */}
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1">
+                      {categoryLabel && (
+                        <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
+                          {categoryLabel}
+                        </span>
+                      )}
+                      {serviceName && (
+                        <h3 
+                          className="text-xl md:text-2xl font-semibold mb-2"
                           style={{ color: textColor }}
                         >
-                          {service.details}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
+                          {serviceName}
+                        </h3>
+                      )}
+                      
+                      {descriptionHtml && (
+                        <p 
+                          className="text-sm opacity-75"
+                          style={{ color: textColor }}
+                          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                        />
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      {priceValue && (
+                        <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                          {priceValue}
+                        </span>
+                      )}
+                      {/* Expand Icon */}
+                      {hasExpandedContent && (
+                        <div 
+                          className={`text-xl transition-transform duration-300 ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                          style={{ color: accentColor }}
+                        >
+                          ▼
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Expanded Details */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                      >
+                        <div className={`mt-4 pt-4 ${dividerClass} space-y-3`}>
+                          {backTitleText && (
+                            <h4 
+                              className="text-lg font-semibold"
+                              style={{ color: accentColor }}
+                            >
+                              {backTitleText}
+                            </h4>
+                          )}
+                          {(backContentText || detailedDescription) && (
+                            <p 
+                              className="text-sm opacity-80 whitespace-pre-line leading-relaxed"
+                              style={{ color: textColor }}
+                            >
+                              {backContentText || detailedDescription}
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12 text-sm text-black/40">

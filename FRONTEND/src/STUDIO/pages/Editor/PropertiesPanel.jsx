@@ -97,14 +97,42 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
       );
     
     case 'select':
-    case 'enum':
+    case 'enum': {
+      const normalizeOption = (option) => (
+        typeof option === 'string'
+          ? { value: option, label: option }
+          : option
+      );
+
+      const optionMatchesConditions = (option) => {
+        if (!option.visibleWhen) return true;
+        return Object.entries(option.visibleWhen).every(([condKey, condValue]) => {
+          if (condKey === 'layout') {
+            return module?.layout === condValue;
+          }
+          return module?.content?.[condKey] === condValue;
+        });
+      };
+
+      const normalizedOptions = (fieldDef.options || [])
+        .map(normalizeOption)
+        .filter(optionMatchesConditions);
+
+      if (normalizedOptions.length === 0) {
+        return null;
+      }
+
+      const safeValue = normalizedOptions.some(opt => opt.value === value)
+        ? value
+        : normalizedOptions[0].value;
+
       return (
         <FormControl fullWidth size="small">
           <InputLabel sx={{ '&.Mui-focused': { color: 'rgb(146, 0, 32)' } }}>
             {fieldDef.d || fieldKey}
           </InputLabel>
           <Select
-            value={value || (fieldDef.options && (Array.isArray(fieldDef.options) ? fieldDef.options[0] : fieldDef.options[0].value))}
+            value={safeValue}
             label={fieldDef.d || fieldKey}
             onChange={(e) => onContentChange(fieldKey, e.target.value)}
             sx={{
@@ -113,19 +141,15 @@ export const FieldRenderer = ({ fieldKey, fieldDef, module, pageId, onContentCha
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
             }}
           >
-            {(fieldDef.options || []).map(option => {
-              // Support both string options and {value, label} objects
-              const optionValue = typeof option === 'string' ? option : option.value;
-              const optionLabel = typeof option === 'string' ? option : option.label;
-              return (
-                <MenuItem key={optionValue} value={optionValue}>
-                  {optionLabel}
-                </MenuItem>
-              );
-            })}
+            {normalizedOptions.map(option => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label || option.value}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       );
+    }
     
     case 'number':
       return (
@@ -204,11 +228,11 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
     if (fieldKey === 'members') {
       defaultItem = { ...defaultItem, name: 'Nowy członek', role: 'Rola', description: '', image: '' };
     } else if (fieldKey === 'offers' || fieldKey === 'services') {
-      defaultItem = { ...defaultItem, name: 'Nowa usługa', price: '0', description: '' };
+      defaultItem = { ...defaultItem, name: '', price: '', description: '', detailedDescription: '', backTitle: '', backContent: '' };
     } else if (fieldKey === 'items' && module.type === 'services') {
-      defaultItem = { ...defaultItem, name: 'Nowa usługa', description: 'Opis usługi', image: '', details: '' };
+      defaultItem = { ...defaultItem, name: '', description: '', detailedDescription: '', image: '', details: '', backTitle: '', backContent: '' };
     } else if (fieldKey === 'serviceItems') {
-      defaultItem = { ...defaultItem, name: 'Nowa usługa', description: 'Opis usługi', image: '', details: '' };
+      defaultItem = { ...defaultItem, name: '', description: '', image: '', details: '', backContent: '' };
     } else if (fieldKey === 'items') {
       defaultItem = { ...defaultItem, question: 'Nowe pytanie', answer: '<p>Nowa odpowiedź</p>' };
     } else if (fieldKey === 'images') {
@@ -680,6 +704,50 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                   newItems[index] = { ...newItems[index], description: e.target.value };
                   onContentChange(fieldKey, newItems);
                 }}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                label="Opis szczegółowy (opcjonalnie)"
+                fullWidth
+                size="small"
+                multiline
+                rows={4}
+                value={offer.detailedDescription || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], detailedDescription: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+              />
+              
+              <TextField
+                label="Tytuł odwrotnej strony karty (opcjonalnie)"
+                fullWidth
+                size="small"
+                value={offer.backTitle || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], backTitle: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+                helperText="Jeśli puste, zostanie użyta 'Nazwa oferty'"
+              />
+              
+              <TextField
+                label="Treść odwrotnej strony karty (opcjonalnie)"
+                fullWidth
+                size="small"
+                multiline
+                rows={4}
+                value={offer.backContent || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], backContent: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                helperText="Jeśli puste, zostanie użyte pole 'Opis szczegółowy'"
               />
               
               <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
@@ -816,21 +884,51 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 siteId={pageId}
               />
               
-              {item.details !== undefined && (
-                <TextField
-                  label="Dodatkowe szczegóły (opcjonalnie)"
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  value={item.details || ''}
-                  onChange={(e) => {
-                    const newItems = [...items];
-                    newItems[index] = { ...newItems[index], details: e.target.value };
-                    onContentChange(fieldKey, newItems);
-                  }}
-                  sx={{ mt: 2 }}
-                />
+              {module.layout === 'cards' && (
+                <>
+                  <TextField
+                    label="Opis szczegółowy (opcjonalnie)"
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={4}
+                    value={item.detailedDescription || ''}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...newItems[index], detailedDescription: e.target.value };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                    sx={{ mt: 2 }}
+                  />
+                  <TextField
+                    label="Tytuł odwrotnej strony karty (opcjonalnie)"
+                    fullWidth
+                    size="small"
+                    value={item.backTitle || ''}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...newItems[index], backTitle: e.target.value };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                    sx={{ mt: 2 }}
+                    helperText="Jeśli puste, zostanie użyta 'Nazwa usługi'"
+                  />
+                  <TextField
+                    label="Treść odwrotnej strony karty (opcjonalnie)"
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={4}
+                    value={item.backContent || ''}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...newItems[index], backContent: e.target.value };
+                      onContentChange(fieldKey, newItems);
+                    }}
+                    sx={{ mt: 2 }}
+                    helperText="Jeśli puste, zostanie użyte pole 'Opis szczegółowy' lub 'Dodatkowe szczegóły'"
+                  />
+                </>
               )}
             </Box>
           ))}
@@ -930,6 +1028,20 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 }}
                 sx={{ mb: 2 }}
               />
+              <TextField
+                label="Opis szczegółowy (opcjonalnie)"
+                fullWidth
+                size="small"
+                multiline
+                rows={4}
+                value={item.detailedDescription || ''}
+                onChange={(e) => {
+                  const newItems = [...items];
+                  newItems[index] = { ...newItems[index], detailedDescription: e.target.value };
+                  onContentChange(fieldKey, newItems);
+                }}
+                sx={{ mb: 2 }}
+              />
               
               <ImageUploader
                 label="Zdjęcie usługi"
@@ -956,6 +1068,24 @@ const renderArrayField = (fieldKey, fieldDef, items = [], module, pageId, onCont
                 }}
                 sx={{ mt: 2 }}
               />
+              
+              {module.layout === 'cards' && (
+                <TextField
+                  label="Treść odwrotnej strony karty (opcjonalnie)"
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={4}
+                  value={item.backContent || ''}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[index] = { ...newItems[index], backContent: e.target.value };
+                    onContentChange(fieldKey, newItems);
+                  }}
+                  sx={{ mt: 2 }}
+                  helperText="Jeśli puste, zostanie użyte pole 'Dodatkowe szczegóły'"
+                />
+              )}
             </Box>
           ))}
         </Stack>
@@ -1417,10 +1547,34 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   
   // Filter fields by category
   const fields = moduleDef?.descriptor?.fields || {};
-  const contentFields = Object.entries(fields).filter(([, def]) => def.category === 'content' || !def.category);
-  const layoutFields = Object.entries(fields).filter(([, def]) => def.category === 'layout');
-  const appearanceFields = Object.entries(fields).filter(([, def]) => def.category === 'appearance');
-  const advancedFields = Object.entries(fields).filter(([, def]) => def.category === 'advanced');
+  
+  // Helper function to check if field should be visible based on visibleWhen condition
+  const isFieldVisible = (fieldDef) => {
+    if (!fieldDef.visibleWhen) return true;
+    
+    // Check each condition in visibleWhen
+    return Object.entries(fieldDef.visibleWhen).every(([key, value]) => {
+      // Special case for 'layout' - check module.layout instead of module.content.layout
+      if (key === 'layout') {
+        return module?.layout === value;
+      }
+      // For other fields, check module.content
+      return module?.content?.[key] === value;
+    });
+  };
+  
+  const contentFields = Object.entries(fields).filter(([, def]) => 
+    (def.category === 'content' || !def.category) && isFieldVisible(def)
+  );
+  const layoutFields = Object.entries(fields).filter(([, def]) => 
+    def.category === 'layout' && isFieldVisible(def)
+  );
+  const appearanceFields = Object.entries(fields).filter(([, def]) => 
+    def.category === 'appearance' && isFieldVisible(def)
+  );
+  const advancedFields = Object.entries(fields).filter(([, def]) => 
+    def.category === 'advanced' && isFieldVisible(def)
+  );
 
   if (!selectedModuleId || !module) {
     return <SitePropertiesPanel placement={placement} />;
@@ -1597,88 +1751,8 @@ const PropertiesPanel = ({ placement = 'right' }) => {
               </Box>
             )}
             
-            {/* Divider after layout selector if layout fields or content exists */}
-            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && (layoutFields.length > 0 || contentFields.length > 0) && <Divider />}
-            
-            {/* LAYOUT OPTIONS Section */}
-            {layoutFields.length > 0 && (
-              <Box>
-                <Typography
-                  sx={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    color: 'rgba(30, 30, 30, 0.5)',
-                    letterSpacing: '1px',
-                    textTransform: 'uppercase',
-                    mb: 2
-                  }}
-                >
-                  Layout Options
-                </Typography>
-                <Stack spacing={2.5}>
-                  {layoutFields.map(([key, def]) => {
-                    const value = module.content?.[key];
-                    
-                    if (def.t === 'number') {
-                      // Get default value from defaults based on current layout
-                      const defaultValue = key === 'cardWidth' ? 320 : key === 'cardHeight' ? 420 : undefined;
-                      return (
-                        <TextField
-                          key={key}
-                          fullWidth
-                          size="small"
-                          type="number"
-                          label={def.d || key}
-                          value={value ?? defaultValue ?? ''}
-                          onChange={(e) => handleContentChange(key, e.target.value ? Number(e.target.value) : null)}
-                          InputLabelProps={{
-                            sx: { '&.Mui-focused': { color: 'rgb(146, 0, 32)' } }
-                          }}
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: '8px',
-                              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' },
-                              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
-                            }
-                          }}
-                        />
-                      );
-                    }
-                    
-                    return (
-                      <FormControl key={key} fullWidth size="small">
-                        <InputLabel sx={{ '&.Mui-focused': { color: 'rgb(146, 0, 32)' } }}>
-                          {def.d || key}
-                        </InputLabel>
-                        <Select
-                          value={value ?? (def.options?.[0]?.value ?? '')}
-                          label={def.d || key}
-                          onChange={(e) => handleContentChange(key, e.target.value)}
-                          sx={{
-                            borderRadius: '8px',
-                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' },
-                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'rgb(146, 0, 32)' }
-                          }}
-                        >
-                          {(def.options || []).map(option => {
-                            const optionValue = typeof option === 'string' ? option : option.value;
-                            const optionLabel = typeof option === 'string' ? option : option.label;
-                            return (
-                              <MenuItem key={optionValue} value={optionValue}>
-                                {optionLabel}
-                              </MenuItem>
-                            );
-                          })}
-                        </Select>
-                      </FormControl>
-                    );
-                  })}
-                </Stack>
-              </Box>
-            )}
-
-            {/* Divider after layout options if content exists */}
-            {layoutFields.length > 0 && contentFields.length > 0 && <Divider />}
+            {/* Divider after layout selector if content exists */}
+            {availableLayouts.length > 1 && !(module.type === 'calendar' && module.content?.type === 'full') && contentFields.length > 0 && <Divider />}
             
             {/* CONTENT Section */}
             {contentFields.length > 0 && (

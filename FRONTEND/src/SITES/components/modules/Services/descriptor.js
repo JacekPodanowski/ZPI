@@ -10,14 +10,21 @@ export const SERVICES_DESCRIPTOR = {
     substyle: {
       t: 'enum',
       d: 'Wariant wizualny',
-      options: ['default', 'minimal', 'elegant', 'bold'],
+      options: [
+        { value: 'default', label: 'Domyślny' },
+        { value: 'minimal', label: 'Minimalistyczny' },
+        { value: 'elegant', label: 'Elegancki' },
+        { value: 'bold', label: 'Wyrazisty' },
+        { value: 'unified', label: 'Lista premium', visibleWhen: { layout: 'list' } }
+      ],
       category: 'layout'
     },
     flipStyle: {
       t: 'enum',
-      d: 'Styl animacji kart (tylko dla layoutu cards)',
-      options: ['flip', 'slide', 'fade', 'rotate3d', 'cube'],
-      category: 'layout'
+      d: 'Styl animacji kart',
+      options: ['flip', 'slide', 'fade'],
+      category: 'layout',
+      visibleWhen: { layout: 'cards' }
     },
     bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
     backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },

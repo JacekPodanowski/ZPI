@@ -2,9 +2,7 @@
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const CenteredHero = ({ content, style }) => {
-  console.log('[CenteredHero] Rendering with content:', content);
-  console.log('[CenteredHero] title:', content?.title);
-  console.log('[CenteredHero] subtitle:', content?.subtitle);
+  console.log('[CenteredHero] content:', JSON.stringify(content, null, 2));
   
   const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
   const spacingClass = style?.spacing || '';
@@ -34,15 +32,15 @@ const CenteredHero = ({ content, style }) => {
           className={headingClass}
           style={{ color: primaryColor }}
         >
-          {content.heading || content.title}
+          {content.title || content.heading}
         </h1>
         
-        {(content.subheading || content.subtitle) && (
+        {(content.subtitle || content.subheading) && (
           <p 
             className={`${textClass} mt-4 md:mt-6`} 
             style={{ color: textColor }}
           >
-            {content.subheading || content.subtitle}
+            {content.subtitle || content.subheading}
           </p>
         )}
         
