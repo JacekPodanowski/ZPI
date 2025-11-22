@@ -5628,6 +5628,49 @@ class BigEventViewSet(viewsets.ModelViewSet):
         
         serializer.save(creator=user)
     
+    def perform_update(self, serializer):
+        """Create checkpoint before updating event (for AI undo/redo)."""
+        import uuid
+        
+        event = self.get_object()
+        
+        # Create checkpoint of current state
+        checkpoint_id = str(uuid.uuid4())
+        checkpoint = {
+            'id': checkpoint_id,
+            'timestamp': timezone.now().isoformat(),
+            'data': {
+                'title': event.title,
+                'description': event.description,
+                'location': event.location,
+                'start_date': event.start_date.isoformat() if event.start_date else None,
+                'end_date': event.end_date.isoformat() if event.end_date else None,
+                'max_participants': event.max_participants,
+                'price': str(event.price),
+                'image_url': event.image_url,
+                'details': event.details
+            },
+            'message': f'Przed zmianą (API update)'
+        }
+        
+        # Get existing checkpoints
+        checkpoints = event.ai_checkpoints or []
+        
+        # Add new checkpoint at the beginning
+        checkpoints.insert(0, checkpoint)
+        
+        # Keep only last 20 checkpoints
+        checkpoints = checkpoints[:20]
+        
+        # Update checkpoints before saving
+        event.ai_checkpoints = checkpoints
+        event.save(update_fields=['ai_checkpoints'])
+        
+        logger.info(f"[BigEvent] Created checkpoint {checkpoint_id} before update for event {event.id}")
+        
+        # Perform actual update
+        serializer.save()
+    
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
         """Publish a big event and optionally send email notifications."""
@@ -6089,8 +6132,8 @@ def get_chat_history(request):
     except Agent.DoesNotExist:
         return Response({'error': 'Agent not found'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Get recent messages for this agent
-    messages = ChatHistory.objects.filter(agent=agent).order_by('-created_at')[:limit]
+    # Get recent messages for this agent (exclude deleted)
+    messages = ChatHistory.objects.filter(agent=agent, deleted=False).order_by('-created_at')[:limit]
     
     # Format response
     data = [
@@ -6102,7 +6145,8 @@ def get_chat_history(request):
             'status': msg.status,
             'created_at': msg.created_at.isoformat(),
             'site_id': msg.site_id,
-            'site_name': msg.site.name if msg.site else None
+            'site_name': msg.site.name if msg.site else None,
+            'related_event_id': msg.related_event_id
         }
         for msg in reversed(list(messages))  # Reverse to get chronological order
     ]
@@ -6115,6 +6159,85 @@ def get_chat_history(request):
             'name': agent.name,
             'context_type': agent.context_type
         }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_chat_messages_deleted(request):
+    """
+    Mark chat messages as deleted (soft delete) starting from a specific message.
+    This will revert the conversation to the state BEFORE the clicked message.
+    Body params:
+    - agent_id: Required - Agent ID
+    - message_id: Required - ID of the message to revert to (this and all after will be marked deleted)
+    """
+    from .models import ChatHistory, Agent
+    
+    user = request.user
+    agent_id = request.data.get('agent_id')
+    message_id = request.data.get('message_id')
+    
+    if not agent_id or not message_id:
+        return Response({'error': 'agent_id and message_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Verify agent ownership
+    try:
+        agent = Agent.objects.get(id=agent_id, user=user)
+    except Agent.DoesNotExist:
+        return Response({'error': 'Agent not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Find the message
+    try:
+        target_message = ChatHistory.objects.get(id=message_id, agent=agent)
+    except ChatHistory.DoesNotExist:
+        return Response({'error': 'Message not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Mark this message and all messages created AFTER it as deleted
+    # This reverts conversation to state BEFORE the clicked message
+    messages_to_delete = ChatHistory.objects.filter(
+        agent=agent,
+        created_at__gte=target_message.created_at
+    )
+    
+    updated_count = messages_to_delete.update(deleted=True)
+    
+    logger.info(f"[Chat] User {user.id} marked {updated_count} messages as deleted for agent {agent_id} from message {message_id}")
+    
+    return Response({
+        'message': 'Wiadomości zostały oznaczone jako usunięte',
+        'deleted_count': updated_count
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_chat_history(request, message_id):
+    """
+    Update chat history message (e.g., add related_event_id).
+    Path params:
+    - message_id: ChatHistory ID to update
+    Body params:
+    - related_event_id: Optional - BigEvent ID associated with this message
+    """
+    from .models import ChatHistory
+    
+    user = request.user
+    related_event_id = request.data.get('related_event_id')
+    
+    try:
+        message = ChatHistory.objects.get(id=message_id, user=user)
+    except ChatHistory.DoesNotExist:
+        return Response({'error': 'Message not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if related_event_id is not None:
+        message.related_event_id = related_event_id
+        message.save(update_fields=['related_event_id'])
+        logger.info(f"[Chat] Updated message {message_id} with event ID {related_event_id}")
+    
+    return Response({
+        'message': 'Chat history updated successfully',
+        'related_event_id': message.related_event_id
     }, status=status.HTTP_200_OK)
 
 
@@ -6188,4 +6311,251 @@ def pexels_quota(request, site_id):
         'remaining': max(0, DAILY_LIMIT - user.daily_image_searches),
         'reset_at': timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_checkpoint(request, site_id):
+    """Create a checkpoint of current site state before AI changes."""
+    import uuid
+    
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    message = request.data.get('message', 'AI checkpoint')
+    
+    # Create checkpoint
+    checkpoint_id = str(uuid.uuid4())
+    checkpoint = {
+        'id': checkpoint_id,
+        'timestamp': timezone.now().isoformat(),
+        'config': site.template_config,
+        'message': message
+    }
+    
+    # Get existing checkpoints
+    checkpoints = site.ai_checkpoints or []
+    
+    # Add new checkpoint at the beginning
+    checkpoints.insert(0, checkpoint)
+    
+    # Keep only last 20 checkpoints
+    checkpoints = checkpoints[:20]
+    
+    site.ai_checkpoints = checkpoints
+    site.save(update_fields=['ai_checkpoints'])
+    
+    logger.info(f"[Checkpoint] Created checkpoint {checkpoint_id} for site {site_id}")
+    
+    return Response({
+        'checkpoint_id': checkpoint_id,
+        'message': 'Checkpoint created successfully'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def restore_checkpoint(request, site_id, checkpoint_id):
+    """Restore site to a previous checkpoint state."""
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    checkpoints = site.ai_checkpoints or []
+    
+    # Find checkpoint
+    checkpoint = next((c for c in checkpoints if c['id'] == checkpoint_id), None)
+    
+    if not checkpoint:
+        return Response(
+            {'error': 'Checkpoint not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Restore config
+    site.template_config = checkpoint['config']
+    site.save(update_fields=['template_config'])
+    
+    logger.info(f"[Checkpoint] Restored checkpoint {checkpoint_id} for site {site_id}")
+    
+    return Response({
+        'message': 'Checkpoint restored successfully',
+        'site': {
+            'id': site.id,
+            'template_config': site.template_config
+        }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_checkpoints(request, site_id):
+    """List all checkpoints for a site."""
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    checkpoints = site.ai_checkpoints or []
+    
+    # Return only metadata, not full config
+    checkpoint_list = [
+        {
+            'id': c['id'],
+            'timestamp': c['timestamp'],
+            'message': c['message']
+        }
+        for c in checkpoints
+    ]
+    
+    return Response({
+        'checkpoints': checkpoint_list
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_event_checkpoint(request, event_id):
+    """Create a checkpoint of current BigEvent state before AI changes."""
+    import uuid
+    
+    try:
+        event = BigEvent.objects.get(id=event_id, creator=request.user)
+    except BigEvent.DoesNotExist:
+        return Response(
+            {'error': 'Event not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    message = request.data.get('message', 'AI checkpoint')
+    
+    # Create checkpoint of event data
+    checkpoint_id = str(uuid.uuid4())
+    checkpoint = {
+        'id': checkpoint_id,
+        'timestamp': timezone.now().isoformat(),
+        'data': {
+            'title': event.title,
+            'description': event.description,
+            'location': event.location,
+            'start_date': event.start_date.isoformat() if event.start_date else None,
+            'end_date': event.end_date.isoformat() if event.end_date else None,
+            'max_participants': event.max_participants,
+            'price': str(event.price),
+            'image_url': event.image_url,
+            'details': event.details
+        },
+        'message': message
+    }
+    
+    # Get existing checkpoints
+    checkpoints = event.ai_checkpoints or []
+    
+    # Add new checkpoint at the beginning
+    checkpoints.insert(0, checkpoint)
+    
+    # Keep only last 20 checkpoints
+    checkpoints = checkpoints[:20]
+    
+    event.ai_checkpoints = checkpoints
+    event.save(update_fields=['ai_checkpoints'])
+    
+    logger.info(f"[Checkpoint] Created checkpoint {checkpoint_id} for event {event_id}")
+    
+    return Response({
+        'checkpoint_id': checkpoint_id,
+        'message': 'Checkpoint created successfully'
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def restore_event_checkpoint(request, event_id, checkpoint_id):
+    """Restore BigEvent to a previous checkpoint state."""
+    from decimal import Decimal
+    from datetime import date
+    
+    try:
+        event = BigEvent.objects.get(id=event_id, creator=request.user)
+    except BigEvent.DoesNotExist:
+        return Response(
+            {'error': 'Event not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    checkpoints = event.ai_checkpoints or []
+    
+    # Find checkpoint
+    checkpoint = next((c for c in checkpoints if c['id'] == checkpoint_id), None)
+    
+    if not checkpoint:
+        return Response(
+            {'error': 'Checkpoint not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Restore event data
+    data = checkpoint['data']
+    event.title = data['title']
+    event.description = data['description']
+    event.location = data['location']
+    event.start_date = date.fromisoformat(data['start_date']) if data['start_date'] else None
+    event.end_date = date.fromisoformat(data['end_date']) if data['end_date'] else None
+    event.max_participants = data['max_participants']
+    event.price = Decimal(data['price'])
+    event.image_url = data['image_url']
+    event.details = data['details']
+    
+    event.save(update_fields=[
+        'title', 'description', 'location', 'start_date', 'end_date',
+        'max_participants', 'price', 'image_url', 'details'
+    ])
+    
+    logger.info(f"[Checkpoint] Restored checkpoint {checkpoint_id} for event {event_id}")
+    
+    return Response({
+        'message': 'Checkpoint restored successfully',
+        'event': BigEventSerializer(event).data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_event_checkpoints(request, event_id):
+    """List all checkpoints for a BigEvent."""
+    try:
+        event = BigEvent.objects.get(id=event_id, creator=request.user)
+    except BigEvent.DoesNotExist:
+        return Response(
+            {'error': 'Event not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    checkpoints = event.ai_checkpoints or []
+    
+    # Return only metadata, not full data
+    checkpoint_list = [
+        {
+            'id': c['id'],
+            'timestamp': c['timestamp'],
+            'message': c['message']
+        }
+        for c in checkpoints
+    ]
+    
+    return Response({
+        'checkpoints': checkpoint_list
+    }, status=status.HTTP_200_OK)
 

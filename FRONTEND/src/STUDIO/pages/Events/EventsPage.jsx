@@ -71,10 +71,19 @@ const EventsPage = () => {
             showToast('Wydarzenie zostało dodane!', 'success');
         };
         
+        // Listen for big event deleted by AI revert
+        const handleBigEventDeleted = () => {
+            console.log('[Events] Big event deleted by AI revert');
+            loadEvents(); // Reload events list
+            showToast('Wydarzenie zostało usunięte', 'info');
+        };
+        
         window.addEventListener('big-event-created', handleBigEventCreated);
+        window.addEventListener('big-event-deleted', handleBigEventDeleted);
         
         return () => {
             window.removeEventListener('big-event-created', handleBigEventCreated);
+            window.removeEventListener('big-event-deleted', handleBigEventDeleted);
         };
     }, []);
 

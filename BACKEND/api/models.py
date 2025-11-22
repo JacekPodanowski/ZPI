@@ -237,6 +237,15 @@ class ChatHistory(models.Model):
         default='success',
         help_text='Status of the AI response (success, error, clarification)'
     )
+    deleted = models.BooleanField(
+        default=False,
+        help_text='Whether this message was deleted/reverted by user'
+    )
+    related_event_id = models.IntegerField(
+        blank=True,
+        null=True,
+        help_text='ID of BigEvent created/modified by this AI response (for undo functionality)'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -273,6 +282,11 @@ class Site(models.Model):
     team_size = models.IntegerField(default=1, help_text='Cached count of team members for calendar optimization')
     is_mock = models.BooleanField(default=False, help_text='Flag indicating if this is a mock/demo site for testing (includes showcase)')
     template_config = models.JSONField(default=dict, blank=True)
+    ai_checkpoints = models.JSONField(
+        default=list, 
+        blank=True,
+        help_text='List of AI checkpoints with {id, timestamp, config, message} for undo functionality'
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1278,6 +1292,13 @@ class BigEvent(models.Model):
     # Additional details
     image_url = models.CharField(max_length=500, blank=True, null=True, help_text='Event cover image')
     details = models.JSONField(default=dict, blank=True, help_text='Additional event details (schedule, requirements, etc.)')
+    
+    # AI checkpoints for reverting changes
+    ai_checkpoints = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='List of AI checkpoints (max 20, newest first). Each checkpoint stores event state before AI changes.'
+    )
     
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

@@ -502,6 +502,27 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             result = agent_service.process_task(user_prompt, context, chat_history=chat_history_list)
         else:
             logger.info("[Celery] Using SiteEditorAgent")
+            
+            # CREATE CHECKPOINT before AI changes (only for site editor)
+            if site:
+                import uuid
+                checkpoint_id = str(uuid.uuid4())
+                checkpoint = {
+                    'id': checkpoint_id,
+                    'timestamp': timezone.now().isoformat(),
+                    'config': site.template_config,
+                    'message': f'Przed zmianą: {user_prompt[:100]}'
+                }
+                
+                # Get existing checkpoints
+                checkpoints = site.ai_checkpoints or []
+                checkpoints.insert(0, checkpoint)
+                checkpoints = checkpoints[:20]  # Keep only last 20
+                
+                site.ai_checkpoints = checkpoints
+                site.save(update_fields=['ai_checkpoints'])
+                logger.info(f"[Celery] Created checkpoint {checkpoint_id} before AI changes")
+            
             agent_service = get_site_editor_agent()
             result = agent_service.process_task(user_prompt, site_config, context, chat_history=chat_history_list)
         
@@ -521,7 +542,7 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             ai_response_text = result.get('error', 'Wystąpił błąd')
         
         # Save to chat history
-        ChatHistory.objects.create(
+        chat_entry = ChatHistory.objects.create(
             agent=agent,
             user=user,
             site=site,
@@ -532,7 +553,7 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             task_id=self.request.id,
             status=status
         )
-        logger.info(f"[Celery] Saved chat history entry for agent {agent.id}")
+        logger.info(f"[Celery] Saved chat history entry {chat_entry.id} for agent {agent.id}")
         
         # CLARIFICATION NEEDED - ask user for more details
         if status == 'clarification':
@@ -544,7 +565,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 'question': question,
                 'agent_id': str(agent.id),
                 'prompt': user_prompt,
-                'task_id': self.request.id
+                'task_id': self.request.id,
+                'chat_history_id': chat_entry.id
             }
             cache.set(cache_key, json.dumps(result_data), timeout=300)
             
@@ -554,7 +576,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 "prompt": user_prompt,
                 "user_id": user_id,
                 "task_id": self.request.id,
-                "agent_id": str(agent.id)
+                "agent_id": str(agent.id),
+                "chat_history_id": chat_entry.id
             }
         
         # API CALL NEEDED - return API instructions to frontend
@@ -569,7 +592,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 'explanation': result.get('explanation', 'Instrukcje API'),
                 'agent_id': str(agent.id),
                 'prompt': user_prompt,
-                'task_id': self.request.id
+                'task_id': self.request.id,
+                'chat_history_id': chat_entry.id
             }
             cache.set(cache_key, json.dumps(result_data), timeout=300)
             
@@ -582,7 +606,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 "prompt": user_prompt,
                 "user_id": user_id,
                 "task_id": self.request.id,
-                "agent_id": str(agent.id)
+                "agent_id": str(agent.id),
+                "chat_history_id": chat_entry.id
             }
         
         logger.info(f"[Celery] Flash returned result with keys: {list(result.keys())}")
@@ -595,7 +620,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             'explanation': result.get('explanation', 'Zmiany wprowadzone pomyślnie'),
             'prompt': user_prompt,
             'task_id': self.request.id,
-            'agent_id': str(agent.id)
+            'agent_id': str(agent.id),
+            'chat_history_id': chat_entry.id
         }
         
         cache.set(cache_key, json.dumps(result_data), timeout=300)
@@ -606,7 +632,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             "prompt": user_prompt,
             "user_id": user_id,
             "task_id": self.request.id,
-            "agent_id": str(agent.id)
+            "agent_id": str(agent.id),
+            "chat_history_id": chat_entry.id
         }
         
     except PlatformUser.DoesNotExist:

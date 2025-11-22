@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import useNewEditorStore from '../../store/newEditorStore';
@@ -242,7 +242,7 @@ const NewEditorPage = () => {
       console.log('[NewEditorPage] Cleaning up WebSocket connection');
       socket.close();
     };
-  }, [user?.id, replaceSiteStateWithHistory]);
+  }, [user?.id, handleAIUpdate]);
 
   // Also listen for polling-based updates
   useEffect(() => {
@@ -253,10 +253,10 @@ const NewEditorPage = () => {
 
     window.addEventListener('ai-site-updated', handlePolledUpdate);
     return () => window.removeEventListener('ai-site-updated', handlePolledUpdate);
-  }, [replaceSiteStateWithHistory]);
+  }, [handleAIUpdate]);
 
   // Unified AI update handler
-  const handleAIUpdate = (data) => {
+  const handleAIUpdate = useCallback((data) => {
     // Validate response structure
     const validation = validateAIResponse(data);
     
@@ -308,7 +308,7 @@ const NewEditorPage = () => {
         detail: { status: 'error', explanation: data.error }
       }));
     }
-  };
+  }, [replaceSiteStateWithHistory]);
 
   if (loading) {
     return (

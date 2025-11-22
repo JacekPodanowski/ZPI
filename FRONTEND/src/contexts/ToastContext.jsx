@@ -3,7 +3,7 @@ import ToastContainer from '../components/Toast/ToastContainer';
 
 const ToastContext = createContext(null);
 
-export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000, defaultVersion = 1 }) => {
+export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000, defaultVersion = 1, position = 'bottom-left' }) => {
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef(new Map())
 
@@ -45,7 +45,7 @@ export const ToastProvider = ({ children, maxToasts = 5, defaultDuration = 5000,
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <ToastContainer toasts={toasts} removeToast={removeToast} position={position} />
     </ToastContext.Provider>
   );
 };

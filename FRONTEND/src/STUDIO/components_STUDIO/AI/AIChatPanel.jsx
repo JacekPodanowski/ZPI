@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, FormControl } from '@mui/material';
-import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, FormControl, Chip, Alert } from '@mui/material';
+import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Undo as UndoIcon, Replay as ReplayIcon, History as HistoryIcon } from '@mui/icons-material';
 import apiClient from '../../../services/apiClient';
 import useNewEditorStore from '../../store/newEditorStore';
 import { buildContextMessage, extractModuleTypes, estimateTokens, formatErrorMessage } from './aiHelpers';
-import { getChatHistory, resetChatHistory, processAITaskWithContext } from '../../../services/chatService';
+import { getChatHistory, resetChatHistory, processAITaskWithContext, markChatMessagesDeleted } from '../../../services/chatService';
 import { getOrCreateAgent, createNewAgent, getAgents, switchAgent } from '../../../services/agentService';
+import { listCheckpoints, restoreCheckpoint } from '../../../services/checkpointService';
+import { savePendingMessage, getPendingMessagesByAgent, removePendingMessage, markMessageAsSent } from '../../../services/messagePersistence';
+import { useToast } from '../../../contexts/ToastContext';
 
 const AIChatPanel = ({ 
   onClose, 
@@ -27,33 +30,41 @@ const AIChatPanel = ({
   const [currentAgentName, setCurrentAgentName] = useState('');
   const [availableAgents, setAvailableAgents] = useState([]);
   const [agentMenuAnchor, setAgentMenuAnchor] = useState(null);
+  const [checkpoints, setCheckpoints] = useState([]);
+  const [checkpointMenuAnchor, setCheckpointMenuAnchor] = useState(null);
+  const [pendingMessages, setPendingMessages] = useState([]);
   const listRef = useRef(null);
   const pollIntervalRef = useRef(null);
+  const isRevertingRef = useRef(false);  // Prevent reload during revert
   
-  const { site, currentPageId, selectedModuleId } = useNewEditorStore();
+  const showToast = useToast();
+  
+  const { site, siteId, currentPageId, selectedModuleId } = useNewEditorStore();
 
   // Determine which site to use: selectedSiteId (Events) or site from editor
   const activeSite = selectedSiteId 
     ? { id: selectedSiteId, name: availableSites.find(s => s.id === selectedSiteId)?.name || 'Wybrana strona' }
     : site;
+  
+  const activeSiteId = selectedSiteId || siteId;
 
-  console.log('[AI] Active site:', activeSite, 'selectedSiteId:', selectedSiteId, 'site:', site?.id);
+  console.log('[AI] Active site ID:', activeSiteId, 'selectedSiteId:', selectedSiteId, 'siteId:', siteId);
 
   // Load or create agent on mount
   useEffect(() => {
     const initializeAgent = async () => {
       // For studio_editor, allow initialization even without site (global agent)
       // For other contexts, require site
-      const canInitialize = contextType === 'studio_editor' || activeSite?.id;
+      const canInitialize = contextType === 'studio_editor' || activeSiteId;
       
-      if (!canInitialize || historyLoaded) return;
+      if (!canInitialize || historyLoaded || isRevertingRef.current) return;
 
-      console.log('[AI] Initializing agent for site:', activeSite?.id || 'global', 'context:', contextType);
+      console.log('[AI] Initializing agent for site:', activeSiteId || 'global', 'context:', contextType);
 
       try {
         // Use site ID if available, regardless of context type
         // Only fall back to null for studio_editor when no site is selected
-        const siteIdToUse = activeSite?.id || null;
+        const siteIdToUse = activeSiteId || null;
         const agentId = await getOrCreateAgent(siteIdToUse, contextType);
         console.log('[AI] Agent ID:', agentId);
         setCurrentAgentId(agentId);
@@ -73,7 +84,7 @@ const AIChatPanel = ({
     };
 
     initializeAgent();
-  }, [activeSite?.id, contextType, historyLoaded]);
+  }, [activeSiteId, contextType, historyLoaded]);
 
   const loadAgentHistory = async (agentId) => {
     try {
@@ -85,8 +96,19 @@ const AIChatPanel = ({
 
       if (data.messages && data.messages.length > 0) {
         const historyMessages = data.messages.flatMap(msg => [
-          { id: `user-history-${msg.id}`, sender: 'user', text: msg.user_message },
-          { id: `ai-history-${msg.id}`, sender: 'ai', text: msg.ai_response }
+          { 
+            id: `user-history-${msg.id}`, 
+            sender: 'user', 
+            text: msg.user_message,
+            db_message_id: msg.id  // Store DB ID for reverting
+          },
+          { 
+            id: `ai-history-${msg.id}`, 
+            sender: 'ai', 
+            text: msg.ai_response,
+            db_message_id: msg.id,  // Same DB ID for the pair
+            eventId: msg.related_event_id  // Restore event ID from database
+          }
         ]);
 
         setMessages([
@@ -105,11 +127,323 @@ const AIChatPanel = ({
 
   const loadAvailableAgents = async () => {
     try {
-      const data = await getAgents({ site_id: activeSite.id, context_type: contextType });
+      const data = await getAgents({ site_id: activeSiteId, context_type: contextType });
       setAvailableAgents(data.agents || []);
     } catch (error) {
       console.error('Failed to load agents:', error);
     }
+  };
+
+  // Load checkpoints when site changes
+  useEffect(() => {
+    const loadCheckpoints = async () => {
+      if (!activeSiteId) return;
+      
+      try {
+        const data = await listCheckpoints(activeSiteId);
+        setCheckpoints(data.checkpoints || []);
+      } catch (error) {
+        console.error('Failed to load checkpoints:', error);
+      }
+    };
+    
+    loadCheckpoints();
+  }, [activeSiteId]);
+
+  // Load pending messages when agent changes
+  useEffect(() => {
+    if (!currentAgentId) return;
+    
+    const pending = getPendingMessagesByAgent(currentAgentId);
+    setPendingMessages(pending);
+    
+    if (pending.length > 0) {
+      console.log(`[AI] Found ${pending.length} pending messages for agent ${currentAgentId}`);
+    }
+  }, [currentAgentId]);
+
+  const handleRestoreCheckpoint = async (checkpointId) => {
+    setCheckpointMenuAnchor(null);
+    
+    if (!activeSiteId) return;
+    
+    try {
+      const response = await restoreCheckpoint(activeSiteId, checkpointId);
+      
+      // Dispatch event to reload site in editor
+      window.dispatchEvent(new CustomEvent('ai-site-updated', {
+        detail: response
+      }));
+      
+      setMessages(prev => [
+        ...prev,
+        { 
+          id: `ai-restore-${Date.now()}`, 
+          sender: 'ai', 
+          text: '✓ Cofnięto zmiany do poprzedniego stanu' 
+        }
+      ]);
+      
+      // Reload checkpoints
+      const data = await listCheckpoints(activeSiteId);
+      setCheckpoints(data.checkpoints || []);
+    } catch (error) {
+      console.error('Failed to restore checkpoint:', error);
+      setMessages(prev => [
+        ...prev,
+        { 
+          id: `ai-error-${Date.now()}`, 
+          sender: 'ai', 
+          text: `✗ Nie udało się cofnąć zmian: ${formatErrorMessage(error)}` 
+        }
+      ]);
+    }
+  };
+
+  const handleRetryPendingMessage = async (pendingMsg) => {
+    // Remove from pending list
+    removePendingMessage(pendingMsg.id);
+    setPendingMessages(prev => prev.filter(m => m.id !== pendingMsg.id));
+    
+    // Retry sending
+    await sendMessage(pendingMsg.text, currentAgentId);
+  };
+
+  const handleRevertToMessage = async (messageId) => {
+    console.log('[AI] ========== REVERT TO MESSAGE ==========');
+    
+    // Set reverting flag to prevent history reload
+    isRevertingRef.current = true;
+    
+    // Find the clicked message
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    const clickedMessage = messages[messageIndex];
+    
+    if (messageIndex === -1 || !clickedMessage) {
+      console.error('[AI] Message not found:', messageId);
+      return;
+    }
+    
+    console.log('[AI] Clicked message:', clickedMessage);
+    console.log('[AI] Message index:', messageIndex);
+    
+    // Set the message text back to input field
+    if (clickedMessage.sender === 'user') {
+      setInput(clickedMessage.text);
+      console.log('[AI] ✓ Set input to:', clickedMessage.text);
+    }
+    
+    // Remove all messages from this point forward (including this one)
+    const messagesBeforeClick = messages.slice(0, messageIndex);
+    console.log('[AI] Keeping', messagesBeforeClick.length, 'messages before clicked message');
+    
+    // Find the DB message ID to mark as deleted
+    const dbMessageId = clickedMessage.db_message_id;
+    
+    if (!dbMessageId) {
+      console.log('[AI] No DB message ID - this is a local-only message, just updating UI');
+      setMessages(messagesBeforeClick);
+      return;
+    }
+    
+    console.log('[AI] DB message ID:', dbMessageId);
+    
+    // Mark messages as deleted in database (for all contexts)
+    try {
+      console.log('[AI] Step 1: Marking messages as deleted...');
+      
+      await markChatMessagesDeleted({
+        agent_id: currentAgentId,
+        message_id: dbMessageId
+      });
+      console.log('[AI] ✓ Messages marked as deleted in database');
+    } catch (error) {
+      console.error('[AI] ✗ Failed to mark messages as deleted:', error);
+      // Continue anyway - at least update UI
+    }
+    
+    // For editor context, also restore checkpoint
+    if (activeSiteId && contextType === 'studio_editor') {
+      try {
+        
+        // Step 2: Get checkpoints
+        console.log('[AI] Step 2: Getting checkpoints...');
+        const data = await listCheckpoints(activeSiteId);
+        const allCheckpoints = data.checkpoints || [];
+        
+        console.log(`[AI] Found ${allCheckpoints.length} checkpoints`);
+        console.log('[AI] Checkpoints:', allCheckpoints.map((cp, i) => ({ 
+          index: i, 
+          message: cp.message?.substring(0, 50), 
+          timestamp: cp.timestamp 
+        })));
+        
+        if (allCheckpoints.length > 0) {
+          // Count how many user messages with db_message_id are from this point forward (inclusive)
+          const userMessagesFromHere = messages
+            .slice(messageIndex)
+            .filter(m => m.sender === 'user' && m.db_message_id)
+            .length;
+          
+          console.log(`[AI] User messages from clicked point forward: ${userMessagesFromHere}`);
+          
+          // Checkpoints are sorted newest first (index 0 = latest)
+          // We want checkpoint that was BEFORE this user message
+          // If we're reverting 1 user message, we want checkpoint at index 0 (the one created before it)
+          const checkpointIndex = userMessagesFromHere - 1;
+          
+          console.log(`[AI] Calculated checkpoint index: ${checkpointIndex}`);
+          
+          if (checkpointIndex >= 0 && checkpointIndex < allCheckpoints.length) {
+            const checkpointToRestore = allCheckpoints[checkpointIndex];
+            
+            console.log(`[AI] Step 3: Restoring checkpoint [${checkpointIndex}]: ${checkpointToRestore.message?.substring(0, 50)}...`);
+            
+            // Restore checkpoint
+            const restoreResponse = await restoreCheckpoint(activeSiteId, checkpointToRestore.id);
+            console.log('[AI] ✓ Checkpoint restored:', restoreResponse);
+            
+            // Step 4: Force reload site data from server
+            console.log('[AI] Step 4: Reloading site data from server...');
+            const siteResponse = await apiClient.get(`/sites/${activeSiteId}/`);
+            const updatedSite = siteResponse.data;
+            
+            console.log('[AI] ✓ Site data reloaded');
+            console.log('[AI] Step 5: Dispatching ai-site-updated event...');
+            
+            // Dispatch event to update editor with fresh data
+            window.dispatchEvent(new CustomEvent('ai-site-updated', {
+              detail: {
+                status: 'success',
+                site: updatedSite.template_config,
+                explanation: 'Przywrócono poprzedni stan'
+              }
+            }));
+            
+            console.log('[AI] ✓ Event dispatched successfully');
+            
+            // Step 6: Update UI - remove messages from clicked point forward
+            setMessages(messagesBeforeClick);
+            
+            // Show success toast
+            showToast('Cofnięto zmiany. Możesz teraz napisać nową wiadomość.', { variant: 'success' });
+            
+            console.log('[AI] ✓ UI updated');
+            
+            // Step 7: Reload checkpoints list
+            const updatedData = await listCheckpoints(activeSiteId);
+            setCheckpoints(updatedData.checkpoints || []);
+            console.log('[AI] ✓ Checkpoints reloaded');
+            
+            // Clear any processing state
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
+            setIsProcessing(false);
+            setProcessingMessageId(null);
+            
+            // Clear reverting flag after a short delay
+            setTimeout(() => {
+              isRevertingRef.current = false;
+            }, 100);
+            
+            console.log('[AI] ========== REVERT COMPLETE ==========');
+            return;
+          } else {
+            console.error(`[AI] ✗ No checkpoint available at index ${checkpointIndex}`);
+          }
+        } else {
+          console.error('[AI] ✗ No checkpoints available');
+        }
+      } catch (error) {
+        console.error('[AI] ✗ Failed during revert:', error);
+        console.error('[AI] Error details:', error.response?.data || error.message);
+        
+        // Clear reverting flag on error
+        isRevertingRef.current = false;
+        
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `ai-error-${Date.now()}`,
+            sender: 'ai',
+            text: `✗ Nie udało się przywrócić: ${error.response?.data?.error || error.message}`
+          }
+        ]);
+        return;
+      }
+    }
+    
+    // Fallback: Just remove messages locally (for non-editor contexts or if restore failed)
+    console.log('[AI] Fallback: updating UI only (no checkpoints for this context)');
+    console.log('[AI] Context type:', contextType);
+    console.log('[AI] Messages to check:', messages.length);
+    console.log('[AI] Message index:', messageIndex);
+    
+    // For studio_events, delete any events that were created in the reverted messages
+    if (contextType === 'studio_events') {
+      console.log('[AI] This is studio_events context - checking for events to delete');
+      const revertedMessages = messages.slice(messageIndex);
+      console.log('[AI] Reverted messages:', revertedMessages.length);
+      console.log('[AI] Reverted messages details:', revertedMessages.map(m => ({
+        id: m.id,
+        sender: m.sender,
+        eventId: m.eventId,
+        text: m.text?.substring(0, 50)
+      })));
+      
+      const eventIdsToDelete = revertedMessages
+        .filter(msg => msg.sender === 'ai' && msg.eventId)
+        .map(msg => msg.eventId);
+      
+      console.log('[AI] Event IDs to delete:', eventIdsToDelete);
+      
+      if (eventIdsToDelete.length > 0) {
+        console.log('[AI] Deleting events created in reverted messages:', eventIdsToDelete);
+        
+        // Delete each event
+        for (const eventId of eventIdsToDelete) {
+          try {
+            console.log(`[AI] Attempting to delete event ${eventId}...`);
+            await apiClient.delete(`/big-events/${eventId}/`);
+            console.log(`[AI] ✓ Deleted event ${eventId}`);
+          } catch (error) {
+            console.error(`[AI] ✗ Failed to delete event ${eventId}:`, error);
+          }
+        }
+        
+        // Dispatch event to refresh Events page
+        console.log('[AI] Dispatching big-event-deleted event');
+        window.dispatchEvent(new CustomEvent('big-event-deleted'));
+      } else {
+        console.log('[AI] No events to delete');
+      }
+    } else {
+      console.log('[AI] Not studio_events context, skipping event deletion');
+    }
+    
+    setMessages(messagesBeforeClick);
+    
+    // Show success toast for non-editor contexts
+    if (contextType !== 'studio_editor') {
+      showToast('Cofnięto zmiany. Możesz teraz napisać nową wiadomość.', { variant: 'success' });
+    }
+    
+    // Clear any processing state
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    setIsProcessing(false);
+    setProcessingMessageId(null);
+    
+    // Clear reverting flag after a short delay
+    setTimeout(() => {
+      isRevertingRef.current = false;
+    }, 100);
+    
+    console.log('[AI] ========== REVERT COMPLETE (fallback) ==========');
   };
 
   // Sync internal processing state with parent
@@ -230,12 +564,27 @@ const AIChatPanel = ({
 
   const sendMessage = async (messageText, agentId) => {
     // Add user message
-    setMessages((prev) => [...prev, { id: `user-${Date.now()}`, sender: 'user', text: messageText }]);
+    const userMsgId = `user-${Date.now()}`;
+    setMessages((prev) => [...prev, { id: userMsgId, sender: 'user', text: messageText }]);
     setInput('');
     setIsProcessing(true);
 
     const loadingMsgId = `ai-loading-${Date.now()}`;
     setProcessingMessageId(loadingMsgId);
+
+    // Create pending message object
+    const pendingMsg = {
+      id: userMsgId,
+      text: messageText,
+      agentId: agentId,
+      siteId: activeSite?.id,
+      contextType: contextType,
+      timestamp: new Date().toISOString()
+    };
+
+    // Save as pending immediately (will be removed when we get response)
+    savePendingMessage(pendingMsg);
+    console.log('[AI] Saved message as pending:', userMsgId);
 
     try {
       // Extract mentioned module types for logging
@@ -244,17 +593,19 @@ const AIChatPanel = ({
       // Build context with full site structure + context_type, site_id, and agent_id
       const contextData = buildContextMessage(mode, activeSite, currentPageId);
       contextData.context_type = contextType;
-      contextData.site_id = activeSite?.id;
+      contextData.site_id = activeSiteId;
       contextData.agent_id = agentId; // Add agent ID
       
       // Log for debugging
       const tokenEstimate = estimateTokens(JSON.stringify(contextData));
       console.log(`[AI] Sending context: ~${tokenEstimate} tokens, mentioned modules:`, mentionedModules);
-      console.log(`[AI] Context type: ${contextType}, Site ID: ${activeSite?.id}, Agent ID: ${agentId}`);
+      console.log(`[AI] Context type: ${contextType}, Site ID: ${activeSiteId}, Agent ID: ${agentId}`);
 
       // Send to AI and get task_id
       const response = await processAITaskWithContext(messageText, activeSite, contextData);
       const taskId = response.task_id;
+
+      console.log('[AI] Message sent, task ID:', taskId);
 
       // Add loading message with animation
       setMessages((prev) => [
@@ -264,29 +615,36 @@ const AIChatPanel = ({
           sender: 'ai', 
           text: 'Myślę',
           isLoading: true,
-          taskId
+          taskId,
+          userMsgId // Store reference to user message for cleanup
         }
       ]);
 
       // Start polling for result
-      pollForResult(taskId, loadingMsgId);
+      pollForResult(taskId, loadingMsgId, userMsgId);
 
     } catch (error) {
       console.error('AI task failed:', error);
-      setProcessingMessageId(null);
+      
+      // Message is already saved as pending, so just show error
+      // Keep it in pending list for retry
+      setPendingMessages(prev => [...prev, pendingMsg]);
+      
       setMessages((prev) => [
         ...prev,
         { 
           id: `ai-error-${Date.now()}`, 
           sender: 'ai', 
-          text: `Wystąpił błąd: ${formatErrorMessage(error)}. Spróbuj ponownie.` 
+          text: `❌ Nie udało się wysłać wiadomości. Kliknij na nią powyżej, aby spróbować ponownie.` 
         }
       ]);
+      
+      setProcessingMessageId(null);
       setIsProcessing(false);
     }
   };
 
-  const pollForResult = async (taskId, loadingMsgId) => {
+  const pollForResult = async (taskId, loadingMsgId, userMsgId) => {
     // Clear any existing interval
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -306,8 +664,26 @@ const AIChatPanel = ({
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
 
+        // Remove message from pending list (got response)
+        if (userMsgId) {
+          removePendingMessage(userMsgId);
+          setPendingMessages(prev => prev.filter(m => m.id !== userMsgId));
+          console.log('[AI] Removed message from pending:', userMsgId);
+        }
+
         // Handle clarification - AI asks for more details
         if (result.status === 'clarification') {
+          // Update user message with DB ID if available
+          if (result.chat_history_id && userMsgId) {
+            setMessages((prev) =>
+              prev.map(msg =>
+                msg.id === userMsgId
+                  ? { ...msg, db_message_id: result.chat_history_id }
+                  : msg
+              )
+            );
+          }
+
           setMessages((prev) => 
             prev.map(msg => 
               msg.id === loadingMsgId
@@ -329,6 +705,17 @@ const AIChatPanel = ({
         if (result.status === 'api_call') {
           console.log('[AI] Executing API call:', result.endpoint, result.method);
           
+          // Update user message with DB ID if available
+          if (result.chat_history_id && userMsgId) {
+            setMessages((prev) =>
+              prev.map(msg =>
+                msg.id === userMsgId
+                  ? { ...msg, db_message_id: result.chat_history_id }
+                  : msg
+              )
+            );
+          }
+          
           // Automatically execute the API call
           try {
             const apiResponse = await apiClient({
@@ -338,6 +725,18 @@ const AIChatPanel = ({
             });
             
             console.log('[AI] API call successful:', apiResponse.data);
+            
+            // If event was created/updated, save event_id to ChatHistory
+            if (result.chat_history_id && apiResponse.data.id) {
+              try {
+                await apiClient.patch(`/chat/history/${result.chat_history_id}/`, {
+                  related_event_id: apiResponse.data.id
+                });
+                console.log(`[AI] ✓ Saved event ID ${apiResponse.data.id} to chat history`);
+              } catch (error) {
+                console.error('[AI] Failed to save event ID to chat history:', error);
+              }
+            }
             
             // Determine operation type from method
             const operationType = result.method.toUpperCase() === 'POST' ? 'Utworzono' : 'Zaktualizowano';
@@ -388,6 +787,18 @@ const AIChatPanel = ({
           return;
         }
         
+        // Update user message with DB ID if available (for success status)
+        if (result.status === 'success' && result.chat_history_id && userMsgId) {
+          setMessages((prev) =>
+            prev.map(msg =>
+              msg.id === userMsgId
+                ? { ...msg, db_message_id: result.chat_history_id }
+                : msg
+            )
+          );
+          console.log('[AI] Updated user message with DB ID:', result.chat_history_id);
+        }
+
         // Dispatch custom event (same as WebSocket did)
         window.dispatchEvent(new CustomEvent('ai-update-received', {
           detail: { 
@@ -410,10 +821,23 @@ const AIChatPanel = ({
         pollIntervalRef.current = null;
         console.error('Polling error:', error);
         
+        // Check if it's a network error - keep message in pending
+        const isNetworkError = error.message?.includes('network') || 
+                              error.message?.includes('timeout') ||
+                              error.code === 'ECONNABORTED' ||
+                              !navigator.onLine;
+        
+        if (!isNetworkError && userMsgId) {
+          // Not a network error - probably server error, remove from pending
+          removePendingMessage(userMsgId);
+          setPendingMessages(prev => prev.filter(m => m.id !== userMsgId));
+        }
+        // If network error, keep in pending list for retry
+        
         setMessages((prev) => 
           prev.map(msg => 
             msg.id === loadingMsgId
-              ? { ...msg, text: '✗ Błąd połączenia', isLoading: false }
+              ? { ...msg, text: isNetworkError ? '✗ Brak połączenia' : '✗ Błąd serwera', isLoading: false }
               : msg
           )
         );
@@ -423,14 +847,8 @@ const AIChatPanel = ({
     }, 2000); // Poll every 2 seconds
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, []);
+  // Note: We intentionally DON'T clean up pollIntervalRef on unmount
+  // This allows AI to continue processing in background when panel is closed
 
   // Listen for AI updates via custom event
   useEffect(() => {
@@ -614,6 +1032,68 @@ const AIChatPanel = ({
           )}
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          {checkpoints.length > 0 && contextType === 'studio_editor' && (
+            <>
+              <Tooltip title="Cofnij zmiany AI">
+                <IconButton
+                  onClick={(e) => setCheckpointMenuAnchor(e.currentTarget)}
+                  disabled={isProcessing}
+                  sx={{
+                    color: 'rgb(220, 220, 220)',
+                    '&:hover': {
+                      bgcolor: 'rgba(220, 220, 220, 0.1)'
+                    },
+                    '&:disabled': {
+                      opacity: 0.5
+                    }
+                  }}
+                >
+                  <UndoIcon />
+                </IconButton>
+              </Tooltip>
+              <Menu
+                anchorEl={checkpointMenuAnchor}
+                open={Boolean(checkpointMenuAnchor)}
+                onClose={() => setCheckpointMenuAnchor(null)}
+                PaperProps={{
+                  sx: {
+                    bgcolor: 'rgb(12, 12, 12)',
+                    color: 'rgb(220, 220, 220)',
+                    border: '1px solid rgba(220, 220, 220, 0.12)',
+                    maxHeight: '400px'
+                  }
+                }}
+              >
+                <MenuItem disabled>
+                  <ListItemText
+                    primary="Wybierz punkt przywracania"
+                    primaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+                  />
+                </MenuItem>
+                <Divider sx={{ bgcolor: 'rgba(220, 220, 220, 0.12)' }} />
+                {checkpoints.map((checkpoint) => (
+                  <MenuItem
+                    key={checkpoint.id}
+                    onClick={() => handleRestoreCheckpoint(checkpoint.id)}
+                    sx={{
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      '&:hover': {
+                        bgcolor: 'rgba(146, 0, 32, 0.2)'
+                      }
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '12px', fontWeight: 500 }}>
+                      {new Date(checkpoint.timestamp).toLocaleString('pl-PL')}
+                    </Typography>
+                    <Typography sx={{ fontSize: '11px', opacity: 0.7, mt: 0.5 }}>
+                      {checkpoint.message}
+                    </Typography>
+                  </MenuItem>
+                ))}
+              </Menu>
+            </>
+          )}
           <Tooltip title="Utwórz nowego asystenta">
             <IconButton
               onClick={handleRefresh}
@@ -683,10 +1163,69 @@ const AIChatPanel = ({
           gap: 1.5
         }}
       >
-        {groupedMessages.map((message) => (
+        {pendingMessages.length > 0 && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              bgcolor: 'rgba(255, 152, 0, 0.1)',
+              color: 'rgb(220, 220, 220)',
+              border: '1px solid rgba(255, 152, 0, 0.3)',
+              '& .MuiAlert-icon': {
+                color: 'rgb(255, 152, 0)'
+              }
+            }}
+          >
+            Masz {pendingMessages.length} niewysłanych wiadomości. Kliknij na nie, aby wysłać ponownie.
+          </Alert>
+        )}
+        
+        {pendingMessages.map((pendingMsg) => (
+          <Stack
+            key={`pending-${pendingMsg.id}`}
+            alignItems="flex-end"
+          >
+            <Box
+              onClick={() => handleRetryPendingMessage(pendingMsg)}
+              sx={{
+                maxWidth: '92%',
+                px: 2,
+                py: 1.5,
+                borderRadius: '12px',
+                fontSize: '14px',
+                lineHeight: 1.5,
+                whiteSpace: 'pre-wrap',
+                bgcolor: 'rgba(255, 152, 0, 0.3)',
+                border: '2px dashed rgba(255, 152, 0, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 152, 0, 0.4)'
+                }
+              }}
+            >
+              <ReplayIcon sx={{ fontSize: '16px' }} />
+              <span>{pendingMsg.text}</span>
+              <Chip 
+                label="Niewysłane" 
+                size="small" 
+                sx={{ 
+                  bgcolor: 'rgba(255, 152, 0, 0.8)',
+                  color: 'rgb(12, 12, 12)',
+                  fontSize: '10px',
+                  height: '18px'
+                }} 
+              />
+            </Box>
+          </Stack>
+        ))}
+        
+        {groupedMessages.map((message, index) => (
           <Stack
             key={message.id}
             alignItems={message.sender === 'user' ? 'flex-end' : 'flex-start'}
+            sx={{ position: 'relative', width: '100%' }}
           >
             <Box
               sx={{
@@ -704,7 +1243,11 @@ const AIChatPanel = ({
                     : 'rgba(255, 255, 255, 0.08)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1
+                gap: 1,
+                position: 'relative',
+                '&:hover .revert-button': {
+                  opacity: 1
+                }
               }}
             >
               <span>{message.text}</span>
@@ -723,6 +1266,28 @@ const AIChatPanel = ({
                     }
                   }}
                 />
+              )}
+              {message.sender === 'user' && !message.isLoading && index > 0 && (
+                <Tooltip title="Cofnij do tego momentu" placement="right">
+                  <IconButton
+                    className="revert-button"
+                    size="small"
+                    onClick={() => handleRevertToMessage(message.id)}
+                    sx={{
+                      position: 'absolute',
+                      left: '-40px',
+                      opacity: 0,
+                      transition: 'opacity 0.2s',
+                      color: 'rgb(220, 220, 220)',
+                      bgcolor: 'rgba(12, 12, 12, 0.8)',
+                      '&:hover': {
+                        bgcolor: 'rgba(146, 0, 32, 0.8)'
+                      }
+                    }}
+                  >
+                    <HistoryIcon sx={{ fontSize: '18px' }} />
+                  </IconButton>
+                </Tooltip>
               )}
             </Box>
           </Stack>

@@ -80,10 +80,18 @@ from .views import (
     public_big_events,
     get_chat_history,
     reset_chat_history,
+    mark_chat_messages_deleted,
+    update_chat_history,
     agent_list,
     agent_detail,
     pexels_search_images,
     pexels_quota,
+    create_checkpoint,
+    restore_checkpoint,
+    list_checkpoints,
+    create_event_checkpoint,
+    restore_event_checkpoint,
+    list_event_checkpoints,
 )
 
 
@@ -162,7 +170,17 @@ urlpatterns = [
     path('agents/', agent_list, name='agent-list'),
     path('agents/<uuid:agent_id>/', agent_detail, name='agent-detail'),
     path('chat/history/', get_chat_history, name='get-chat-history'),
+    path('chat/history/<int:message_id>/', update_chat_history, name='update-chat-history'),
     path('chat/reset/', reset_chat_history, name='reset-chat-history'),
+    path('chat/mark-deleted/', mark_chat_messages_deleted, name='mark-chat-messages-deleted'),
+    # AI Checkpoint endpoints
+    path('sites/<int:site_id>/checkpoints/', create_checkpoint, name='create-checkpoint'),
+    path('sites/<int:site_id>/checkpoints/restore/<str:checkpoint_id>/', restore_checkpoint, name='restore-checkpoint'),
+    path('sites/<int:site_id>/checkpoints/list/', list_checkpoints, name='list-checkpoints'),
+    # BigEvent AI Checkpoint endpoints
+    path('big-events/<int:event_id>/checkpoints/', create_event_checkpoint, name='create-event-checkpoint'),
+    path('big-events/<int:event_id>/checkpoints/restore/<str:checkpoint_id>/', restore_event_checkpoint, name='restore-event-checkpoint'),
+    path('big-events/<int:event_id>/checkpoints/list/', list_event_checkpoints, name='list-event-checkpoints'),
     # Newsletter endpoints
     path('newsletter/subscribe/', newsletter_subscribe, name='newsletter-subscribe'),
     path('newsletter/unsubscribe/<str:token>/', newsletter_unsubscribe, name='newsletter-unsubscribe'),

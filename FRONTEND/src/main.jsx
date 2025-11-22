@@ -47,7 +47,7 @@ if (buildTarget === 'SITE' || renderSiteDirectly) {
             <AuthProvider>
               <ThemeProvider initialTheme="studio">
                 <PreferencesProvider>
-                  <ToastProvider>
+                  <ToastProvider position="bottom-left">
                     <App />
                   </ToastProvider>
                 </PreferencesProvider>

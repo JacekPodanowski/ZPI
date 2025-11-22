@@ -28,6 +28,18 @@ export const resetChatHistory = async (params = {}) => {
 };
 
 /**
+ * Mark chat messages as deleted (soft delete) starting from a specific message
+ * @param {Object} params - Parameters
+ * @param {string} params.agent_id - Required - Agent ID
+ * @param {number} params.message_id - Required - ID of the message to revert to
+ * @returns {Promise<{message: string, deleted_count: number}>}
+ */
+export const markChatMessagesDeleted = async (params = {}) => {
+  const response = await apiClient.post('/chat/mark-deleted/', params);
+  return response.data;
+};
+
+/**
  * Process AI task with context and agent
  * @param {string} prompt - User message
  * @param {Object} config - Full site configuration
