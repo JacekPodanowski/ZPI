@@ -14,16 +14,11 @@ const DetailMode = () => {
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('lg'));
   const layoutRef = useRef(null);
-  const dragSide = useRef(null);
-  const [rightWidth, setRightWidth] = useState(0.15); // 15%
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false); // AI chat initially collapsed
   const [isAiProcessing, setIsAiProcessing] = useState(false); // Track AI processing state
   const [aiTaskCompleted, setAiTaskCompleted] = useState(false); // Track if task completed
-  const MIN_PANEL = 0.1;
-  const MAX_PANEL = 0.35;
-  const MIN_CENTER = 0.4;
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
 
   const pages = site?.pages || [];
@@ -33,43 +28,6 @@ const DetailMode = () => {
       setSelectedPage(pages[0].id);
     }
   }, [selectedPageId, pages, setSelectedPage]);
-
-  const startDragging = useCallback((side) => (event) => {
-    event.preventDefault();
-    dragSide.current = side;
-    document.body.style.userSelect = 'none';
-    document.body.style.cursor = 'col-resize';
-  }, []);
-
-  useEffect(() => {
-    const handlePointerMove = (event) => {
-      if (!dragSide.current || !layoutRef.current) return;
-
-      const rect = layoutRef.current.getBoundingClientRect();
-      const totalWidth = rect.width;
-      if (totalWidth === 0) return;
-
-      if (dragSide.current === 'right') {
-        const proposed = clamp((rect.right - event.clientX) / totalWidth, MIN_PANEL, MAX_PANEL);
-        setRightWidth(proposed);
-      }
-    };
-
-    const handlePointerUp = () => {
-      if (!dragSide.current) return;
-      dragSide.current = null;
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-  }, [rightWidth]);
 
   return (
     <Box
@@ -113,20 +71,60 @@ const DetailMode = () => {
         </>
       )}
 
-      {/* AI Chat floating button - both desktop and mobile (hidden when open on desktop) */}
-      {(!aiChatOpen || isMobile) && (
+      {/* AI Chat floating button - hidden when chat is open (desktop only) */}
+      {!aiChatOpen && !isMobile && (
         <IconButton
           onClick={() => {
-            if (isMobile) {
-              setRightPanelOpen(true);
-            } else {
-              // Just open the existing chat - don't create a new one
-              setAiChatOpen(true);
-            }
-            // Clear completed state when opening
+            setAiChatOpen(true);
             setAiTaskCompleted(false);
           }}
-          disabled={false} // Always allow opening the chat
+          disabled={false}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 1200,
+            bgcolor: 'rgb(146, 0, 32)',
+            color: 'white',
+            width: 56,
+            height: 56,
+            boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
+            '&:hover': { 
+              bgcolor: 'rgb(114, 0, 21)',
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 28px rgba(146, 0, 32, 0.5)'
+            },
+            transition: 'all 0.3s ease',
+            '@keyframes checkPulse': {
+              '0%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.2)' },
+              '100%': { transform: 'scale(1)' }
+            }
+          }}
+        >
+          {isAiProcessing ? (
+            <CircularProgress size={24} sx={{ color: 'white' }} />
+          ) : aiTaskCompleted ? (
+            <CheckCircleIcon 
+              sx={{ 
+                animation: 'checkPulse 0.6s ease-in-out',
+                fontSize: 28
+              }} 
+            />
+          ) : (
+            <ChatIcon />
+          )}
+        </IconButton>
+      )}
+
+      {/* AI Chat floating button - mobile version (opens drawer) */}
+      {isMobile && (
+        <IconButton
+          onClick={() => {
+            setRightPanelOpen(true);
+            setAiTaskCompleted(false);
+          }}
+          disabled={false}
           sx={{
             position: 'fixed',
             bottom: 24,
@@ -240,8 +238,8 @@ const DetailMode = () => {
           </Box>
         </Box>
 
-        {/* AI Chat - Right (Desktop only in layout, Mobile as Drawer) */}
-        {isMobile ? (
+        {/* AI Chat - Mobile Drawer */}
+        {isMobile && (
           <Drawer
             anchor="right"
             open={rightPanelOpen}
@@ -271,49 +269,29 @@ const DetailMode = () => {
               </Box>
             </Box>
           </Drawer>
-        ) : (
-          // Singleton instance - always rendered but conditionally displayed
-          <Box
-            sx={{
-              flex: aiChatOpen ? `0 0 ${rightWidth * 100}%` : '0 0 0',
-              minWidth: aiChatOpen ? '290px' : '0',
-              maxWidth: aiChatOpen ? '35%' : '0',
-              height: '100%',
-              display: 'flex',
-              position: 'relative',
-              overflow: 'hidden',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            {aiChatOpen && (
-              <Box
-                onPointerDown={startDragging('right')}
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: -3,
-                  width: '6px',
-                  height: '100%',
-                  cursor: 'col-resize',
-                  zIndex: 20,
-                  '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    inset: '0 1px',
-                    borderRadius: '4px',
-                    background: 'rgba(30, 30, 30, 0.12)'
-                  }
-                }}
-              />
-            )}
-            <AIChatPanel 
-              onClose={() => setAiChatOpen(false)}
-              onProcessingChange={setIsAiProcessing}
-              onTaskComplete={(success) => setAiTaskCompleted(success)}
-              mode="detail"
-            />
-          </Box>
         )}
+      </Box>
+
+      {/* AI Chat Panel - Desktop Overlay (same as StructureMode) */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: '60px',
+          right: 0,
+          bottom: 0,
+          width: aiChatOpen ? '350px' : '0',
+          height: 'calc(100vh - 60px)',
+          overflow: 'hidden',
+          transition: 'width 0.3s ease',
+          zIndex: 1100
+        }}
+      >
+        <AIChatPanel 
+          onClose={() => setAiChatOpen(false)}
+          onProcessingChange={setIsAiProcessing}
+          onTaskComplete={(success) => setAiTaskCompleted(success)}
+          mode="detail"
+        />
       </Box>
     </Box>
   );
