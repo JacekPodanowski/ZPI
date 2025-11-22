@@ -7,21 +7,24 @@ export const HERO_DEFAULTS = {
       subtitle: "Profesjonalne sesje jogi i medytacji w sercu miasta",
       ctaText: "Zarezerwuj Sesję",
       ctaLink: "/rezerwacja",
-      showButton: true
+      showButton: true,
+      image: `https://picsum.photos/seed/hero-centered-1/1920/1080`
     },
     {
       title: "Rozwijaj Swój Biznes z Ekspertem",
       subtitle: "Indywidualne konsultacje biznesowe dla przedsiębiorców",
       ctaText: "Umów Konsultację",
       ctaLink: "/kontakt",
-      showButton: true
+      showButton: true,
+      image: `https://picsum.photos/seed/hero-centered-2/1920/1080`
     },
     {
       title: "Twoja Wizja, Moja Pasja",
       subtitle: "Profesjonalna fotografia portretowa i eventowa",
       ctaText: "Zobacz Portfolio",
       ctaLink: "/galeria",
-      showButton: true
+      showButton: true,
+      image: `https://picsum.photos/seed/hero-centered-3/1920/1080`
     }
   ],
   split: [
@@ -57,7 +60,7 @@ export const HERO_DEFAULTS = {
     {
       title: "Przestrzeń dla Twojego Ciała i Umysłu",
       subtitle: "Dołącz do naszej społeczności świadomych praktyków",
-      backgroundImage: `https://picsum.photos/seed/hero-full-1/1920/1080`,
+      image: `https://picsum.photos/seed/hero-full-1/1920/1080`,
       overlay: true,
       ctaText: "Rozpocznij Praktykę",
       ctaLink: "/start",
@@ -66,7 +69,7 @@ export const HERO_DEFAULTS = {
     {
       title: "Zbuduj Silny Fundament Biznesowy",
       subtitle: "Strategia, coaching i mentoring dla liderów",
-      backgroundImage: `https://picsum.photos/seed/hero-full-2/1920/1080`,
+      image: `https://picsum.photos/seed/hero-full-2/1920/1080`,
       overlay: true,
       ctaText: "Dowiedz Się Więcej",
       ctaLink: "/o-mnie",
@@ -75,7 +78,7 @@ export const HERO_DEFAULTS = {
     {
       title: "Twórz Niezapomniane Historie",
       subtitle: "Profesjonalne sesje zdjęciowe w wyjątkowych lokalizacjach",
-      backgroundImage: `https://picsum.photos/seed/hero-full-3/1920/1080`,
+      image: `https://picsum.photos/seed/hero-full-3/1920/1080`,
       overlay: true,
       ctaText: "Zarezerwuj Sesję",
       ctaLink: "/rezerwacja",

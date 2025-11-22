@@ -215,3 +215,11 @@ Configure Vercel projects as specified in the original plan, using environment v
 2.  **Trigger Hook:** This endpoint's logic will retrieve the site's Vercel Build Hook URL and send a POST request to it.
 3.  **Frontend Build Logic:** In `SiteApp.jsx`, implement logic to read the `REACT_APP_SITE_IDENTIFIER`, fetch the latest `template_config` from a public API endpoint, and use it to generate the static site during the Vercel build.
 4.  **Editor Button:** The "Publish" button in the editor's top bar will trigger the API call.
+
+
+================================================================================================
+Migrate with :
+
+docker-compose exec backend python manage.py makemigrations
+
+docker-compose exec backend python manage.py migrate

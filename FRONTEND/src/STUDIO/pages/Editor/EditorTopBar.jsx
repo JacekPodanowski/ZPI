@@ -457,12 +457,11 @@ const EditorTopBar = () => {
           <IconButton
             onClick={editorMode === 'detail' ? exitDetailMode : handleGoBack}
             sx={{
-              height: '56px',
-              width: editorMode === 'detail' ? '72px' : '48px',
-              borderRadius: 0,
+              height: '48px',
+              width: editorMode === 'detail' ? '60px' : '48px',
+              borderRadius: '12px',
               bgcolor: baseSurface,
               color: textPrimary,
-              borderRight: `1px solid ${dividerColor}`,
               display: 'flex',
               gap: 1,
               transition: 'width 0.2s ease',

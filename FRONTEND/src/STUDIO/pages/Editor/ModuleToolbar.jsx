@@ -484,36 +484,20 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
 
   // Desktop version
   return (
-    <motion.div
-      initial={hasInitiallyAnimated.current ? false : { x: -280 }}
-      animate={{ x: 0 }}
-      exit={hasInitiallyAnimated.current ? false : { x: -280 }}
-      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-      style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
+    <Box
+      ref={toolbarRef}
+      sx={{
+        width: '100%',
         height: '100%',
-        width: '180px',
-        zIndex: 10
+        bgcolor: moduleListBg,
+        display: 'flex',
+        flexDirection: 'column',
+        p: 2,
+        gap: 1,
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
-      {/* Module List - Always Present */}
-      <Box
-        ref={toolbarRef}
-        sx={{
-          width: '100%',
-          height: '100%',
-          bgcolor: moduleListBg,
-          backdropFilter: 'blur(20px)',
-          borderRight: `1px solid ${moduleListBorder}`,
-          display: 'flex',
-          flexDirection: 'column',
-          p: 2,
-          gap: 1,
-          position: 'relative'
-        }}
-      >
         {/* Header with title and close button */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, px: 1 }}>
           <Typography
@@ -754,16 +738,13 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
             </motion.div>
           )}
         </AnimatePresence>
-      </Box>
 
       {/* Trash Zone Overlay - Always mounted, visibility controlled by opacity */}
-      <motion.div
-        animate={{ 
+      <Box
+        sx={{
           opacity: isDraggingModule ? 1 : 0,
-          pointerEvents: isDraggingModule ? 'auto' : 'none'
-        }}
-        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-        style={{
+          pointerEvents: isDraggingModule ? 'auto' : 'none',
+          transition: 'opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           position: 'absolute',
           top: 0,
           left: 0,
@@ -801,16 +782,13 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
               gap: 2
             }}
           >
-            <motion.div
-              animate={{ 
-                y: isOverTrash ? [0, -10, 0] : 0,
-                scale: isOverTrash ? [1, 1.08, 1] : 1
-              }}
-              transition={{ 
-                duration: 1.1,
-                repeat: isOverTrash ? Infinity : 0,
-                repeatType: 'loop',
-                ease: 'easeInOut'
+            <Box
+              sx={{
+                animation: isOverTrash ? 'trashBounce 1.1s ease-in-out infinite' : 'none',
+                '@keyframes trashBounce': {
+                  '0%, 100%': { transform: 'translateY(0) scale(1)' },
+                  '50%': { transform: 'translateY(-10px) scale(1.08)' }
+                }
               }}
             >
               <Delete 
@@ -819,7 +797,7 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
                   color: 'rgba(220, 220, 220, 0.7)'
                 }} 
               />
-            </motion.div>
+            </Box>
             <Typography
               sx={{
                 fontSize: '15px',
@@ -834,8 +812,8 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
             </Typography>
           </Box>
         </Box>
-      </motion.div>
-    </motion.div>
+      </Box>
+    </Box>
   );
 };
 

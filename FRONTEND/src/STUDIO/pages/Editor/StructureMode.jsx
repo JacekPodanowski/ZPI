@@ -3,9 +3,8 @@ import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, In
 import { GridView, Visibility, RemoveRedEye, Edit, Chat as ChatIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
-import ModuleToolbar from './ModuleToolbar';
+import Toolbar from './Toolbar';
 import SiteCanvas from './SiteCanvas';
-import SiteSettingsDrawer from './SiteSettingsDrawer';
 import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 import { getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
@@ -52,7 +51,6 @@ const StructureMode = () => {
     }
   };
   
-  const [showModuleToolbar, setShowModuleToolbar] = useState(true);
   const [renderMode, setRenderMode] = useState('icon'); // 'icon' | 'real'
   const [dropHandled, setDropHandled] = useState(false);
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
@@ -342,11 +340,8 @@ const StructureMode = () => {
         bgcolor: editorColors.backgrounds.page
       }}
     >
-      {/* Module Toolbar */}
-      <AnimatePresence>
-        {showModuleToolbar && !isMobile && <ModuleToolbar isDraggingModule={isDraggingModule} />}
-        {isMobile && <ModuleToolbar isDraggingModule={isDraggingModule} />}
-      </AnimatePresence>
+      {/* New Unified Toolbar */}
+      {!isMobile && <Toolbar isDraggingModule={isDraggingModule} />}
 
       {/* EDITOR CANVAS - The Whole Background */}
       <Box
@@ -396,8 +391,8 @@ const StructureMode = () => {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          pl: (showModuleToolbar && !isMobile) ? '180px' : 0,
-          transition: 'padding-left 0.4s ease',
+          pl: !isMobile ? '48px' : 0,
+          transition: 'padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'auto'
         }}
       >
@@ -440,19 +435,6 @@ const StructureMode = () => {
                 Real Render
               </ToggleButton>
             </ToggleButtonGroup>
-          </Box>
-
-          {/* Site Settings Icon - Right Corner */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              right: 32,
-              zIndex: 5,
-              pointerEvents: 'all'
-            }}
-          >
-            <SiteSettingsDrawer />
           </Box>
 
           {/* Focused Page Preview */}

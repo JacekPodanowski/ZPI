@@ -2,6 +2,7 @@
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const FullscreenHero = ({ content, style }) => {
+  const heroMedia = content.image || content.backgroundImage;
   const overlayColor = content.overlay
     ? content.backgroundOverlayColor || 'rgba(0, 0, 0, 0.5)'
     : undefined;
@@ -25,7 +26,7 @@ const FullscreenHero = ({ content, style }) => {
         backgroundColor
       }}
     >
-      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <BackgroundMedia media={heroMedia} overlayColor={overlayColor} />
       
       {/* Content */}
       <div className="relative z-10 text-center px-4 md:px-6 max-w-4xl mx-auto">

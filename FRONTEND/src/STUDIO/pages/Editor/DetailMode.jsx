@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, IconButton, Drawer, useMediaQuery, useTheme as useMuiTheme, CircularProgress } from '@mui/material';
 import { Menu as MenuIcon, Tune as TuneIcon, Chat as ChatIcon, Close as CloseIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
+import Toolbar from './Toolbar';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
 import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
@@ -9,12 +10,11 @@ import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const DetailMode = () => {
-  const { devicePreview, site, selectedPageId, setSelectedPage, canvasZoom } = useNewEditorStore();
+  const { devicePreview, site, selectedPageId, setSelectedPage, canvasZoom, isDragging, draggedItem } = useNewEditorStore();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('lg'));
   const layoutRef = useRef(null);
   const dragSide = useRef(null);
-  const [leftWidth, setLeftWidth] = useState(0.15); // 15%
   const [rightWidth, setRightWidth] = useState(0.15); // 15%
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -24,6 +24,7 @@ const DetailMode = () => {
   const MIN_PANEL = 0.1;
   const MAX_PANEL = 0.35;
   const MIN_CENTER = 0.4;
+  const isDraggingModule = isDragging && draggedItem?.type === 'module';
 
   const pages = site?.pages || [];
 
@@ -48,24 +49,9 @@ const DetailMode = () => {
       const totalWidth = rect.width;
       if (totalWidth === 0) return;
 
-      if (dragSide.current === 'left') {
-        const proposed = clamp((event.clientX - rect.left) / totalWidth, MIN_PANEL, MAX_PANEL);
-        const centerShare = 1 - proposed - rightWidth;
-        if (centerShare >= MIN_CENTER) {
-          setLeftWidth(proposed);
-        } else {
-          const adjusted = 1 - rightWidth - MIN_CENTER;
-          setLeftWidth(clamp(adjusted, MIN_PANEL, MAX_PANEL));
-        }
-      } else if (dragSide.current === 'right') {
+      if (dragSide.current === 'right') {
         const proposed = clamp((rect.right - event.clientX) / totalWidth, MIN_PANEL, MAX_PANEL);
-        const centerShare = 1 - leftWidth - proposed;
-        if (centerShare >= MIN_CENTER) {
-          setRightWidth(proposed);
-        } else {
-          const adjusted = 1 - leftWidth - MIN_CENTER;
-          setRightWidth(clamp(adjusted, MIN_PANEL, MAX_PANEL));
-        }
+        setRightWidth(proposed);
       }
     };
 
@@ -83,7 +69,7 @@ const DetailMode = () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [leftWidth, rightWidth]);
+  }, [rightWidth]);
 
   return (
     <Box
@@ -96,6 +82,9 @@ const DetailMode = () => {
         overflow: 'hidden'
       }}
     >
+      {/* New Unified Toolbar (Desktop only) */}
+      {!isMobile && <Toolbar isDraggingModule={isDraggingModule} mode="detail" />}
+
       {/* Mobile floating action buttons */}
       {isMobile && (
         <>
@@ -185,8 +174,8 @@ const DetailMode = () => {
         }}
         ref={layoutRef}
       >
-        {/* Properties Panel - Left (Desktop only in layout, Mobile as Drawer) */}
-        {isMobile ? (
+        {/* Properties Panel - Mobile Drawer only */}
+        {isMobile && (
           <Drawer
             anchor="left"
             open={leftPanelOpen}
@@ -211,38 +200,6 @@ const DetailMode = () => {
               </Box>
             </Box>
           </Drawer>
-        ) : (
-          <Box
-            sx={{
-              flex: `0 0 ${leftWidth * 100}%`,
-              minWidth: '220px',
-              maxWidth: '35%',
-              height: '100%',
-              display: 'flex',
-              position: 'relative'
-            }}
-          >
-            <PropertiesPanel placement="left" />
-            <Box
-              onPointerDown={startDragging('left')}
-              sx={{
-                position: 'absolute',
-                top: 0,
-                right: -3,
-                width: '6px',
-                height: '100%',
-                cursor: 'col-resize',
-                zIndex: 20,
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  inset: '0 1px',
-                  borderRadius: '4px',
-                  background: 'rgba(30, 30, 30, 0.12)'
-                }
-              }}
-            />
-          </Box>
         )}
 
         {/* Canvas - Center */}
@@ -257,7 +214,9 @@ const DetailMode = () => {
             overflow: 'auto',
             bgcolor: 'rgb(228, 229, 218)',
             p: { xs: 1, sm: 2, md: 3 },
-            position: 'relative'
+            pl: !isMobile ? 'calc(48px + 1rem)' : { xs: 1, sm: 2, md: 3 },
+            position: 'relative',
+            transition: 'padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
           data-detail-canvas-scroll="true"
         >

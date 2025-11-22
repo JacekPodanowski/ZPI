@@ -1,11 +1,10 @@
 // layouts/SplitHero.jsx - Split layout with mobile/desktop responsiveness
-import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 
 const SplitHero = ({ content, style }) => {
   const imageOnLeft = content.imagePosition === 'left';
-  const imageUrl = content.image ? resolveMediaUrl(content.image) : '';
-  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
+  const heroMedia = content.image || content.backgroundImage;
+  const imageUrl = heroMedia ? resolveMediaUrl(heroMedia) : '';
   const spacingClass = style?.spacing || '';
   const roundedClass = style?.rounded || '';
   const shadowClass = style?.shadows || '';
@@ -26,7 +25,6 @@ const SplitHero = ({ content, style }) => {
         backgroundColor
       }}
     >
-      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className={`
         max-w-7xl mx-auto 
         grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 
