@@ -1499,6 +1499,11 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         recipient_email = booking.client.email if booking.client else booking.guest_email
         recipient_name = booking.client.name if booking.client else booking.guest_name
         
+        # Generate .ics cancellation file
+        from .tasks import generate_ics_cancellation
+        ics_content = generate_ics_cancellation(event, booking, booking.site)
+        ics_content_b64 = base64.b64encode(ics_content.encode('utf-8')).decode('utf-8')
+        
         # Prepare email data
         context = {
             'student_name': recipient_name,
@@ -1519,6 +1524,9 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             subject=f'Odwołanie: {event.title}',
             message=plain_message,
             html_content=html_message,
+            attachment_content_b64=ics_content_b64,
+            attachment_filename='event-cancelled.ics',
+            attachment_mimetype='text/calendar; method=CANCEL; charset=UTF-8'
         )
         
         # Delete the booking
@@ -1586,6 +1594,11 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         event = booking.event
         recipient_name = booking.guest_name
         
+        # Generate .ics cancellation file
+        from .tasks import generate_ics_cancellation
+        ics_content = generate_ics_cancellation(event, booking, booking.site)
+        ics_content_b64 = base64.b64encode(ics_content.encode('utf-8')).decode('utf-8')
+        
         # Send cancellation notification to site owner
         owner_context = {
             'owner_name': booking.site.owner.first_name,
@@ -1604,6 +1617,9 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             subject=f'Odwołanie rezerwacji: {event.title}',
             message=owner_plain,
             html_content=owner_html,
+            attachment_content_b64=ics_content_b64,
+            attachment_filename='event-cancelled.ics',
+            attachment_mimetype='text/calendar; method=CANCEL; charset=UTF-8'
         )
         
         # Delete the booking

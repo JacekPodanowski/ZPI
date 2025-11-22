@@ -12,6 +12,148 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+def generate_ics_calendar_event(event, booking, site):
+    """
+    Generate iCalendar (.ics) file content for a booking event.
+    This allows email clients to offer "Add to Calendar" functionality.
+    
+    Args:
+        event: Event model instance
+        booking: Booking model instance
+        site: Site model instance
+        
+    Returns:
+        str: iCalendar formatted string
+    """
+    from datetime import datetime
+    import uuid
+    
+    # Format datetime in iCal format (YYYYMMDDTHHMMSSZ)
+    def format_dt(dt):
+        # Convert to UTC and format
+        utc_dt = dt.astimezone(dt_timezone.utc)
+        return utc_dt.strftime('%Y%m%dT%H%M%SZ')
+    
+    # Generate unique UID for the event
+    uid = f"booking-{booking.id}@youreasysite.com"
+    
+    # Current timestamp for DTSTAMP
+    now = timezone.now()
+    dtstamp = format_dt(now)
+    
+    # Event times
+    dtstart = format_dt(event.start_time)
+    dtend = format_dt(event.end_time)
+    
+    # Escape special characters in text fields
+    def escape_ics_text(text):
+        if not text:
+            return ''
+        return text.replace('\\', '\\\\').replace(',', '\\,').replace(';', '\\;').replace('\n', '\\n')
+    
+    # Build description
+    description = escape_ics_text(event.description or '')
+    if booking.notes:
+        description += f"\\n\\nNotatki: {escape_ics_text(booking.notes)}"
+    
+    # Get attendee info
+    attendee_name = booking.client.name if booking.client else booking.guest_name
+    attendee_email = booking.client.email if booking.client else booking.guest_email
+    
+    # Build iCalendar content
+    ics_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//YourEasySite//Booking System//EN
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+UID:{uid}
+DTSTAMP:{dtstamp}
+DTSTART:{dtstart}
+DTEND:{dtend}
+SUMMARY:{escape_ics_text(event.title)}
+DESCRIPTION:{description}
+LOCATION:{escape_ics_text(site.name)}
+ORGANIZER;CN={escape_ics_text(site.owner.first_name)}:mailto:{site.owner.email}
+ATTENDEE;CN={escape_ics_text(attendee_name)};RSVP=TRUE:mailto:{attendee_email}
+STATUS:CONFIRMED
+SEQUENCE:0
+BEGIN:VALARM
+TRIGGER:-PT15M
+ACTION:DISPLAY
+DESCRIPTION:Przypomnienie: {escape_ics_text(event.title)} za 15 minut
+END:VALARM
+END:VEVENT
+END:VCALENDAR"""
+    
+    return ics_content
+
+
+def generate_ics_cancellation(event, booking, site):
+    """
+    Generate iCalendar (.ics) cancellation file.
+    This tells calendar apps to remove or mark the event as cancelled.
+    
+    Args:
+        event: Event model instance
+        booking: Booking model instance
+        site: Site model instance
+        
+    Returns:
+        str: iCalendar formatted cancellation string
+    """
+    from datetime import datetime
+    
+    # Format datetime in iCal format (YYYYMMDDTHHMMSSZ)
+    def format_dt(dt):
+        utc_dt = dt.astimezone(dt_timezone.utc)
+        return utc_dt.strftime('%Y%m%dT%H%M%SZ')
+    
+    # Same UID as original event for proper cancellation
+    uid = f"booking-{booking.id}@youreasysite.com"
+    
+    # Current timestamp
+    now = timezone.now()
+    dtstamp = format_dt(now)
+    
+    # Event times
+    dtstart = format_dt(event.start_time)
+    dtend = format_dt(event.end_time)
+    
+    # Escape special characters
+    def escape_ics_text(text):
+        if not text:
+            return ''
+        return text.replace('\\', '\\\\').replace(',', '\\,').replace(';', '\\;').replace('\n', '\\n')
+    
+    # Get attendee info
+    attendee_name = booking.client.name if booking.client else booking.guest_name
+    attendee_email = booking.client.email if booking.client else booking.guest_email
+    
+    # Build cancellation iCalendar content
+    ics_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//YourEasySite//Booking System//EN
+CALSCALE:GREGORIAN
+METHOD:CANCEL
+BEGIN:VEVENT
+UID:{uid}
+DTSTAMP:{dtstamp}
+DTSTART:{dtstart}
+DTEND:{dtend}
+SUMMARY:{escape_ics_text(event.title)}
+DESCRIPTION:To wydarzenie zostało odwołane
+LOCATION:{escape_ics_text(site.name)}
+ORGANIZER;CN={escape_ics_text(site.owner.first_name)}:mailto:{site.owner.email}
+ATTENDEE;CN={escape_ics_text(attendee_name)}:mailto:{attendee_email}
+STATUS:CANCELLED
+SEQUENCE:1
+END:VEVENT
+END:VCALENDAR"""
+    
+    return ics_content
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def cleanup_unused_media(self, older_than_hours: int = 24):
     """
@@ -118,13 +260,35 @@ def send_custom_email_task_async(
 
         if attachment_content_b64 and attachment_filename and attachment_mimetype:
             decoded_content = base64.b64decode(attachment_content_b64)
-            email.attach(attachment_filename, decoded_content, attachment_mimetype)
-            logger.info(
-                "[Celery] Attached '%s' (%s) to custom email '%s'",
-                attachment_filename,
-                attachment_mimetype,
-                subject,
-            )
+            
+            # For iCalendar files, use special handling to ensure compatibility
+            if 'calendar' in attachment_mimetype.lower():
+                from email.mime.base import MIMEBase
+                from email import encoders
+                
+                # Create MIMEBase part for calendar
+                part = MIMEBase('text', 'calendar', method=attachment_mimetype.split('method=')[1].split(';')[0] if 'method=' in attachment_mimetype else 'REQUEST')
+                part.set_payload(decoded_content)
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename="{attachment_filename}"')
+                part.add_header('Content-Class', 'urn:content-classes:calendarmessage')
+                
+                # Attach to email
+                email.attach(part)
+                logger.info(
+                    "[Celery] Attached calendar '%s' as MIME part to email '%s'",
+                    attachment_filename,
+                    subject,
+                )
+            else:
+                # Regular attachment
+                email.attach(attachment_filename, decoded_content, attachment_mimetype)
+                logger.info(
+                    "[Celery] Attached '%s' (%s) to custom email '%s'",
+                    attachment_filename,
+                    attachment_mimetype,
+                    subject,
+                )
 
         email.send(fail_silently=False)
         logger.info(
@@ -174,7 +338,11 @@ def send_booking_confirmation_emails(self, booking_id):
     # Link will redirect to cancellation page with booking_id
     cancellation_url = f"{frontend_url}/cancel-booking/{booking.id}?token={magic_link.token}"
 
-    # 1. Wyślij e-mail do klienta
+    # Generate .ics calendar file
+    ics_content = generate_ics_calendar_event(event, booking, site)
+    ics_content_b64 = base64.b64encode(ics_content.encode('utf-8')).decode('utf-8')
+    
+    # 1. Wyślij e-mail do klienta z załącznikiem .ics
     client_subject = f'Potwierdzenie rezerwacji: {event.title}'
     client_context = {
         'guest_name': guest_name,
@@ -189,10 +357,13 @@ def send_booking_confirmation_emails(self, booking_id):
     send_custom_email_task_async.delay(
         recipient_list=[guest_email],
         subject=client_subject,
-        html_content=client_html
+        html_content=client_html,
+        attachment_content_b64=ics_content_b64,
+        attachment_filename='event.ics',
+        attachment_mimetype='text/calendar; method=REQUEST; charset=UTF-8'
     )
 
-    # 2. Wyślij e-mail do właściciela witryny
+    # 2. Wyślij e-mail do właściciela witryny z załącznikiem .ics
     owner_subject = f'Nowa rezerwacja na Twojej stronie: {site.name}'
     owner_context = {
         'owner_name': owner.first_name,
@@ -206,7 +377,10 @@ def send_booking_confirmation_emails(self, booking_id):
     send_custom_email_task_async.delay(
         recipient_list=[owner.email],
         subject=owner_subject,
-        html_content=owner_html
+        html_content=owner_html,
+        attachment_content_b64=ics_content_b64,
+        attachment_filename='event.ics',
+        attachment_mimetype='text/calendar; method=REQUEST; charset=UTF-8'
     )
     
     logger.info(f"Queued confirmation emails for booking {booking_id}.")
