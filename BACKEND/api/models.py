@@ -92,6 +92,8 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
     terms_agreement_date = models.DateTimeField(null=True, blank=True, help_text='When the user accepted the ToS')
     is_temporary_password = models.BooleanField(default=False, help_text='Whether the user has a temporary password that must be changed')
     password_changed_at = models.DateTimeField(null=True, blank=True, help_text='When the user last changed their password')
+    daily_image_searches = models.IntegerField(default=0, help_text='Number of Pexels searches performed today')
+    last_search_date = models.DateField(null=True, blank=True, help_text='Date of last Pexels search (for daily reset)')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False)

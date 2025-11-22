@@ -3,8 +3,9 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 
 const CenteredHero = ({ content, style }) => {
   console.log('[CenteredHero] content:', JSON.stringify(content, null, 2));
-  
-  const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
+
+  const heroMedia = content.image || content.backgroundImage;
+  const overlayColor = content.backgroundOverlayColor ?? (heroMedia ? 'rgba(0, 0, 0, 0.35)' : undefined);
   const spacingClass = style?.spacing || '';
   const roundedClass = style?.rounded || '';
   const shadowClass = style?.shadows || '';
@@ -25,7 +26,7 @@ const CenteredHero = ({ content, style }) => {
         backgroundColor
       }}
     >
-      <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
+      <BackgroundMedia media={heroMedia} overlayColor={overlayColor} />
       
       <div className="max-w-4xl mx-auto relative z-10">
         <h1 

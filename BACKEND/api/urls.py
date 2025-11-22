@@ -82,6 +82,8 @@ from .views import (
     reset_chat_history,
     agent_list,
     agent_detail,
+    pexels_search_images,
+    pexels_quota,
 )
 
 
@@ -174,4 +176,7 @@ urlpatterns = [
     path('payments/webhook/', payment_webhook, name='payment-webhook'),
     path('payments/status/<str:session_id>/', payment_status, name='payment-status'),
     path('payments/history/', payment_history, name='payment-history'),
+    # Pexels image search endpoints
+    path('sites/<int:site_id>/images/search/', pexels_search_images, name='pexels-search'),
+    path('sites/<int:site_id>/images/quota/', pexels_quota, name='pexels-quota'),
 ]

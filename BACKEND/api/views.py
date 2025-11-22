@@ -5770,6 +5770,10 @@ def public_big_events(request, identifier):
     }, status=status.HTTP_200_OK)
 
 
+# =============================================
+# AI Agent Management
+# =============================================
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def agent_list(request):
@@ -5884,6 +5888,183 @@ def agent_detail(request, agent_id):
         }, status=status.HTTP_200_OK)
 
 
+# =============================================
+# Pexels Image Search Integration
+# =============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pexels_search_images(request, site_id):
+    """
+    Search for images on Pexels API.
+    
+    Query params:
+    - query: search phrase (required)
+    - mode: 'focused' (10 images) or 'bulk' (80 images) - default 'focused'
+    - page: page number for pagination (default 1)
+    - orientation: 'landscape', 'portrait', 'square', or empty for all
+    - color: color filter (optional)
+    """
+    from django.core.cache import cache
+    from django.conf import settings
+    from datetime import date
+    
+    # Verify site ownership
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Get query parameters
+    query = request.GET.get('query', '').strip()
+    mode = request.GET.get('mode', 'focused')
+    page = int(request.GET.get('page', 1))
+    orientation = request.GET.get('orientation', '')
+    color = request.GET.get('color', '')
+    
+    if not query:
+        return Response(
+            {'error': 'Query parameter is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check and update user's daily quota
+    user = request.user
+    today = date.today()
+    
+    if user.last_search_date != today:
+        # Reset counter for new day
+        user.daily_image_searches = 0
+        user.last_search_date = today
+        user.save(update_fields=['daily_image_searches', 'last_search_date'])
+    
+    # Check if user exceeded daily limit
+    DAILY_LIMIT = 50
+    if user.daily_image_searches >= DAILY_LIMIT:
+        return Response(
+            {
+                'error': 'Daily search limit exceeded',
+                'message': 'Osiągnąłeś dzienny limit wyszukiwań (50). Spróbuj jutro.',
+                'quota': {
+                    'used': user.daily_image_searches,
+                    'limit': DAILY_LIMIT,
+                    'remaining': 0
+                }
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+    
+    # Determine number of images based on mode
+    per_page = 10 if mode == 'focused' else 80
+    
+    # Build cache key
+    cache_key = f'pexels_{mode}_{query}_{page}_{orientation}_{color}'
+    cache_duration = 86400 if mode == 'focused' else 604800  # 24h for focused, 7 days for bulk
+    
+    # Try to get from cache
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return Response({
+            'images': cached_result,
+            'query': query,
+            'page': page,
+            'mode': mode,
+            'from_cache': True,
+            'quota': {
+                'used': user.daily_image_searches,
+                'limit': DAILY_LIMIT,
+                'remaining': DAILY_LIMIT - user.daily_image_searches
+            }
+        })
+    
+    # Make request to Pexels API
+    pexels_api_key = os.environ.get('PEXELS_API_KEY')
+    if not pexels_api_key:
+        return Response(
+            {'error': 'Pexels API key not configured'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    headers = {
+        'Authorization': pexels_api_key
+    }
+    
+    params = {
+        'query': query,
+        'per_page': per_page,
+        'page': page,
+        'locale': 'pl-PL'
+    }
+    
+    if orientation and orientation != 'all':
+        params['orientation'] = orientation
+    
+    if color:
+        params['color'] = color
+    
+    try:
+        response = requests.get(
+            'https://api.pexels.com/v1/search',
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        data = response.json()
+        photos = data.get('photos', [])
+        
+        # Transform to simplified format
+        images = []
+        for photo in photos:
+            images.append({
+                'id': photo['id'],
+                'width': photo['width'],
+                'height': photo['height'],
+                'photographer': photo['photographer'],
+                'photographer_url': photo['photographer_url'],
+                'src': {
+                    'original': photo['src']['original'],
+                    'large': photo['src']['large2x'],
+                    'medium': photo['src']['large'],
+                    'small': photo['src']['medium'],
+                    'tiny': photo['src']['tiny']
+                },
+                'alt': photo.get('alt', '')
+            })
+        
+        # Cache the result
+        cache.set(cache_key, images, cache_duration)
+        
+        # Increment user's search counter
+        user.daily_image_searches += 1
+        user.save(update_fields=['daily_image_searches'])
+        
+        return Response({
+            'images': images,
+            'query': query,
+            'page': page,
+            'total_results': data.get('total_results', 0),
+            'mode': mode,
+            'from_cache': False,
+            'quota': {
+                'used': user.daily_image_searches,
+                'limit': DAILY_LIMIT,
+                'remaining': DAILY_LIMIT - user.daily_image_searches
+            }
+        })
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Pexels API error: {str(e)}')
+        return Response(
+            {'error': 'Failed to fetch images from Pexels'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_chat_history(request):
@@ -5973,4 +6154,38 @@ def reset_chat_history(request):
             'name': agent.name
         }
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pexels_quota(request, site_id):
+    """Get user's daily Pexels search quota status."""
+    from datetime import date
+    
+    # Verify site ownership
+    try:
+        site = Site.objects.get(id=site_id, owner=request.user)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found or access denied'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    user = request.user
+    today = date.today()
+    
+    # Reset if new day
+    if user.last_search_date != today:
+        user.daily_image_searches = 0
+        user.last_search_date = today
+        user.save(update_fields=['daily_image_searches', 'last_search_date'])
+    
+    DAILY_LIMIT = 50
+    
+    return Response({
+        'used': user.daily_image_searches,
+        'limit': DAILY_LIMIT,
+        'remaining': max(0, DAILY_LIMIT - user.daily_image_searches),
+        'reset_at': timezone.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    })
 

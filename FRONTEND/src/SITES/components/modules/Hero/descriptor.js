@@ -7,10 +7,9 @@ export const HERO_DESCRIPTOR = {
     subtitle: { t: 'text', d: 'Supporting text', category: 'content' },
     ctaText: { t: 'text', d: 'Button text', category: 'content' },
     ctaLink: { t: 'text', d: 'Button URL', category: 'content' },
-  showButton: { t: 'boolean', d: 'Display call-to-action button', category: 'appearance' },
-    image: { t: 'image', d: 'Featured image', category: 'appearance' },
+    showButton: { t: 'boolean', d: 'Display call-to-action button', category: 'appearance' },
+    image: { t: 'image', d: 'Image or video', category: 'appearance' },
     imagePosition: { t: 'enum', vals: ['left', 'right'], d: 'Image side', category: 'appearance' },
-    backgroundImage: { t: 'image', d: 'Background image', category: 'appearance' },
     overlay: { t: 'boolean', d: 'Dark overlay', category: 'advanced' }
   },
   layouts: ['centered', 'split', 'fullscreen']
