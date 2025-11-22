@@ -281,6 +281,7 @@ const createInitialSite = () => {
 
 const createInitialState = () => ({
   siteId: null,
+  siteIdentifier: null,
   siteName: 'Untitled Site',
   site: createInitialSite(),
   userLibrary: {
@@ -1276,6 +1277,7 @@ const useNewEditorStore = create((set, get) => ({
     }),
 
   setSiteId: (id) => set({ siteId: id }),
+  setSiteIdentifier: (identifier) => set({ siteIdentifier: identifier }),
 
   addToLibrary: (asset) =>
     set((state) => ({
@@ -1330,24 +1332,23 @@ const useNewEditorStore = create((set, get) => ({
     console.log('[EditorStore] loadSite - entryPoint:', entryPoint);
     console.log('[EditorStore] loadSite - selectedPageId will be:', entryPoint);
 
-    set(() => {
-      return {
-        siteId: siteData.id || siteData.siteId || null,
-        siteName: siteData.name || siteData.siteName || 'Untitled Site',
-        site: nextSite,
-        userLibrary: deepClone(siteData.userLibrary || { customAssets: [] }),
-        entryPointPageId: entryPoint,
-        selectedPageId: entryPoint,
-        selectedModuleId: null,
-        hasUnsavedChanges: false,
-        structureHistory: createHistoryStack(),
-        detailHistory: createHistoryStack(),
-        aiTransaction: createTransactionState(),
-        currentVersionNumber:
-          siteData.currentVersionNumber || siteData.currentVersion || siteData.latestVersionNumber || 0,
-        lastSavedAt: siteData.lastSavedAt || siteData.updated_at || null
-      };
-    });
+    set((state) => ({
+      siteId: siteData.id || siteData.siteId || null,
+      siteIdentifier: siteData.identifier || siteData.siteIdentifier || state.siteIdentifier || null,
+      siteName: siteData.name || siteData.siteName || 'Untitled Site',
+      site: nextSite,
+      userLibrary: deepClone(siteData.userLibrary || { customAssets: [] }),
+      entryPointPageId: entryPoint,
+      selectedPageId: entryPoint,
+      selectedModuleId: null,
+      hasUnsavedChanges: false,
+      structureHistory: createHistoryStack(),
+      detailHistory: createHistoryStack(),
+      aiTransaction: createTransactionState(),
+      currentVersionNumber:
+        siteData.currentVersionNumber || siteData.currentVersion || siteData.latestVersionNumber || 0,
+      lastSavedAt: siteData.lastSavedAt || siteData.updated_at || null
+    }));
   },
 
   markAsSaved: (payload = {}) =>

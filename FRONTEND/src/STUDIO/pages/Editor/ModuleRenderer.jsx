@@ -38,6 +38,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   // Get siteId from store - it's a top-level field, not site.id
   const siteId = useNewEditorStore(state => state.siteId);
   const site = useNewEditorStore(state => state.site);
+  const siteIdentifier = useNewEditorStore(state => state.siteIdentifier);
   const entryPointPageId = useNewEditorStore(state => state.entryPointPageId);
   const selectedPageId = useNewEditorStore(state => state.selectedPageId);
   const enterDetailMode = useNewEditorStore(state => state.enterDetailMode);
@@ -156,6 +157,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
     style: resolvedStyle,
     theme: effectiveTheme,
     siteId,
+    siteIdentifier,
     isEditing: true,
     devicePreview
   };

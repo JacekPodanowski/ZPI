@@ -5321,7 +5321,8 @@ class TestimonialViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def newsletter_subscribe(request):
-    """Subscribe to site newsletter with double opt-in."""
+    """Subscribe to site newsletter with instant confirmation."""
+    from django.utils import timezone
     from .serializers import NewsletterSubscriptionSerializer
     from .models import NewsletterSubscription, Site
     
@@ -5332,54 +5333,51 @@ def newsletter_subscribe(request):
     site_identifier = serializer.validated_data['site_identifier']
     email = serializer.validated_data['email']
     frequency = serializer.validated_data['frequency']
+    now = timezone.now()
     
     try:
         site = Site.objects.get(identifier=site_identifier)
     except Site.DoesNotExist:
         return Response({'error': 'Strona nie istnieje'}, status=status.HTTP_404_NOT_FOUND)
     
-    # Check if already subscribed
     existing = NewsletterSubscription.objects.filter(site=site, email=email).first()
     if existing:
-        if existing.is_confirmed and existing.is_active:
-            return Response(
-                {'error': 'Ten email jest już zapisany na newsletter', 'already_subscribed': True}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        elif not existing.is_confirmed:
-            # Resend confirmation email via Celery
-            from .tasks import send_confirmation_email
-            send_confirmation_email.delay(existing.id)
-            
-            return Response(
-                {'message': 'Wysłaliśmy ponownie link potwierdzający na Twój email', 'resent': True}, 
-                status=status.HTTP_200_OK
-            )
-        else:
-            # Reactivate subscription (was unsubscribed)
-            existing.is_active = True
-            existing.frequency = frequency
-            existing.save()
-            return Response(
-                {'message': 'Subskrypcja została ponownie aktywowana', 'reactivated': True}, 
-                status=status.HTTP_200_OK
-            )
+        if existing.is_active and existing.is_confirmed:
+            preferences_updated = False
+            if existing.frequency != frequency:
+                existing.frequency = frequency
+                existing.save(update_fields=['frequency'])
+                preferences_updated = True
+            return Response({
+                'message': 'Jesteś już zapisany na newsletter.',
+                'already_subscribed': True,
+                'preferences_updated': preferences_updated
+            }, status=status.HTTP_200_OK)
+        
+        # Reactivate or auto-confirm legacy pending subscriptions
+        existing.is_active = True
+        existing.is_confirmed = True
+        existing.confirmed_at = now
+        existing.frequency = frequency
+        existing.save(update_fields=['is_active', 'is_confirmed', 'confirmed_at', 'frequency'])
+        return Response({
+            'message': 'Subskrypcja została ponownie aktywowana.',
+            'reactivated': True
+        }, status=status.HTTP_200_OK)
     
-    # Create new subscription (not confirmed yet)
     subscription = NewsletterSubscription.objects.create(
         site=site,
         email=email,
         frequency=frequency,
-        is_active=False,  # Will be activated after confirmation
-        is_confirmed=False
+        is_active=True,
+        is_confirmed=True,
+        confirmed_at=now
     )
     
-    # Send confirmation email via Celery
-    from .tasks import send_confirmation_email
-    send_confirmation_email.delay(subscription.id)
-    
     return Response({
-        'message': 'Sprawdź swoją skrzynkę email i kliknij link potwierdzający!'
+        'message': 'Jesteś zapisany! Powiadomimy Cię o nowych wydarzeniach.',
+        'auto_confirmed': True,
+        'subscription_id': subscription.id
     }, status=status.HTTP_201_CREATED)
 
 
@@ -5415,10 +5413,6 @@ def newsletter_confirm(request, token):
         subscription.is_active = True
         subscription.confirmed_at = timezone.now()
         subscription.save()
-        
-        # Trigger immediate welcome newsletter send
-        from .tasks import send_welcome_newsletter
-        send_welcome_newsletter.delay(subscription.id)
         
         return Response({
             'message': 'Dziękujemy! Subskrypcja newslettera została potwierdzona.',
@@ -5704,4 +5698,58 @@ class BigEventViewSet(viewsets.ModelViewSet):
             'message': 'Event unpublished successfully.',
             'event': serializer.data
         }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_big_events(request, identifier):
+    """Return published big events for the public site view."""
+    from .models import Site, BigEvent
+
+    try:
+        site = Site.objects.get(identifier=identifier)
+    except Site.DoesNotExist:
+        return Response({'error': 'Strona nie istnieje'}, status=status.HTTP_404_NOT_FOUND)
+
+    events = BigEvent.objects.filter(
+        site=site,
+        status=BigEvent.Status.PUBLISHED
+    ).order_by('start_date', '-created_at')
+
+    payload = []
+    for event in events:
+        details = event.details or {}
+        gallery = details.get('images') or []
+        if event.image_url and event.image_url not in gallery:
+            gallery = [*gallery, event.image_url]
+
+        payload.append({
+            'id': event.id,
+            'title': event.title,
+            'summary': details.get('summary') or event.description,
+            'description': event.description,
+            'location': event.location,
+            'start_date': event.start_date,
+            'end_date': event.end_date,
+            'tag': details.get('tag') or details.get('category'),
+            'price': str(event.price),
+            'image_url': event.image_url,
+            'gallery': gallery,
+            'full_description': details.get('full_description') or event.description,
+            'cta_label': details.get('cta_label'),
+            'cta_url': details.get('cta_url'),
+            'max_participants': event.max_participants,
+            'current_participants': event.current_participants,
+            'published_at': event.published_at,
+        })
+
+    return Response({
+        'site': {
+            'id': site.id,
+            'identifier': site.identifier,
+            'name': site.name,
+        },
+        'events': payload,
+        'count': len(payload)
+    }, status=status.HTTP_200_OK)
 

@@ -43,7 +43,7 @@ const isEventPast = (dateString) => {
   }
 };
 
-const TimelineEvents = ({ content, style, siteIdentifier }) => {
+const TimelineEvents = ({ content, style, siteIdentifier, eventsStatus = 'static' }) => {
   const { 
     title, 
     subtitle, 
@@ -56,6 +56,8 @@ const TimelineEvents = ({ content, style, siteIdentifier }) => {
     backgroundOverlayColor 
   } = content;
   const [activeEvent, setActiveEvent] = useState(null);
+  const isLoading = eventsStatus === 'loading';
+  const hasError = eventsStatus === 'error';
 
   // Filter out past events
   const upcomingEvents = events.filter(event => !isEventPast(event.date));
@@ -83,6 +85,18 @@ const TimelineEvents = ({ content, style, siteIdentifier }) => {
                 {subtitle}
               </p>
             )}
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="text-center py-6 text-sm opacity-70">
+            Ładuję wydarzenia...
+          </div>
+        )}
+
+        {hasError && (
+          <div className="text-center py-6 text-sm text-red-600">
+            Nie udało się wczytać wydarzeń. Spróbuj ponownie później.
           </div>
         )}
 
@@ -165,11 +179,11 @@ const TimelineEvents = ({ content, style, siteIdentifier }) => {
               })}
             </div>
           </div>
-        ) : (
+        ) : (!isLoading && !hasError && (
           <div className="text-center py-16 text-sm text-black/40">
             Brak nadchodzących wydarzeń.
           </div>
-        )}
+        ))}
 
         {showNewsletter && (
           <NewsletterSubscription 

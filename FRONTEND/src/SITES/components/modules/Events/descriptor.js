@@ -4,7 +4,6 @@ export const EVENTS_DESCRIPTOR = {
   fields: {
     title: { t: 'text', d: 'Tytuł sekcji', category: 'content' },
     subtitle: { t: 'text', d: 'Podtytuł', category: 'content' },
-    events: { t: 'array', req: true, d: 'Lista wydarzeń', category: 'content' },
     showNewsletter: { t: 'boolean', d: 'Pokaż formularz zapisu na newsletter', category: 'content' },
     bgColor: { t: 'color', d: 'Kolor tła', category: 'appearance' },
     backgroundImage: { t: 'image', d: 'Zdjęcie tła', category: 'appearance' },

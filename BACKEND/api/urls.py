@@ -77,6 +77,7 @@ from .views import (
     newsletter_stats,
     AttendanceReportView,
     BigEventViewSet,
+    public_big_events,
 )
 
 
@@ -159,6 +160,7 @@ urlpatterns = [
     path('newsletter/track/open/<str:token>/', newsletter_track_open, name='newsletter-track-open'),
     path('newsletter/track/click/<str:token>/', newsletter_track_click, name='newsletter-track-click'),
     path('newsletter/stats/<int:site_id>/', newsletter_stats, name='newsletter-stats'),
+    path('public-sites/<slug:identifier>/big-events/', public_big_events, name='public-big-events'),
     # Payment endpoints
     path('payments/create/', create_payment, name='create-payment'),
     path('payments/webhook/', payment_webhook, name='payment-webhook'),

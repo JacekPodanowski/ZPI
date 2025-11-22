@@ -57,3 +57,11 @@ export const unpublishBigEvent = async (eventId) => {
     const response = await apiClient.post(`/big-events/${eventId}/unpublish/`);
     return response.data;
 };
+
+/**
+ * Fetch published big events for a public site identifier
+ */
+export const fetchPublicBigEvents = async (siteIdentifier) => {
+    const response = await apiClient.get(`/public-sites/${siteIdentifier}/big-events/`);
+    return response.data;
+};

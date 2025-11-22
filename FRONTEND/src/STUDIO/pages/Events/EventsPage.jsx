@@ -1,13 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, CircularProgress, Alert, Grid, Card, CardContent, CardActions, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, Checkbox } from '@mui/material';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Box, Typography, Button, CircularProgress, Alert, Grid, Card, CardContent, CardActions, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, Checkbox, TextField, MenuItem, InputAdornment, IconButton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Add as AddIcon, CalendarMonth, LocationOn, People, Edit, Delete, Publish, Unpublished } from '@mui/icons-material';
-import { fetchBigEvents, deleteBigEvent, publishBigEvent, unpublishBigEvent } from '../../../services/bigEventService';
+import { Add as AddIcon, CalendarMonth, LocationOn, Edit, Delete, Publish, Unpublished, FilterList, Clear, Search } from '@mui/icons-material';
+import { fetchBigEvents, deleteBigEvent, publishBigEvent, unpublishBigEvent, createBigEvent, updateBigEvent } from '../../../services/bigEventService';
 import { useToast } from '../../../contexts/ToastContext';
+import { fetchSites } from '../../../services/siteService';
+import ImageUploader from '../../../components/ImageUploader';
+import { uploadMedia } from '../../../services/mediaService';
+import { isTempBlobUrl, retrieveTempImage } from '../../../services/tempMediaCache';
+
+const INITIAL_FORM_VALUES = {
+    site: '',
+    title: '',
+    summary: '',
+    description: '',
+    location: '',
+    tag: '',
+    startDate: '',
+    endDate: '',
+    maxParticipants: '20',
+    price: '',
+    imageUrl: '',
+    galleryImages: '',
+    fullDescription: '',
+    ctaLabel: '',
+    ctaUrl: '',
+    sendEmailOnPublish: false
+};
 
 const EventsPage = () => {
-    const navigate = useNavigate();
     const showToast = useToast();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,9 +38,24 @@ const EventsPage = () => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [sendEmailOnPublish, setSendEmailOnPublish] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+    const [sites, setSites] = useState([]);
+    const [sitesLoading, setSitesLoading] = useState(true);
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [createLoading, setCreateLoading] = useState(false);
+    const [formValues, setFormValues] = useState(INITIAL_FORM_VALUES);
+    const [filters, setFilters] = useState({
+        siteId: 'all',
+        status: 'all',
+        search: '',
+        dateFrom: '',
+        dateTo: ''
+    });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingEventId, setEditingEventId] = useState(null);
 
     useEffect(() => {
         loadEvents();
+        loadSites();
     }, []);
 
     const loadEvents = async () => {
@@ -36,14 +72,271 @@ const EventsPage = () => {
         }
     };
 
-    const handleCreateEvent = () => {
-        // TODO: Navigate to event creation page
-        showToast('Funkcja tworzenia wydarzeń zostanie dodana wkrótce', 'info');
+    const normalizeSitesResponse = (data) => {
+        if (Array.isArray(data)) {
+            return data;
+        }
+
+        if (Array.isArray(data?.results)) {
+            return data.results;
+        }
+
+        const ownedSites = Array.isArray(data?.owned_sites) ? data.owned_sites : [];
+        const teamSitesRaw = Array.isArray(data?.team_member_sites) ? data.team_member_sites : [];
+        const manageableTeamSites = teamSitesRaw.filter((site) => {
+            const permissions = site?.permissions || site?.capabilities;
+            if (!permissions) return true;
+            if (typeof permissions.can_manage_events === 'boolean') {
+                return permissions.can_manage_events;
+            }
+            if (typeof permissions.can_edit_site === 'boolean') {
+                return permissions.can_edit_site;
+            }
+            return true;
+        });
+
+        return [...ownedSites, ...manageableTeamSites];
     };
 
-    const handleEditEvent = (eventId) => {
-        // TODO: Navigate to event edit page
-        showToast('Funkcja edycji wydarzeń zostanie dodana wkrótce', 'info');
+    const loadSites = async () => {
+        try {
+            setSitesLoading(true);
+            const data = await fetchSites();
+            const normalizedSites = normalizeSitesResponse(data);
+
+            setSites(normalizedSites);
+            setFormValues((prev) => ({
+                ...prev,
+                site: prev.site || (normalizedSites[0] ? String(normalizedSites[0].id) : '')
+            }));
+        } catch (err) {
+            console.error(err);
+            showToast('Nie udało się pobrać listy stron', 'error');
+        } finally {
+            setSitesLoading(false);
+        }
+    };
+
+    const canCreateEvent = useMemo(() => !sitesLoading && sites.length > 0, [sitesLoading, sites.length]);
+
+    const getEventSiteId = (event) => {
+        if (!event) return null;
+        if (typeof event.site === 'object' && event.site) {
+            return event.site.id;
+        }
+        return event.site ?? event.site_id ?? event.siteId ?? null;
+    };
+
+    const handleFilterChange = (field) => (event) => {
+        const value = event?.target?.value ?? '';
+        setFilters((prev) => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const clearFilters = () => {
+        setFilters({
+            siteId: 'all',
+            status: 'all',
+            search: '',
+            dateFrom: '',
+            dateTo: ''
+        });
+    };
+
+    const handleImageUploadChange = (value) => {
+        const nextValue = Array.isArray(value) ? value[0] : value;
+        setFormValues((prev) => ({
+            ...prev,
+            imageUrl: nextValue || ''
+        }));
+    };
+
+    const resolveImageUrlForSubmit = async (value, siteIdNumber) => {
+        if (!value) return null;
+        if (!isTempBlobUrl(value)) {
+            return value.trim();
+        }
+
+        const file = await retrieveTempImage(value);
+        if (!file) {
+            throw new Error('Nie udało się odczytać przesłanego pliku. Spróbuj ponownie.');
+        }
+
+        const uploadResult = await uploadMedia(file, {
+            usage: 'site_content',
+            siteId: siteIdNumber || undefined
+        });
+
+        if (!uploadResult?.url) {
+            throw new Error('Serwer nie zwrócił adresu przesłanego obrazu.');
+        }
+
+        return uploadResult.url.trim();
+    };
+
+    const filteredEvents = useMemo(() => {
+        return events.filter((event) => {
+            const siteId = getEventSiteId(event);
+            const statusMatch = filters.status === 'all' || event.status === filters.status;
+            const siteMatch = filters.siteId === 'all' || String(siteId) === String(filters.siteId);
+
+            let searchMatch = true;
+            if (filters.search.trim()) {
+                const haystack = [event.title, event.description, event.location]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+                searchMatch = haystack.includes(filters.search.trim().toLowerCase());
+            }
+
+            const eventDate = event.start_date ? new Date(event.start_date) : null;
+            let dateMatch = true;
+            if (filters.dateFrom && eventDate) {
+                dateMatch = eventDate >= new Date(filters.dateFrom);
+            }
+            if (dateMatch && filters.dateTo && eventDate) {
+                dateMatch = eventDate <= new Date(filters.dateTo);
+            }
+
+            return statusMatch && siteMatch && searchMatch && dateMatch;
+        });
+    }, [events, filters]);
+
+    const resetFormValues = (fallbackSiteId = '') => ({
+        ...INITIAL_FORM_VALUES,
+        site: fallbackSiteId
+    });
+
+    const handleCreateEvent = () => {
+        if (!canCreateEvent) {
+            showToast('Dodaj najpierw stronę, aby móc tworzyć wydarzenia.', 'warning');
+            return;
+        }
+        const defaultSite = sites[0] ? String(sites[0].id) : '';
+        setFormValues(resetFormValues(defaultSite));
+        setIsEditing(false);
+        setEditingEventId(null);
+        setCreateDialogOpen(true);
+    };
+
+    const handleCreateDialogClose = () => {
+        if (createLoading) return;
+        setCreateDialogOpen(false);
+        const defaultSite = sites[0] ? String(sites[0].id) : '';
+        setFormValues(resetFormValues(defaultSite));
+        setIsEditing(false);
+        setEditingEventId(null);
+    };
+
+    const handleFormChange = (field) => (event) => {
+        const value = event.target.value;
+        setFormValues((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleToggleSendEmail = (event) => {
+        setFormValues((prev) => ({ ...prev, sendEmailOnPublish: event.target.checked }));
+    };
+
+    const handleCreateSubmit = async () => {
+        if (!formValues.site) {
+            showToast('Wybierz stronę dla wydarzenia', 'warning');
+            return;
+        }
+        if (!formValues.title.trim()) {
+            showToast('Podaj nazwę wydarzenia', 'warning');
+            return;
+        }
+        if (!formValues.startDate) {
+            showToast('Wybierz datę rozpoczęcia', 'warning');
+            return;
+        }
+
+        const siteIdNumber = Number(formValues.site);
+        if (Number.isNaN(siteIdNumber)) {
+            showToast('Nie udało się odczytać wybranej strony. Odśwież widok i spróbuj ponownie.', 'error');
+            return;
+        }
+
+        try {
+            setCreateLoading(true);
+            const imageUrl = await resolveImageUrlForSubmit(formValues.imageUrl, siteIdNumber);
+
+            const payload = {
+                site: siteIdNumber,
+                title: formValues.title.trim(),
+                description: formValues.description.trim(),
+                location: formValues.location.trim(),
+                start_date: formValues.startDate,
+                end_date: formValues.endDate || null,
+                max_participants: Number(formValues.maxParticipants) || 0,
+                price: formValues.price || '0',
+                send_email_on_publish: formValues.sendEmailOnPublish,
+                image_url: imageUrl,
+                details: {
+                    summary: formValues.summary.trim() || formValues.description.trim(),
+                    tag: formValues.tag.trim() || null,
+                    full_description: formValues.fullDescription.trim(),
+                    cta_label: formValues.ctaLabel.trim() || null,
+                    cta_url: formValues.ctaUrl.trim() || null,
+                    images: formValues.galleryImages
+                        ? formValues.galleryImages.split(',').map((url) => url.trim()).filter(Boolean)
+                        : []
+                }
+            };
+
+            if (isEditing && editingEventId) {
+                await updateBigEvent(editingEventId, payload);
+                showToast('Wydarzenie zostało zaktualizowane', 'success');
+            } else {
+                await createBigEvent(payload);
+                showToast('Wydarzenie zapisane jako szkic', 'success');
+            }
+            handleCreateDialogClose();
+            await loadEvents();
+        } catch (err) {
+            console.error(err);
+            showToast(err?.message || 'Nie udało się zapisać wydarzenia', 'error');
+        } finally {
+            setCreateLoading(false);
+        }
+    };
+
+    const mapEventToForm = (event) => {
+        const details = event.details || {};
+        const siteId = typeof event.site === 'object' ? event.site?.id : event.site;
+        const gallerySource = Array.isArray(details.images)
+            ? details.images.join(', ')
+            : typeof details.images === 'string'
+                ? details.images
+                : '';
+        return {
+            site: siteId ? String(siteId) : '',
+            title: event.title || '',
+            summary: details.summary || event.description || '',
+            description: event.description || '',
+            location: event.location || '',
+            tag: details.tag || '',
+            startDate: event.start_date ? event.start_date.slice(0, 10) : '',
+            endDate: event.end_date ? event.end_date.slice(0, 10) : '',
+            maxParticipants: String(event.max_participants ?? INITIAL_FORM_VALUES.maxParticipants),
+            price: event.price || INITIAL_FORM_VALUES.price,
+            imageUrl: event.image_url || '',
+            galleryImages: gallerySource,
+            fullDescription: details.full_description || event.description || '',
+            ctaLabel: details.cta_label || '',
+            ctaUrl: details.cta_url || '',
+            sendEmailOnPublish: Boolean(event.send_email_on_publish)
+        };
+    };
+
+    const handleEditEvent = (event) => {
+        if (!event) return;
+        setIsEditing(true);
+        setEditingEventId(event.id);
+        setFormValues(mapEventToForm(event));
+        setCreateDialogOpen(true);
     };
 
     const handleDeleteEvent = (event) => {
@@ -176,6 +469,7 @@ const EventsPage = () => {
                                 py: 1.5,
                                 fontWeight: 600
                             }}
+                            disabled={!canCreateEvent}
                         >
                             Nowe wydarzenie
                         </Button>
@@ -184,6 +478,105 @@ const EventsPage = () => {
                         Zarządzaj dużymi wydarzeniami takimi jak wycieczki, warsztaty czy wyjazdy grupowe
                     </Typography>
                 </motion.div>
+            </Box>
+
+            <Box
+                sx={{
+                    maxWidth: 1400,
+                    mx: 'auto',
+                    mb: 4,
+                    p: 3,
+                    borderRadius: 3,
+                    bgcolor: 'background.paper',
+                    boxShadow: (theme) => theme.shadows[1]
+                }}
+            >
+                <Stack direction="row" alignItems="center" spacing={2} mb={2}>
+                    <FilterList color="primary" />
+                    <Typography variant="subtitle1" fontWeight={600}>
+                        Filtry
+                    </Typography>
+                    <Box flexGrow={1} />
+                    <Button size="small" variant="text" onClick={clearFilters} startIcon={<Clear />}>
+                        Wyczyść
+                    </Button>
+                </Stack>
+
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={3}>
+                        <TextField
+                            select
+                            label="Strona"
+                            value={filters.siteId}
+                            onChange={handleFilterChange('siteId')}
+                            fullWidth
+                        >
+                            <MenuItem value="all">Wszystkie strony</MenuItem>
+                            {sites.map((site) => (
+                                <MenuItem key={site.id} value={String(site.id)}>
+                                    {site.name}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <TextField
+                            select
+                            label="Status"
+                            value={filters.status}
+                            onChange={handleFilterChange('status')}
+                            fullWidth
+                        >
+                            <MenuItem value="all">Wszystkie statusy</MenuItem>
+                            <MenuItem value="published">Opublikowane</MenuItem>
+                            <MenuItem value="draft">Szkice</MenuItem>
+                            <MenuItem value="cancelled">Anulowane</MenuItem>
+                            <MenuItem value="completed">Zakończone</MenuItem>
+                        </TextField>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <TextField
+                            label="Od"
+                            type="date"
+                            value={filters.dateFrom}
+                            onChange={handleFilterChange('dateFrom')}
+                            InputLabelProps={{ shrink: true }}
+                            fullWidth
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <TextField
+                            label="Do"
+                            type="date"
+                            value={filters.dateTo}
+                            onChange={handleFilterChange('dateTo')}
+                            InputLabelProps={{ shrink: true }}
+                            fullWidth
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        <TextField
+                            label="Szukaj"
+                            value={filters.search}
+                            onChange={handleFilterChange('search')}
+                            fullWidth
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Search fontSize="small" />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: filters.search ? (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" onClick={() => setFilters((prev) => ({ ...prev, search: '' }))}>
+                                            <Clear fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ) : null
+                            }}
+                        />
+                    </Grid>
+                </Grid>
             </Box>
 
             {/* Events Grid */}
@@ -224,10 +617,38 @@ const EventsPage = () => {
                             </Button>
                         </Box>
                     </motion.div>
+                ) : filteredEvents.length === 0 ? (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <Box
+                            sx={{
+                                textAlign: 'center',
+                                py: 6,
+                                px: 2,
+                                borderRadius: 3,
+                                border: '1px dashed',
+                                borderColor: 'divider',
+                                bgcolor: 'background.paper'
+                            }}
+                        >
+                            <Typography variant="h5" gutterBottom>
+                                Brak wydarzeń dla wybranych filtrów
+                            </Typography>
+                            <Typography variant="body1" color="text.secondary" mb={3}>
+                                Zmodyfikuj kryteria lub wyczyść filtry, aby zobaczyć wszystkie pozycje.
+                            </Typography>
+                            <Button variant="outlined" startIcon={<Clear />} onClick={clearFilters}>
+                                Wyczyść filtry
+                            </Button>
+                        </Box>
+                    </motion.div>
                 ) : (
                     <AnimatePresence mode="popLayout">
                         <Grid container spacing={3}>
-                            {events.map((event, index) => (
+                            {filteredEvents.map((event, index) => (
                                 <Grid item xs={12} sm={6} md={4} key={event.id}>
                                     <motion.div
                                         initial={{ opacity: 0, y: 20 }}
@@ -287,12 +708,6 @@ const EventsPage = () => {
                                                             </Typography>
                                                         </Stack>
                                                     )}
-                                                    <Stack direction="row" spacing={1} alignItems="center">
-                                                        <People fontSize="small" color="action" />
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {event.current_participants} / {event.max_participants} uczestników
-                                                        </Typography>
-                                                    </Stack>
                                                 </Stack>
                                             </CardContent>
                                             <CardActions sx={{ p: 2, pt: 0, gap: 1, flexWrap: 'wrap' }}>
@@ -322,7 +737,7 @@ const EventsPage = () => {
                                                 <Button
                                                     size="small"
                                                     startIcon={<Edit />}
-                                                    onClick={() => handleEditEvent(event.id)}
+                                                    onClick={() => handleEditEvent(event)}
                                                     sx={{ borderRadius: 2 }}
                                                 >
                                                     Edytuj
@@ -347,6 +762,176 @@ const EventsPage = () => {
             </Box>
 
             {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={createDialogOpen}
+                onClose={handleCreateDialogClose}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>{isEditing ? 'Edytuj wydarzenie' : 'Nowe wydarzenie'}</DialogTitle>
+                <DialogContent dividers>
+                    <Stack spacing={3} mt={1}>
+                        <TextField
+                            select
+                            label="Strona"
+                            value={formValues.site}
+                            onChange={handleFormChange('site')}
+                            disabled={sitesLoading}
+                            helperText={!sitesLoading && sites.length === 0 ? 'Brak stron. Utwórz stronę w Studiu, aby dodać wydarzenia.' : ''}
+                            required
+                        >
+                            {sites.map((site) => (
+                                <MenuItem key={site.id} value={String(site.id)}>
+                                    {site.name}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+
+                        <TextField
+                            label="Nazwa wydarzenia"
+                            value={formValues.title}
+                            onChange={handleFormChange('title')}
+                            required
+                            fullWidth
+                        />
+
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <TextField
+                                label="Data rozpoczęcia"
+                                type="date"
+                                value={formValues.startDate}
+                                onChange={handleFormChange('startDate')}
+                                InputLabelProps={{ shrink: true }}
+                                required
+                                fullWidth
+                            />
+                            <TextField
+                                label="Data zakończenia (opcjonalnie)"
+                                type="date"
+                                value={formValues.endDate}
+                                onChange={handleFormChange('endDate')}
+                                InputLabelProps={{ shrink: true }}
+                                fullWidth
+                            />
+                        </Stack>
+
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <TextField
+                                label="Tag / kategoria"
+                                value={formValues.tag}
+                                onChange={handleFormChange('tag')}
+                                fullWidth
+                            />
+                            <TextField
+                                label="Lokalizacja"
+                                value={formValues.location}
+                                onChange={handleFormChange('location')}
+                                fullWidth
+                            />
+                        </Stack>
+
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <TextField
+                                label="Maks. uczestników"
+                                type="number"
+                                value={formValues.maxParticipants}
+                                onChange={handleFormChange('maxParticipants')}
+                                fullWidth
+                            />
+                            <TextField
+                                label="Cena (PLN)"
+                                type="number"
+                                value={formValues.price}
+                                onChange={handleFormChange('price')}
+                                fullWidth
+                            />
+                        </Stack>
+
+                        <TextField
+                            label="Krótki opis (widoczny na liście)"
+                            value={formValues.summary}
+                            onChange={handleFormChange('summary')}
+                            multiline
+                            rows={2}
+                            fullWidth
+                        />
+
+                        <TextField
+                            label="Pełny opis"
+                            value={formValues.description}
+                            onChange={handleFormChange('description')}
+                            multiline
+                            rows={3}
+                            fullWidth
+                        />
+
+                        <TextField
+                            label="Opis modalny / dodatkowe informacje"
+                            value={formValues.fullDescription}
+                            onChange={handleFormChange('fullDescription')}
+                            multiline
+                            rows={3}
+                            fullWidth
+                        />
+
+                        <Box sx={{ width: '100%' }}>
+                            <ImageUploader
+                                label="Zdjęcie wydarzenia"
+                                value={formValues.imageUrl}
+                                onChange={handleImageUploadChange}
+                                aspectRatio="16/9"
+                                usage="site_content"
+                                siteId={formValues.site ? Number(formValues.site) : undefined}
+                            />
+                        </Box>
+
+                        <TextField
+                            label="Galeria (URL-e oddzielone przecinkiem)"
+                            value={formValues.galleryImages}
+                            onChange={handleFormChange('galleryImages')}
+                            fullWidth
+                        />
+
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <TextField
+                                label="CTA label (opcjonalnie)"
+                                value={formValues.ctaLabel}
+                                onChange={handleFormChange('ctaLabel')}
+                                fullWidth
+                            />
+                            <TextField
+                                label="CTA link (opcjonalnie)"
+                                value={formValues.ctaUrl}
+                                onChange={handleFormChange('ctaUrl')}
+                                fullWidth
+                            />
+                        </Stack>
+
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={formValues.sendEmailOnPublish}
+                                    onChange={handleToggleSendEmail}
+                                />
+                            }
+                            label="Domyślnie wyślij newsletter przy publikacji"
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCreateDialogClose} disabled={createLoading}>
+                        Anuluj
+                    </Button>
+                    <Button onClick={handleCreateSubmit} variant="contained" disabled={createLoading}>
+                        {createLoading ? (
+                            <CircularProgress size={24} />
+                        ) : (
+                            isEditing ? 'Zapisz zmiany' : 'Zapisz szkic'
+                        )}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             <Dialog
                 open={deleteDialogOpen}
                 onClose={() => !actionLoading && setDeleteDialogOpen(false)}

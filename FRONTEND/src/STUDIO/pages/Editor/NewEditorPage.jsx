@@ -48,7 +48,7 @@ const convertModuleNameToObject = (moduleName, index) => {
 
 const NewEditorPage = () => {
   const { siteId } = useParams();
-  const { editorMode, loadSite, setSiteId, setSiteName, replaceSiteStateWithHistory } = useNewEditorStore();
+  const { editorMode, loadSite, setSiteId, setSiteName, setSiteIdentifier, replaceSiteStateWithHistory } = useNewEditorStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const theme = useTheme();
@@ -69,6 +69,7 @@ const NewEditorPage = () => {
           // Set site ID and name
           setSiteId(data.id);
           setSiteName(data.name || 'Untitled Site');
+          setSiteIdentifier(data.identifier || data.identifier_slug || null);
           
           // Load the site structure from template_config
           if (data.template_config && data.template_config.site) {

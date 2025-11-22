@@ -106,6 +106,9 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
       try {
         const siteData = await fetchPublicSiteConfig(identifier);
         setSiteId(siteData.id);
+        if (siteData.identifier) {
+          setSiteIdentifier(siteData.identifier);
+        }
         
         // Obsługa dwóch struktur: template_config.site lub template_config bezpośrednio
         let templateConfig;
