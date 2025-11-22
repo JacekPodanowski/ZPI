@@ -536,6 +536,7 @@ const DayDetailsModal = ({
     const locationFieldRef = useRef(null);
     const meetingDurationFieldRef = useRef(null);
     const timeSnappingFieldRef = useRef(null);
+    const rosterFetchedRef = useRef(new Set());
 
     const fieldRefs = useMemo(() => ({
         title: titleFieldRef,
@@ -684,19 +685,36 @@ const DayDetailsModal = ({
     }, [selectedSiteId, view]);
 
     useEffect(() => {
+        if (!open) {
+            // Reset when modal closes
+            rosterFetchedRef.current.clear();
+            return;
+        }
+        
         if (!activeSiteId || !ensureSiteRoster) {
             return;
         }
+        
         const teamSize = activeSite?.team_size ?? 1;
-        if (teamSize <= 1 || rosterData) {
+        if (teamSize <= 1) {
             setRosterLoading(false);
             return;
         }
+        
+        // Check if already fetched for this site in this modal session
+        if (rosterFetchedRef.current.has(activeSiteId)) {
+            setRosterLoading(false);
+            return;
+        }
+        
         let cancelled = false;
         setRosterLoading(true);
+        rosterFetchedRef.current.add(activeSiteId);
+        
         ensureSiteRoster(activeSiteId)
             .catch((error) => {
                 console.error('Nie udało się wczytać listy zespołu', error);
+                rosterFetchedRef.current.delete(activeSiteId);
             })
             .finally(() => {
                 if (!cancelled) {
@@ -706,7 +724,7 @@ const DayDetailsModal = ({
         return () => {
             cancelled = true;
         };
-    }, [activeSiteId, activeSite?.team_size, rosterData, ensureSiteRoster]);
+    }, [open, activeSiteId, activeSite?.team_size, ensureSiteRoster]);
 
     useEffect(() => {
         if (view !== 'createEvent') {
@@ -1943,7 +1961,7 @@ const DayDetailsModal = ({
                                                 </Stack>
                                             </MenuItem>
                                         ))}
-                                        {assignmentOptions.length === 1 && canAssignAnyone && (
+                                        {canAssignAnyone && (
                                             <MenuItem 
                                                 value="add_team_member"
                                                 sx={{ 

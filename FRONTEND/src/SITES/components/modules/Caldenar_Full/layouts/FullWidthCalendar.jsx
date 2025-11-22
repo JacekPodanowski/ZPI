@@ -69,6 +69,7 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
 
   const accent = content.highlightColor || style?.primary || '#920020';
   const headingColor = content.textColor || style?.text || '#1e1e1e';
+  const bodyText = style?.text || '#1f2937';
   const sectionBackground = content.backgroundColor || style?.background || '#f0f0ed';
   const neutralText = style?.neutral || '#6b7280';
   const subtleText = style?.colors?.text?.subtle || applyOpacity(neutralText, 0.8);
@@ -79,6 +80,13 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
     ? style?.text || '#f5f5f5'
     : style?.background || '#ffffff');
   const emptyState = content.emptyStateMessage || 'Wybierz dzień z kalendarza, aby zobaczyć wydarzenia.';
+
+  const normalizeAssigneeId = useCallback((value) => {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    return String(value);
+  }, []);
 
   const fetchEvents = useCallback(async () => {
     if (!siteId) {
@@ -118,8 +126,9 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
         availableSpots: slot.available_spots ?? slot.capacity,
         duration: slot.duration,
         event_type: slot.event_type,
-        creator_name: slot.creator_name || 'Nieznany',
-        creator_id: slot.creator_id
+        assignee_name: slot.assignee_name || slot.creator_name || 'Nieznany',
+        assignee_id: normalizeAssigneeId(slot.assignee_id || slot.creator_id),
+        assignee_type: slot.assignee_type
       }));
 
       setApiEvents(events);
@@ -129,7 +138,7 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
     } finally {
       setLoading(false);
     }
-  }, [siteId, currentMonth]);
+  }, [siteId, currentMonth, normalizeAssigneeId]);
 
   // Fetch events from API
   useEffect(() => {
@@ -143,8 +152,8 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
   const uniqueCreators = useMemo(() => {
     const creatorsMap = new Map();
     eventsToDisplay.forEach(event => {
-      if (event.creator_id && event.creator_name) {
-        creatorsMap.set(event.creator_id, event.creator_name);
+      if (event.assignee_id && event.assignee_name) {
+        creatorsMap.set(event.assignee_id, event.assignee_name);
       }
     });
     return Array.from(creatorsMap.entries()).map(([id, name]) => ({ id, name }));
@@ -155,7 +164,7 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
     if (selectedCreator === 'all') {
       return eventsToDisplay;
     }
-    return eventsToDisplay.filter(event => event.creator_id === selectedCreator);
+    return eventsToDisplay.filter(event => event.assignee_id === selectedCreator);
   }, [eventsToDisplay, selectedCreator]);
 
   const eventsByDate = useMemo(() => normalizeEvents(filteredEvents), [filteredEvents]);
@@ -336,7 +345,7 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
                     
                     {event.assignee_name && (
                       <p className="mt-2 text-sm" style={{ color: neutralText }}>
-                        Prowadzący: <span className="font-semibold" style={{ color: textColor }}>{event.assignee_name}</span>
+                        Prowadzący: <span className="font-semibold" style={{ color: bodyText }}>{event.assignee_name}</span>
                       </p>
                     )}
 

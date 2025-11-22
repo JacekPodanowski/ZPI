@@ -298,7 +298,10 @@ class EventSerializer(serializers.ModelSerializer):
         if obj.assigned_to_owner:
             return obj.assigned_to_owner.get_full_name() or obj.assigned_to_owner.email
         elif obj.assigned_to_team_member:
-            return f"{obj.assigned_to_team_member.first_name} {obj.assigned_to_team_member.last_name}"
+            member = obj.assigned_to_team_member
+            if member.linked_user:
+                return member.linked_user.get_full_name() or member.linked_user.email
+            return member.name or member.email or 'Członek zespołu'
         return None
 
     def validate_capacity(self, value):
@@ -594,11 +597,14 @@ class TeamMemberInfoSerializer(serializers.ModelSerializer):
     """Simplified serializer for team member info in site responses."""
     avatar_color = serializers.SerializerMethodField()
     avatar_letter = serializers.SerializerMethodField()
+    first_name = serializers.SerializerMethodField()
+    last_name = serializers.SerializerMethodField()
+    email = serializers.SerializerMethodField()
     
     class Meta:
         model = TeamMember
         fields = [
-            'id', 'name', 'role_description', 'permission_role',
+            'id', 'name', 'first_name', 'last_name', 'email', 'role_description', 'permission_role',
             'invitation_status', 'avatar_url', 'avatar_color', 'avatar_letter'
         ]
     
@@ -614,6 +620,28 @@ class TeamMemberInfoSerializer(serializers.ModelSerializer):
             data['avatar_letter'] = get_avatar_letter(instance.linked_user.first_name or instance.linked_user.email)
         
         return data
+    
+    def get_first_name(self, obj):
+        """Return first name from linked user or parse from name field."""
+        if obj.linked_user:
+            return obj.linked_user.first_name or ''
+        # Try to parse first name from name field
+        name_parts = obj.name.split(' ', 1)
+        return name_parts[0] if name_parts else ''
+    
+    def get_last_name(self, obj):
+        """Return last name from linked user or parse from name field."""
+        if obj.linked_user:
+            return obj.linked_user.last_name or ''
+        # Try to parse last name from name field
+        name_parts = obj.name.split(' ', 1)
+        return name_parts[1] if len(name_parts) > 1 else ''
+    
+    def get_email(self, obj):
+        """Return email from linked user or email field."""
+        if obj.linked_user:
+            return obj.linked_user.email
+        return obj.email or ''
     
     def get_avatar_color(self, obj):
         from .utils import get_avatar_color

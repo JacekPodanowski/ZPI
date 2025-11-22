@@ -1010,8 +1010,7 @@ class SiteViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('You do not have access to this site.')
 
         active_members = site.team_members.filter(
-            is_active=True,
-            invitation_status='linked'
+            is_active=True
         ).order_by('created_at')
 
         roster = TeamMemberInfoSerializer(active_members, many=True).data
@@ -2793,10 +2792,15 @@ class PublicAvailabilityView(APIView):
         """Helper method to extract assignee information from Event or AvailabilityBlock"""
         if hasattr(obj, 'assigned_to_team_member') and obj.assigned_to_team_member:
             member = obj.assigned_to_team_member
+            # TeamMember doesn't have first_name/last_name, use name or linked_user
+            if member.linked_user:
+                name = member.linked_user.get_full_name() or member.linked_user.email
+            else:
+                name = member.name or member.email or 'Członek zespołu'
             return {
                 'type': 'team_member',
                 'id': member.id,
-                'name': f"{member.first_name} {member.last_name}"
+                'name': name
             }
         elif hasattr(obj, 'assigned_to_owner') and obj.assigned_to_owner:
             owner = obj.assigned_to_owner
@@ -2901,7 +2905,9 @@ class PublicAvailabilityView(APIView):
                 slot_start = current_time
                 slot_end = slot_start + timedelta(minutes=meeting_length)
                 
-                slot_key = slot_start.isoformat()
+                # Include assignee in slot key to support multiple events at same time for different assignees
+                assignee_key = f"{assignee_info['type']}:{assignee_info['id']}"
+                slot_key = f"{slot_start.isoformat()}|{assignee_key}"
 
                 # Znajdź istniejące wydarzenie dla tego slotu (jeśli istnieje)
                 matching_event = next(
@@ -2931,7 +2937,7 @@ class PublicAvailabilityView(APIView):
                         if slot_key not in slot_map:
                             event_assignee_info = self._get_assignee_info(matching_event) if matching_event else assignee_info
                             slot_map[slot_key] = {
-                                'start': slot_key,
+                                'start': slot_start.isoformat(),
                                 'end': slot_end.isoformat(),
                                 'duration': meeting_length,
                                 'capacity': capacity,
@@ -2947,7 +2953,10 @@ class PublicAvailabilityView(APIView):
 
         # Dodaj istniejące wydarzenia, które nie były objęte blokami dostępności
         for event in existing_events:
-            slot_key = event.start_time.isoformat()
+            event_assignee_info = self._get_assignee_info(event)
+            assignee_key = f"{event_assignee_info['type']}:{event_assignee_info['id']}"
+            slot_key = f"{event.start_time.isoformat()}|{assignee_key}"
+            
             booked_count = event.bookings.count()
             capacity = event.capacity
             available_spots = max(capacity - booked_count, 0)
@@ -2955,11 +2964,9 @@ class PublicAvailabilityView(APIView):
             if available_spots <= 0:
                 continue
 
-            event_assignee_info = self._get_assignee_info(event)
-
             if slot_key not in slot_map:
                 slot_map[slot_key] = {
-                    'start': slot_key,
+                    'start': event.start_time.isoformat(),
                     'end': event.end_time.isoformat(),
                     'duration': int((event.end_time - event.start_time).total_seconds() // 60),
                     'capacity': capacity,
@@ -3056,20 +3063,38 @@ class PublicBookingView(APIView):
             else:
                 assigned_to_owner = site.owner
 
+        # Ensure exactly one assignee is set to satisfy constraint
+        if assigned_to_team_member is not None:
+            assigned_to_owner = None
+        elif assigned_to_owner is None:
+            assigned_to_owner = site.owner
+
         # Sprawdź, czy istnieje już wydarzenie grupowe na ten slot, które ma wolne miejsca
         # Zgodnie z sugestią, traktujemy wszystkie wydarzenia jako grupowe. Indywidualne mają po prostu `capacity=1`.
+        event_lookup = {
+            'site': site,
+            'start_time': start_time,
+            'end_time': end_time,
+            'assigned_to_team_member': assigned_to_team_member,
+            'assigned_to_owner': assigned_to_owner,
+        }
+
+        event_defaults = {
+            'creator': site.owner,
+            'title': f'Sesja z {guest_name}',
+            'capacity': 1,  # Domyślnie sesja indywidualna. Można to pobrać z konfiguracji modułu w przyszłości.
+            'event_type': 'individual',  # lub 'group'
+        }
+        if assigned_to_team_member is not None:
+            event_defaults['assigned_to_team_member'] = assigned_to_team_member
+            event_defaults['assigned_to_owner'] = None
+        else:
+            event_defaults['assigned_to_owner'] = assigned_to_owner
+            event_defaults['assigned_to_team_member'] = None
+
         event, created = Event.objects.get_or_create(
-            site=site,
-            start_time=start_time,
-            end_time=end_time,
-            defaults={
-                'creator': site.owner,
-                'title': f'Sesja z {guest_name}',
-                'capacity': 1, # Domyślnie sesja indywidualna. Można to pobrać z konfiguracji modułu w przyszłości.
-                'event_type': 'individual', # lub 'group'
-                'assigned_to_owner': assigned_to_owner,
-                'assigned_to_team_member': assigned_to_team_member
-            }
+            defaults=event_defaults,
+            **event_lookup
         )
 
         # Sprawdź, czy użytkownik już jest zapisany na to wydarzenie

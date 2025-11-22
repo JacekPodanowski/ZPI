@@ -50,14 +50,20 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
 
       const slots = await response.json();
 
-      // Deduplicate slots by start time (in case API returns duplicates)
-      const uniqueSlots = slots.reduce((acc, slot) => {
-        const existing = acc.find(s => s.start === slot.start);
-        if (!existing) {
-          acc.push(slot);
+      // Deduplicate by backend id (fallback to start/assignee signature) to avoid merging distinct hosts
+      const seenKeys = new Set();
+      const uniqueSlots = [];
+      slots.forEach((slot) => {
+        const signatureParts = [slot.id || slot.start];
+        signatureParts.push(slot.assignee_type || 'unknown');
+        signatureParts.push(slot.assignee_id || slot.assignee_name || 'none');
+        const signature = signatureParts.join(':');
+        if (seenKeys.has(signature)) {
+          return;
         }
-        return acc;
-      }, []);
+        seenKeys.add(signature);
+        uniqueSlots.push(slot);
+      });
 
       const slotsByDay = uniqueSlots.reduce((acc, slot) => {
         const day = slot.start.split('T')[0];
@@ -67,6 +73,10 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
         acc[day].push(slot);
         return acc;
       }, {});
+
+      Object.keys(slotsByDay).forEach((dayKey) => {
+        slotsByDay[dayKey].sort((a, b) => new Date(a.start) - new Date(b.start));
+      });
 
       setAvailableSlots(slotsByDay);
     } catch (error) {
@@ -110,7 +120,7 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
   // Render slot button with capacity info
   const renderSlotButton = (slot, index) => (
     <button
-      key={`${slot.start}-${slot.id || index}`}
+      key={slot.id || `${slot.start}-${slot.assignee_type || 'unknown'}-${slot.assignee_id || slot.assignee_name || index}`}
       onClick={() => handleSlotSelect(slot)}
       className="w-full text-left p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-md"
       style={{
@@ -137,6 +147,11 @@ const CalendarSection = ({ config, siteId, theme, layout = 'sidebar' }) => {
               <span className="ml-2">• {slot.event_type === 'group' ? 'Grupowe' : 'Indywidualne'}</span>
             )}
           </div>
+          {slot.assignee_name && (
+            <div className="text-sm text-neutral-600 mt-1">
+              Prowadzący: {slot.assignee_name}
+            </div>
+          )}
           {showCapacity && slot.capacity !== undefined && (
             <div className="text-sm mt-1" style={{ color: effectiveAccentColor }}>
               Miejsca: {(slot.available_spots ?? slot.capacity)}/{slot.capacity}

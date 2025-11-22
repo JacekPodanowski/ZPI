@@ -1,5 +1,5 @@
 // index.jsx - Interactive CalendarSection with booking functionality
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -18,6 +18,8 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedCreator, setSelectedCreator] = useState('all');
+  const [creatorOptions, setCreatorOptions] = useState([]);
 
   const { 
     title = 'Wybierz dogodny termin zajęć', 
@@ -30,6 +32,13 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
 
   // Use calendarAccentColor from content, fallback to style primary, then default
   const effectiveAccentColor = calendarAccentColor || style?.primary || '#146B3A';
+
+  const normalizeAssigneeId = useCallback((value) => {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    return String(value);
+  }, []);
 
   useEffect(() => {
     if (!siteId) {
@@ -54,14 +63,25 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
 
         const slots = await response.json();
 
-        // Deduplicate slots by start time (in case API returns duplicates)
-        const uniqueSlots = slots.reduce((acc, slot) => {
-          const existing = acc.find(s => s.start === slot.start);
-          if (!existing) {
-            acc.push(slot);
+        // Deduplicate slots keeping distinct hosts even when sharing the same start
+        const seenKeys = new Set();
+        const uniqueSlots = [];
+        slots.forEach((slot) => {
+          const signature = [slot.id || slot.start, slot.assignee_type || 'unknown', slot.assignee_id || slot.assignee_name || 'none'].join(':');
+          if (seenKeys.has(signature)) {
+            return;
           }
-          return acc;
-        }, []);
+          seenKeys.add(signature);
+          uniqueSlots.push(slot);
+        });
+
+        const creatorMap = new Map();
+        uniqueSlots.forEach((slot) => {
+          const normalizedId = normalizeAssigneeId(slot.assignee_id);
+          if (normalizedId && slot.assignee_name) {
+            creatorMap.set(normalizedId, slot.assignee_name);
+          }
+        });
 
         const slotsByDay = uniqueSlots.reduce((acc, slot) => {
           const day = slot.start.split('T')[0];
@@ -72,7 +92,14 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
           return acc;
         }, {});
 
+        Object.keys(slotsByDay).forEach((dayKey) => {
+          slotsByDay[dayKey].sort((a, b) => new Date(a.start) - new Date(b.start));
+        });
+
         setAvailableSlots(slotsByDay);
+        const creatorList = Array.from(creatorMap.entries()).map(([id, name]) => ({ id, name }));
+        creatorList.sort((a, b) => a.name.localeCompare(b.name, 'pl', { sensitivity: 'base' }));
+        setCreatorOptions(creatorList);
       } catch (error) {
         console.error('Error fetching availability:', error);
         setError('Backend nie zwrócił odpowiedzi – interfejs pozostaje dostępny z ograniczoną funkcjonalnością.');
@@ -82,16 +109,30 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
     };
 
     fetchAvailability();
-  }, [currentMonth, siteId]);
+  }, [currentMonth, siteId, normalizeAssigneeId]);
+
+  const visibleSlots = useMemo(() => {
+    if (selectedCreator === 'all') {
+      return availableSlots;
+    }
+    const filtered = {};
+    Object.entries(availableSlots).forEach(([day, slots]) => {
+      const subset = slots.filter((slot) => normalizeAssigneeId(slot.assignee_id) === selectedCreator);
+      if (subset.length) {
+        filtered[day] = subset;
+      }
+    });
+    return filtered;
+  }, [availableSlots, selectedCreator, normalizeAssigneeId]);
 
   const availableDays = useMemo(() => {
-    return Object.keys(availableSlots).map((dateStr) => new Date(dateStr + 'T00:00:00'));
-  }, [availableSlots]);
+    return Object.keys(visibleSlots).map((dateStr) => new Date(dateStr + 'T00:00:00'));
+  }, [visibleSlots]);
 
   const handleDayClick = (day) => {
     if (!day) return;
     const dayStr = format(day, 'yyyy-MM-dd');
-    if (availableSlots[dayStr] && availableSlots[dayStr].length > 0) {
+    if (visibleSlots[dayStr] && visibleSlots[dayStr].length > 0) {
       setSelectedDay(day);
     } else {
       setSelectedDay(null);
@@ -108,16 +149,36 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
     setAvailableSlots((prev) => {
       const dayStr = format(new Date(selectedSlot.start), 'yyyy-MM-dd');
       const updatedSlots = { ...prev };
-      updatedSlots[dayStr] = updatedSlots[dayStr].filter((s) => s.start !== selectedSlot.start);
+      updatedSlots[dayStr] = updatedSlots[dayStr].filter((s) => (s.id || `${s.start}-${s.assignee_type || 'unknown'}-${s.assignee_id || s.assignee_name || 'none'}`) !== (selectedSlot.id || `${selectedSlot.start}-${selectedSlot.assignee_type || 'unknown'}-${selectedSlot.assignee_id || selectedSlot.assignee_name || 'none'}`));
       return updatedSlots;
     });
     setSelectedDay(null);
   };
 
+  useEffect(() => {
+    if (!selectedDay) {
+      return;
+    }
+    const dayStr = format(selectedDay, 'yyyy-MM-dd');
+    if (!visibleSlots[dayStr] || visibleSlots[dayStr].length === 0) {
+      setSelectedDay(null);
+    }
+  }, [selectedDay, visibleSlots]);
+
+  useEffect(() => {
+    if (selectedCreator === 'all') {
+      return;
+    }
+    const stillExists = creatorOptions.some((creator) => creator.id === selectedCreator);
+    if (!stillExists) {
+      setSelectedCreator('all');
+    }
+  }, [creatorOptions, selectedCreator]);
+
   // Render slot button with capacity info
   const renderSlotButton = (slot, index) => (
     <button
-      key={`${slot.start}-${slot.id || index}`}
+      key={slot.id || `${slot.start}-${slot.assignee_type || 'unknown'}-${slot.assignee_id || slot.assignee_name || index}`}
       onClick={() => handleSlotSelect(slot)}
       className="w-full text-left p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-md"
       style={{
@@ -144,6 +205,11 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
               <span className="ml-2">• {slot.event_type === 'group' ? 'Grupowe' : 'Indywidualne'}</span>
             )}
           </div>
+          {slot.assignee_name && (
+            <div className="text-sm text-neutral-600 mt-1">
+              Prowadzący: {slot.assignee_name}
+            </div>
+          )}
           {showCapacity && slot.capacity !== undefined && (
             <div className="text-sm mt-1" style={{ color: effectiveAccentColor }}>
               Miejsca: {(slot.available_spots ?? slot.capacity)}/{slot.capacity}
@@ -255,7 +321,7 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
         }}
         disabled={(date) => {
           const dateStr = format(date, 'yyyy-MM-dd');
-          return !availableSlots[dateStr] || availableSlots[dateStr].length === 0;
+          return !visibleSlots[dateStr] || visibleSlots[dateStr].length === 0;
         }}
       />
     </>
@@ -278,12 +344,12 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
 
       {!loading && selectedDay && (
         <div className="space-y-3">
-          {availableSlots[format(selectedDay, 'yyyy-MM-dd')]?.map((slot, index) => 
+          {visibleSlots[format(selectedDay, 'yyyy-MM-dd')]?.map((slot, index) => 
             renderSlotButton(slot, index)
           )}
 
-          {(!availableSlots[format(selectedDay, 'yyyy-MM-dd')] ||
-            availableSlots[format(selectedDay, 'yyyy-MM-dd')].length === 0) && (
+          {(!visibleSlots[format(selectedDay, 'yyyy-MM-dd')] ||
+            visibleSlots[format(selectedDay, 'yyyy-MM-dd')].length === 0) && (
             <div className="text-center py-12">
               <svg className="w-16 h-16 mx-auto text-neutral-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -325,6 +391,33 @@ const CalendarSection = ({ content = {}, siteId, style, layout = 'sidebar' }) =>
         {error && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-sm text-amber-800">{error}</p>
+          </div>
+        )}
+
+        {creatorOptions.length > 1 && (
+          <div className="mb-6 flex justify-center">
+            <div className="inline-flex items-center gap-3 bg-white rounded-lg shadow-sm border border-neutral-200 px-4 py-2">
+              <label htmlFor="compact-creator-filter" className="text-sm font-medium" style={{ color: textColor }}>
+                Filtruj według prowadzącego:
+              </label>
+              <select
+                id="compact-creator-filter"
+                value={selectedCreator}
+                onChange={(e) => setSelectedCreator(e.target.value)}
+                className="text-sm border border-neutral-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2"
+                style={{
+                  color: textColor,
+                  focusRingColor: effectiveAccentColor
+                }}
+              >
+                <option value="all">Wszyscy</option>
+                {creatorOptions.map((creator) => (
+                  <option key={creator.id} value={creator.id}>
+                    {creator.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 

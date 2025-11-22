@@ -122,8 +122,26 @@ const CreatorCalendarApp = () => {
         return map;
     }, []);
 
-    const ensureSiteRoster = useCallback(async (siteId) => {
-        if (!siteId || siteRosters[siteId] || rosterInFlightRef.current.has(siteId)) {
+    const invalidateSiteRoster = useCallback((siteId) => {
+        if (!siteId) return;
+        setSiteRosters((prev) => {
+            const updated = { ...prev };
+            delete updated[siteId];
+            return updated;
+        });
+        rosterInFlightRef.current.delete(siteId);
+    }, []);
+
+    const ensureSiteRoster = useCallback(async (siteId, forceRefresh = false) => {
+        if (!siteId) {
+            return null;
+        }
+
+        if (!forceRefresh && siteRosters[siteId] && !rosterInFlightRef.current.has(siteId)) {
+            return siteRosters[siteId];
+        }
+
+        if (rosterInFlightRef.current.has(siteId)) {
             return siteRosters[siteId];
         }
 
