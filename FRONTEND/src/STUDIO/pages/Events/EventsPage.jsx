@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Typography, Button, CircularProgress, Alert, Grid, Card, CardContent, CardActions, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, Checkbox, TextField, MenuItem, InputAdornment, IconButton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Add as AddIcon, CalendarMonth, LocationOn, Edit, Delete, Publish, Unpublished, FilterList, Clear, Search } from '@mui/icons-material';
+import { Add as AddIcon, CalendarMonth, LocationOn, Edit, Delete, Publish, Unpublished, FilterList, Clear, Search, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { fetchBigEvents, deleteBigEvent, publishBigEvent, unpublishBigEvent, createBigEvent, updateBigEvent } from '../../../services/bigEventService';
 import { useToast } from '../../../contexts/ToastContext';
 import { fetchSites } from '../../../services/siteService';
@@ -52,6 +52,7 @@ const EventsPage = () => {
     });
     const [isEditing, setIsEditing] = useState(false);
     const [editingEventId, setEditingEventId] = useState(null);
+    const [filtersExpanded, setFiltersExpanded] = useState(true);
 
     useEffect(() => {
         loadEvents();
@@ -491,92 +492,114 @@ const EventsPage = () => {
                     boxShadow: (theme) => theme.shadows[1]
                 }}
             >
-                <Stack direction="row" alignItems="center" spacing={2} mb={2}>
+                <Stack 
+                    direction="row" 
+                    alignItems="center" 
+                    spacing={2} 
+                    mb={filtersExpanded ? 2 : 0}
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => setFiltersExpanded(!filtersExpanded)}
+                >
                     <FilterList color="primary" />
                     <Typography variant="subtitle1" fontWeight={600}>
                         Filtry
                     </Typography>
                     <Box flexGrow={1} />
-                    <Button size="small" variant="text" onClick={clearFilters} startIcon={<Clear />}>
-                        Wyczyść
-                    </Button>
+                    {filtersExpanded ? <ExpandLess /> : <ExpandMore />}
                 </Stack>
 
-                <Grid container spacing={2}>
-                    <Grid item xs={12} md={3}>
-                        <TextField
-                            select
-                            label="Strona"
-                            value={filters.siteId}
-                            onChange={handleFilterChange('siteId')}
-                            fullWidth
+                <AnimatePresence>
+                    {filtersExpanded && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
                         >
-                            <MenuItem value="all">Wszystkie strony</MenuItem>
-                            {sites.map((site) => (
-                                <MenuItem key={site.id} value={String(site.id)}>
-                                    {site.name}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <TextField
-                            select
-                            label="Status"
-                            value={filters.status}
-                            onChange={handleFilterChange('status')}
-                            fullWidth
-                        >
-                            <MenuItem value="all">Wszystkie statusy</MenuItem>
-                            <MenuItem value="published">Opublikowane</MenuItem>
-                            <MenuItem value="draft">Szkice</MenuItem>
-                            <MenuItem value="cancelled">Anulowane</MenuItem>
-                            <MenuItem value="completed">Zakończone</MenuItem>
-                        </TextField>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <TextField
-                            label="Od"
-                            type="date"
-                            value={filters.dateFrom}
-                            onChange={handleFilterChange('dateFrom')}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <TextField
-                            label="Do"
-                            type="date"
-                            value={filters.dateTo}
-                            onChange={handleFilterChange('dateTo')}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            label="Szukaj"
-                            value={filters.search}
-                            onChange={handleFilterChange('search')}
-                            fullWidth
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <Search fontSize="small" />
-                                    </InputAdornment>
-                                ),
-                                endAdornment: filters.search ? (
-                                    <InputAdornment position="end">
-                                        <IconButton size="small" onClick={() => setFilters((prev) => ({ ...prev, search: '' }))}>
-                                            <Clear fontSize="small" />
-                                        </IconButton>
-                                    </InputAdornment>
-                                ) : null
-                            }}
-                        />
-                    </Grid>
-                </Grid>
+                            <Stack direction="row" justifyContent="flex-end" mb={2}>
+                                <Button size="small" variant="text" onClick={clearFilters} startIcon={<Clear />}>
+                                    Wyczyść
+                                </Button>
+                            </Stack>
+
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={3}>
+                                    <TextField
+                                        select
+                                        label="Strona"
+                                        value={filters.siteId}
+                                        onChange={handleFilterChange('siteId')}
+                                        fullWidth
+                                    >
+                                        <MenuItem value="all">Wszystkie strony</MenuItem>
+                                        {sites.map((site) => (
+                                            <MenuItem key={site.id} value={String(site.id)}>
+                                                {site.name}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <TextField
+                                        select
+                                        label="Status"
+                                        value={filters.status}
+                                        onChange={handleFilterChange('status')}
+                                        fullWidth
+                                    >
+                                        <MenuItem value="all">Wszystkie statusy</MenuItem>
+                                        <MenuItem value="published">Opublikowane</MenuItem>
+                                        <MenuItem value="draft">Szkice</MenuItem>
+                                        <MenuItem value="cancelled">Anulowane</MenuItem>
+                                        <MenuItem value="completed">Zakończone</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <TextField
+                                        label="Od"
+                                        type="date"
+                                        value={filters.dateFrom}
+                                        onChange={handleFilterChange('dateFrom')}
+                                        InputLabelProps={{ shrink: true }}
+                                        fullWidth
+                                    />
+                                </Grid>
+                                <Grid item xs={12} md={3}>
+                                    <TextField
+                                        label="Do"
+                                        type="date"
+                                        value={filters.dateTo}
+                                        onChange={handleFilterChange('dateTo')}
+                                        InputLabelProps={{ shrink: true }}
+                                        fullWidth
+                                    />
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        label="Szukaj"
+                                        value={filters.search}
+                                        onChange={handleFilterChange('search')}
+                                        fullWidth
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Search fontSize="small" />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: filters.search ? (
+                                                <InputAdornment position="end">
+                                                    <IconButton size="small" onClick={() => setFilters((prev) => ({ ...prev, search: '' }))}>
+                                                        <Clear fontSize="small" />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ) : null
+                                        }}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </Box>
 
             {/* Events Grid */}
