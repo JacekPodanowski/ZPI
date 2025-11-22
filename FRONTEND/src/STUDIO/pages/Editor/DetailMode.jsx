@@ -352,6 +352,7 @@ const DetailMode = () => {
               onProcessingChange={setIsAiProcessing}
               onTaskComplete={(success) => setAiTaskCompleted(success)}
               mode="detail"
+              contextType="studio_editor"
             />
           </Box>
         )}

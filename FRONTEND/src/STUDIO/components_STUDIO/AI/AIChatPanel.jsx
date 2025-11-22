@@ -1,26 +1,116 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Box, Typography, Stack, TextField, Button, CircularProgress, IconButton } from '@mui/material';
-import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon } from '@mui/icons-material';
-import { processAITask } from '../../../services/aiService';
+import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, FormControl } from '@mui/material';
+import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import apiClient from '../../../services/apiClient';
 import useNewEditorStore from '../../store/newEditorStore';
 import { buildContextMessage, extractModuleTypes, estimateTokens, formatErrorMessage } from './aiHelpers';
+import { getChatHistory, resetChatHistory, processAITaskWithContext } from '../../../services/chatService';
+import { getOrCreateAgent, createNewAgent, getAgents, switchAgent } from '../../../services/agentService';
 
-const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessingChange, mode = 'detail', onTaskComplete }) => {
-  const [messages, setMessages] = useState([
-    {
-      id: 'intro',
-      sender: 'ai',
-      text: 'Cześć! Jestem Twoim asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!'
-    }
-  ]);
+const AIChatPanel = ({ 
+  onClose, 
+  isProcessing: externalIsProcessing, 
+  onProcessingChange, 
+  mode = 'detail', 
+  contextType = 'studio_editor', 
+  onTaskComplete,
+  selectedSiteId = null,  // For Events page - external site selection
+  availableSites = [],    // For Events page - list of sites
+  onSiteChange = null     // For Events page - callback when site changes
+}) => {
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessageId, setProcessingMessageId] = useState(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [currentAgentId, setCurrentAgentId] = useState(null);
+  const [currentAgentName, setCurrentAgentName] = useState('');
+  const [availableAgents, setAvailableAgents] = useState([]);
+  const [agentMenuAnchor, setAgentMenuAnchor] = useState(null);
   const listRef = useRef(null);
   const pollIntervalRef = useRef(null);
   
   const { site, currentPageId, selectedModuleId } = useNewEditorStore();
+
+  // Determine which site to use: selectedSiteId (Events) or site from editor
+  const activeSite = selectedSiteId 
+    ? { id: selectedSiteId, name: availableSites.find(s => s.id === selectedSiteId)?.name || 'Wybrana strona' }
+    : site;
+
+  console.log('[AI] Active site:', activeSite, 'selectedSiteId:', selectedSiteId, 'site:', site?.id);
+
+  // Load or create agent on mount
+  useEffect(() => {
+    const initializeAgent = async () => {
+      // For studio_editor, allow initialization even without site (global agent)
+      // For other contexts, require site
+      const canInitialize = contextType === 'studio_editor' || activeSite?.id;
+      
+      if (!canInitialize || historyLoaded) return;
+
+      console.log('[AI] Initializing agent for site:', activeSite?.id || 'global', 'context:', contextType);
+
+      try {
+        // Use site ID if available, regardless of context type
+        // Only fall back to null for studio_editor when no site is selected
+        const siteIdToUse = activeSite?.id || null;
+        const agentId = await getOrCreateAgent(siteIdToUse, contextType);
+        console.log('[AI] Agent ID:', agentId);
+        setCurrentAgentId(agentId);
+
+        // Load history for this agent
+        await loadAgentHistory(agentId);
+
+        // Load all available agents
+        await loadAvailableAgents();
+
+        setHistoryLoaded(true);
+        console.log('[AI] Agent initialization complete');
+      } catch (error) {
+        console.error('[AI] Failed to initialize agent:', error);
+        setHistoryLoaded(true);
+      }
+    };
+
+    initializeAgent();
+  }, [activeSite?.id, contextType, historyLoaded]);
+
+  const loadAgentHistory = async (agentId) => {
+    try {
+      const data = await getChatHistory({ agent_id: agentId, limit: 20 });
+
+      if (data.agent) {
+        setCurrentAgentName(data.agent.name);
+      }
+
+      if (data.messages && data.messages.length > 0) {
+        const historyMessages = data.messages.flatMap(msg => [
+          { id: `user-history-${msg.id}`, sender: 'user', text: msg.user_message },
+          { id: `ai-history-${msg.id}`, sender: 'ai', text: msg.ai_response }
+        ]);
+
+        setMessages([
+          { id: 'intro', sender: 'ai', text: 'Cześć! Jestem Twoim asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!' },
+          ...historyMessages
+        ]);
+      } else {
+        setMessages([
+          { id: 'intro', sender: 'ai', text: 'Cześć! Jestem Twoim asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to load agent history:', error);
+    }
+  };
+
+  const loadAvailableAgents = async () => {
+    try {
+      const data = await getAgents({ site_id: activeSite.id, context_type: contextType });
+      setAvailableAgents(data.agents || []);
+    } catch (error) {
+      console.error('Failed to load agents:', error);
+    }
+  };
 
   // Sync internal processing state with parent
   useEffect(() => {
@@ -29,24 +119,65 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
     }
   }, [isProcessing, onProcessingChange]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     // Cancel any ongoing polling
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
-    
-    // Reset state
-    setMessages([
-      {
-        id: 'intro',
-        sender: 'ai',
-        text: 'Cześć! Jestem Twoim asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!'
-      }
-    ]);
-    setInput('');
-    setIsProcessing(false);
-    setProcessingMessageId(null);
+
+    try {
+      // Use site ID if available, null for global agents
+      const siteIdToUse = activeSite?.id || null;
+      
+      // Create new agent
+      const newAgent = await createNewAgent(siteIdToUse, contextType);
+      setCurrentAgentId(newAgent.id);
+      setCurrentAgentName(newAgent.name);
+
+      // Reset messages
+      setMessages([
+        { id: 'intro', sender: 'ai', text: 'Cześć! Jestem Twoim nowym asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!' }
+      ]);
+
+      setInput('');
+      setIsProcessing(false);
+      setProcessingMessageId(null);
+
+      // Reload agents list
+      await loadAvailableAgents();
+    } catch (error) {
+      console.error('Failed to create new agent:', error);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!currentAgentId) return;
+
+    try {
+      await resetChatHistory({ agent_id: currentAgentId });
+
+      // Clear messages
+      setMessages([
+        { id: 'intro', sender: 'ai', text: 'Cześć! Jestem Twoim asystentem AI. Mogę pomóc Ci edytować stronę. Powiedz mi, co chcesz zmienić!' }
+      ]);
+    } catch (error) {
+      console.error('Failed to reset chat history:', error);
+    }
+  };
+
+  const handleAgentSwitch = async (agentId) => {
+    setAgentMenuAnchor(null);
+
+    if (agentId === currentAgentId) return;
+
+    // Switch agent in localStorage (use site ID if available, null otherwise)
+    const siteIdToUse = activeSite?.id || null;
+    switchAgent(siteIdToUse, contextType, agentId);
+    setCurrentAgentId(agentId);
+
+    // Load new agent's history
+    await loadAgentHistory(agentId);
   };
 
   const handleSubmit = async (event) => {
@@ -54,8 +185,52 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
     const trimmed = input.trim();
     if (!trimmed || isProcessing) return;
 
+    // If no agent yet, create one now
+    if (!currentAgentId) {
+      try {
+        console.log('[AI] No agent ID, creating one...');
+        // Use site ID if available, regardless of context
+        const siteIdToUse = activeSite?.id || null;
+        
+        if (!siteIdToUse && contextType !== 'studio_editor') {
+          console.error('[AI] No site ID for context:', contextType);
+          setMessages((prev) => [
+            ...prev,
+            { 
+              id: `ai-error-${Date.now()}`, 
+              sender: 'ai', 
+              text: 'Wybierz stronę, aby kontynuować.' 
+            }
+          ]);
+          return;
+        }
+        
+        const agentId = await getOrCreateAgent(siteIdToUse, contextType);
+        setCurrentAgentId(agentId);
+        console.log('[AI] Agent created:', agentId);
+        
+        // Now proceed with the message
+        await sendMessage(trimmed, agentId);
+      } catch (error) {
+        console.error('[AI] Failed to create agent:', error);
+        setMessages((prev) => [
+          ...prev,
+          { 
+            id: `ai-error-${Date.now()}`, 
+            sender: 'ai', 
+            text: `Nie mogę utworzyć asystenta: ${formatErrorMessage(error)}` 
+          }
+        ]);
+      }
+      return;
+    }
+
+    await sendMessage(trimmed, currentAgentId);
+  };
+
+  const sendMessage = async (messageText, agentId) => {
     // Add user message
-    setMessages((prev) => [...prev, { id: `user-${Date.now()}`, sender: 'user', text: trimmed }]);
+    setMessages((prev) => [...prev, { id: `user-${Date.now()}`, sender: 'user', text: messageText }]);
     setInput('');
     setIsProcessing(true);
 
@@ -64,17 +239,21 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
 
     try {
       // Extract mentioned module types for logging
-      const mentionedModules = extractModuleTypes(trimmed);
+      const mentionedModules = extractModuleTypes(messageText);
       
-      // Build context with full site structure
-      const contextData = buildContextMessage(mode, site, currentPageId);
+      // Build context with full site structure + context_type, site_id, and agent_id
+      const contextData = buildContextMessage(mode, activeSite, currentPageId);
+      contextData.context_type = contextType;
+      contextData.site_id = activeSite?.id;
+      contextData.agent_id = agentId; // Add agent ID
       
       // Log for debugging
       const tokenEstimate = estimateTokens(JSON.stringify(contextData));
       console.log(`[AI] Sending context: ~${tokenEstimate} tokens, mentioned modules:`, mentionedModules);
+      console.log(`[AI] Context type: ${contextType}, Site ID: ${activeSite?.id}, Agent ID: ${agentId}`);
 
       // Send to AI and get task_id
-      const response = await processAITask(trimmed, contextData);
+      const response = await processAITaskWithContext(messageText, activeSite, contextData);
       const taskId = response.task_id;
 
       // Add loading message with animation
@@ -85,7 +264,7 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
           sender: 'ai', 
           text: 'Myślę',
           isLoading: true,
-          taskId  // Store task_id for polling
+          taskId
         }
       ]);
 
@@ -145,6 +324,64 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
           setIsProcessing(false);
           return;
         }
+
+        // Handle API call - AI provides instructions for API operation
+        if (result.status === 'api_call') {
+          console.log('[AI] Executing API call:', result.endpoint, result.method);
+          
+          // Automatically execute the API call
+          try {
+            const apiResponse = await apiClient({
+              method: result.method.toLowerCase(),
+              url: result.endpoint,
+              data: result.body
+            });
+            
+            console.log('[AI] API call successful:', apiResponse.data);
+            
+            const successMessage = `✓ ${result.explanation}\n\n**Utworzono wydarzenie:**\n- ID: ${apiResponse.data.id}\n- Tytuł: ${apiResponse.data.title}\n- Data: ${apiResponse.data.start_date}${apiResponse.data.end_date ? ` - ${apiResponse.data.end_date}` : ''}\n\nWydarzenie zostało dodane do Twojego kalendarza!`;
+            
+            setMessages((prev) => 
+              prev.map(msg => 
+                msg.id === loadingMsgId
+                  ? { 
+                      ...msg, 
+                      text: successMessage,
+                      isLoading: false,
+                      sender: 'ai'
+                    }
+                  : msg
+              )
+            );
+            
+            // Dispatch event to refresh Events page
+            window.dispatchEvent(new CustomEvent('big-event-created', {
+              detail: apiResponse.data
+            }));
+            
+          } catch (apiError) {
+            console.error('[AI] API call failed:', apiError);
+            
+            const errorMessage = `✗ Nie udało się utworzyć wydarzenia.\n\n**Błąd:** ${apiError.response?.data?.detail || apiError.message}\n\n**Instrukcje do ręcznego dodania:**\n\`\`\`json\n${JSON.stringify(result.body, null, 2)}\n\`\`\`\n\nEndpoint: ${result.method} ${result.endpoint}`;
+            
+            setMessages((prev) => 
+              prev.map(msg => 
+                msg.id === loadingMsgId
+                  ? { 
+                      ...msg, 
+                      text: errorMessage,
+                      isLoading: false,
+                      sender: 'ai'
+                    }
+                  : msg
+              )
+            );
+          }
+          
+          setProcessingMessageId(null);
+          setIsProcessing(false);
+          return;
+        }
         
         // Dispatch custom event (same as WebSocket did)
         window.dispatchEvent(new CustomEvent('ai-update-received', {
@@ -159,7 +396,7 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
         if (result.status === 'success' && result.site) {
           // This will be handled by NewEditorPage's event listener
           window.dispatchEvent(new CustomEvent('ai-site-updated', {
-            detail: result  // Pass full result object with status, site, explanation, prompt
+            detail: result
           }));
         }
 
@@ -246,6 +483,59 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
         borderLeft: '1px solid rgba(220, 220, 220, 0.12)'
       }}
     >
+      {/* Site Selector (for Events page) */}
+      {availableSites.length > 0 && onSiteChange && (
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            borderBottom: '1px solid rgba(220, 220, 220, 0.12)',
+            bgcolor: 'rgba(0, 0, 0, 0.2)'
+          }}
+        >
+          <Typography sx={{ fontSize: '12px', mb: 1, opacity: 0.7 }}>
+            Wybierz stronę:
+          </Typography>
+          <Select
+            value={selectedSiteId || ''}
+            onChange={(e) => {
+              const newSite = availableSites.find(s => s.id === parseInt(e.target.value));
+              if (newSite && onSiteChange) {
+                onSiteChange(newSite);
+                // Reset agent when changing site
+                setHistoryLoaded(false);
+                setCurrentAgentId(null);
+                setMessages([]);
+              }
+            }}
+            size="small"
+            fullWidth
+            sx={{
+              bgcolor: 'rgba(255, 255, 255, 0.08)',
+              color: 'rgb(220, 220, 220)',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(220, 220, 220, 0.12)'
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(220, 220, 220, 0.24)'
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgb(146, 0, 32)'
+              },
+              '& .MuiSelect-icon': {
+                color: 'rgb(220, 220, 220)'
+              }
+            }}
+          >
+            {availableSites.map((s) => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+      )}
+
       <Box
         sx={{
           px: 3,
@@ -256,32 +546,110 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
           justifyContent: 'space-between'
         }}
       >
-        <Typography sx={{ fontSize: '20px', fontWeight: 500 }}>
-          Asystent AI
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ fontSize: '20px', fontWeight: 500 }}>
+            Asystent AI
+          </Typography>
+          {currentAgentName && (
+            <>
+              <IconButton
+                size="small"
+                onClick={(e) => setAgentMenuAnchor(e.currentTarget)}
+                sx={{
+                  color: 'rgb(220, 220, 220)',
+                  '&:hover': {
+                    bgcolor: 'rgba(220, 220, 220, 0.1)'
+                  }
+                }}
+              >
+                <ExpandMoreIcon />
+              </IconButton>
+              <Menu
+                anchorEl={agentMenuAnchor}
+                open={Boolean(agentMenuAnchor)}
+                onClose={() => setAgentMenuAnchor(null)}
+                PaperProps={{
+                  sx: {
+                    bgcolor: 'rgb(12, 12, 12)',
+                    color: 'rgb(220, 220, 220)',
+                    border: '1px solid rgba(220, 220, 220, 0.12)'
+                  }
+                }}
+              >
+                <MenuItem disabled>
+                  <ListItemText
+                    primary="Wybierz asystenta"
+                    primaryTypographyProps={{ variant: 'caption', color: 'text.secondary' }}
+                  />
+                </MenuItem>
+                <Divider sx={{ bgcolor: 'rgba(220, 220, 220, 0.12)' }} />
+                {availableAgents.map((agent) => (
+                  <MenuItem
+                    key={agent.id}
+                    selected={agent.id === currentAgentId}
+                    onClick={() => handleAgentSwitch(agent.id)}
+                    sx={{
+                      '&.Mui-selected': {
+                        bgcolor: 'rgba(146, 0, 32, 0.2)',
+                        '&:hover': {
+                          bgcolor: 'rgba(146, 0, 32, 0.3)'
+                        }
+                      }
+                    }}
+                  >
+                    <ListItemText
+                      primary={agent.name}
+                      secondary={`${agent.message_count} wiadomości`}
+                      secondaryTypographyProps={{ color: 'text.secondary' }}
+                    />
+                  </MenuItem>
+                ))}
+              </Menu>
+            </>
+          )}
+        </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <IconButton
-            onClick={handleRefresh}
-            disabled={isProcessing}
-            sx={{
-              color: 'rgb(220, 220, 220)',
-              '&:hover': {
-                bgcolor: 'rgba(220, 220, 220, 0.1)'
-              },
-              '&:disabled': {
-                opacity: 0.5
-              },
-              '@keyframes spinLeft': {
-                '0%': { transform: 'rotate(0deg)' },
-                '100%': { transform: 'rotate(-360deg)' }
-              },
-              '&:hover:not(:disabled)': {
-                animation: 'spinLeft 0.6s ease-in-out'
-              }
-            }}
-          >
-            <RestartAltIcon />
-          </IconButton>
+          <Tooltip title="Utwórz nowego asystenta">
+            <IconButton
+              onClick={handleRefresh}
+              disabled={isProcessing}
+              sx={{
+                color: 'rgb(220, 220, 220)',
+                '&:hover': {
+                  bgcolor: 'rgba(220, 220, 220, 0.1)'
+                },
+                '&:disabled': {
+                  opacity: 0.5
+                },
+                '@keyframes spinLeft': {
+                  '0%': { transform: 'rotate(0deg)' },
+                  '100%': { transform: 'rotate(-360deg)' }
+                },
+                '&:hover:not(:disabled)': {
+                  animation: 'spinLeft 0.6s ease-in-out'
+                }
+              }}
+            >
+              <RestartAltIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Wyczyść historię tego asystenta">
+            <IconButton
+              onClick={handleReset}
+              disabled={isProcessing}
+              sx={{
+                color: 'rgb(220, 220, 220)',
+                '&:hover': {
+                  bgcolor: 'rgba(220, 220, 220, 0.1)'
+                },
+                '&:disabled': {
+                  opacity: 0.5
+                }
+              }}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Tooltip>
           {onClose && (
             <IconButton
               onClick={onClose}
@@ -397,7 +765,7 @@ const AIChatPanel = ({ onClose, isProcessing: externalIsProcessing, onProcessing
         <Button
           type="submit"
           variant="contained"
-          disabled={isProcessing}
+          disabled={isProcessing || !input.trim()}
           sx={{
             bgcolor: 'rgb(146, 0, 32)',
             '&:hover': {

@@ -30,6 +30,8 @@ from .models import (
     NewsletterSubscription,
     Payment,
     BigEvent,
+    Agent,
+    ChatHistory,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -868,3 +870,33 @@ class BigEventSerializer(serializers.ModelSerializer):
         # Automatically set creator from request user
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
+
+
+class AgentSerializer(serializers.ModelSerializer):
+    """Serializer for AI agents."""
+    
+    message_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Agent
+        fields = [
+            'id', 'user', 'site', 'context_type', 'name', 
+            'created_at', 'updated_at', 'message_count'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_message_count(self, obj):
+        """Return the number of messages for this agent."""
+        return obj.chat_history.count()
+
+
+class ChatHistorySerializer(serializers.ModelSerializer):
+    """Serializer for chat history."""
+    
+    class Meta:
+        model = ChatHistory
+        fields = [
+            'id', 'agent', 'user', 'site', 'context_type', 'context_data',
+            'user_message', 'ai_response', 'task_id', 'status', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']

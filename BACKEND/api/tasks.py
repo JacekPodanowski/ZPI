@@ -390,21 +390,23 @@ def send_booking_confirmation_emails(self, booking_id):
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: int, context: dict = None):
     """
-    Execute complex AI task using Claude in background.
-    Sends complete modified site config via WebSocket when done.
+    Execute AI task using specialized agents:
+    - studio_editor → SiteEditorAgent (edits site configuration)
+    - studio_events → EventsManagerAgent (manages events via API)
     
     Args:
         self: Celery task instance
         user_prompt: User's command/request
         site_config: Current FULL site configuration
         user_id: ID of the user who initiated the request
-        context: Optional additional context
+        context: Optional context (context_type, site_id, agent_id, etc.)
         
     Returns:
-        dict: Task result with status
+        dict: Task result with status ('success', 'clarification', 'api_call')
     """
-    from .ai_services import get_flash_service, AIServiceException
+    from .ai_services_new import get_site_editor_agent, get_events_manager_agent, AIServiceException
     from django.core.cache import cache
+    from .models import ChatHistory, PlatformUser, Site
     import json
     
     logger.info(f"[Celery] Starting AI task for user {user_id}: {user_prompt[:50]}...")
@@ -413,13 +415,103 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
     cache_key = f'ai_task_result_{user_id}_{self.request.id}'
     logger.info(f"[Celery] Cache key will be: {cache_key}")
     
+    # Extract context information
+    context = context or {}
+    context_type = context.get('context_type', 'studio_editor')
+    site_id = context.get('site_id')
+    agent_id = context.get('agent_id')  # Get agent ID from context
+    
     try:
-        # Use Flash for all tasks
-        flash_service = get_flash_service()
-        result = flash_service.process_task(user_prompt, site_config, context)
+        # Get user and site objects
+        user = PlatformUser.objects.get(id=user_id)
+        site = Site.objects.get(id=site_id) if site_id else None
+        
+        # Get or create agent
+        from .models import Agent
+        
+        if agent_id:
+            # Use existing agent
+            try:
+                agent = Agent.objects.get(id=agent_id, user=user)
+            except Agent.DoesNotExist:
+                logger.warning(f"[Celery] Agent {agent_id} not found, creating new one")
+                agent = None
+        else:
+            agent = None
+        
+        # If no agent, create a new one
+        if not agent:
+            if not site:
+                raise ValueError("site_id is required to create a new agent")
+            
+            # Auto-generate agent name
+            count = Agent.objects.filter(user=user, site=site, context_type=context_type).count()
+            context_label = dict(Agent.ContextType.choices).get(context_type, context_type)
+            agent_name = f"Asystent {context_label} #{count + 1}"
+            
+            agent = Agent.objects.create(
+                user=user,
+                site=site,
+                context_type=context_type,
+                name=agent_name
+            )
+            logger.info(f"[Celery] Created new agent {agent.id} ({agent_name})")
+        
+        # Retrieve last 5 chat messages for this agent
+        chat_history_qs = ChatHistory.objects.filter(
+            agent=agent
+        ).order_by('-created_at')[:5]
+        
+        # Convert to list of dicts for AI context
+        chat_history_list = [
+            {
+                'user_message': msg.user_message,
+                'ai_response': msg.ai_response,
+                'created_at': msg.created_at.isoformat()
+            }
+            for msg in reversed(list(chat_history_qs))  # Reverse to get chronological order
+        ]
+        
+        logger.info(f"[Celery] Retrieved {len(chat_history_list)} previous messages for context")
+        
+        # Choose specialized agent based on context_type
+        if context_type == 'studio_events':
+            logger.info("[Celery] Using EventsManagerAgent")
+            agent_service = get_events_manager_agent()
+            result = agent_service.process_task(user_prompt, context, chat_history=chat_history_list)
+        else:
+            logger.info("[Celery] Using SiteEditorAgent")
+            agent_service = get_site_editor_agent()
+            result = agent_service.process_task(user_prompt, site_config, context, chat_history=chat_history_list)
         
         status = result.get('status', 'success')
-        logger.info(f"[Celery] Flash result status: {status}")
+        logger.info(f"[Celery] Agent result status: {status}")
+        
+        # Prepare AI response text for storage
+        ai_response_text = ""
+        if status == 'success':
+            ai_response_text = result.get('explanation', 'Zmiany wprowadzone pomyślnie')
+        elif status == 'clarification':
+            ai_response_text = result.get('question', 'Proszę doprecyzuj co chcesz zmienić')
+        elif status == 'api_call':
+            # Store API instructions as AI response
+            ai_response_text = result.get('explanation', 'Instrukcje API do wykonania')
+        elif status == 'error':
+            ai_response_text = result.get('error', 'Wystąpił błąd')
+        
+        # Save to chat history
+        ChatHistory.objects.create(
+            agent=agent,
+            user=user,
+            site=site,
+            context_type=context_type,
+            context_data=context,
+            user_message=user_prompt,
+            ai_response=ai_response_text,
+            task_id=self.request.id,
+            status=status
+        )
+        logger.info(f"[Celery] Saved chat history entry for agent {agent.id}")
         
         # CLARIFICATION NEEDED - ask user for more details
         if status == 'clarification':
@@ -429,6 +521,7 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             result_data = {
                 'status': 'clarification',
                 'question': question,
+                'agent_id': str(agent.id),
                 'prompt': user_prompt,
                 'task_id': self.request.id
             }
@@ -439,7 +532,36 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 "question": question,
                 "prompt": user_prompt,
                 "user_id": user_id,
-                "task_id": self.request.id
+                "task_id": self.request.id,
+                "agent_id": str(agent.id)
+            }
+        
+        # API CALL NEEDED - return API instructions to frontend
+        if status == 'api_call':
+            logger.info(f"[Celery] API call needed: {result.get('endpoint')}")
+            
+            result_data = {
+                'status': 'api_call',
+                'endpoint': result.get('endpoint'),
+                'method': result.get('method', 'POST'),
+                'body': result.get('body', {}),
+                'explanation': result.get('explanation', 'Instrukcje API'),
+                'agent_id': str(agent.id),
+                'prompt': user_prompt,
+                'task_id': self.request.id
+            }
+            cache.set(cache_key, json.dumps(result_data), timeout=300)
+            
+            return {
+                "status": "api_call",
+                "endpoint": result.get('endpoint'),
+                "method": result.get('method', 'POST'),
+                "body": result.get('body', {}),
+                "explanation": result.get('explanation', 'Instrukcje API'),
+                "prompt": user_prompt,
+                "user_id": user_id,
+                "task_id": self.request.id,
+                "agent_id": str(agent.id)
             }
         
         logger.info(f"[Celery] Flash returned result with keys: {list(result.keys())}")
@@ -451,7 +573,8 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             'site': result.get('site'),
             'explanation': result.get('explanation', 'Zmiany wprowadzone pomyślnie'),
             'prompt': user_prompt,
-            'task_id': self.request.id
+            'task_id': self.request.id,
+            'agent_id': str(agent.id)
         }
         
         cache.set(cache_key, json.dumps(result_data), timeout=300)
@@ -461,8 +584,31 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             "status": "success",
             "prompt": user_prompt,
             "user_id": user_id,
-            "task_id": self.request.id
+            "task_id": self.request.id,
+            "agent_id": str(agent.id)
         }
+        
+    except PlatformUser.DoesNotExist:
+        logger.error(f"[Celery] User {user_id} not found")
+        error_data = {
+            'status': 'error',
+            'error': 'User not found',
+            'prompt': user_prompt,
+            'task_id': self.request.id
+        }
+        cache.set(cache_key, json.dumps(error_data), timeout=300)
+        return {"status": "error", "message": "User not found"}
+        
+    except Site.DoesNotExist:
+        logger.error(f"[Celery] Site {site_id} not found")
+        error_data = {
+            'status': 'error',
+            'error': 'Site not found',
+            'prompt': user_prompt,
+            'task_id': self.request.id
+        }
+        cache.set(cache_key, json.dumps(error_data), timeout=300)
+        return {"status": "error", "message": "Site not found"}
         
     except AIServiceException as exc:
         logger.error(f"[Celery] AI service error for user {user_id}: {exc}")
@@ -959,7 +1105,7 @@ def regenerate_testimonial_summary(self, site_id: int):
         dict: Summary generation result
     """
     from .models import Site, Testimonial, TestimonialSummary
-    from .ai_services import get_flash_service, AIServiceException
+    from .ai_services_new import get_site_editor_agent, AIServiceException
     from django.db.models import Avg
     
     logger.info(f"[Celery] Generating testimonial summary for site {site_id}")
@@ -993,7 +1139,7 @@ def regenerate_testimonial_summary(self, site_id: int):
     ])
     
     try:
-        flash_service = get_flash_service()
+        agent_service = get_site_editor_agent()
         
         # Generate public summary (short, for site visitors)
         public_prompt = f"""Na podstawie poniższych {total_count} opinii napisz krótkie podsumowanie (2-3 zdania) w formie stwierdzenia.
@@ -1006,7 +1152,7 @@ Opinie:
 
 Odpowiedz tylko samym podsumowaniem, bez wstępów i komentarzy."""
         
-        public_result = flash_service.process_task(
+        public_result = agent_service.process_task(
             public_prompt,
             {},
             {'task_type': 'text_generation'}
@@ -1033,7 +1179,7 @@ Wygeneruj analizę w następującym formacie:
 
 **Sentyment:** [ogólna ocena nastawienia klientów w 1-2 zdaniach]"""
         
-        detailed_result = flash_service.process_task(
+        detailed_result = agent_service.process_task(
             detailed_prompt,
             {},
             {'task_type': 'text_generation'}

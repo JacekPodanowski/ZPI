@@ -119,6 +119,137 @@ class PlatformUser(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = 'Platform users'
 
 
+class Agent(models.Model):
+    """
+    Represents an AI agent with its own conversation history and specialization.
+    Each agent is tied to a specific user, site, and context (e.g., editor, events).
+    Users can create multiple agents and switch between them.
+    """
+    class ContextType(models.TextChoices):
+        STUDIO_EDITOR = 'studio_editor', 'Studio Editor'
+        STUDIO_EVENTS = 'studio_events', 'Studio Events'
+        STUDIO_DASHBOARD = 'studio_dashboard', 'Studio Dashboard'
+        STUDIO_TEAM = 'studio_team', 'Studio Team'
+        OTHER = 'other', 'Other'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.CASCADE,
+        related_name='agents',
+        help_text='User who owns this agent'
+    )
+    site = models.ForeignKey(
+        'Site',
+        on_delete=models.CASCADE,
+        related_name='agents',
+        null=True,
+        blank=True,
+        help_text='Site this agent is working on (optional for global agents)'
+    )
+    context_type = models.CharField(
+        max_length=50,
+        choices=ContextType.choices,
+        default=ContextType.STUDIO_EDITOR,
+        help_text='Context/section where this agent operates'
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text='Agent name (e.g., "Asystent #1", "Events Helper")'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'site', 'context_type']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.user.email} @ {self.context_type})"
+
+
+class ChatHistory(models.Model):
+    """
+    Stores chat conversation history between users and AI assistant.
+    Supports context tracking across different sections (studio, events, etc.)
+    and maintains conversation memory for improved AI responses.
+    Each message is linked to a specific Agent.
+    """
+    class ContextType(models.TextChoices):
+        STUDIO_EDITOR = 'studio_editor', 'Studio Editor'
+        STUDIO_EVENTS = 'studio_events', 'Studio Events'
+        STUDIO_DASHBOARD = 'studio_dashboard', 'Studio Dashboard'
+        STUDIO_TEAM = 'studio_team', 'Studio Team'
+        OTHER = 'other', 'Other'
+
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name='chat_history',
+        null=True,  # Temporarily nullable for migration
+        blank=True,
+        help_text='Agent that handled this conversation'
+    )
+    user = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.CASCADE,
+        related_name='chat_history',
+        help_text='User who sent the message'
+    )
+    site = models.ForeignKey(
+        'Site',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='chat_history',
+        help_text='Site context for the message (optional)'
+    )
+    context_type = models.CharField(
+        max_length=50,
+        choices=ContextType.choices,
+        default=ContextType.STUDIO_EDITOR,
+        help_text='Context/section where the message was sent'
+    )
+    context_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Additional context data (page_id, module_id, etc.)'
+    )
+    user_message = models.TextField(
+        help_text='Message sent by the user'
+    )
+    ai_response = models.TextField(
+        help_text='Response from AI assistant'
+    )
+    task_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text='Celery task ID for tracking'
+    )
+    status = models.CharField(
+        max_length=20,
+        default='success',
+        help_text='Status of the AI response (success, error, clarification)'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['agent', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['site', '-created_at']),
+            models.Index(fields=['context_type', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"Chat {self.id}: {self.user.email} @ Agent {self.agent.name} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
+
+
 class Site(models.Model):
     """
     Represents a personal website in the platform.

@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, Button, CircularProgress, Alert, Grid, Card, CardContent, CardActions, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, Checkbox, TextField, MenuItem, InputAdornment, IconButton } from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Alert, Grid, Card, CardContent, CardActions, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, Checkbox, TextField, MenuItem, InputAdornment, IconButton, Drawer } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Add as AddIcon, CalendarMonth, LocationOn, Edit, Delete, Publish, Unpublished, FilterList, Clear, Search, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Add as AddIcon, CalendarMonth, LocationOn, Edit, Delete, Publish, Unpublished, FilterList, Clear, Search, ExpandMore, ExpandLess, Chat as ChatIcon } from '@mui/icons-material';
 import { fetchBigEvents, deleteBigEvent, publishBigEvent, unpublishBigEvent, createBigEvent, updateBigEvent } from '../../../services/bigEventService';
 import { useToast } from '../../../contexts/ToastContext';
 import { fetchSites } from '../../../services/siteService';
 import ImageUploader from '../../../components/ImageUploader';
 import { uploadMedia } from '../../../services/mediaService';
 import { isTempBlobUrl, retrieveTempImage } from '../../../services/tempMediaCache';
+import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 
 const INITIAL_FORM_VALUES = {
     site: '',
@@ -53,10 +54,28 @@ const EventsPage = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editingEventId, setEditingEventId] = useState(null);
     const [filtersExpanded, setFiltersExpanded] = useState(true);
+    
+    // AI Chat state
+    const [aiChatOpen, setAiChatOpen] = useState(false);
+    const [isAiProcessing, setIsAiProcessing] = useState(false);
+    const [selectedSiteForChat, setSelectedSiteForChat] = useState(null);
 
     useEffect(() => {
         loadEvents();
         loadSites();
+        
+        // Listen for big event created by AI
+        const handleBigEventCreated = (event) => {
+            console.log('[Events] Big event created by AI:', event.detail);
+            loadEvents(); // Reload events list
+            showToast('Wydarzenie zostało dodane!', 'success');
+        };
+        
+        window.addEventListener('big-event-created', handleBigEventCreated);
+        
+        return () => {
+            window.removeEventListener('big-event-created', handleBigEventCreated);
+        };
     }, []);
 
     const loadEvents = async () => {
@@ -1022,6 +1041,66 @@ const EventsPage = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* AI Chat Button */}
+            {!aiChatOpen && (
+                <IconButton
+                    onClick={() => {
+                        // Auto-select first site if available
+                        if (sites.length > 0) {
+                            setSelectedSiteForChat(sites[0]);
+                            setAiChatOpen(true);
+                        } else {
+                            showToast('Dodaj najpierw stronę, aby korzystać z asystenta AI.', 'warning');
+                        }
+                    }}
+                    disabled={isAiProcessing || sites.length === 0}
+                    sx={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 24,
+                        zIndex: 1200,
+                        bgcolor: 'rgb(146, 0, 32)',
+                        color: 'white',
+                        width: 56,
+                        height: 56,
+                        boxShadow: '0 4px 20px rgba(146, 0, 32, 0.4)',
+                        '&:hover': { 
+                            bgcolor: 'rgb(114, 0, 21)',
+                            boxShadow: '0 6px 24px rgba(146, 0, 32, 0.6)'
+                        },
+                        '&:disabled': {
+                            bgcolor: 'rgba(146, 0, 32, 0.5)',
+                            color: 'rgba(255, 255, 255, 0.5)'
+                        }
+                    }}
+                >
+                    <ChatIcon />
+                </IconButton>
+            )}
+
+            {/* AI Chat Drawer */}
+            <Drawer
+                anchor="right"
+                open={aiChatOpen}
+                onClose={() => setAiChatOpen(false)}
+                sx={{
+                    '& .MuiDrawer-paper': {
+                        width: { xs: '100%', sm: 400 },
+                        top: { xs: 0, sm: 64 },
+                        height: { xs: '100%', sm: 'calc(100% - 64px)' }
+                    }
+                }}
+            >
+                <AIChatPanel 
+                    onClose={() => setAiChatOpen(false)}
+                    onProcessingChange={setIsAiProcessing}
+                    contextType="studio_events"
+                    selectedSiteId={selectedSiteForChat?.id}
+                    availableSites={sites}
+                    onSiteChange={(site) => setSelectedSiteForChat(site)}
+                />
+            </Drawer>
         </Box>
     );
 };

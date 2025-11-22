@@ -5769,3 +5769,208 @@ def public_big_events(request, identifier):
         'count': len(payload)
     }, status=status.HTTP_200_OK)
 
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def agent_list(request):
+    """
+    GET: List all agents for the authenticated user
+    Query params:
+    - site_id: Filter by site ID
+    - context_type: Filter by context type
+    
+    POST: Create a new agent
+    Body params:
+    - site_id: Required
+    - context_type: Required
+    - name: Optional (auto-generated if not provided)
+    """
+    from .models import Agent
+    from .serializers import AgentSerializer
+    
+    user = request.user
+    
+    if request.method == 'GET':
+        # List agents
+        query = Agent.objects.filter(user=user)
+        
+        site_id = request.query_params.get('site_id')
+        context_type = request.query_params.get('context_type')
+        
+        if site_id:
+            query = query.filter(site_id=site_id)
+        
+        if context_type:
+            query = query.filter(context_type=context_type)
+        
+        agents = query.order_by('-created_at')
+        serializer = AgentSerializer(agents, many=True)
+        
+        return Response({
+            'agents': serializer.data,
+            'count': agents.count()
+        }, status=status.HTTP_200_OK)
+    
+    elif request.method == 'POST':
+        # Create new agent
+        site_id = request.data.get('site_id')
+        context_type = request.data.get('context_type', 'studio_editor')
+        name = request.data.get('name')
+        
+        # site_id is optional for global agents (e.g., studio_editor without site)
+        site = None
+        if site_id:
+            # Verify site ownership/access
+            from .models import Site
+            try:
+                site = Site.objects.get(id=site_id, owner=user)
+            except Site.DoesNotExist:
+                return Response({'error': 'Site not found or access denied'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Auto-generate name if not provided
+        if not name:
+            # Count existing agents for this context
+            if site:
+                count = Agent.objects.filter(user=user, site=site, context_type=context_type).count()
+                context_label = dict(Agent.ContextType.choices).get(context_type, context_type)
+                name = f"Asystent {context_label} #{count + 1}"
+            else:
+                count = Agent.objects.filter(user=user, site__isnull=True, context_type=context_type).count()
+                context_label = dict(Agent.ContextType.choices).get(context_type, context_type)
+                name = f"Asystent Globalny {context_label} #{count + 1}"
+        
+        # Create agent
+        agent = Agent.objects.create(
+            user=user,
+            site=site,
+            context_type=context_type,
+            name=name
+        )
+        
+        serializer = AgentSerializer(agent)
+        logger.info(f"[Agent] Created new agent {agent.id} for user {user.id}")
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def agent_detail(request, agent_id):
+    """
+    GET: Get agent details
+    DELETE: Delete agent and its chat history
+    """
+    from .models import Agent
+    from .serializers import AgentSerializer
+    
+    user = request.user
+    
+    try:
+        agent = Agent.objects.get(id=agent_id, user=user)
+    except Agent.DoesNotExist:
+        return Response({'error': 'Agent not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = AgentSerializer(agent)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    elif request.method == 'DELETE':
+        agent_name = agent.name
+        agent.delete()  # Cascade will delete chat history
+        logger.info(f"[Agent] Deleted agent {agent_id} ({agent_name}) for user {user.id}")
+        
+        return Response({
+            'message': f'Agent {agent_name} został usunięty'
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_chat_history(request):
+    """
+    Get chat history for the authenticated user's agent.
+    Query params:
+    - agent_id: Required - Agent ID to get history for
+    - limit: Number of messages to return (default: 20, max: 100)
+    """
+    from .models import ChatHistory, Agent
+    
+    user = request.user
+    agent_id = request.query_params.get('agent_id')
+    limit = min(int(request.query_params.get('limit', 20)), 100)
+    
+    if not agent_id:
+        return Response({'error': 'agent_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Verify agent ownership
+    try:
+        agent = Agent.objects.get(id=agent_id, user=user)
+    except Agent.DoesNotExist:
+        return Response({'error': 'Agent not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get recent messages for this agent
+    messages = ChatHistory.objects.filter(agent=agent).order_by('-created_at')[:limit]
+    
+    # Format response
+    data = [
+        {
+            'id': msg.id,
+            'user_message': msg.user_message,
+            'ai_response': msg.ai_response,
+            'context_type': msg.context_type,
+            'status': msg.status,
+            'created_at': msg.created_at.isoformat(),
+            'site_id': msg.site_id,
+            'site_name': msg.site.name if msg.site else None
+        }
+        for msg in reversed(list(messages))  # Reverse to get chronological order
+    ]
+    
+    return Response({
+        'messages': data,
+        'count': len(data),
+        'agent': {
+            'id': str(agent.id),
+            'name': agent.name,
+            'context_type': agent.context_type
+        }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reset_chat_history(request):
+    """
+    Reset (delete) chat history for a specific agent.
+    Body params:
+    - agent_id: Required - Agent ID to reset history for
+    """
+    from .models import ChatHistory, Agent
+    
+    user = request.user
+    agent_id = request.data.get('agent_id')
+    
+    if not agent_id:
+        return Response({'error': 'agent_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Verify agent ownership
+    try:
+        agent = Agent.objects.get(id=agent_id, user=user)
+    except Agent.DoesNotExist:
+        return Response({'error': 'Agent not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Delete messages for this agent
+    deleted_count = ChatHistory.objects.filter(agent=agent).count()
+    ChatHistory.objects.filter(agent=agent).delete()
+    
+    logger.info(f"[Chat] User {user.id} reset chat history for agent {agent_id}: {deleted_count} messages deleted")
+    
+    return Response({
+        'message': 'Historia czatu została zresetowana',
+        'deleted_count': deleted_count,
+        'agent': {
+            'id': str(agent.id),
+            'name': agent.name
+        }
+    }, status=status.HTTP_200_OK)
+

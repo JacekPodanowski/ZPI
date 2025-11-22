@@ -78,6 +78,10 @@ from .views import (
     AttendanceReportView,
     BigEventViewSet,
     public_big_events,
+    get_chat_history,
+    reset_chat_history,
+    agent_list,
+    agent_detail,
 )
 
 
@@ -153,6 +157,10 @@ urlpatterns = [
     # AI Assistant endpoints
     path('ai-task/', AITaskView.as_view(), name='ai-task'),
     path('ai-task/<str:task_id>/poll/', poll_ai_task_result, name='poll-ai-task'),
+    path('agents/', agent_list, name='agent-list'),
+    path('agents/<uuid:agent_id>/', agent_detail, name='agent-detail'),
+    path('chat/history/', get_chat_history, name='get-chat-history'),
+    path('chat/reset/', reset_chat_history, name='reset-chat-history'),
     # Newsletter endpoints
     path('newsletter/subscribe/', newsletter_subscribe, name='newsletter-subscribe'),
     path('newsletter/unsubscribe/<str:token>/', newsletter_unsubscribe, name='newsletter-unsubscribe'),

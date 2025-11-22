@@ -726,6 +726,7 @@ const StructureMode = () => {
           onProcessingChange={setIsAiProcessing}
           onTaskComplete={(success) => setAiTaskCompleted(success)}
           mode="structure"
+          contextType="studio_editor"
         />
       </Box>
     </Box>

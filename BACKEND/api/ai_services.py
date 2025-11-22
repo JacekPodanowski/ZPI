@@ -30,6 +30,13 @@ class FlashAssessmentService:
     SYSTEM_PROMPT = """
 Jesteś ekspertem AI w aplikacji YourEasySite - pomagasz użytkownikom edytować strony.
 
+🧠 PAMIĘĆ KONWERSACJI - ABSOLUTNIE KRYTYCZNE:
+- Otrzymujesz historię ostatnich wiadomości w sekcji "💬 Historia konwersacji"
+- MUSISZ ZAWSZE czytać i uwzględniać tę historię przed odpowiedzią!
+- Gdy użytkownik mówi "tak", "zgadza się", "ok" - sprawdź historię CO dokładnie potwierdza
+- Nie pytaj ponownie o informacje, które już podał w poprzednich wiadomościach
+- Kontynuuj wątek - jeśli dyskutowaliście o dodaniu eventu, nie zapomnij o tym!
+
 ⚠️ KRYTYCZNE WYMAGANIA ODPOWIEDZI:
 1. Zwracaj TYLKO czysty JSON - żadnego tekstu przed ani po
 2. Pierwszy znak: {
@@ -216,16 +223,18 @@ Odpowiedź: {"status": "success", "site": {pages: [{modules: [{id: "...", type: 
         self, 
         user_prompt: str, 
         site_config: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        chat_history: Optional[list] = None
     ) -> Dict[str, Any]:
         """
-        Process user task using Google Gemini Flash.
+        Process user task using Google Gemini Flash with conversation history.
         Returns complete modified site configuration or clarification question.
         
         Args:
             user_prompt: User command or request
             site_config: Current FULL site configuration
-            context: Additional context (e.g., current page info)
+            context: Additional context (e.g., current page info, context_type)
+            chat_history: List of recent chat messages (last 5) for context
             
         Returns:
             Dict with 'status' ('success' or 'clarification'), 'site' (if success), 
@@ -237,14 +246,154 @@ Odpowiedź: {"status": "success", "site": {pages: [{modules: [{id: "...", type: 
         try:
             logger.info(f"Flash processing task: {user_prompt[:50]}...")
             
-            # Check if we have current page context
-            current_page_info = ""
-            if context and 'currentPageId' in context:
-                current_page_info = f"\n\n📍 Użytkownik jest na stronie: {context.get('currentPageName', 'nieznana')} (ID: {context['currentPageId']})\nJeśli prompt nie mówi inaczej, zmień TYLKO tę stronę."
-                logger.info(f"Flash context: User on page '{context.get('currentPageName')}' (ID: {context['currentPageId']})")
+            # Build context information
+            context_info = ""
+            additional_instructions = ""
+            
+            if context:
+                # Add context type (studio_editor, studio_events, etc.)
+                context_type = context.get('context_type', 'studio_editor')
+                context_info += f"\n\n📍 Kontekst: {context_type}"
+                
+                # Add specialized instructions based on context
+                if context_type == 'studio_events':
+                    additional_instructions = """
+                    
+🗓️ SPECJALIZACJA: ZARZĄDZANIE KALENDARZEM I EVENTAMI
+
+⚠️ BARDZO WAŻNE: ZAWSZE czytaj i uwzględniaj historię konwersacji! Użytkownik może kontynuować wcześniejszy temat.
+
+🚨 ABSOLUTNIE KRYTYCZNE - NIE EDYTUJ SITE CONFIG DLA EVENTÓW!
+Gdy użytkownik prosi o dodanie/zmianę/usunięcie eventu - używasz API, NIE modyfikujesz template_config!
+Eventy to osobna baza danych, NIE są częścią konfiguracji strony!
+
+📋 DOSTĘPNE ENDPOINTY API:
+POST /api/v1/big-events/ - Tworzenie nowego eventu
+Format JSON:
+{
+  "site": <site_id>,
+  "title": "Tytuł wydarzenia",
+  "description": "Opis wydarzenia",
+  "location": "Lokalizacja lub link",
+  "start_date": "2026-07-10",
+  "end_date": "2026-07-15",
+  "max_participants": 10,
+  "price": "100.00",
+  "status": "published"  // lub "draft"
+}
+
+PUT /api/v1/big-events/<event_id>/ - Aktualizacja eventu
+DELETE /api/v1/big-events/<event_id>/ - Usunięcie eventu
+
+🎯 TWOJE ZADANIA W KONTEKŚCIE EVENTS:
+
+⚠️ ABSOLUTNIE NAJPIERW: Przeczytaj sekcję "💬 HISTORIA KONWERSACJI" jeśli jest dostępna!
+
+1. **Sprawdź historię przed odpowiedzią:**
+   - Czy użytkownik już pytał o dodanie eventu?
+   - Jakie szczegóły już podał (tytuł, daty, typ)?
+   - Co dokładnie pytałeś w poprzedniej odpowiedzi?
+
+2. **Gdy użytkownik prosi o dodanie eventu/sesji/zajęć:**
+   - Najpierw sprawdź historię - może już podał niektóre szczegóły!
+   - Wydobądź z jego wiadomości wszystko co możesz (tytuł, daty, lokalizację)
+   - Zapytaj TYLKO o brakujące informacje
+   - Potrzebne dane:
+     * title (nazwa wydarzenia) - może być w promptcie
+     * description (opis wydarzenia) - opcjonalne, możesz wygenerować
+     * start_date (data rozpoczęcia YYYY-MM-DD) - MUSISZ mieć
+     * end_date (data zakończenia YYYY-MM-DD) - opcjonalne, może być null dla jednodniowych
+     * location (miejsce) - opcjonalne
+     * max_participants (max liczba uczestników) - jeśli nie podano, użyj 10
+     * price (cena w PLN) - jeśli nie podano, użyj 0.00
+     * status: "published" (jeśli user chce opublikować) lub "draft" (domyślnie)
+
+3. **Interpretacja dat - PRZYKŁADY:**
+   - "10 lipca po 15 lipca 2026" = start_date: "2026-07-10", end_date: "2026-07-15"
+   - "15 sierpnia 2026" = start_date: "2026-08-15", end_date: null (jednodniowe)
+   - "jutro" = następny dzień w formacie YYYY-MM-DD
+   - Zawsze format YYYY-MM-DD (ISO 8601 date only)
+   
+4. **Gdy użytkownik potwierdza ("tak", "zgadza się", "ok"):**
+   - ⚠️ SPRAWDŹ HISTORIĘ! Co dokładnie pytałeś?
+   - Jeśli pytałeś o daty wydarzenia - potwierdzenie oznacza zgodę na te daty
+   - Jeśli masz już wystarczająco danych - zwróć status "api_call"
+   - NIE pytaj o to samo ponownie!
+
+5. **Gdy masz wszystkie potrzebne dane:**
+   ⚠️ NIE ZWRACAJ "status": "success" - to by edytowało site config!
+   Zwróć TYLKO status "api_call" z kompletnym JSON:
+   {
+     "status": "api_call",
+     "endpoint": "/api/v1/big-events/",
+     "method": "POST",
+     "body": {
+       "site": <site_id z contextu>,
+       "title": "Wycieczka w góry",
+       "description": "Wielodniowa wycieczka górska po Tatrach",
+       "location": "Tatry",
+       "start_date": "2026-07-10",
+       "end_date": "2026-07-15",
+       "max_participants": 15,
+       "price": "500.00",
+       "status": "published"
+     },
+     "explanation": "Tworzę wydarzenie 'Wycieczka w góry' w okresie od 10 do 15 lipca 2026 roku w Tatrach. Cena: 500 zł, maksymalnie 15 uczestników."
+   }
+
+6. **Zmiana ustawień kalendarza (NIE eventów):**
+   Jeśli użytkownik chce zmienić godziny pracy, kolory, ustawienia kalendarza - WTEDY edytuj site config ze statusem "success"
+
+PRZYKŁADY:
+User: "dodaj wydarzenie wycieczka w góry 10-15 lipca 2026"
+AI: {"status": "clarification", "question": "Chcę dodać wydarzenie 'Wycieczka w góry' od 10 do 15 lipca 2026. Jaki ma być typ wydarzenia (indywidualne czy grupowe)? Podaj też lokalizację, typ spotkania i cenę."}
+
+💬 HISTORIA: AI zapytał o typ, lokalizację, cenę
+User: "grupowe, Tatry, 500 zł"
+AI: {"status": "clarification", "question": "Doskonale! Mam: wydarzenie grupowe 'Wycieczka w góry' 10-15.07.2026 w Tatrach za 500 zł. Jaka maksymalna liczba uczestników?"}
+
+💬 HISTORIA: AI zapytał o max uczestników
+User: "20 osób"
+AI: {"status": "api_call", "endpoint": "/api/v1/big-events/", "method": "POST", "body": {"site": 1, "title": "Wycieczka w góry", "description": "Wielodniowa wycieczka górska w Tatrach", "location": "Tatry", "start_date": "2026-07-10", "end_date": "2026-07-15", "max_participants": 20, "price": "500.00", "status": "published"}, "explanation": "Tworzę wydarzenie..."}
+
+---
+
+User: "dodaj wydarzenie wycieczkę w góry 10 lipca po 15 lipca 2026"
+AI: {"status": "clarification", "question": "Rozumiem, że chcesz dodać wydarzenie 'Wycieczka w góry' w okresie od 10 do 15 lipca 2026 roku. Jaki to ma być typ wydarzenia (indywidualne czy grupowe)? Podaj też lokalizację, typ spotkania (osobiście/online) i cenę."}
+
+💬 HISTORIA: AI zapytał czy okres 10-15 lipca jest OK, o typ, lokalizację, cenę
+User: "tak"
+AI: {"status": "clarification", "question": "Świetnie! Potwierdzam daty: 10-15 lipca 2026. Teraz potrzebuję jeszcze informacji: Jaki typ wydarzenia (indywidualne czy grupowe)? Gdzie się odbędzie? Jaki typ spotkania (osobiście, Google Meet, inne)? Jaka cena?"}
+
+---
+
+User: "zmień godziny pracy na 8-20"
+AI: {"status": "success", "site": {...}, "explanation": "Zmieniono godziny pracy w ustawieniach kalendarza"}
+"""
+                
+                # Add current page info if available
+                if 'currentPageId' in context:
+                    context_info += f"\n📄 Strona: {context.get('currentPageName', 'nieznana')} (ID: {context['currentPageId']})"
+                    context_info += "\nJeśli prompt nie mówi inaczej, zmień TYLKO tę stronę."
+                    logger.info(f"Flash context: User on page '{context.get('currentPageName')}' (ID: {context['currentPageId']})")
+            
+            # Build conversation history context
+            history_context = ""
+            if chat_history and len(chat_history) > 0:
+                history_context = "\n\n💬 ⚠️ HISTORIA KONWERSACJI - PRZECZYTAJ TO NAJPIERW! ⚠️\n"
+                history_context += "Poniżej znajdują się poprzednie wiadomości z tej rozmowy. MUSISZ je uwzględnić!\n\n"
+                for idx, msg in enumerate(chat_history[-5:], 1):  # Last 5 messages
+                    history_context += f"{idx}. 👤 Użytkownik napisał: \"{msg['user_message']}\"\n"
+                    history_context += f"   🤖 Ty odpowiedziałeś: \"{msg['ai_response'][:300]}{'...' if len(msg['ai_response']) > 300 else ''}\"\n\n"
+                history_context += "⚠️⚠️⚠️ KRYTYCZNE: Użytkownik może teraz kontynuować temat z powyższej historii!\n"
+                history_context += "Jeśli pisze 'tak', 'zgadza się', 'ok' - sprawdź CO DOKŁADNIE potwierdza w historii!\n"
+                history_context += "NIE pytaj ponownie o informacje, które już podał w poprzednich wiadomościach!\n\n"
+                logger.info(f"Flash context: Including {len(chat_history[-5:])} previous messages")
+            else:
+                logger.warning("Flash context: NO CHAT HISTORY AVAILABLE")
             
             user_message = (
-                f"Polecenie użytkownika: '{user_prompt}'{current_page_info}\n\n"
+                f"Polecenie użytkownika: '{user_prompt}'{context_info}{additional_instructions}{history_context}\n\n"
                 f"Aktualna, pełna konfiguracja strony:\n{json.dumps(site_config, ensure_ascii=False, indent=2)}"
             )
             
