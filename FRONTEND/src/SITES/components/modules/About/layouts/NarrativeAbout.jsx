@@ -2,6 +2,7 @@
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
@@ -17,6 +18,10 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
 
   const handleDescriptionSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
+  const handleImageSave = (newUrl) => {
+    updateModuleContent(pageId, moduleId, { image: newUrl });
   };
 
   const handleHighlightFieldSave = (index, field, newValue) => {
@@ -132,11 +137,21 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
         <div className="grid md:grid-cols-3 gap-8 md:gap-12 items-start mt-8 md:mt-12">
           {/* Image */}
           <div className="md:col-span-1">
-            <img 
-              src={imageUrl || 'https://picsum.photos/seed/about-narrative-placeholder/600/800'} 
-              alt={content.title}
-              className={`w-full h-auto ${roundedClass} ${shadowClass} sticky top-8`}
-            />
+            {isEditing ? (
+              <EditableImage
+                value={content.image}
+                onSave={handleImageSave}
+                alt={content.title}
+                className={`w-full h-auto ${roundedClass} ${shadowClass} sticky top-8`}
+                isModuleSelected={true}
+              />
+            ) : (
+              <img 
+                src={imageUrl || 'https://picsum.photos/seed/about-narrative-placeholder/600/800'} 
+                alt={content.title}
+                className={`w-full h-auto ${roundedClass} ${shadowClass} sticky top-8`}
+              />
+            )}
           </div>
           
           {/* Narrative Text */}

@@ -1,6 +1,7 @@
 // layouts/SplitHero.jsx - Split layout with mobile/desktop responsiveness
 import { resolveMediaUrl } from '../../../../../config/api';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
@@ -12,6 +13,10 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
 
   const handleSubtitleSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
+  const handleImageSave = (newUrl) => {
+    updateModuleContent(pageId, moduleId, { image: newUrl });
   };
 
   const imageOnLeft = content.imagePosition === 'left';
@@ -102,11 +107,21 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
         
         {/* Image */}
         <div className={`relative w-full h-full ${imageOnLeft ? 'md:col-start-1 md:row-start-1' : ''}`}>
-          <img 
-            src={imageUrl || 'https://picsum.photos/seed/hero-placeholder/800/600'} 
-            alt={content.title || content.heading || 'Hero image'}
-            className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
-          />
+          {isEditing ? (
+            <EditableImage
+              value={heroMedia}
+              onSave={handleImageSave}
+              alt={content.title || content.heading || 'Hero image'}
+              className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+              isModuleSelected={true}
+            />
+          ) : (
+            <img 
+              src={imageUrl || 'https://picsum.photos/seed/hero-placeholder/800/600'} 
+              alt={content.title || content.heading || 'Hero image'}
+              className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+            />
+          )}
         </div>
       </div>
     </section>

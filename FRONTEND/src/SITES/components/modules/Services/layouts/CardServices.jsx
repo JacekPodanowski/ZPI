@@ -6,6 +6,7 @@ import FlipCard from '../../../../../components/FlipCard';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const getTrimmedText = (value) => (typeof value === 'string' ? value.trim() : '');
@@ -159,21 +160,31 @@ const CardServices = ({ content, style, isEditing, moduleId, pageId }) => {
                   <div 
                     className={`${style.cardStyle} h-full flex flex-col ${cardClasses}`}
                   >
-                    {hasValidImage && (
+                    {(isEditing || hasValidImage) && (
                       <div className="aspect-video overflow-hidden bg-black flex-shrink-0">
-                        {isVideoUrl(service.image) ? (
-                          <video
-                            src={resolvedImage}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
+                        {isEditing ? (
+                          <EditableImage
+                            value={service.image}
+                            onSave={(newUrl) => handleServiceFieldSave(index, 'image', newUrl)}
+                            alt={serviceName || 'Usługa'}
                             className="w-full h-full object-cover"
-                          >
-                            Twoja przeglądarka nie obsługuje odtwarzania wideo.
-                          </video>
+                            isModuleSelected={true}
+                          />
                         ) : (
-                          <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          isVideoUrl(service.image) ? (
+                            <video
+                              src={resolvedImage}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                            >
+                              Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                            </video>
+                          ) : (
+                            <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          )
                         )}
                       </div>
                     )}
@@ -314,21 +325,31 @@ const CardServices = ({ content, style, isEditing, moduleId, pageId }) => {
                     whileHover={{ y: -6 }}
                     className={`${style.cardStyle} ${cardClasses}`}
                   >
-                    {hasValidImage && (
+                    {(isEditing || hasValidImage) && (
                       <div className="aspect-video overflow-hidden bg-black">
-                        {isVideoUrl(service.image) ? (
-                          <video
-                            src={resolvedImage}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
+                        {isEditing ? (
+                          <EditableImage
+                            value={service.image}
+                            onSave={(newUrl) => handleServiceFieldSave(index, 'image', newUrl)}
+                            alt={serviceName || 'Usługa'}
                             className="w-full h-full object-cover"
-                          >
-                            Twoja przeglądarka nie obsługuje odtwarzania wideo.
-                          </video>
+                            isModuleSelected={true}
+                          />
                         ) : (
-                          <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          isVideoUrl(service.image) ? (
+                            <video
+                              src={resolvedImage}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                            >
+                              Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                            </video>
+                          ) : (
+                            <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          )
                         )}
                       </div>
                     )}

@@ -4,6 +4,7 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
@@ -18,6 +19,13 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
   const handleSubtitleSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { subtitle: newValue });
   };
+
+  const handleMemberImageSave = (index, newUrl) => {
+    const updatedMembers = [...members];
+    updatedMembers[index] = { ...updatedMembers[index], image: newUrl };
+    updateModuleContent(pageId, moduleId, { members: updatedMembers });
+  };
+
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -130,7 +138,7 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
             gap: '1.25rem'
           }}
         >
-          {displayMembers.map((member) => {
+          {displayMembers.map((member, memberIndex) => {
             const resolvedImage = resolveMediaUrl(member.image);
             const hasValidImage = resolvedImage && resolvedImage.trim() !== '';
             
@@ -145,29 +153,39 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
                   className="relative overflow-hidden bg-black"
                   style={{ height: `${Math.round(cardHeight * 0.6)}px` }}
                 >
-                  {hasValidImage ? (
-                    isVideoUrl(member.image) ? (
-                      <video
-                        src={resolvedImage}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      >
-                        Twoja przeglądarka nie obsługuje odtwarzania wideo.
-                      </video>
-                    ) : (
-                      <img
-                        src={resolvedImage}
-                        alt={member.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    )
+                  {isEditing ? (
+                    <EditableImage
+                      value={member.image}
+                      onSave={(newUrl) => handleMemberImageSave(memberIndex, newUrl)}
+                      alt={member.name}
+                      className="w-full h-full object-cover"
+                      isModuleSelected={true}
+                    />
                   ) : (
-                    <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
-                      Dodaj zdjęcie
-                    </div>
+                    hasValidImage ? (
+                      isVideoUrl(member.image) ? (
+                        <video
+                          src={resolvedImage}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        >
+                          Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                        </video>
+                      ) : (
+                        <img
+                          src={resolvedImage}
+                          alt={member.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )
+                    ) : (
+                      <div className="w-full h-full grid place-items-center bg-black/5 text-sm text-black/40">
+                        Dodaj zdjęcie
+                      </div>
+                    )
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   <div className="absolute inset-x-0 bottom-0 p-6 text-white opacity-0 translate-y-6 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">

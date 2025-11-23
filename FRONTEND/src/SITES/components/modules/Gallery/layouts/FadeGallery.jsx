@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { renderMedia } from '../helpers';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const FadeGallery = ({ content, style, isEditing, moduleId, pageId }) => {
@@ -13,6 +14,16 @@ const FadeGallery = ({ content, style, isEditing, moduleId, pageId }) => {
       newImages[index] = { url: newImages[index], caption: newValue };
     } else {
       newImages[index] = { ...newImages[index], caption: newValue };
+    }
+    updateModuleContent(pageId, moduleId, { images: newImages });
+  };
+
+  const handleImageSave = (index, newUrl) => {
+    const newImages = [...images];
+    if (typeof newImages[index] === 'string') {
+      newImages[index] = newUrl;
+    } else {
+      newImages[index] = { ...newImages[index], url: newUrl };
     }
     updateModuleContent(pageId, moduleId, { images: newImages });
   };
@@ -52,7 +63,17 @@ const FadeGallery = ({ content, style, isEditing, moduleId, pageId }) => {
               transition={{ duration: 1 }}
               className="absolute inset-0"
             >
-              {renderMedia(imgUrlRaw, caption || '', 'w-full h-full object-cover')}
+              {isEditing ? (
+                <EditableImage
+                  value={imgUrlRaw}
+                  onSave={(newUrl) => handleImageSave(currentIndex, newUrl)}
+                  alt={caption || `Image ${currentIndex + 1}`}
+                  className="w-full h-full object-cover"
+                  isModuleSelected={true}
+                />
+              ) : (
+                renderMedia(imgUrlRaw, caption || '', 'w-full h-full object-cover')
+              )}
               {(isEditing || (shouldShowCaption && caption && caption.trim())) && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-4">
                   {isEditing ? (

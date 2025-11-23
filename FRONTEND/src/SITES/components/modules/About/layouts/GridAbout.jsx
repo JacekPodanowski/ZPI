@@ -2,6 +2,7 @@
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
@@ -13,6 +14,10 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
 
   const handleDescriptionSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
+  const handleImageSave = (newUrl) => {
+    updateModuleContent(pageId, moduleId, { image: newUrl });
   };
 
   const handleHighlightFieldSave = (index, field, newValue) => {
@@ -83,11 +88,21 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
         
         {/* Image and Description Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-8 md:mt-12">
-          <img 
-            src={imageUrl || 'https://picsum.photos/seed/about-placeholder/800/600'} 
-            alt={content.title}
-            className={`w-full h-auto ${roundedClass} ${shadowClass}`}
-          />
+          {isEditing ? (
+            <EditableImage
+              value={content.image}
+              onSave={handleImageSave}
+              alt={content.title}
+              className={`w-full h-auto ${roundedClass} ${shadowClass}`}
+              isModuleSelected={true}
+            />
+          ) : (
+            <img 
+              src={imageUrl || 'https://picsum.photos/seed/about-placeholder/800/600'} 
+              alt={content.title}
+              className={`w-full h-auto ${roundedClass} ${shadowClass}`}
+            />
+          )}
           
           <div>
             {isEditing ? (

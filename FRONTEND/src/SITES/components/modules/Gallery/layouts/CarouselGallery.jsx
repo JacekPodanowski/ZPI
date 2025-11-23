@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { renderMedia } from '../helpers';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const CarouselGallery = ({ content, style, isEditing, moduleId, pageId }) => {
@@ -13,6 +14,16 @@ const CarouselGallery = ({ content, style, isEditing, moduleId, pageId }) => {
       newImages[index] = { url: newImages[index], caption: newValue };
     } else {
       newImages[index] = { ...newImages[index], caption: newValue };
+    }
+    updateModuleContent(pageId, moduleId, { images: newImages });
+  };
+
+  const handleImageSave = (index, newUrl) => {
+    const newImages = [...images];
+    if (typeof newImages[index] === 'string') {
+      newImages[index] = newUrl;
+    } else {
+      newImages[index] = { ...newImages[index], url: newUrl };
     }
     updateModuleContent(pageId, moduleId, { images: newImages });
   };
@@ -54,9 +65,19 @@ const CarouselGallery = ({ content, style, isEditing, moduleId, pageId }) => {
               <motion.div
                 key={idx}
                 whileHover={{ scale: 1.05 }}
-                className={`flex-shrink-0 w-72 sm:w-80 ${style.rounded} overflow-hidden ${style.shadows} cursor-pointer snap-center bg-white`}
+                className={`flex-shrink-0 w-72 sm:w-80 ${style.rounded} overflow-hidden ${style.shadows} ${isEditing ? '' : 'cursor-pointer'} snap-center bg-white`}
               >
-                {renderMedia(imgUrlRaw, caption || '', 'w-full h-64 object-cover')}
+                {isEditing ? (
+                  <EditableImage
+                    value={imgUrlRaw}
+                    onSave={(newUrl) => handleImageSave(idx, newUrl)}
+                    alt={caption || `Image ${idx + 1}`}
+                    className="w-full h-64 object-cover"
+                    isModuleSelected={true}
+                  />
+                ) : (
+                  renderMedia(imgUrlRaw, caption || '', 'w-full h-64 object-cover')
+                )}
                 {(isEditing || (shouldShowCaption && caption && caption.trim())) && (
                   <div className="p-3">
                     {isEditing ? (

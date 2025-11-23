@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
 import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const SplitVideo = ({ content, style, isEditing, moduleId, pageId }) => {
@@ -14,6 +15,10 @@ const SplitVideo = ({ content, style, isEditing, moduleId, pageId }) => {
 
   const handleDescriptionSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
+  const handleSideImageSave = (newUrl) => {
+    updateModuleContent(pageId, moduleId, { sideImage: newUrl });
   };
 
   const { videoUrl, title, description, sideImage, videoPosition = 'left', captionColor, bgColor, muted } = content;
@@ -111,11 +116,21 @@ const SplitVideo = ({ content, style, isEditing, moduleId, pageId }) => {
             className={`${videoOnLeft ? '' : 'md:col-start-1 md:row-start-1'}`}
           >
             {imageUrl ? (
-              <img 
-                src={imageUrl} 
-                alt={title || 'Video companion image'}
-                className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
-              />
+              isEditing ? (
+                <EditableImage
+                  value={sideImage}
+                  onSave={handleSideImageSave}
+                  alt={title || 'Video companion image'}
+                  className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+                  isModuleSelected={true}
+                />
+              ) : (
+                <img 
+                  src={imageUrl} 
+                  alt={title || 'Video companion image'}
+                  className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+                />
+              )
             ) : (isEditing || description) ? (
               <div className="space-y-4">
                 {isEditing ? (
