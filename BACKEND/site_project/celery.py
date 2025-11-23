@@ -23,6 +23,10 @@ app.conf.beat_schedule = {
         'task': 'api.tasks.send_random_test_notification',
         'schedule': 900.0,  # 15 minutes in seconds
     },
+    'sync-cloudflare-domain-status-every-10-minutes': {
+        'task': 'api.tasks.sync_cloudflare_domain_status',
+        'schedule': 600.0,  # 10 minutes in seconds
+    },
 }
 app.conf.timezone = 'UTC'
 

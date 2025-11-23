@@ -16,18 +16,18 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
-    Link
+    Link,
+    Collapse,
+    IconButton
 } from '@mui/material';
 import { 
-    Search as SearchIcon, 
-    CheckCircle as CheckCircleIcon,
-    ShoppingCart as ShoppingCartIcon,
     Add as AddIcon,
-    OpenInNew as OpenInNewIcon
+    OpenInNew as OpenInNewIcon,
+    ExpandMore as ExpandMoreIcon,
+    ShoppingCart as ShoppingCartIcon
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
 import { fetchSiteById } from '../../../services/siteService';
-import { checkDomainAvailability, purchaseDomain, getDomainOrders, checkOrderStatus } from '../../../services/domainService';
+import { getDomainOrders, checkOrderStatus, addDomainWithCloudflare } from '../../../services/domainService';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 import { getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
 
@@ -42,21 +42,26 @@ const DomainPage = () => {
     const [domainOrders, setDomainOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
     
-    // Domain search state
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searching, setSearching] = useState(false);
+    // Status checking
     const [searchError, setSearchError] = useState(null);
-    const [domainResults, setDomainResults] = useState([]);
-    
-    // Purchase state
-    const [purchasing, setPurchasing] = useState(false);
-    const [selectedDomain, setSelectedDomain] = useState(null);
-    const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [returnedFromPayment, setReturnedFromPayment] = useState(false);
     const [checkingStatus, setCheckingStatus] = useState(null); // order ID being checked
+    
+    // Add domain state
+    const [newDomainName, setNewDomainName] = useState('');
+    const [addingDomain, setAddingDomain] = useState(false);
+    
+    // Collapse state for nameserver instructions
+    const [expandedOrders, setExpandedOrders] = useState({});
 
     useEffect(() => {
         const loadSite = async () => {
+            if (!siteId) {
+                // No siteId provided, skip loading site
+                setLoading(false);
+                return;
+            }
+            
             try {
                 setLoading(true);
                 const data = await fetchSiteById(siteId);
@@ -69,20 +74,16 @@ const DomainPage = () => {
             }
         };
 
-        if (siteId) {
-            loadSite();
-        }
+        loadSite();
     }, [siteId]);
     
     useEffect(() => {
         const loadDomainOrders = async () => {
-            if (!siteId) return;
-            
             try {
                 setLoadingOrders(true);
-                const orders = await getDomainOrders(parseInt(siteId));
+                const orders = await getDomainOrders(siteId ? parseInt(siteId) : null);
                 setDomainOrders(orders);
-                return orders;
+                return orders || [];
             } catch (err) {
                 console.error('Failed to load domain orders:', err);
                 return [];
@@ -96,15 +97,17 @@ const DomainPage = () => {
         // Auto-refresh orders every 10 seconds if any are in progress
         const interval = setInterval(async () => {
             const orders = await loadDomainOrders();
-            const hasOrdersInProgress = orders.some(order => 
-                order.status === 'pending_payment' || order.status === 'configuring_dns'
-            );
-            
-            if (hasOrdersInProgress) {
-                console.log('[DomainPage] Auto-refreshing orders (in progress detected)');
-            } else {
-                // No orders in progress, stop auto-refresh
-                clearInterval(interval);
+            if (orders && orders.length > 0) {
+                const hasOrdersInProgress = orders.some(order => 
+                    order.status === 'pending_payment' || order.status === 'configuring_dns'
+                );
+                
+                if (hasOrdersInProgress) {
+                    console.log('[DomainPage] Auto-refreshing orders (in progress detected)');
+                } else {
+                    // No orders in progress, stop auto-refresh
+                    clearInterval(interval);
+                }
             }
         }, 10000); // 10 seconds
         
@@ -130,114 +133,34 @@ const DomainPage = () => {
         }
     }, [siteId]);
 
-    const handleSearch = async () => {
-        if (!searchQuery.trim()) {
+    const handleAddDomain = async () => {
+        if (!newDomainName.trim()) {
             setSearchError('Please enter a domain name');
             return;
         }
-
-        // Remove any TLD if user entered it
-        const cleanQuery = searchQuery.trim().toLowerCase().replace(/\.(com|pl|io|net|app|store|online)$/i, '');
-
-        console.log('[DomainPage] Starting domain search for:', cleanQuery);
-
+        
+        console.log('[DomainPage] Adding domain to Cloudflare:', newDomainName);
+        
         try {
-            setSearching(true);
+            setAddingDomain(true);
             setSearchError(null);
-            setDomainResults([]);
-
-            const results = await checkDomainAvailability(cleanQuery);
-            console.log('[DomainPage] Search results:', results);
+            const response = await addDomainWithCloudflare(newDomainName.trim(), siteId ? parseInt(siteId) : null);
             
-            // Sort: available first (by price), then unavailable (alphabetically)
-            const sortedResults = results.sort((a, b) => {
-                if (a.available && !b.available) return -1;
-                if (!a.available && b.available) return 1;
-                if (a.available && b.available) {
-                    return parseFloat(a.price) - parseFloat(b.price);
-                }
-                return a.domain.localeCompare(b.domain);
-            });
+            console.log('[DomainPage] Domain added to Cloudflare:', response);
             
-            console.log('[DomainPage] Sorted results:', sortedResults);
-            setDomainResults(sortedResults);
-
-            const availableCount = sortedResults.filter(d => d.available).length;
-            if (availableCount === 0) {
-                setSearchError('No available domains found. Try a different name.');
-            }
+            // Reload orders to show the new domain
+            const orders = await getDomainOrders(parseInt(siteId));
+            setDomainOrders(orders);
+            
+            // Clear the input
+            setNewDomainName('');
+            
         } catch (err) {
-            console.error('[DomainPage] Domain search failed:', err);
-            console.error('[DomainPage] Error details:', {
-                message: err.message,
-                response: err.response?.data,
-                status: err.response?.status
-            });
-            
-            // Handle specific error types
-            if (err.response?.status === 403) {
-                setSearchError(
-                    'Domain service configuration error: ' + 
-                    (err.response?.data?.detail || 'API credentials do not have required permissions. Please contact support.')
-                );
-            } else if (err.response?.status === 503) {
-                setSearchError(
-                    'Domain service temporarily unavailable. ' + 
-                    (err.response?.data?.detail || 'Please try again later or contact support.')
-                );
-            } else {
-                setSearchError(err.message || 'Failed to search domains. Please try again.');
-            }
+            console.error('[DomainPage] Failed to add domain:', err);
+            setSearchError(err.message || 'Failed to add domain to Cloudflare');
         } finally {
-            setSearching(false);
+            setAddingDomain(false);
         }
-    };
-
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
-    };
-    
-    const handlePurchaseClick = (domain) => {
-        setSelectedDomain(domain);
-        setConfirmDialogOpen(true);
-    };
-    
-    const handleConfirmPurchase = async () => {
-        if (!selectedDomain) return;
-        
-        console.log('[DomainPage] Purchasing domain:', selectedDomain.domain);
-        
-        try {
-            setPurchasing(true);
-            const response = await purchaseDomain(selectedDomain.domain, parseInt(siteId));
-            
-            console.log('[DomainPage] Purchase initiated:', response);
-            
-            // Store site_id in localStorage so we can navigate back after OVH payment
-            localStorage.setItem('domain_purchase_site_id', siteId);
-            localStorage.setItem('domain_purchase_order_id', response.order_id);
-            
-            // Redirect to payment URL (mock or real)
-            if (response.payment_url) {
-                window.location.href = response.payment_url;
-            } else {
-                // Fallback: redirect to success page directly
-                navigate(`/studio/domain-purchase-success?orderId=${response.order_id}`);
-            }
-        } catch (err) {
-            console.error('[DomainPage] Purchase failed:', err);
-            setSearchError(err.message || 'Failed to initiate purchase. Please try again.');
-            setConfirmDialogOpen(false);
-        } finally {
-            setPurchasing(false);
-        }
-    };
-    
-    const handleCancelPurchase = () => {
-        setConfirmDialogOpen(false);
-        setSelectedDomain(null);
     };
     
     const handleCheckOrderStatus = async (orderId) => {
@@ -280,7 +203,7 @@ const DomainPage = () => {
         );
     }
 
-    if (error || !site) {
+    if (error) {
         return (
             <REAL_DefaultLayout
                 title="Error"
@@ -288,7 +211,7 @@ const DomainPage = () => {
             >
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Typography variant="h5" color="error" gutterBottom>
-                        {error || 'Site not found'}
+                        {error}
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                         Please check the URL and try again.
@@ -300,70 +223,75 @@ const DomainPage = () => {
 
     return (
         <REAL_DefaultLayout
-            title="Domain Management"
-            subtitle={`Search and purchase a custom domain for ${site.name}`}
+            title="Mam domenę"
+            subtitle={site ? `Dodaj własną domenę do ${site.name}` : "Dodaj i skonfiguruj własną domenę"}
         >
-            {/* Site URL and Add Domain Button */}
-            <Paper
-                sx={{
-                    p: 3,
-                    mb: 3,
-                    bgcolor: 'background.paper',
-                    borderRadius: 3,
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 2
-                }}
-            >
-                <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                        Current Site URL
-                    </Typography>
-                    <Link
-                        href={`https://${getSiteUrlDisplay(site)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+            {/* Site URL and Add Domain Button - Only show if site is loaded */}
+            {site && (
+                <Paper
+                    sx={{
+                        p: 3,
+                        mb: 3,
+                        bgcolor: 'background.paper',
+                        borderRadius: 3,
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 2
+                    }}
+                >
+                    <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            Current Site URL
+                        </Typography>
+                        <Link
+                            href={`https://${getSiteUrlDisplay(site)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                fontSize: '1.1rem',
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                color: 'primary.main',
+                                '&:hover': {
+                                    textDecoration: 'underline'
+                                }
+                            }}
+                        >
+                            {getSiteUrlDisplay(site)}
+                            <OpenInNewIcon sx={{ fontSize: 18 }} />
+                        </Link>
+                    </Box>
+                    <Button
+                        variant="contained"
+                        startIcon={<ShoppingCartIcon />}
+                        onClick={() => {
+                            if (siteId) {
+                                navigate(`/studio/${siteId}/domain/buy`);
+                            } else {
+                                navigate('/studio/domain/buy');
+                            }
+                        }}
                         sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            fontSize: '1.1rem',
-                            fontWeight: 600,
-                            textDecoration: 'none',
-                            color: 'primary.main',
+                            bgcolor: 'primary.main',
+                            color: '#fff',
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            px: 3,
                             '&:hover': {
-                                textDecoration: 'underline'
+                                bgcolor: 'primary.dark'
                             }
                         }}
                     >
-                        {getSiteUrlDisplay(site)}
-                        <OpenInNewIcon sx={{ fontSize: 18 }} />
-                    </Link>
-                </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => {
-                        // Scroll to search section
-                        document.getElementById('domain-search')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    sx={{
-                        bgcolor: 'primary.main',
-                        color: '#fff',
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        px: 3,
-                        '&:hover': {
-                            bgcolor: 'primary.dark'
-                        }
-                    }}
-                >
-                    Dodaj domenę
-                </Button>
-            </Paper>
+                        Kup domenę
+                    </Button>
+                </Paper>
+            )}
 
             {/* Payment Return Notification */}
             {returnedFromPayment && (
@@ -414,13 +342,98 @@ const DomainPage = () => {
                                         order.status === 'active' ? 'success' :
                                         order.status === 'configuring_dns' ? 'info' :
                                         order.status === 'pending_payment' ? 'warning' :
+                                        order.status === 'pending' ? 'warning' :
+                                        order.status === 'free' ? 'default' :
                                         'error'
                                     }
+                                    icon={order.status === 'pending' || order.status === 'free' ? <Box component="span">⏳</Box> : undefined}
                                 />
                             </Box>
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
                                 Order ID: {order.id} | Price: {order.price} PLN
                             </Typography>
+                            
+                            {/* Display nameservers for pending/free domains */}
+                            {(order.status === 'pending' || order.status === 'free') && order.cloudflare_nameservers && order.cloudflare_nameservers.length > 0 && (
+                                <Box sx={{ mt: 2 }}>
+                                    <Button
+                                        fullWidth
+                                        variant="outlined"
+                                        color="warning"
+                                        onClick={() => setExpandedOrders(prev => ({ ...prev, [order.id]: !prev[order.id] }))}
+                                        endIcon={
+                                            <ExpandMoreIcon
+                                                sx={{
+                                                    transform: expandedOrders[order.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    transition: 'transform 0.3s'
+                                                }}
+                                            />
+                                        }
+                                        sx={{
+                                            justifyContent: 'space-between',
+                                            textTransform: 'none',
+                                            borderColor: 'warning.main',
+                                            color: 'warning.dark',
+                                            '&:hover': {
+                                                borderColor: 'warning.dark',
+                                                bgcolor: 'warning.50'
+                                            }
+                                        }}
+                                    >
+                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                            ⚠️ Konfiguracja nameserverów
+                                        </Typography>
+                                    </Button>
+                                    
+                                    <Collapse in={expandedOrders[order.id]} timeout="auto">
+                                        <Box sx={{ mt: 2, p: 2, bgcolor: 'warning.50', borderRadius: 1, border: '1px solid', borderColor: 'warning.main' }}>
+                                            <Alert severity="warning" sx={{ mb: 2 }}>
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                                    ⚠️ Ustaw nameservery u rejestratora
+                                                </Typography>
+                                            </Alert>
+                                            
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                                Nameservery Cloudflare:
+                                            </Typography>
+                                            <Box sx={{ 
+                                                bgcolor: 'white', 
+                                                p: 1.5, 
+                                                borderRadius: 1,
+                                                fontFamily: 'monospace',
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                mb: 2
+                                            }}>
+                                                {order.cloudflare_nameservers.map((ns, index) => (
+                                                    <Typography 
+                                                        key={index} 
+                                                        variant="body2" 
+                                                        sx={{ 
+                                                            mb: index < order.cloudflare_nameservers.length - 1 ? 0.5 : 0,
+                                                            fontFamily: 'monospace',
+                                                            fontWeight: 600
+                                                        }}
+                                                    >
+                                                        {ns}
+                                                    </Typography>
+                                                ))}
+                                            </Box>
+                                            
+                                            <Typography variant="body2" sx={{ mb: 1 }}>
+                                                • Jeśli <strong>nie zmieniłeś</strong> nameserverów - zmień je u rejestratora na powyższe wartości.
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ mb: 1 }}>
+                                                • Jeśli <strong>już zmieniłeś</strong> - nie rób nic, propagacja trwa do 48 godzin.
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                                                Jeśli po 2 dniach status się nie zmieni, skontaktuj się z pomocą techniczną.
+                                            </Typography>
+                                        </Box>
+                                    </Collapse>
+                                </Box>
+                            )}
+                            
                             {order.status === 'pending_payment' && (
                                 <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                                     {order.payment_url && (
@@ -458,67 +471,38 @@ const DomainPage = () => {
                 </Paper>
             )}
             
-            {/* Current Domain Display */}
+            {/* Add Domain to Cloudflare */}
             <Paper
                 sx={{
-                    p: 3,
+                    p: 4,
                     mb: 4,
                     bgcolor: 'background.paper',
                     borderRadius: 3,
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
                 }}
             >
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Current URL:
-                </Typography>
-                <Typography 
-                    variant="h6" 
-                    sx={{ 
-                        fontFamily: 'monospace',
-                        color: 'primary.main',
-                        fontWeight: 600,
-                        mb: 1
-                    }}
-                >
-                    {getSiteUrlDisplay(site.identifier)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    Production URL: {site.identifier}.youreasysite.com
-                </Typography>
-            </Paper>
-
-            {/* Domain Search */}
-            <Paper
-                id="domain-search"
-                sx={{
-                    p: 4,
-                    bgcolor: 'background.paper',
-                    borderRadius: 3,
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
-                }}
-            >
                 <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-                    Search Available Domains
+                    Dodaj swoją domenę
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Enter your desired domain name (without extension). We'll check availability across multiple TLDs.
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Masz już domenę? Dodaj ją tutaj, aby skonfigurować przekierowanie na Twoją stronę.
+                </Typography>
+                <Typography variant="body2" color="primary" sx={{ mb: 3, fontWeight: 600 }}>
+                    💡 Nie masz domeny? <Link href="/studio/domain/buy" sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>Kup domenę tutaj</Link>
                 </Typography>
 
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                     <TextField
                         fullWidth
-                        placeholder="Enter domain name (e.g., mybusiness)"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        disabled={searching}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon />
-                                </InputAdornment>
-                            ),
+                        placeholder="Wpisz swoją domenę (np. mojastrona.com)"
+                        value={newDomainName}
+                        onChange={(e) => setNewDomainName(e.target.value)}
+                        onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                                handleAddDomain();
+                            }
                         }}
+                        disabled={addingDomain}
                         sx={{
                             '& .MuiOutlinedInput-root': {
                                 borderRadius: 2,
@@ -527,214 +511,30 @@ const DomainPage = () => {
                     />
                     <Button
                         variant="contained"
-                        onClick={handleSearch}
-                        disabled={searching || !searchQuery.trim()}
+                        onClick={handleAddDomain}
+                        disabled={addingDomain || !newDomainName.trim()}
                         sx={{
-                            minWidth: 120,
+                            minWidth: 140,
                             borderRadius: 2,
                             textTransform: 'none',
                             fontSize: '1rem',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            bgcolor: 'primary.main',
+                            '&:hover': {
+                                bgcolor: 'primary.dark'
+                            }
                         }}
                     >
-                        {searching ? <CircularProgress size={24} /> : 'Search'}
+                        {addingDomain ? <CircularProgress size={24} /> : 'Dodaj domenę'}
                     </Button>
                 </Box>
-
+                
                 {searchError && (
-                    <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+                    <Alert severity="error" sx={{ borderRadius: 2 }}>
                         {searchError}
                     </Alert>
                 )}
-
-                {/* Domain Results */}
-                <AnimatePresence>
-                    {domainResults.length > 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mt: 4, mb: 2 }}>
-                                Domain Results ({domainResults.filter(d => d.available).length} available, {domainResults.filter(d => !d.available).length} taken)
-                            </Typography>
-                            <Grid container spacing={2}>
-                                {domainResults.map((domain, index) => (
-                                    <Grid item xs={12} sm={6} md={4} key={domain.domain}>
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.3, delay: index * 0.05 }}
-                                        >
-                                            <Paper
-                                                sx={{
-                                                    p: 3,
-                                                    height: '100%',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    gap: 2,
-                                                    borderRadius: 2,
-                                                    border: '1px solid',
-                                                    borderColor: domain.available ? 'divider' : 'error.light',
-                                                    opacity: domain.available ? 1 : 0.7,
-                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                                    ...(!domain.available && {
-                                                        backgroundColor: (theme) => theme.palette.mode === 'light' 
-                                                            ? 'rgba(211, 47, 47, 0.05)' 
-                                                            : 'rgba(211, 47, 47, 0.1)'
-                                                    }),
-                                                    ...(domain.available && {
-                                                        '&:hover': {
-                                                            boxShadow: '0 8px 30px rgba(146, 0, 32, 0.15)',
-                                                            transform: 'translateY(-4px)',
-                                                            borderColor: 'primary.main'
-                                                        }
-                                                    })
-                                                }}
-                                            >
-                                                <Box>
-                                                    <Typography 
-                                                        variant="h6" 
-                                                        sx={{ 
-                                                            fontWeight: 700,
-                                                            fontSize: '1.1rem',
-                                                            mb: 1,
-                                                            wordBreak: 'break-all'
-                                                        }}
-                                                    >
-                                                        {domain.domain}
-                                                    </Typography>
-                                                    <Chip
-                                                        icon={domain.available ? <CheckCircleIcon /> : <Box component="span" sx={{ fontSize: '1rem' }}>✕</Box>}
-                                                        label={domain.available ? "Available" : "Taken"}
-                                                        color={domain.available ? "success" : "error"}
-                                                        size="small"
-                                                        sx={{ fontWeight: 600 }}
-                                                    />
-                                                </Box>
-
-                                                <Box sx={{ flex: 1 }}>
-                                                    {domain.available ? (
-                                                        <>
-                                                            <Typography 
-                                                                variant="h4" 
-                                                                color="primary" 
-                                                                sx={{ fontWeight: 700, mb: 0.5 }}
-                                                            >
-                                                                {domain.price} {domain.currency || 'PLN'}
-                                                            </Typography>
-                                                            <Typography variant="body2" color="text.secondary">
-                                                                Registration
-                                                            </Typography>
-                                                            {domain.renewalPrice && (
-                                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                                    Renewal: {domain.renewalPrice} {domain.currency || 'PLN'}/year
-                                                                </Typography>
-                                                            )}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Typography 
-                                                                variant="h5" 
-                                                                color="error" 
-                                                                sx={{ fontWeight: 700, mb: 0.5 }}
-                                                            >
-                                                                Registered
-                                                            </Typography>
-                                                            <Typography variant="body2" color="text.secondary">
-                                                                This domain is taken
-                                                            </Typography>
-                                                            {domain.expiryDate && (
-                                                                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                                                    Expires: {domain.expiryDate}
-                                                                </Typography>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </Box>
-
-                                                {domain.available && (
-                                                    <Button
-                                                        variant="contained"
-                                                        fullWidth
-                                                        startIcon={<ShoppingCartIcon />}
-                                                        onClick={() => handlePurchaseClick(domain)}
-                                                        disabled={purchasing}
-                                                        sx={{
-                                                            borderRadius: 2,
-                                                            textTransform: 'none',
-                                                            fontWeight: 600,
-                                                            py: 1.5
-                                                        }}
-                                                    >
-                                                        {purchasing && selectedDomain?.domain === domain.domain ? (
-                                                            <CircularProgress size={24} color="inherit" />
-                                                        ) : (
-                                                            'Buy Now'
-                                                        )}
-                                                    </Button>
-                                                )}
-                                            </Paper>
-                                        </motion.div>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </Paper>
-            
-            {/* Purchase Confirmation Dialog */}
-            <Dialog
-                open={confirmDialogOpen}
-                onClose={handleCancelPurchase}
-                PaperProps={{
-                    sx: {
-                        borderRadius: 3,
-                        p: 2,
-                        maxWidth: 500
-                    }
-                }}
-            >
-                <DialogTitle sx={{ fontWeight: 600, fontSize: '1.5rem' }}>
-                    Confirm Domain Purchase
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        You are about to purchase the domain <strong>{selectedDomain?.domain}</strong> for <strong>{selectedDomain?.price} {selectedDomain?.currency || 'PLN'}</strong>.
-                    </DialogContentText>
-                    <DialogContentText sx={{ mt: 2 }}>
-                        After clicking "Proceed to Payment", you will be redirected to complete the purchase.
-                    </DialogContentText>
-                    <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
-                        <Typography variant="body2">
-                            <strong>Note:</strong> This is a demo version. In production, you would be redirected to a secure payment gateway.
-                        </Typography>
-                    </Alert>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button 
-                        onClick={handleCancelPurchase}
-                        disabled={purchasing}
-                        sx={{ textTransform: 'none', fontWeight: 600 }}
-                    >
-                        Cancel
-                    </Button>
-                    <Button 
-                        onClick={handleConfirmPurchase}
-                        variant="contained"
-                        disabled={purchasing}
-                        sx={{ 
-                            textTransform: 'none', 
-                            fontWeight: 600,
-                            minWidth: 160
-                        }}
-                    >
-                        {purchasing ? <CircularProgress size={24} color="inherit" /> : 'Proceed to Payment'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
         </REAL_DefaultLayout>
     );
 };

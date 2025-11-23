@@ -26,6 +26,7 @@ import SiteLabPage from './pages/Lab/SiteLabPage';
 import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import TeamPage from './pages/Team/TeamPage';
 import DomainPage from './pages/Domain/DomainPage';
+import BuyDomainPage from './pages/Domain/BuyDomainPage';
 import DomainPurchaseSuccessPage from './pages/Domain/DomainPurchaseSuccessPage';
 import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
 import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
@@ -79,8 +80,11 @@ const StudioApp = () => (
       <Route path="calendar/creator" element={<ProtectedRoute><CreatorCalendarApp /></ProtectedRoute>} />
       <Route path="events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
       <Route path="sites" element={<ProtectedRoute><SitesPage /></ProtectedRoute>} />
-      <Route path="domain/:siteId" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
+      <Route path="domain" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
+      <Route path="domain/buy" element={<ProtectedRoute><BuyDomainPage /></ProtectedRoute>} />
       <Route path="domain-purchase-success" element={<ProtectedRoute><DomainPurchaseSuccessPage /></ProtectedRoute>} />
+      <Route path=":siteId/domain" element={<ProtectedRoute><DomainPage /></ProtectedRoute>} />
+      <Route path=":siteId/domain/buy" element={<ProtectedRoute><BuyDomainPage /></ProtectedRoute>} />
       <Route path="team/:siteId" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
       <Route path="new" element={<CategorySelectionPage />} />
       <Route path="new_project" element={<NewProjectPage />} />
