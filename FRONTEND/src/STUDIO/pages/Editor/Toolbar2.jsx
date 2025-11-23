@@ -21,8 +21,9 @@ import useNewEditorStore from '../../store/newEditorStore';
 import { alpha } from '@mui/material/styles';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
-const DEFAULT_TOOLBAR_WIDTH = 200;
-const MIN_TOOLBAR_WIDTH = 175;
+const TOOLBAR_WIDTH_MIN = 175;
+const TOOLBAR_WIDTH_DEFAULT = 200;
+const TOOLBAR_WIDTH_MAX = 300;
 const COLLAPSED_TOOLBAR_WIDTH = 48;
 const COLLAPSE_INDICATOR_BUFFER = 25;
 const COLLAPSE_INDICATOR_MAX_DRAG = 140;
@@ -92,7 +93,7 @@ const getIndicatorVisuals = (styleId, size, accentColor) => {
   return visuals;
 };
 
-const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
+const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthChange }) => {
   const modules = getAvailableModules();
   const theme = useTheme();
   const isDarkMode = theme.mode === 'dark';
@@ -124,7 +125,7 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
   const [isFirstRender, setIsFirstRender] = useState(true);
-  const [toolbarWidth, setToolbarWidth] = useState(DEFAULT_TOOLBAR_WIDTH);
+  const [toolbarWidth, setToolbarWidth] = useState(TOOLBAR_WIDTH_DEFAULT);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [collapseIndicatorSize, setCollapseIndicatorSize] = useState(0);
@@ -264,6 +265,8 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
     resizeStartWidth.current = toolbarWidth;
   };
 
+
+
   useEffect(() => {
     if (!isResizing) return;
 
@@ -271,35 +274,47 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
       const delta = e.clientX - resizeStartX.current;
       const targetWidth = resizeStartWidth.current + delta;
 
-      if (targetWidth >= MIN_TOOLBAR_WIDTH) {
-        setToolbarWidth(targetWidth);
+      if (targetWidth >= TOOLBAR_WIDTH_MIN) {
+        // Between min and max: update width freely in real-time
+        const clampedWidth = Math.max(TOOLBAR_WIDTH_MIN, Math.min(targetWidth, TOOLBAR_WIDTH_MAX));
+        setToolbarWidth(clampedWidth);
         setCollapseIndicatorSize(0);
+        onWidthChange?.(clampedWidth);
         return;
       }
 
-      setToolbarWidth(MIN_TOOLBAR_WIDTH);
-      const overshoot = MIN_TOOLBAR_WIDTH - targetWidth;
+      // Below minimum: keep at minimum and show collapse indicator
+      const overshoot = TOOLBAR_WIDTH_MIN - targetWidth;
 
       if (overshoot <= COLLAPSE_INDICATOR_BUFFER) {
+        setToolbarWidth(TOOLBAR_WIDTH_MIN);
         setCollapseIndicatorSize(0);
+        onWidthChange?.(TOOLBAR_WIDTH_MIN);
         return;
       }
 
+      setToolbarWidth(TOOLBAR_WIDTH_MIN);
       const effectiveOvershoot = Math.min(
         overshoot - COLLAPSE_INDICATOR_BUFFER,
         COLLAPSE_INDICATOR_MAX_DRAG
       );
       setCollapseIndicatorSize(effectiveOvershoot);
+      onWidthChange?.(TOOLBAR_WIDTH_MIN);
     };
 
     const handleMouseUp = (e) => {
       setIsResizing(false);
       
+      const delta = e.clientX - resizeStartX.current;
+      const targetWidth = resizeStartWidth.current + delta;
+      
       // If indicator was visible (pulled beyond minimum), collapse
-      if (collapseIndicatorSize >= COLLAPSE_INDICATOR_COLLAPSE_THRESHOLD) {
+      if (targetWidth < TOOLBAR_WIDTH_MIN && collapseIndicatorSize >= COLLAPSE_INDICATOR_COLLAPSE_THRESHOLD) {
         setIsCollapsed(true);
         setToolbarWidth(COLLAPSED_TOOLBAR_WIDTH);
+        onWidthChange?.(COLLAPSED_TOOLBAR_WIDTH);
       }
+      // Otherwise keep the current width (no snapping)
       
       setCollapseIndicatorSize(0);
     };
@@ -316,12 +331,19 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
   const handleToggleCollapse = () => {
     if (isCollapsed) {
       setIsCollapsed(false);
-      setToolbarWidth(DEFAULT_TOOLBAR_WIDTH);
+      setToolbarWidth(TOOLBAR_WIDTH_DEFAULT);
+      onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
     } else {
       setIsCollapsed(true);
       setToolbarWidth(COLLAPSED_TOOLBAR_WIDTH);
+      onWidthChange?.(COLLAPSED_TOOLBAR_WIDTH);
     }
   };
+
+  // Notify parent on mount and width changes
+  useEffect(() => {
+    onWidthChange?.(toolbarWidth);
+  }, [toolbarWidth, onWidthChange]);
 
   // Render content based on active category
   const renderCategoryContent = () => {
@@ -496,19 +518,16 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
 
   return (
     <motion.div
-      initial={hasInitiallyAnimated.current ? false : { x: -toolbarWidth }}
-      animate={{ x: 0, width: toolbarWidth }}
-      exit={hasInitiallyAnimated.current ? false : { x: -toolbarWidth }}
-      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+      initial={hasInitiallyAnimated.current ? false : { width: 0, opacity: 0 }}
+      animate={{ width: toolbarWidth, opacity: 1 }}
+      exit={hasInitiallyAnimated.current ? false : { width: 0, opacity: 0 }}
+      transition={isResizing ? { duration: 0 } : { duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
         height: '100%',
-        width: `${toolbarWidth}px`,
-        zIndex: 10
+        flexShrink: 0
       }}
     >
+
       <Box
         ref={toolbarRef}
         sx={{
@@ -531,7 +550,8 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
               onMouseDown={handleResizeStart}
               onDoubleClick={() => {
                 setIsCollapsed(false);
-                setToolbarWidth(DEFAULT_TOOLBAR_WIDTH);
+                setToolbarWidth(TOOLBAR_WIDTH_DEFAULT);
+                onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
                 setCollapseIndicatorSize(0);
               }}
               sx={{
@@ -600,7 +620,8 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
                     onClick={() => {
                       setActiveCategory(category.id);
                       setIsCollapsed(false);
-                      setToolbarWidth(DEFAULT_TOOLBAR_WIDTH);
+                      setToolbarWidth(TOOLBAR_WIDTH_DEFAULT);
+                      onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
                     }}
                     sx={{
                       width: 36,
@@ -632,7 +653,9 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
             pt: 0.5,
             gap: 0.25,
             flexShrink: 0,
-            position: 'relative'
+            position: 'relative',
+            minWidth: 0,
+            overflow: 'hidden'
           }}
         >
           {CATEGORIES.map((category) => {
@@ -646,8 +669,9 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
                   sx={{
                     position: 'relative',
                     cursor: 'pointer',
-                    flex: 1,
-                    px: 1.5,
+                    flex: '1 1 0',
+                    minWidth: '32px',
+                    px: toolbarWidth < 190 ? 0.5 : 1.5,
                     py: 1,
                     borderRadius: '8px 8px 0 0',
                     bgcolor: isActive ? moduleListBg : 'transparent',

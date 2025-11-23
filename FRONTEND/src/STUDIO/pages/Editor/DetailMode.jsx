@@ -20,6 +20,7 @@ const DetailMode = () => {
   const [aiChatOpen, setAiChatOpen] = useState(false); // AI chat initially collapsed
   const [isAiProcessing, setIsAiProcessing] = useState(false); // Track AI processing state
   const [aiTaskCompleted, setAiTaskCompleted] = useState(false); // Track if task completed
+  const [toolbarWidth, setToolbarWidth] = useState(200); // Track toolbar width
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
   const aiChatRef = useRef(null);
 
@@ -87,8 +88,23 @@ const DetailMode = () => {
         overflow: 'hidden'
       }}
     >
-      {/* New Unified Toolbar (Desktop only) */}
-      {!isMobile && <Toolbar2 isDraggingModule={isDraggingModule} mode="detail" />}
+      {/* Main Content Row */}
+      <Box
+        sx={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'row',
+          overflow: 'hidden'
+        }}
+      >
+        {/* New Unified Toolbar (Desktop only) */}
+        {!isMobile && (
+          <Toolbar2 
+            isDraggingModule={isDraggingModule} 
+            mode="detail"
+            onWidthChange={setToolbarWidth}
+          />
+        )}
 
       {/* Mobile floating action buttons */}
       {isMobile && (
@@ -210,15 +226,16 @@ const DetailMode = () => {
         </IconButton>
       )}
 
-      <Box
-        sx={{
-          flex: 1,
-          display: 'flex',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
-        ref={layoutRef}
-      >
+        {/* Rest of content */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          ref={layoutRef}
+        >
         {/* Properties Panel - Mobile Drawer only */}
         {isMobile && (
           <Drawer
@@ -260,9 +277,7 @@ const DetailMode = () => {
             overflow: 'auto',
             bgcolor: 'rgb(228, 229, 218)',
             p: { xs: 1, sm: 2, md: 3 },
-            pl: !isMobile ? 'calc(48px + 1rem)' : { xs: 1, sm: 2, md: 3 },
-            position: 'relative',
-            transition: 'padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+            position: 'relative'
           }}
           data-detail-canvas-scroll="true"
         >
@@ -318,6 +333,7 @@ const DetailMode = () => {
             </Box>
           </Drawer>
         )}
+        </Box>
       </Box>
 
       {/* AI Chat Panel - Desktop Overlay (same as StructureMode) */}

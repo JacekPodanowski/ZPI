@@ -352,7 +352,8 @@ const StructureMode = () => {
       sx={{
         width: '100%',
         height: '100%',
-        position: 'relative',
+        display: 'flex',
+        flexDirection: 'row',
         overflow: 'hidden',
         bgcolor: editorColors.backgrounds.page
       }}
@@ -404,12 +405,10 @@ const StructureMode = () => {
         }}
         data-editor-canvas="true"
         sx={{
-          width: '100%',
+          flex: 1,
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          pl: !isMobile ? '48px' : 0,
-          transition: 'padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'auto'
         }}
       >
