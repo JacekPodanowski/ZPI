@@ -6,12 +6,15 @@ import Toolbar2 from './Toolbar2';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
 import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
+import useTheme from '../../../theme/useTheme';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const DetailMode = () => {
   const { devicePreview, site, selectedPageId, setSelectedPage, canvasZoom, setCanvasZoom, isDragging, draggedItem } = useNewEditorStore();
   const muiTheme = useMuiTheme();
+  const theme = useTheme();
+  const isDarkMode = theme.mode === 'dark';
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('lg'));
   const layoutRef = useRef(null);
   const canvasScrollRef = useRef(null);
@@ -276,7 +279,7 @@ const DetailMode = () => {
             alignItems: 'center',
             justifyContent: devicePreview === 'mobile' ? 'flex-start' : 'center',
             overflow: 'auto',
-            bgcolor: 'rgb(228, 229, 218)',
+            bgcolor: isDarkMode ? 'rgb(12, 12, 12)' : 'rgb(228, 229, 218)',
             p: { xs: 1, sm: 2, md: 3 },
             position: 'relative'
           }}
