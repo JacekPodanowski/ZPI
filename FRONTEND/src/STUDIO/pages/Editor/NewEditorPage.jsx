@@ -54,6 +54,52 @@ const NewEditorPage = () => {
   const theme = useTheme();
   const editorColors = getEditorColorTokens(theme);
   const { user } = useAuth();
+  const site = useNewEditorStore(state => state.site);
+
+  // Inject font styles into editor preview
+  useEffect(() => {
+    if (!site?.style) return;
+
+    const styleId = 'editor-font-preview';
+    let styleEl = document.getElementById(styleId);
+    
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    const titleFont = site.style.titleFont || '"Inter", sans-serif';
+    const textFont = site.style.textFont || site.style.titleFont || '"Inter", sans-serif';
+
+    styleEl.textContent = `
+      /* Editor Font Preview - Applied only in editor */
+      [data-detail-canvas-scroll="true"] h1,
+      [data-detail-canvas-scroll="true"] h2,
+      [data-detail-canvas-scroll="true"] h3,
+      [data-detail-canvas-scroll="true"] h4,
+      [data-detail-canvas-scroll="true"] h5,
+      [data-detail-canvas-scroll="true"] h6,
+      [data-detail-canvas-scroll="true"] .font-heading {
+        font-family: ${titleFont} !important;
+      }
+      
+      [data-detail-canvas-scroll="true"] p,
+      [data-detail-canvas-scroll="true"] span,
+      [data-detail-canvas-scroll="true"] div,
+      [data-detail-canvas-scroll="true"] a,
+      [data-detail-canvas-scroll="true"] li,
+      [data-detail-canvas-scroll="true"] .font-body {
+        font-family: ${textFont} !important;
+      }
+    `;
+
+    return () => {
+      // Clean up on unmount
+      const el = document.getElementById(styleId);
+      if (el) el.remove();
+    };
+  }, [site?.style?.titleFont, site?.style?.textFont]);
 
   useEffect(() => {
     const loadSiteData = async () => {

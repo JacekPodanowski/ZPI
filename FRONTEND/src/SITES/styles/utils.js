@@ -99,6 +99,7 @@ export const composeSiteStyle = (styleId, overrides = {}) => {
     overlayGradient: definition.overlayGradient || null,
     accentColor: definition.accentColor,
     titleFont: definition.titleFont,
+    textFont: definition.textFont || definition.titleFont,
     spacing: definition.spacing,
     borders: definition.borders,
     shadows: definition.shadows,

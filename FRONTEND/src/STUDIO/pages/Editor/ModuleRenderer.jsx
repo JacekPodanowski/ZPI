@@ -2,6 +2,7 @@
 import { Box, Typography } from '@mui/material';
 import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry.js';
 import { STYLES } from '../../../SITES/styles';
+import getTypographyFonts from '../../../SITES/styles/typography.js';
 import useNewEditorStore from '../../store/newEditorStore';
 import { buildNavigationContent } from './moduleDefinitions';
 
@@ -51,6 +52,10 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   const resolvedStyle = useMemo(() => {
     return site?.style || STYLES.auroraMinimal || {};
   }, [site?.style]);
+
+  const typography = useMemo(() => {
+    return getTypographyFonts(resolvedStyle);
+  }, [resolvedStyle?.titleFont, resolvedStyle?.textFont]);
   
   if (!module) {
     return (
@@ -160,6 +165,7 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
     siteIdentifier,
     isEditing: true,
     devicePreview,
+    typography,
     // Pass module and page IDs to all components for inline editing
     moduleId: module.id,
     pageId: pageId
@@ -170,7 +176,19 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
   }
 
   return (
-    <Box sx={{ position: 'relative', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: typography.textFont,
+        '& h1, & h2, & h3, & h4, & h5, & h6, & .font-heading': {
+          fontFamily: typography.titleFont
+        },
+        '& p, & span, & div, & a, & li, & .font-body': {
+          fontFamily: typography.textFont
+        }
+      }}
+    >
       <Component {...componentProps} />
       
       {/* Custom Elements Overlay */}

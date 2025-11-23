@@ -11,6 +11,7 @@ export default {
   overlayGradient: 'linear-gradient(180deg, rgba(12,12,12,0.4) 0%, rgba(12,12,12,0.95) 100%)',
   accentColor: '#d4af37',
   titleFont: '"Playfair Display", "Times New Roman", serif',
+  textFont: '"Lato", "Arial", sans-serif',
   spacing: 'space-y-10 md:space-y-12 py-16 md:py-24 px-6 md:px-8',
   borders: 'border-2 border-[rgba(212,175,55,0.4)]',
   shadows: 'shadow-xl hover:shadow-2xl',

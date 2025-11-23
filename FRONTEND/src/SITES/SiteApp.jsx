@@ -7,6 +7,7 @@ import composeSiteStyle, {
   resolveStyleId as resolveStyleIdFromConfig,
   extractStyleOverrides as extractStyleOverridesFromConfig
 } from './styles/utils.js';
+import getTypographyFonts from './styles/typography.js';
 
 const fetchPublicSiteConfig = async (identifier) => {
   const response = await apiClient.get(`/public-sites/${identifier}/`);
@@ -14,7 +15,7 @@ const fetchPublicSiteConfig = async (identifier) => {
 };
 
 // NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
-const renderModule = (module, style, siteId, siteIdentifier, activePageKey) => {
+const renderModule = (module, style, typography, siteId, siteIdentifier, activePageKey) => {
   if (module?.enabled === false) return null;
   
   const moduleType = (module.type || module.id || '').toLowerCase();
@@ -36,6 +37,7 @@ const renderModule = (module, style, siteId, siteIdentifier, activePageKey) => {
         layout={layout}
         content={content}
         style={style}
+        typography={typography}
         siteId={siteId}
         siteIdentifier={siteIdentifier}
       />
@@ -266,6 +268,31 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
   const styleId = resolveStyleIdFromConfig(config);
   const styleOverrides = extractStyleOverridesFromConfig(config);
   const style = composeSiteStyle(styleId, styleOverrides);
+  const typography = getTypographyFonts(style);
+  const fontCss = `
+    [data-site-app-root="true"] {
+      font-family: ${typography.textFont};
+    }
+
+    [data-site-app-root="true"] h1,
+    [data-site-app-root="true"] h2,
+    [data-site-app-root="true"] h3,
+    [data-site-app-root="true"] h4,
+    [data-site-app-root="true"] h5,
+    [data-site-app-root="true"] h6,
+    [data-site-app-root="true"] .font-heading {
+      font-family: ${typography.titleFont};
+    }
+
+    [data-site-app-root="true"] p,
+    [data-site-app-root="true"] span,
+    [data-site-app-root="true"] div,
+    [data-site-app-root="true"] a,
+    [data-site-app-root="true"] li,
+    [data-site-app-root="true"] .font-body {
+      font-family: ${typography.textFont};
+    }
+  `;
 
   // Renderuj globalne moduły (np. nawigacja) - są to moduły na poziomie site, nie strony
   const globalModules = (config.modules || [])
@@ -301,15 +328,16 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
     ?.sort((a, b) => (a?.order ?? 0) - (b?.order ?? 0)) || [];
 
   return (
-    <main>
+    <main data-site-app-root="true" style={{ fontFamily: typography.textFont }}>
+      <style>{fontCss}</style>
       {/* Renderuj automatyczną nawigację jeśli nie ma zdefiniowanej */}
-      {autoNavigation && renderModule(autoNavigation, style, siteId, siteIdentifier, activePageKey)}
+      {autoNavigation && renderModule(autoNavigation, style, typography, siteId, siteIdentifier, activePageKey)}
       
       {/* Renderuj globalne moduły (nawigacja, stopka) */}
-      {globalModules.map((module) => renderModule(module, style, siteId, siteIdentifier, activePageKey))}
+      {globalModules.map((module) => renderModule(module, style, typography, siteId, siteIdentifier, activePageKey))}
       
       {/* Następnie renderuj moduły specyficzne dla strony */}
-      {modulesToRender.map((module) => renderModule(module, style, siteId, siteIdentifier, activePageKey))}
+      {modulesToRender.map((module) => renderModule(module, style, typography, siteId, siteIdentifier, activePageKey))}
     </main>
   );
 };

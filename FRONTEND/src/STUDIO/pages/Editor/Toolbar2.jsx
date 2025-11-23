@@ -5,7 +5,19 @@ import {
   Stack, 
   Typography, 
   IconButton, 
-  Tooltip
+  Tooltip,
+  TextField,
+  Select,
+  MenuItem,
+  Collapse,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Slider,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -14,12 +26,17 @@ import {
   ViewModule,
   Palette,
   Tune,
-  Photo
+  Photo,
+  ExpandMore,
+  ExpandLess,
+  Upload
 } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
 import { alpha } from '@mui/material/styles';
+import { STYLE_LIST, DEFAULT_STYLE_ID } from '../../../SITES/styles';
+import ImageUploader from '../../../components/ImageUploader';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
 const TOOLBAR_WIDTH_MIN = 175;
@@ -35,7 +52,7 @@ const INDICATOR_PREVIEW_SAMPLE_DRAG = 110;
 // Define categories with their icons and modes
 const ALL_CATEGORIES = [
   { id: 'modules', label: 'Modules', icon: ViewModule, modes: ['detail', 'structure'] },
-  { id: 'styling', label: 'Styling', icon: Palette, modes: ['detail', 'structure'] },
+  { id: 'style', label: 'Style', icon: Palette, modes: ['detail', 'structure'] },
   { id: 'media', label: 'Media', icon: Photo, modes: ['detail'] }, // Only in detail mode
   { id: 'settings', label: 'Settings', icon: Tune, modes: ['detail', 'structure'] }
 ];
@@ -46,6 +63,62 @@ const INDICATOR_STYLE_OPTIONS = [
   { id: 'curve', label: 'Soft Curve', description: 'Gentle concave profile that narrows into the canvas.' },
   { id: 'spike', label: 'Double Spike', description: 'Aggressive twin-spike cut for decisive collapsing.' },
   { id: 'stream', label: 'Streamline', description: 'Long aerodynamic taper with a narrow impact line.' }
+];
+
+// Font options for typography
+const FONT_OPTIONS = [
+  { value: '"Inter", sans-serif', label: 'Inter (Modern Sans)' },
+  { value: '"Roboto", sans-serif', label: 'Roboto (Neutral Sans)' },
+  { value: '"Montserrat", sans-serif', label: 'Montserrat (Geometric)' },
+  { value: '"Poppins", sans-serif', label: 'Poppins (Rounded)' },
+  { value: '"Open Sans", sans-serif', label: 'Open Sans (Friendly)' },
+  { value: '"Lato", sans-serif', label: 'Lato (Clean Sans)' },
+  { value: '"Playfair Display", serif', label: 'Playfair Display (Elegant Serif)' },
+  { value: '"Cormorant Garamond", serif', label: 'Cormorant Garamond (Classic Serif)' },
+  { value: '"Merriweather", serif', label: 'Merriweather (Readable Serif)' },
+  { value: '"Lora", serif', label: 'Lora (Balanced Serif)' },
+  { value: '"Crimson Text", serif', label: 'Crimson Text (Traditional)' },
+  { value: 'Georgia, serif', label: 'Georgia (Web Safe Serif)' },
+  { value: '"Times New Roman", serif', label: 'Times New Roman (Classic)' },
+  { value: 'Arial, sans-serif', label: 'Arial (Web Safe Sans)' },
+  { value: '"Helvetica Neue", sans-serif', label: 'Helvetica Neue (Swiss)' }
+];
+
+const describeFontValue = (fontValue) => {
+  if (!fontValue) return 'Select a font';
+  const option = FONT_OPTIONS.find((font) => font.value === fontValue);
+  if (option) return option.label;
+  const primaryFont = fontValue.split(',')[0]?.replace(/['"]/g, '').trim();
+  return primaryFont ? `${primaryFont} (Custom)` : 'Custom font';
+};
+
+// Border radius options
+const BORDER_RADIUS_OPTIONS = [
+  { value: 'rounded-none', label: 'None', description: 'Sharp corners' },
+  { value: 'rounded-sm', label: 'Small', description: 'Subtle rounding' },
+  { value: 'rounded-md', label: 'Medium', description: 'Moderate rounding' },
+  { value: 'rounded-lg', label: 'Large', description: 'Noticeable curves' },
+  { value: 'rounded-xl', label: 'Extra Large', description: 'Very rounded' },
+  { value: 'rounded-2xl', label: 'Extra Extra Large', description: 'Maximum rounding' }
+];
+
+// Shadow intensity options
+const SHADOW_OPTIONS = [
+  { value: 'shadow-none', label: 'None', description: 'No shadow' },
+  { value: 'shadow-sm', label: 'Light', description: 'Subtle elevation' },
+  { value: 'shadow-md', label: 'Medium', description: 'Moderate depth' },
+  { value: 'shadow-lg', label: 'Strong', description: 'Clear separation' },
+  { value: 'shadow-xl', label: 'Extra Strong', description: 'Heavy elevation' },
+  { value: 'shadow-2xl', label: 'Maximum', description: 'Maximum depth' }
+];
+
+// Animation speed options
+const ANIMATION_SPEED_OPTIONS = [
+  { value: 'transition-none', label: 'None', description: 'Instant changes', duration: '0ms' },
+  { value: 'transition-all duration-150 ease-in-out', label: 'Fast', description: 'Quick response', duration: '150ms' },
+  { value: 'transition-all duration-300 ease-in-out', label: 'Normal', description: 'Balanced timing', duration: '300ms' },
+  { value: 'transition-all duration-500 ease-in-out', label: 'Slow', description: 'Smooth & deliberate', duration: '500ms' },
+  { value: 'transition-all duration-700 ease-in-out', label: 'Very Slow', description: 'Cinematic effect', duration: '700ms' }
 ];
 
 const INDICATOR_STYLE_CONFIGS = {
@@ -102,11 +175,14 @@ const Toolbar2 = ({
   onWidthChange
 }) => {
   const modules = getAvailableModules();
+  const styles = STYLE_LIST;
   const theme = useTheme();
   const isDarkMode = theme.mode === 'dark';
   const site = useNewEditorStore((state) => state.site);
   const selectedPageId = useNewEditorStore((state) => state.selectedPageId);
   const selectedModuleId = useNewEditorStore((state) => state.selectedModuleId);
+  const setStyleId = useNewEditorStore((state) => state.setStyleId);
+  const updateStyleOverrides = useNewEditorStore((state) => state.updateStyleOverrides);
   
   // Filter categories based on mode
   const CATEGORIES = ALL_CATEGORIES.filter(cat => cat.modes.includes(mode));
@@ -141,6 +217,10 @@ const Toolbar2 = ({
   const [isResizing, setIsResizing] = useState(false);
   const [collapseIndicatorSize, setCollapseIndicatorSize] = useState(0);
   const [indicatorStyle, setIndicatorStyle] = useState('blade');
+  const [styleListExpanded, setStyleListExpanded] = useState(false);
+  const [showStyleChangeDialog, setShowStyleChangeDialog] = useState(false);
+  const [pendingStyleId, setPendingStyleId] = useState(null);
+  const [showBackgroundImageUploader, setShowBackgroundImageUploader] = useState(false);
   const hasInitiallyAnimated = useRef(false);
   const toolbarRef = useRef(null);
   const moduleRefs = useRef({});
@@ -299,6 +379,18 @@ const Toolbar2 = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedModule]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        handleToggleCollapse();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isCollapsed, activeCategory]);
 
   useEffect(() => {
     if (!selectedModule || typeof window === 'undefined') {
@@ -482,13 +574,556 @@ const Toolbar2 = ({
           </Stack>
         );
       
-      case 'styling':
+      case 'style':
+        const currentStyleId = site?.styleId || DEFAULT_STYLE_ID;
+        const currentStyle = styles.find(s => s.id === currentStyleId) || styles[0];
+        const currentOverrides = site?.styleOverrides || {};
+        const hasCustomizations = Object.keys(currentOverrides).length > 0;
+        const effectiveTitleFont = currentOverrides.titleFont || currentStyle.titleFont || FONT_OPTIONS[0].value;
+        const effectiveTextFont = currentOverrides.textFont || currentStyle.textFont || currentStyle.titleFont || FONT_OPTIONS[0].value;
+        const hasTitleFontOption = FONT_OPTIONS.some((font) => font.value === effectiveTitleFont);
+        const hasTextFontOption = FONT_OPTIONS.some((font) => font.value === effectiveTextFont);
+        
+        const handleStyleChange = (newStyleId) => {
+          if (newStyleId === currentStyleId) return;
+          
+          if (hasCustomizations) {
+            setPendingStyleId(newStyleId);
+            setShowStyleChangeDialog(true);
+          } else {
+            setStyleId(newStyleId, { resetOverrides: true });
+          }
+        };
+
+        const handleConfirmStyleChange = (keepCustomizations) => {
+          if (pendingStyleId) {
+            if (keepCustomizations) {
+              setStyleId(pendingStyleId, { resetOverrides: false });
+            } else {
+              setStyleId(pendingStyleId, { resetOverrides: true });
+            }
+          }
+          setShowStyleChangeDialog(false);
+          setPendingStyleId(null);
+        };
+
+        const handleOverrideChange = (key, value) => {
+          updateStyleOverrides({ [key]: value });
+        };
+        
         return (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '13px', color: textMuted }}>
-              Styling options coming soon
-            </Typography>
-          </Box>
+          <Stack spacing={2} sx={{ px: 0.5 }}>
+            {/* Current Style Selector */}
+            <Stack spacing={1}>
+              <Typography sx={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', color: textMuted, textTransform: 'uppercase' }}>
+                Current Style {hasCustomizations && <span style={{ color: accentColor }}>(Custom)</span>}
+              </Typography>
+              
+              <Box
+                onClick={() => setStyleListExpanded(!styleListExpanded)}
+                sx={{
+                  px: 1.5,
+                  py: 1.25,
+                  borderRadius: '8px',
+                  border: `1px solid ${moduleListBorder}`,
+                  bgcolor: isDarkMode ? 'rgba(22, 22, 28, 0.85)' : 'rgba(255, 255, 255, 0.92)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    borderColor: accentColor,
+                    bgcolor: moduleListHover
+                  }
+                }}
+              >
+                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
+                  {currentStyle.name}
+                </Typography>
+                {styleListExpanded ? <ExpandLess sx={{ fontSize: 20, color: textMuted }} /> : <ExpandMore sx={{ fontSize: 20, color: textMuted }} />}
+              </Box>
+
+              <Collapse in={styleListExpanded}>
+                <Stack spacing={0.5} sx={{ mt: 0.5, maxHeight: '300px', overflowY: 'auto' }}>
+                  {styles.map((style) => (
+                    <Box
+                      key={style.id}
+                      onClick={() => handleStyleChange(style.id)}
+                      sx={{
+                        px: 1.5,
+                        py: 1,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        bgcolor: style.id === currentStyleId ? selectedBg : 'transparent',
+                        border: `1px solid ${style.id === currentStyleId ? accentColor : 'transparent'}`,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          bgcolor: style.id === currentStyleId ? selectedHoverBg : moduleListHover,
+                          borderColor: accentColor
+                        }
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '13px', fontWeight: 500, color: style.id === currentStyleId ? accentColor : textPrimary }}>
+                        {style.name}
+                      </Typography>
+                      <Typography sx={{ fontSize: '11px', color: textMuted, mt: 0.25 }}>
+                        {style.description}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Collapse>
+            </Stack>
+
+            {/* Divider */}
+            <Box sx={{ height: '1px', bgcolor: alpha(textPrimary, 0.08) }} />
+
+            {/* Style Customization Options */}
+            <Stack spacing={1.5}>
+              <Typography sx={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', color: textMuted, textTransform: 'uppercase' }}>
+                Customize Style
+              </Typography>
+
+              {/* Colors Section */}
+              <Box sx={{ pb: 3 }}>
+                <Stack spacing={1.25}>
+                  <Typography sx={{ fontSize: '11px', fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Colors
+                  </Typography>
+
+                {/* Accent Color */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Accent Color
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={currentOverrides.accentColor || currentStyle.accentColor || '#920020'}
+                      onChange={(e) => handleOverrideChange('accentColor', e.target.value)}
+                      style={{
+                        width: '40px',
+                        height: '32px',
+                        border: `1px solid ${moduleListBorder}`,
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <TextField
+                      size="small"
+                      value={currentOverrides.accentColor || currentStyle.accentColor || '#920020'}
+                      onChange={(e) => handleOverrideChange('accentColor', e.target.value)}
+                      sx={{
+                        flex: 1,
+                        '& .MuiInputBase-input': {
+                          fontSize: '12px',
+                          py: 0.75,
+                          color: textPrimary
+                        }
+                      }}
+                    />
+                  </Box>
+                </Stack>
+
+                {/* Background Color */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Background Color
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={currentOverrides.backgroundColor || currentStyle.backgroundColor || '#f5f2eb'}
+                      onChange={(e) => handleOverrideChange('backgroundColor', e.target.value)}
+                      style={{
+                        width: '40px',
+                        height: '32px',
+                        border: `1px solid ${moduleListBorder}`,
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <TextField
+                      size="small"
+                      value={currentOverrides.backgroundColor || currentStyle.backgroundColor || '#f5f2eb'}
+                      onChange={(e) => handleOverrideChange('backgroundColor', e.target.value)}
+                      sx={{
+                        flex: 1,
+                        '& .MuiInputBase-input': {
+                          fontSize: '12px',
+                          py: 0.75,
+                          color: textPrimary
+                        }
+                      }}
+                    />
+                  </Box>
+                </Stack>
+              </Stack>
+              </Box>
+
+              {/* Background Image */}
+              <Box sx={{ pb: 3 }}>
+              <Stack spacing={0.75}>
+                <Typography sx={{ fontSize: '11px', fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Background
+                </Typography>
+                <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                  Background Image
+                </Typography>
+                <TextField
+                  size="small"
+                  placeholder="Enter image URL"
+                  value={currentOverrides.backgroundTexture ?? currentStyle.backgroundTexture ?? ''}
+                  onChange={(e) => handleOverrideChange('backgroundTexture', e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <Tooltip title="Upload Image" placement="top">
+                        <IconButton
+                          onClick={() => setShowBackgroundImageUploader(true)}
+                          size="small"
+                          sx={{
+                            padding: 0,
+                            marginRight: '-8px',
+                            color: textMuted,
+                            '&:hover': {
+                              color: accentColor,
+                              bgcolor: 'transparent'
+                            }
+                          }}
+                        >
+                          <Upload sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )
+                  }}
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      fontSize: '12px',
+                      py: 0.75,
+                      color: textPrimary
+                    }
+                  }}
+                />
+                <Typography sx={{ fontSize: '10px', color: textMuted, fontStyle: 'italic' }}>
+                  Paste URL or click upload button
+                </Typography>
+              </Stack>
+              </Box>
+
+              {/* Background Image Uploader Dialog */}
+              <Dialog
+                open={showBackgroundImageUploader}
+                onClose={() => setShowBackgroundImageUploader(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                  sx: {
+                    bgcolor: popupBackground,
+                    borderRadius: '12px',
+                    border: `1px solid ${popupBorder}`
+                  }
+                }}
+              >
+                <DialogTitle sx={{ color: textPrimary }}>
+                  Upload Background Image
+                </DialogTitle>
+                <DialogContent>
+                  <Box sx={{ pt: 1 }}>
+                    <ImageUploader
+                      label="Background Image"
+                      value={currentOverrides.backgroundTexture ?? currentStyle.backgroundTexture ?? ''}
+                      onChange={(url) => {
+                        handleOverrideChange('backgroundTexture', url);
+                        setShowBackgroundImageUploader(false);
+                      }}
+                      aspectRatio="16/9"
+                      usage="site_content"
+                    />
+                  </Box>
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    onClick={() => setShowBackgroundImageUploader(false)}
+                    sx={{ color: textPrimary }}
+                  >
+                    Cancel
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
+              {/* Typography Section */}
+              <Box sx={{ pb: 3 }}>
+              <Stack spacing={1.25}>
+                <Typography sx={{ fontSize: '11px', fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Typography
+                </Typography>
+
+                {/* Title Font */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Title Font (Headings)
+                  </Typography>
+                  <FormControl size="small" fullWidth>
+                    <Select
+                      value={effectiveTitleFont}
+                      onChange={(e) => handleOverrideChange('titleFont', e.target.value)}
+                      renderValue={(selected) => describeFontValue(selected)}
+                      sx={{
+                        fontSize: '12px',
+                        color: textPrimary,
+                        '& .MuiSelect-select': {
+                          py: 0.75
+                        }
+                      }}
+                    >
+                      {!hasTitleFontOption && (
+                        <MenuItem key={effectiveTitleFont} value={effectiveTitleFont} sx={{ fontSize: '13px', opacity: 0.75 }}>
+                          {describeFontValue(effectiveTitleFont)}
+                        </MenuItem>
+                      )}
+                      {FONT_OPTIONS.map((font) => (
+                        <MenuItem key={font.value} value={font.value} sx={{ fontSize: '13px', fontFamily: font.value }}>
+                          {font.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+
+                {/* Text Font */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Text Font (Body)
+                  </Typography>
+                  <FormControl size="small" fullWidth>
+                    <Select
+                      value={effectiveTextFont}
+                      onChange={(e) => handleOverrideChange('textFont', e.target.value)}
+                      renderValue={(selected) => describeFontValue(selected)}
+                      sx={{
+                        fontSize: '12px',
+                        color: textPrimary,
+                        '& .MuiSelect-select': {
+                          py: 0.75
+                        }
+                      }}
+                    >
+                      {!hasTextFontOption && (
+                        <MenuItem key={effectiveTextFont} value={effectiveTextFont} sx={{ fontSize: '13px', opacity: 0.75 }}>
+                          {describeFontValue(effectiveTextFont)}
+                        </MenuItem>
+                      )}
+                      {FONT_OPTIONS.map((font) => (
+                        <MenuItem key={font.value} value={font.value} sx={{ fontSize: '13px', fontFamily: font.value }}>
+                          {font.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+
+                {/* Font Size Scale */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Font Size Scale
+                  </Typography>
+                  <Box sx={{ px: 1 }}>
+                    <Slider
+                      value={currentOverrides.fontScale ?? 1}
+                      onChange={(e, val) => handleOverrideChange('fontScale', val)}
+                      min={0.8}
+                      max={1.3}
+                      step={0.05}
+                      marks={[
+                        { value: 0.8, label: '80%' },
+                        { value: 1, label: '100%' },
+                        { value: 1.3, label: '130%' }
+                      ]}
+                      valueLabelDisplay="auto"
+                      valueLabelFormat={(val) => `${Math.round(val * 100)}%`}
+                      sx={{
+                        color: accentColor,
+                        '& .MuiSlider-markLabel': {
+                          fontSize: '10px',
+                          color: textMuted
+                        }
+                      }}
+                    />
+                  </Box>
+                </Stack>
+              </Stack>
+              </Box>
+
+              {/* Visual Effects Section */}
+              <Box sx={{ pb: 3 }}>
+              <Stack spacing={1.25}>
+                <Typography sx={{ fontSize: '11px', fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Visual Effects
+                </Typography>
+
+                {/* Border Radius */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Border Radius
+                  </Typography>
+                  <FormControl size="small" fullWidth>
+                    <Select
+                      value={currentOverrides.rounded || currentStyle.rounded || 'rounded-lg'}
+                      onChange={(e) => handleOverrideChange('rounded', e.target.value)}
+                      sx={{
+                        fontSize: '12px',
+                        color: textPrimary,
+                        '& .MuiSelect-select': {
+                          py: 0.75
+                        }
+                      }}
+                    >
+                      {BORDER_RADIUS_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value} sx={{ fontSize: '13px' }}>
+                          <Box>
+                            <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>{option.label}</Typography>
+                            <Typography sx={{ fontSize: '10px', color: textMuted }}>{option.description}</Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+
+                {/* Shadow Intensity */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Shadow Intensity
+                  </Typography>
+                  <FormControl size="small" fullWidth>
+                    <Select
+                      value={currentOverrides.shadows || currentStyle.shadows || 'shadow-md'}
+                      onChange={(e) => handleOverrideChange('shadows', e.target.value)}
+                      sx={{
+                        fontSize: '12px',
+                        color: textPrimary,
+                        '& .MuiSelect-select': {
+                          py: 0.75
+                        }
+                      }}
+                    >
+                      {SHADOW_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value} sx={{ fontSize: '13px' }}>
+                          <Box>
+                            <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>{option.label}</Typography>
+                            <Typography sx={{ fontSize: '10px', color: textMuted }}>{option.description}</Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+
+                {/* Animation Speed */}
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '12px', fontWeight: 600, color: textPrimary }}>
+                    Animation Speed
+                  </Typography>
+                  <FormControl size="small" fullWidth>
+                    <Select
+                      value={currentOverrides.animations || currentStyle.animations || 'transition-all duration-300 ease-in-out'}
+                      onChange={(e) => handleOverrideChange('animations', e.target.value)}
+                      sx={{
+                        fontSize: '12px',
+                        color: textPrimary,
+                        '& .MuiSelect-select': {
+                          py: 0.75
+                        }
+                      }}
+                    >
+                      {ANIMATION_SPEED_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value} sx={{ fontSize: '13px' }}>
+                          <Box>
+                            <Typography sx={{ fontSize: '13px', fontWeight: 500 }}>{option.label}</Typography>
+                            <Typography sx={{ fontSize: '10px', color: textMuted }}>{option.description} • {option.duration}</Typography>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Stack>
+              </Stack>
+              </Box>
+
+              {/* Reset Button */}
+              {hasCustomizations && (
+                <Button
+                  size="small"
+                  onClick={() => setStyleId(currentStyleId, { resetOverrides: true })}
+                  sx={{
+                    mt: 1,
+                    color: accentColor,
+                    borderColor: accentColor,
+                    '&:hover': {
+                      borderColor: accentHoverColor,
+                      bgcolor: alpha(accentColor, 0.08)
+                    }
+                  }}
+                  variant="outlined"
+                >
+                  Reset to Default
+                </Button>
+              )}
+            </Stack>
+
+            {/* Style Change Dialog */}
+            <Dialog
+              open={showStyleChangeDialog}
+              onClose={() => {
+                setShowStyleChangeDialog(false);
+                setPendingStyleId(null);
+              }}
+              PaperProps={{
+                sx: {
+                  bgcolor: popupBackground,
+                  borderRadius: '12px',
+                  border: `1px solid ${popupBorder}`
+                }
+              }}
+            >
+              <DialogTitle sx={{ color: popupText, fontWeight: 600 }}>
+                Style Change Confirmation
+              </DialogTitle>
+              <DialogContent>
+                <Typography sx={{ color: popupMutedText, lineHeight: 1.6 }}>
+                  You have custom style changes. Would you like to keep your customizations or reset to the new style's defaults?
+                </Typography>
+              </DialogContent>
+              <DialogActions sx={{ px: 3, pb: 2 }}>
+                <Button
+                  onClick={() => {
+                    setShowStyleChangeDialog(false);
+                    setPendingStyleId(null);
+                  }}
+                  sx={{ color: textMuted }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => handleConfirmStyleChange(false)}
+                  sx={{ color: textPrimary }}
+                >
+                  Reset to Defaults
+                </Button>
+                <Button
+                  onClick={() => handleConfirmStyleChange(true)}
+                  variant="contained"
+                  sx={{
+                    bgcolor: accentColor,
+                    '&:hover': { bgcolor: accentHoverColor }
+                  }}
+                >
+                  Keep Customizations
+                </Button>
+              </DialogActions>
+            </Dialog>
+          </Stack>
         );
       
       case 'media':
@@ -856,19 +1491,27 @@ const Toolbar2 = ({
               }}
               sx={{
                 position: 'absolute',
-                right: 0,
+                right: '-8px',
                 top: 0,
                 bottom: 0,
-                width: '4px',
+                width: '20px',
                 cursor: 'ew-resize',
                 zIndex: 1001,
-                bgcolor: isResizing ? accentColor : 'transparent',
-                opacity: isResizing ? 0.8 : 1,
-                '&:hover': {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&::after': {
+                  content: '""',
+                  width: '4px',
+                  height: '100%',
+                  bgcolor: isResizing ? accentColor : 'transparent',
+                  opacity: isResizing ? 0.8 : 1,
+                  transition: 'all 0.2s ease'
+                },
+                '&:hover::after': {
                   bgcolor: accentColor,
                   opacity: 0.5
-                },
-                transition: 'all 0.2s ease'
+                }
               }}
             />
             {/* Arrow indicator overlay */}
