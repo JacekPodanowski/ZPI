@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Box, 
   Stack, 
@@ -13,18 +13,22 @@ import {
   ViewModule,
   Palette,
   Settings,
-  Photo,
-  ChevronLeft,
-  ChevronRight
+  Photo
 } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
+import { alpha } from '@mui/material/styles';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
-const DEFAULT_TOOLBAR_WIDTH = 180;
-const MIN_TOOLBAR_WIDTH = 150;
+const DEFAULT_TOOLBAR_WIDTH = 200;
+const MIN_TOOLBAR_WIDTH = 175;
 const COLLAPSED_TOOLBAR_WIDTH = 48;
+const COLLAPSE_INDICATOR_BUFFER = 25;
+const COLLAPSE_INDICATOR_MAX_DRAG = 140;
+const COLLAPSE_INDICATOR_COLLAPSE_THRESHOLD = 45;
+const INDICATOR_BASE_MIN_WIDTH = 18;
+const INDICATOR_PREVIEW_SAMPLE_DRAG = 110;
 
 // Define categories with their icons and modes
 const ALL_CATEGORIES = [
@@ -33,6 +37,60 @@ const ALL_CATEGORIES = [
   { id: 'media', label: 'Media', icon: Photo, modes: ['detail'] }, // Only in detail mode
   { id: 'settings', label: 'Settings', icon: Settings, modes: ['detail', 'structure'] }
 ];
+
+const INDICATOR_STYLE_OPTIONS = [
+  { id: 'blade', label: 'Blade Curve', description: 'Smooth tapered shape with a crisp blade-like edge.' },
+  { id: 'arrow', label: 'Arrowhead', description: 'Classic arrow profile with a sharp center hit.' },
+  { id: 'curve', label: 'Soft Curve', description: 'Gentle concave profile that narrows into the canvas.' },
+  { id: 'spike', label: 'Double Spike', description: 'Aggressive twin-spike cut for decisive collapsing.' },
+  { id: 'stream', label: 'Streamline', description: 'Long aerodynamic taper with a narrow impact line.' }
+];
+
+const INDICATOR_STYLE_CONFIGS = {
+  blade: {
+    minWidth: INDICATOR_BASE_MIN_WIDTH + 6,
+    widthFactor: 0.68,
+    clipPath: 'polygon(100% 0%, 99% 5%, 98% 10%, 96% 15%, 94% 20%, 91% 25%, 87% 30%, 82% 35%, 77% 40%, 72% 45%, 68% 50%, 72% 55%, 77% 60%, 82% 65%, 87% 70%, 91% 75%, 94% 80%, 96% 85%, 98% 90%, 99% 95%, 100% 100%)',
+    background: (accent) => accent
+  },
+  arrow: {
+    minWidth: INDICATOR_BASE_MIN_WIDTH + 4,
+    widthFactor: 0.62,
+    clipPath: 'polygon(100% 0%, 99% 5%, 97% 10%, 95% 15%, 92% 20%, 88% 25%, 83% 30%, 78% 35%, 73% 40%, 68% 45%, 64% 50%, 68% 55%, 73% 60%, 78% 65%, 83% 70%, 88% 75%, 92% 80%, 95% 85%, 97% 90%, 99% 95%, 100% 100%)',
+    background: (accent) => accent
+  },
+  curve: {
+    minWidth: INDICATOR_BASE_MIN_WIDTH + 8,
+    widthFactor: 0.72,
+    clipPath: 'polygon(100% 0%, 99% 5%, 98% 10%, 97% 15%, 95% 20%, 92% 25%, 88% 30%, 84% 35%, 79% 40%, 74% 45%, 70% 50%, 74% 55%, 79% 60%, 84% 65%, 88% 70%, 92% 75%, 95% 80%, 97% 85%, 98% 90%, 99% 95%, 100% 100%)',
+    background: (accent) => accent
+  },
+  spike: {
+    minWidth: INDICATOR_BASE_MIN_WIDTH + 5,
+    widthFactor: 0.66,
+    clipPath: 'polygon(100% 0%, 99% 5%, 97% 10%, 94% 15%, 91% 20%, 87% 25%, 82% 30%, 77% 35%, 72% 40%, 67% 45%, 62% 50%, 67% 55%, 72% 60%, 77% 65%, 82% 70%, 87% 75%, 91% 80%, 94% 85%, 97% 90%, 99% 95%, 100% 100%)',
+    background: (accent) => accent
+  },
+  stream: {
+    minWidth: INDICATOR_BASE_MIN_WIDTH + 7,
+    widthFactor: 0.7,
+    clipPath: 'polygon(100% 0%, 99% 5%, 98% 10%, 96% 15%, 94% 20%, 91% 25%, 87% 30%, 83% 35%, 78% 40%, 73% 45%, 69% 50%, 73% 55%, 78% 60%, 83% 65%, 87% 70%, 91% 75%, 94% 80%, 96% 85%, 98% 90%, 99% 95%, 100% 100%)',
+    background: (accent) => accent
+  }
+};
+
+const getIndicatorVisuals = (styleId, size, accentColor) => {
+  const config = INDICATOR_STYLE_CONFIGS[styleId] || INDICATOR_STYLE_CONFIGS.blade;
+  const appliedSize = Math.min(COLLAPSE_INDICATOR_MAX_DRAG, Math.max(0, size));
+  const width = config.minWidth + appliedSize * config.widthFactor;
+  const visuals = {
+    width,
+    background: config.background(accentColor),
+    clipPath: config.clipPath
+  };
+
+  return visuals;
+};
 
 const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
   const modules = getAvailableModules();
@@ -70,11 +128,27 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [collapseIndicatorSize, setCollapseIndicatorSize] = useState(0);
+  const [indicatorStyle, setIndicatorStyle] = useState('blade');
   const hasInitiallyAnimated = useRef(false);
   const toolbarRef = useRef(null);
   const moduleRefs = useRef({});
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+
+  const indicatorOption = useMemo(
+    () => INDICATOR_STYLE_OPTIONS.find(option => option.id === indicatorStyle) || INDICATOR_STYLE_OPTIONS[0],
+    [indicatorStyle]
+  );
+
+  const collapseIndicatorVisuals = useMemo(
+    () => getIndicatorVisuals(indicatorStyle, collapseIndicatorSize, accentColor),
+    [indicatorStyle, collapseIndicatorSize, accentColor]
+  );
+
+  const previewIndicatorVisuals = useMemo(
+    () => getIndicatorVisuals(indicatorStyle, INDICATOR_PREVIEW_SAMPLE_DRAG, accentColor),
+    [indicatorStyle, accentColor]
+  );
 
   const handleDragStart = (e, moduleType) => {
     console.log('[Toolbar2] Drag started:', moduleType);
@@ -196,24 +270,33 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
     const handleMouseMove = (e) => {
       const delta = e.clientX - resizeStartX.current;
       const targetWidth = resizeStartWidth.current + delta;
-      
+
       if (targetWidth >= MIN_TOOLBAR_WIDTH) {
-        // Normal resize
         setToolbarWidth(targetWidth);
         setCollapseIndicatorSize(0);
-      } else {
-        // Stop at minimum and grow indicator
-        setToolbarWidth(MIN_TOOLBAR_WIDTH);
-        const excessDelta = MIN_TOOLBAR_WIDTH - targetWidth;
-        setCollapseIndicatorSize(Math.min(excessDelta, 100)); // Cap at 100px
+        return;
       }
+
+      setToolbarWidth(MIN_TOOLBAR_WIDTH);
+      const overshoot = MIN_TOOLBAR_WIDTH - targetWidth;
+
+      if (overshoot <= COLLAPSE_INDICATOR_BUFFER) {
+        setCollapseIndicatorSize(0);
+        return;
+      }
+
+      const effectiveOvershoot = Math.min(
+        overshoot - COLLAPSE_INDICATOR_BUFFER,
+        COLLAPSE_INDICATOR_MAX_DRAG
+      );
+      setCollapseIndicatorSize(effectiveOvershoot);
     };
 
     const handleMouseUp = (e) => {
       setIsResizing(false);
       
       // If indicator was visible (pulled beyond minimum), collapse
-      if (collapseIndicatorSize > 20) {
+      if (collapseIndicatorSize >= COLLAPSE_INDICATOR_COLLAPSE_THRESHOLD) {
         setIsCollapsed(true);
         setToolbarWidth(COLLAPSED_TOOLBAR_WIDTH);
       }
@@ -331,11 +414,79 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
       
       case 'settings':
         return (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '13px', color: textMuted }}>
-              Settings coming soon
+          <Stack spacing={1.5} sx={{ px: 1.5, py: 1.5 }}>
+            <Typography sx={{ fontSize: '13px', letterSpacing: '0.4px', textTransform: 'uppercase', color: textMuted }}>
+              Editor Settings
             </Typography>
-          </Box>
+            <Stack spacing={0.75}>
+              <Typography sx={{ fontSize: '13.5px', fontWeight: 600, color: textPrimary }}>
+                Collapse Indicator Style
+              </Typography>
+              <Box
+                component="select"
+                value={indicatorStyle}
+                onChange={(e) => setIndicatorStyle(e.target.value)}
+                sx={{
+                  width: '100%',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: textPrimary,
+                  bgcolor: isDarkMode ? 'rgba(22, 22, 28, 0.85)' : 'rgba(255, 255, 255, 0.92)',
+                  borderRadius: '8px',
+                  border: `1px solid ${moduleListBorder}`,
+                  px: 1.5,
+                  py: 1,
+                  appearance: 'none',
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                  '&:focus': {
+                    borderColor: accentColor,
+                    boxShadow: `0 0 0 2px ${alpha(accentColor, 0.16)}`
+                  },
+                  '& option': {
+                    color: textPrimary,
+                    backgroundColor: isDarkMode ? 'rgba(18, 18, 22, 0.94)' : '#fff'
+                  }
+                }}
+              >
+                {INDICATOR_STYLE_OPTIONS.map(option => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </Box>
+              <Typography sx={{ fontSize: '12.5px', color: textMuted, lineHeight: 1.5 }}>
+                {indicatorOption?.description}
+              </Typography>
+              <Box
+                sx={{
+                  position: 'relative',
+                  height: '52px',
+                  borderRadius: '10px',
+                  border: `1px dashed ${alpha(accentColor, 0.2)}`,
+                  bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.65)',
+                  overflow: 'hidden'
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '8px',
+                    bottom: '8px',
+                    right: '18px',
+                    width: `${previewIndicatorVisuals.width}px`,
+                    background: previewIndicatorVisuals.background,
+                    clipPath: previewIndicatorVisuals.clipPath,
+                    transition: 'all 0.1s ease',
+                    ...(previewIndicatorVisuals.boxShadow ? { boxShadow: previewIndicatorVisuals.boxShadow } : {}),
+                    ...(previewIndicatorVisuals.highlight
+                      ? { '&::after': { ...previewIndicatorVisuals.highlight, height: '48%' } }
+                      : {})
+                  }}
+                />
+              </Box>
+            </Stack>
+          </Stack>
         );
       
       default:
@@ -378,7 +529,11 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
             {/* Red line that stays visible */}
             <Box
               onMouseDown={handleResizeStart}
-              onDoubleClick={() => setToolbarWidth(DEFAULT_TOOLBAR_WIDTH)}
+              onDoubleClick={() => {
+                setIsCollapsed(false);
+                setToolbarWidth(DEFAULT_TOOLBAR_WIDTH);
+                setCollapseIndicatorSize(0);
+              }}
               sx={{
                 position: 'absolute',
                 right: 0,
@@ -404,36 +559,18 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail' }) => {
                   right: 0,
                   top: 0,
                   bottom: 0,
-                  width: `${Math.max(4, collapseIndicatorSize * 0.4)}px`,
+                  width: `${collapseIndicatorVisuals.width}px`,
                   cursor: 'ew-resize',
                   zIndex: 1000,
                   pointerEvents: 'none',
-                  background: `linear-gradient(to right, 
-                    transparent 0%, 
-                    ${accentColor}40 30%, 
-                    ${accentColor} 50%, 
-                    ${accentColor}40 70%, 
-                    transparent 100%)`,
-                  clipPath: 'polygon(100% 0%, 0% 50%, 100% 100%)',
-                  transition: 'all 0.05s ease',
+                  background: collapseIndicatorVisuals.background,
+                  clipPath: collapseIndicatorVisuals.clipPath,
+                  transition: 'all 0.065s ease',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
-              >
-                {collapseIndicatorSize > 30 && (
-                  <ChevronLeft 
-                    sx={{ 
-                      fontSize: Math.min(32, collapseIndicatorSize * 0.4), 
-                      color: accentColor,
-                      opacity: 1,
-                      position: 'absolute',
-                      left: '50%',
-                      transform: 'translateX(-50%)'
-                    }} 
-                  />
-                )})
-              </Box>
+              />
             )}
           </>
         )}

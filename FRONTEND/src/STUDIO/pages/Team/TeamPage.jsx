@@ -394,7 +394,7 @@ const TeamPage = () => {
         return (
             <REAL_DefaultLayout
                 title="Zespół"
-                subtitle="Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia"
+                subtitle="Tutaj możesz zarządzać swoim zespołem."
             >
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
                     <CircularProgress />
@@ -407,7 +407,7 @@ const TeamPage = () => {
         <REAL_DefaultLayout
             title="Zespół"
             titleIcon={<GroupsIcon />}
-            subtitle="Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia"
+            subtitle="Tutaj możesz zarządzać swoim zespołem."
         >
             {/* Page Description */}
             <Box
@@ -424,7 +424,7 @@ const TeamPage = () => {
                         mb: 2
                     }}
                 >
-                    Tutaj możesz zarządzać członkami swojego zespołu. Dodawaj nowych współpracowników, 
+                    Dodawaj nowych współpracowników, 
                     przypisuj im odpowiednie role i kontroluj dostęp do kalendarza. System ról pozwala na 
                     precyzyjne określenie, kto może edytować wydarzenia, zarządzać rezerwacjami czy tylko 
                     przeglądać swój harmonogram.
@@ -445,10 +445,6 @@ const TeamPage = () => {
                     <br />
                     • <strong>Manager</strong> – posiada pełną kontrolę nad kalendarzem całego zespołu
                     <br />
-                    <br />
-                    Członkowie zespołu wyświetlają się również w publicznej sekcji "Zespół" na Twojej stronie. 
-                    Możesz pobierać raporty obecności dla każdego członka, co ułatwia śledzenie aktywności 
-                    i zaangażowania w prowadzone zajęcia.
                 </Typography>
             </Box>
 
