@@ -115,7 +115,7 @@ const NewsletterStats = ({ siteId }) => {
                     Subskrybenci
                 </Typography>
                 <Grid container spacing={2}>
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={6}>
                         <StatCard
                             icon={People}
                             title="Aktywni subskrybenci"
@@ -124,38 +124,13 @@ const NewsletterStats = ({ siteId }) => {
                             color="success"
                         />
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={6}>
                         <StatCard
                             icon={Schedule}
                             title="Oczekuje potwierdzenia"
                             value={stats.subscribers.pending_confirmation}
                             subtitle="Jeszcze nie potwierdzili emaila"
                         />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <Box
-                            sx={{
-                                p: 3,
-                                borderRadius: 3,
-                                background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(228,229,218,0.7) 100%)',
-                                border: '1px solid rgba(146, 0, 32, 0.12)',
-                            }}
-                        >
-                            <Typography variant="caption" sx={{ opacity: 0.7, mb: 1, display: 'block' }}>
-                                Podział częstotliwości
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                <Typography variant="body2">
-                                    📅 Codziennie: <strong>{stats.subscribers.frequency_breakdown.daily}</strong>
-                                </Typography>
-                                <Typography variant="body2">
-                                    📆 Co tydzień: <strong>{stats.subscribers.frequency_breakdown.weekly}</strong>
-                                </Typography>
-                                <Typography variant="body2">
-                                    🗓️ Co miesiąc: <strong>{stats.subscribers.frequency_breakdown.monthly}</strong>
-                                </Typography>
-                            </Box>
-                        </Box>
                     </Grid>
                 </Grid>
             </Box>

@@ -827,10 +827,6 @@ class NewsletterSubscriptionSerializer(serializers.Serializer):
     
     site_identifier = serializers.CharField(required=True)
     email = serializers.EmailField(required=True)
-    frequency = serializers.ChoiceField(
-        choices=['daily', 'weekly', 'monthly'],
-        default='weekly'
-    )
     
     def validate_site_identifier(self, value):
         """Validate that the site exists."""
@@ -863,7 +859,7 @@ class BigEventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'site', 'creator', 'title', 'description', 'location',
             'start_date', 'end_date', 'max_participants', 'current_participants',
-            'price', 'status', 'send_email_on_publish', 'email_sent', 'email_sent_at',
+            'price', 'status', 'email_sent', 'email_sent_at',
             'image_url', 'details', 'created_at', 'updated_at', 'published_at'
         ]
         read_only_fields = ['id', 'creator', 'email_sent', 'email_sent_at', 'created_at', 'updated_at', 'published_at']

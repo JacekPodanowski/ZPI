@@ -25,8 +25,7 @@ const INITIAL_FORM_VALUES = {
     galleryImages: '',
     fullDescription: '',
     ctaLabel: '',
-    ctaUrl: '',
-    sendEmailOnPublish: false
+    ctaUrl: ''
 };
 
 const EventsPage = () => {
@@ -301,7 +300,6 @@ const EventsPage = () => {
                 end_date: formValues.endDate || null,
                 max_participants: Number(formValues.maxParticipants) || 0,
                 price: formValues.price || '0',
-                send_email_on_publish: formValues.sendEmailOnPublish,
                 image_url: imageUrl,
                 details: {
                     summary: formValues.summary.trim() || formValues.description.trim(),
@@ -355,8 +353,7 @@ const EventsPage = () => {
             galleryImages: gallerySource,
             fullDescription: details.full_description || event.description || '',
             ctaLabel: details.cta_label || '',
-            ctaUrl: details.cta_url || '',
-            sendEmailOnPublish: Boolean(event.send_email_on_publish)
+            ctaUrl: details.cta_url || ''
         };
     };
 
@@ -392,7 +389,7 @@ const EventsPage = () => {
 
     const handlePublishClick = (event) => {
         setSelectedEvent(event);
-        setSendEmailOnPublish(event.send_email_on_publish || false);
+        setSendEmailOnPublish(false);
         setPublishDialogOpen(true);
     };
 
@@ -957,16 +954,6 @@ const EventsPage = () => {
                                 fullWidth
                             />
                         </Stack>
-
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={formValues.sendEmailOnPublish}
-                                    onChange={handleToggleSendEmail}
-                                />
-                            }
-                            label="Domyślnie wyślij newsletter przy publikacji"
-                        />
                     </Stack>
                 </DialogContent>
                 <DialogActions>
