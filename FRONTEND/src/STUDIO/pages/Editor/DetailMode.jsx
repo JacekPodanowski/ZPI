@@ -10,10 +10,11 @@ import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 const DetailMode = () => {
-  const { devicePreview, site, selectedPageId, setSelectedPage, canvasZoom, isDragging, draggedItem } = useNewEditorStore();
+  const { devicePreview, site, selectedPageId, setSelectedPage, canvasZoom, setCanvasZoom, isDragging, draggedItem } = useNewEditorStore();
   const muiTheme = useMuiTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('lg'));
   const layoutRef = useRef(null);
+  const canvasScrollRef = useRef(null);
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false); // AI chat initially collapsed
@@ -45,6 +46,35 @@ const DetailMode = () => {
       setSelectedPage(pages[0].id);
     }
   }, [selectedPageId, pages, setSelectedPage]);
+
+  // Handle Ctrl + Scroll zoom
+  useEffect(() => {
+    const canvasElement = canvasScrollRef.current;
+    if (!canvasElement) return;
+
+    const handleWheel = (e) => {
+      // Check if Ctrl key is pressed (or Cmd on Mac)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Determine zoom direction (negative deltaY = zoom in, positive = zoom out)
+        const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+        
+        // Calculate new zoom level, clamped between 0.25 and 2
+        const newZoom = clamp(canvasZoom + zoomDelta, 0.25, 2);
+        
+        setCanvasZoom(newZoom);
+      }
+    };
+
+    // Use capture phase to intercept before Chrome's handler
+    canvasElement.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+
+    return () => {
+      canvasElement.removeEventListener('wheel', handleWheel, { capture: true });
+    };
+  }, [canvasZoom, setCanvasZoom]);
 
   return (
     <Box
@@ -219,6 +249,7 @@ const DetailMode = () => {
 
         {/* Canvas - Center */}
         <Box
+          ref={canvasScrollRef}
           sx={{
             flex: 1,
             height: '100%',

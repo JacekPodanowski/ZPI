@@ -1313,6 +1313,8 @@ const AIChatPanel = ({
           variant="outlined"
           size="small"
           fullWidth
+          multiline
+          minRows={1}
           InputProps={{
             sx: {
               bgcolor: 'rgba(255, 255, 255, 0.08)',
@@ -1326,8 +1328,15 @@ const AIChatPanel = ({
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: 'rgb(146, 0, 32)'
               },
-              input: {
-                color: 'rgb(220, 220, 220)'
+              '& .MuiInputBase-input': {
+                color: 'rgb(220, 220, 220)',
+                fontFamily: 'inherit',
+                fontSize: '0.95rem'
+              },
+              '& .MuiInputBase-input::placeholder': {
+                color: 'rgba(220, 220, 220, 0.6)',
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap'
               }
             }
           }}

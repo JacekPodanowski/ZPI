@@ -69,7 +69,7 @@ const StructureMode = () => {
       if (aiChatRef.current && !aiChatRef.current.contains(event.target) && aiChatOpen) {
         setAiChatOpen(false);
       }
-    };
+    }
 
     if (aiChatOpen) {
       document.addEventListener('mousedown', handleClickOutside);
