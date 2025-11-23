@@ -12,14 +12,14 @@ const LAYOUTS = {
   split: SplitContact
 };
 
-const ContactSection = ({ layout = 'form', content = {}, style }) => {
+const ContactSection = ({ layout = 'form', content = {}, style, isEditing, moduleId, pageId }) => {
   const defaultOptions = CONTACT_DEFAULTS[layout] || CONTACT_DEFAULTS.form;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.form;
-  return <LayoutComponent content={mergedContent} style={style} />;
+  return <LayoutComponent content={mergedContent} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
 };
 
 ContactSection.descriptor = CONTACT_DESCRIPTOR;

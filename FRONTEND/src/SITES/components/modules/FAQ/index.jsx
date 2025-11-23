@@ -11,13 +11,13 @@ const LAYOUTS = {
   cards: CardsFAQ
 };
 
-const FAQSection = ({ layout = 'accordion', content = {}, style }) => {
+const FAQSection = ({ layout = 'accordion', content = {}, style, isEditing, moduleId, pageId }) => {
   const defaultOptions = FAQ_DEFAULTS[layout] || FAQ_DEFAULTS.accordion;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.accordion;
-  return <LayoutComponent content={mergedContent} style={style} />;
+  return <LayoutComponent content={mergedContent} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
 };
 
 FAQSection.descriptor = FAQ_DESCRIPTOR;

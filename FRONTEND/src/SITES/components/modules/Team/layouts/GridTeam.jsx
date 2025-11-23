@@ -3,10 +3,21 @@ import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-const GridTeam = ({ content, style, siteId }) => {
+const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,15 +82,41 @@ const GridTeam = ({ content, style, siteId }) => {
       <div className="max-w-6xl mx-auto space-y-6 relative z-10 px-4">
         {(title || subtitle) && (
           <div className="text-center space-y-3">
-            {title && (
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
-                {title}
-              </h2>
+            {(isEditing || title) && (
+              isEditing ? (
+                <EditableText
+                  value={title || ''}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className="text-3xl md:text-4xl lg:text-5xl font-semibold"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                  {title}
+                </h2>
+              )
             )}
-            {subtitle && (
-              <p className="text-base opacity-70" style={{ color: textColor }}>
-                {subtitle}
-              </p>
+            {(isEditing || subtitle) && (
+              isEditing ? (
+                <EditableText
+                  value={subtitle || ''}
+                  onSave={handleSubtitleSave}
+                  as="p"
+                  className="text-base opacity-70"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit subtitle..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p className="text-base opacity-70" style={{ color: textColor }}>
+                  {subtitle}
+                </p>
+              )
             )}
           </div>
         )}

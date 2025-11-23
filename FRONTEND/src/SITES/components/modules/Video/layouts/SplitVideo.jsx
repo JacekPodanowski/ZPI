@@ -2,8 +2,20 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const SplitVideo = ({ content, style }) => {
+const SplitVideo = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleDescriptionSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
   const { videoUrl, title, description, sideImage, videoPosition = 'left', captionColor, bgColor, muted } = content;
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted });
   const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'));
@@ -24,13 +36,26 @@ const SplitVideo = ({ content, style }) => {
   return (
     <section className={spacingClass} style={{ backgroundColor }}>
       <div className="max-w-7xl mx-auto">
-        {title && (
-          <h2 
-            className={`${headingClass} text-center mb-8 md:mb-12`}
-            style={{ color: primaryColor }}
-          >
-            {title}
-          </h2>
+        {(isEditing || title) && (
+          isEditing ? (
+            <EditableText
+              value={title || ''}
+              onSave={handleTitleSave}
+              as="h2"
+              className={`${headingClass} text-center mb-8 md:mb-12`}
+              style={{ color: primaryColor }}
+              placeholder="Click to edit title..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <h2 
+              className={`${headingClass} text-center mb-8 md:mb-12`}
+              style={{ color: primaryColor }}
+            >
+              {title}
+            </h2>
+          )
         )}
         
         <div className={`
@@ -91,14 +116,27 @@ const SplitVideo = ({ content, style }) => {
                 alt={title || 'Video companion image'}
                 className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
               />
-            ) : description ? (
+            ) : (isEditing || description) ? (
               <div className="space-y-4">
-                <p 
-                  className={`${textClass} leading-relaxed`}
-                  style={{ color: textColor }}
-                >
-                  {description}
-                </p>
+                {isEditing ? (
+                  <EditableText
+                    value={description || ''}
+                    onSave={handleDescriptionSave}
+                    as="p"
+                    className={`${textClass} leading-relaxed`}
+                    style={{ color: textColor }}
+                    placeholder="Click to edit description..."
+                    multiline
+                    isModuleSelected={true}
+                  />
+                ) : (
+                  <p 
+                    className={`${textClass} leading-relaxed`}
+                    style={{ color: textColor }}
+                  >
+                    {description}
+                  </p>
+                )}
               </div>
             ) : (
               <div 

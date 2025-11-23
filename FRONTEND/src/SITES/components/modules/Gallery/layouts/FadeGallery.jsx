@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { renderMedia } from '../helpers';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const FadeGallery = ({ content, style }) => {
+const FadeGallery = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleCaptionSave = (index, newValue) => {
+    const newImages = [...images];
+    if (typeof newImages[index] === 'string') {
+      newImages[index] = { url: newImages[index], caption: newValue };
+    } else {
+      newImages[index] = { ...newImages[index], caption: newValue };
+    }
+    updateModuleContent(pageId, moduleId, { images: newImages });
+  };
+
   const { images = [] } = content;
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -39,9 +53,21 @@ const FadeGallery = ({ content, style }) => {
               className="absolute inset-0"
             >
               {renderMedia(imgUrlRaw, caption || '', 'w-full h-full object-cover')}
-              {shouldShowCaption && caption && caption.trim() && (
+              {(isEditing || (shouldShowCaption && caption && caption.trim())) && (
                 <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-4">
-                  <p className="text-center">{caption}</p>
+                  {isEditing ? (
+                    <EditableText
+                      value={caption || ''}
+                      onSave={(newValue) => handleCaptionSave(currentIndex, newValue)}
+                      as="p"
+                      className="text-center"
+                      placeholder="Click to edit caption..."
+                      multiline
+                      isModuleSelected={true}
+                    />
+                  ) : (
+                    <p className="text-center">{caption}</p>
+                  )}
                 </div>
               )}
             </motion.div>

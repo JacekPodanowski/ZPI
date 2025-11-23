@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import NewsletterSubscription from '../NewsletterSubscription';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -30,7 +32,17 @@ const isEventPast = (dateString) => {
   }
 };
 
-const ListEvents = ({ content, style, siteIdentifier, eventsStatus = 'static' }) => {
+const ListEvents = ({ content, style, siteIdentifier, eventsStatus = 'static', isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
   const { 
     title, 
     subtitle, 
@@ -55,15 +67,41 @@ const ListEvents = ({ content, style, siteIdentifier, eventsStatus = 'static' })
       <div className="relative z-10 max-w-5xl mx-auto space-y-10">
         {(title || subtitle) && (
           <div className="text-center space-y-3">
-            {title && (
-              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || style.text }}>
-                {title}
-              </h2>
+            {(isEditing || title) && (
+              isEditing ? (
+                <EditableText
+                  value={title || ''}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className="text-3xl md:text-4xl lg:text-5xl font-semibold"
+                  style={{ color: textColor || style.text }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || style.text }}>
+                  {title}
+                </h2>
+              )
             )}
-            {subtitle && (
-              <p className={`${style.textSize} opacity-70`} style={{ color: textColor || style.text }}>
-                {subtitle}
-              </p>
+            {(isEditing || subtitle) && (
+              isEditing ? (
+                <EditableText
+                  value={subtitle || ''}
+                  onSave={handleSubtitleSave}
+                  as="p"
+                  className={`${style.textSize} opacity-70`}
+                  style={{ color: textColor || style.text }}
+                  placeholder="Click to edit subtitle..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p className={`${style.textSize} opacity-70`} style={{ color: textColor || style.text }}>
+                  {subtitle}
+                </p>
+              )
             )}
           </div>
         )}

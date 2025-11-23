@@ -36,7 +36,7 @@ const normalizeBigEvent = (event = {}) => {
   };
 };
 
-const EventsSection = ({ layout = 'list', content = {}, style, siteIdentifier, siteId, isEditing = false }) => {
+const EventsSection = ({ layout = 'list', content = {}, style, siteIdentifier, siteId, isEditing = false, moduleId, pageId }) => {
   const defaultOptions = EVENTS_DEFAULTS[layout] || EVENTS_DEFAULTS.list;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = useMemo(() => ({ ...defaults, ...content }), [defaults, content]);
@@ -135,6 +135,9 @@ const EventsSection = ({ layout = 'list', content = {}, style, siteIdentifier, s
       siteIdentifier={siteIdentifier}
       siteId={siteId}
       eventsStatus={statusProp}
+      isEditing={isEditing}
+      moduleId={moduleId}
+      pageId={pageId}
     />
   );
 };

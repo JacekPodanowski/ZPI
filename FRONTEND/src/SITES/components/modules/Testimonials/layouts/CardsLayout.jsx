@@ -1,7 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const CardsLayout = ({ content, siteId, siteConfig }) => {
+const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId }) => {
+    const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+    const handleTitleSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { title: newValue });
+    };
+
+    const handleSubtitleSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { subtitle: newValue });
+    };
+
+    const handleFormTitleSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { formTitle: newValue });
+    };
+
+    const handleFormNameLabelSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { formNameLabel: newValue });
+    };
+
+    const handleFormEmailLabelSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { formEmailLabel: newValue });
+    };
+
+    const handleFormRatingLabelSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { formRatingLabel: newValue });
+    };
+
+    const handleFormContentLabelSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { formContentLabel: newValue });
+    };
+
     const {
         title = 'Co mówią nasi klienci',
         subtitle = '',
@@ -104,13 +136,40 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
-                    <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
-                        {title}
-                    </h2>
-                    {subtitle && (
-                        <p className="text-lg opacity-80 max-w-2xl mx-auto">
-                            {subtitle}
-                        </p>
+                    {(isEditing || title) && (
+                        isEditing ? (
+                            <EditableText
+                                value={title || ''}
+                                onSave={handleTitleSave}
+                                as="h2"
+                                className="text-4xl font-bold mb-4"
+                                style={{ color: primaryColor }}
+                                placeholder="Click to edit title..."
+                                multiline
+                                isModuleSelected={true}
+                            />
+                        ) : (
+                            <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
+                                {title}
+                            </h2>
+                        )
+                    )}
+                    {(isEditing || subtitle) && (
+                        isEditing ? (
+                            <EditableText
+                                value={subtitle || ''}
+                                onSave={handleSubtitleSave}
+                                as="p"
+                                className="text-lg opacity-80 max-w-2xl mx-auto"
+                                placeholder="Click to edit subtitle..."
+                                multiline
+                                isModuleSelected={true}
+                            />
+                        ) : (
+                            <p className="text-lg opacity-80 max-w-2xl mx-auto">
+                                {subtitle}
+                            </p>
+                        )
                     )}
                 </div>
 
@@ -204,12 +263,36 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
                 {showForm && (
                     <div className="mt-16 max-w-2xl mx-auto">
                         <div className="p-8 rounded-xl shadow-lg" style={{ backgroundColor: 'white' }}>
-                            <h3 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>
-                                Podziel się swoją opinią
-                            </h3>
+                            {isEditing ? (
+                                <EditableText
+                                    value={content.formTitle || 'Podziel się swoją opinią'}
+                                    onSave={handleFormTitleSave}
+                                    as="h3"
+                                    className="text-2xl font-bold mb-6"
+                                    style={{ color: primaryColor }}
+                                    placeholder="Click to edit form title..."
+                                    multiline
+                                    isModuleSelected={true}
+                                />
+                            ) : (
+                                <h3 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>
+                                    {content.formTitle || 'Podziel się swoją opinią'}
+                                </h3>
+                            )}
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block mb-2 font-medium">Twoje imię *</label>
+                                    {isEditing ? (
+                                        <EditableText
+                                            value={content.formNameLabel || 'Twoje imię *'}
+                                            onSave={handleFormNameLabelSave}
+                                            as="label"
+                                            className="block mb-2 font-medium"
+                                            placeholder="Click to edit label..."
+                                            isModuleSelected={true}
+                                        />
+                                    ) : (
+                                        <label className="block mb-2 font-medium">{content.formNameLabel || 'Twoje imię *'}</label>
+                                    )}
                                     <input
                                         type="text"
                                         required
@@ -220,7 +303,18 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block mb-2 font-medium">Email (opcjonalnie)</label>
+                                    {isEditing ? (
+                                        <EditableText
+                                            value={content.formEmailLabel || 'Email (opcjonalnie)'}
+                                            onSave={handleFormEmailLabelSave}
+                                            as="label"
+                                            className="block mb-2 font-medium"
+                                            placeholder="Click to edit label..."
+                                            isModuleSelected={true}
+                                        />
+                                    ) : (
+                                        <label className="block mb-2 font-medium">{content.formEmailLabel || 'Email (opcjonalnie)'}</label>
+                                    )}
                                     <input
                                         type="email"
                                         value={formData.author_email}
@@ -230,7 +324,18 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block mb-2 font-medium">Ocena *</label>
+                                    {isEditing ? (
+                                        <EditableText
+                                            value={content.formRatingLabel || 'Ocena *'}
+                                            onSave={handleFormRatingLabelSave}
+                                            as="label"
+                                            className="block mb-2 font-medium"
+                                            placeholder="Click to edit label..."
+                                            isModuleSelected={true}
+                                        />
+                                    ) : (
+                                        <label className="block mb-2 font-medium">{content.formRatingLabel || 'Ocena *'}</label>
+                                    )}
                                     <div className="flex gap-2">
                                         {[1, 2, 3, 4, 5].map((rating) => (
                                             <button
@@ -248,7 +353,18 @@ const CardsLayout = ({ content, siteId, siteConfig }) => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block mb-2 font-medium">Twoja opinia *</label>
+                                    {isEditing ? (
+                                        <EditableText
+                                            value={content.formContentLabel || 'Twoja opinia *'}
+                                            onSave={handleFormContentLabelSave}
+                                            as="label"
+                                            className="block mb-2 font-medium"
+                                            placeholder="Click to edit label..."
+                                            isModuleSelected={true}
+                                        />
+                                    ) : (
+                                        <label className="block mb-2 font-medium">{content.formContentLabel || 'Twoja opinia *'}</label>
+                                    )}
                                     <textarea
                                         required
                                         rows={4}

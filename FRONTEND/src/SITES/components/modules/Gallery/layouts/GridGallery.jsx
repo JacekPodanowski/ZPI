@@ -2,8 +2,21 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { renderMedia } from '../helpers';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const GridGallery = ({ content, style }) => {
+const GridGallery = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleCaptionSave = (index, newValue) => {
+    const newImages = [...images];
+    if (typeof newImages[index] === 'string') {
+      newImages[index] = { url: newImages[index], caption: newValue };
+    } else {
+      newImages[index] = { ...newImages[index], caption: newValue };
+    }
+    updateModuleContent(pageId, moduleId, { images: newImages });
+  };
   const { images = [], columns = 3, gap = '1rem', backgroundImage, backgroundOverlayColor } = content;
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.3)' : undefined);
 
@@ -62,11 +75,24 @@ const GridGallery = ({ content, style }) => {
               className={`${style.rounded} overflow-hidden ${style.shadows} cursor-pointer`}
             >
               {renderMedia(imgUrlRaw, caption || '', 'w-full h-64 object-cover')}
-              {shouldShowCaption && caption && caption.trim() && (
+              {(isEditing || (shouldShowCaption && caption && caption.trim())) && (
                 <div className="p-3 bg-white">
-                  <p className="text-sm text-center" style={{ color: style.text }}>
-                    {caption}
-                  </p>
+                  {isEditing ? (
+                    <EditableText
+                      value={caption || ''}
+                      onSave={(newValue) => handleCaptionSave(idx, newValue)}
+                      as="p"
+                      className="text-sm text-center"
+                      style={{ color: style.text }}
+                      placeholder="Click to edit caption..."
+                      multiline
+                      isModuleSelected={true}
+                    />
+                  ) : (
+                    <p className="text-sm text-center" style={{ color: style.text }}>
+                      {caption}
+                    </p>
+                  )}
                 </div>
               )}
             </motion.div>

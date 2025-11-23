@@ -2,8 +2,16 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const StandardVideo = ({ content, style }) => {
+const StandardVideo = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleCaptionSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { caption: newValue });
+  };
+
   const { videoUrl, caption, captionColor, bgColor, muted } = content;
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted });
   const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'));
@@ -49,13 +57,26 @@ const StandardVideo = ({ content, style }) => {
             )
           )}
         </motion.div>
-        {caption && (
-          <p
-            className="text-sm text-center max-w-3xl"
-            style={{ color: captionColor || style.grey }}
-          >
-            {caption}
-          </p>
+        {(isEditing || caption) && (
+          isEditing ? (
+            <EditableText
+              value={caption || ''}
+              onSave={handleCaptionSave}
+              as="p"
+              className="text-sm text-center max-w-3xl"
+              style={{ color: captionColor || style.grey }}
+              placeholder="Click to edit caption..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <p
+              className="text-sm text-center max-w-3xl"
+              style={{ color: captionColor || style.grey }}
+            >
+              {caption}
+            </p>
+          )
         )}
       </div>
     </section>

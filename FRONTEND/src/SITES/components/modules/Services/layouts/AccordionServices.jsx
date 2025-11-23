@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const getTrimmedText = (value) => (typeof value === 'string' ? value.trim() : '');
 const hasRichText = (value) => typeof value === 'string' && value.trim() !== '';
@@ -14,7 +16,44 @@ const formatPriceValue = (price, currency) => {
   return containsCurrency ? trimmed : `${trimmed}${currency}`;
 };
 
-const AccordionServices = ({ content, style }) => {
+const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
+  const handleServiceFieldSave = (index, field, newValue) => {
+    const serviceList = content.services || content.items || [];
+    const updatedServices = [...serviceList];
+    updatedServices[index] = { ...updatedServices[index], [field]: newValue };
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
+  const handleAddService = () => {
+    const serviceList = content.services || content.items || [];
+    const newService = {
+      id: Date.now(),
+      name: 'Nowa usługa',
+      description: 'Kliknij aby edytować opis',
+      category: '',
+      price: '',
+      image: null
+    };
+    updateModuleContent(pageId, moduleId, { services: [...serviceList, newService] });
+  };
+
+  const handleDeleteService = (index) => {
+    const serviceList = content.services || content.items || [];
+    const updatedServices = [...serviceList];
+    updatedServices.splice(index, 1);
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
   const {
     title = 'Oferta',
     subtitle,
@@ -75,15 +114,41 @@ const AccordionServices = ({ content, style }) => {
         {/* Header */}
         {(title || subtitle) && (
           <div className="text-center space-y-3">
-            {title && (
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
-                {title}
-              </h2>
+            {(isEditing || title) && (
+              isEditing ? (
+                <EditableText
+                  value={title || 'Oferta'}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className="text-3xl md:text-4xl lg:text-5xl font-semibold"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                  {title}
+                </h2>
+              )
             )}
-            {subtitle && (
-              <p className="text-base opacity-70" style={{ color: textColor }}>
-                {subtitle}
-              </p>
+            {(isEditing || subtitle) && (
+              isEditing ? (
+                <EditableText
+                  value={subtitle || ''}
+                  onSave={handleSubtitleSave}
+                  as="p"
+                  className="text-base opacity-70"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit subtitle..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p className="text-base opacity-70" style={{ color: textColor }}>
+                  {subtitle}
+                </p>
+              )
             )}
           </div>
         )}
@@ -105,12 +170,24 @@ const AccordionServices = ({ content, style }) => {
               return (
                 <div 
                   key={service.id || index}
-                  className={`${style.cardStyle} ${itemClass} overflow-hidden ${hasExpandedContent ? 'cursor-pointer' : ''} hover:shadow-lg transition-all`}
+                  className={`${style.cardStyle} ${itemClass} overflow-hidden ${hasExpandedContent ? 'cursor-pointer' : ''} hover:shadow-lg transition-all relative`}
                   onClick={() => {
                     if (!hasExpandedContent) return;
                     setExpandedIndex(expandedIndex === index ? -1 : index);
                   }}
                 >
+                  {isEditing && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteService(index);
+                      }}
+                      className="absolute top-2 right-2 z-10 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                      style={{ fontSize: '18px' }}
+                    >
+                      ×
+                    </button>
+                  )}
                   {/* Header */}
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
@@ -119,29 +196,67 @@ const AccordionServices = ({ content, style }) => {
                           {categoryLabel}
                         </span>
                       )}
-                      {serviceName && (
-                        <h3 
-                          className="text-xl md:text-2xl font-semibold mb-2"
-                          style={{ color: textColor }}
-                        >
-                          {serviceName}
-                        </h3>
+                      {(isEditing || serviceName) && (
+                        isEditing ? (
+                          <EditableText
+                            value={service.name || ''}
+                            onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
+                            as="h3"
+                            className="text-xl md:text-2xl font-semibold mb-2"
+                            style={{ color: textColor }}
+                            placeholder="Click to edit service name..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <h3 
+                            className="text-xl md:text-2xl font-semibold mb-2"
+                            style={{ color: textColor }}
+                          >
+                            {serviceName}
+                          </h3>
+                        )
                       )}
                       
-                      {descriptionHtml && (
-                        <p 
-                          className="text-sm opacity-75"
-                          style={{ color: textColor }}
-                          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                        />
+                      {(isEditing || descriptionHtml) && (
+                        isEditing ? (
+                          <EditableText
+                            value={service.description || ''}
+                            onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
+                            as="p"
+                            className="text-sm opacity-75"
+                            style={{ color: textColor }}
+                            placeholder="Click to edit description..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <p 
+                            className="text-sm opacity-75"
+                            style={{ color: textColor }}
+                            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                          />
+                        )
                       )}
                     </div>
                     
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      {priceValue && (
-                        <span className="text-2xl font-semibold" style={{ color: accentColor }}>
-                          {priceValue}
-                        </span>
+                      {(isEditing || priceValue) && (
+                        isEditing ? (
+                          <EditableText
+                            value={service.price || ''}
+                            onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
+                            as="span"
+                            className="text-2xl font-semibold"
+                            style={{ color: accentColor }}
+                            placeholder="Click to edit price..."
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                            {priceValue}
+                          </span>
+                        )
                       )}
                       {/* Expand Icon */}
                       {hasExpandedContent && (
@@ -195,6 +310,17 @@ const AccordionServices = ({ content, style }) => {
         ) : (
           <div className="text-center py-12 text-sm text-black/40">
             Dodaj usługi w konfiguratorze, aby wypełnić sekcję.
+          </div>
+        )}
+        {isEditing && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={handleAddService}
+              className="bg-[rgb(146,0,32)] text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-[rgb(114,0,21)] transition-colors shadow-lg"
+              style={{ fontSize: '24px' }}
+            >
+              +
+            </button>
           </div>
         )}
       </div>

@@ -1,7 +1,19 @@
 // layouts/FullscreenHero.jsx - Fullscreen layout with background image
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const FullscreenHero = ({ content, style }) => {
+const FullscreenHero = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
   const heroMedia = content.image || content.backgroundImage;
   const overlayColor = content.overlay
     ? content.backgroundOverlayColor || 'rgba(0, 0, 0, 0.5)'
@@ -30,20 +42,46 @@ const FullscreenHero = ({ content, style }) => {
       
       {/* Content */}
       <div className="relative z-10 text-center px-4 md:px-6 max-w-4xl mx-auto">
-        <h1 
-          className={headingClass}
-          style={{ color: primaryColor }}
-        >
-          {content.title || content.heading}
-        </h1>
-        
-        {(content.subtitle || content.subheading) && (
-          <p 
-            className={`${textClass} mt-4 md:mt-6`} 
-            style={{ color: textColor }}
+        {isEditing ? (
+          <EditableText
+            value={content.title || content.heading || ''}
+            onSave={handleTitleSave}
+            as="h1"
+            className={headingClass}
+            style={{ color: primaryColor }}
+            placeholder="Click to edit title..."
+            multiline
+            isModuleSelected={true}
+          />
+        ) : (
+          <h1 
+            className={headingClass}
+            style={{ color: primaryColor }}
           >
-            {content.subtitle || content.subheading}
-          </p>
+            {content.title || content.heading}
+          </h1>
+        )}
+        
+        {(isEditing || content.subtitle || content.subheading) && (
+          isEditing ? (
+            <EditableText
+              value={content.subtitle || content.subheading || ''}
+              onSave={handleSubtitleSave}
+              as="p"
+              className={`${textClass} mt-4 md:mt-6`}
+              style={{ color: textColor }}
+              placeholder="Click to edit subtitle..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <p 
+              className={`${textClass} mt-4 md:mt-6`} 
+              style={{ color: textColor }}
+            >
+              {content.subtitle || content.subheading}
+            </p>
+          )
         )}
         
         {content.showButton !== false && content.ctaText && (

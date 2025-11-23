@@ -1,8 +1,69 @@
 // layouts/NarrativeAbout.jsx - Narrative layout with side image
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { resolveMediaUrl } from '../../../../../config/api';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const NarrativeAbout = ({ content, style }) => {
+const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
+  const handleDescriptionSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
+  const handleHighlightFieldSave = (index, field, newValue) => {
+    const updatedHighlights = [...(content.keyHighlights || content.highlights || [])];
+    updatedHighlights[index] = { ...updatedHighlights[index], [field]: newValue };
+    updateModuleContent(pageId, moduleId, { keyHighlights: updatedHighlights });
+  };
+
+  const handleTimelineFieldSave = (index, field, newValue) => {
+    const updatedTimeline = [...(content.timeline || content.milestones || [])];
+    updatedTimeline[index] = { ...updatedTimeline[index], [field]: newValue };
+    updateModuleContent(pageId, moduleId, { timeline: updatedTimeline });
+  };
+
+  const handleAddHighlight = () => {
+    const highlightsData = content.keyHighlights || content.highlights || [];
+    const newHighlight = {
+      title: 'Nowy punkt',
+      description: 'Kliknij aby edytować opis'
+    };
+    updateModuleContent(pageId, moduleId, { keyHighlights: [...highlightsData, newHighlight] });
+  };
+
+  const handleDeleteHighlight = (index) => {
+    const highlightsData = content.keyHighlights || content.highlights || [];
+    const updatedHighlights = [...highlightsData];
+    updatedHighlights.splice(index, 1);
+    updateModuleContent(pageId, moduleId, { keyHighlights: updatedHighlights });
+  };
+
+  const handleAddMilestone = () => {
+    const timelineData = content.timeline || content.milestones || [];
+    const newMilestone = {
+      year: new Date().getFullYear().toString(),
+      title: 'Nowy etap',
+      description: 'Kliknij aby edytować opis'
+    };
+    updateModuleContent(pageId, moduleId, { timeline: [...timelineData, newMilestone] });
+  };
+
+  const handleDeleteMilestone = (index) => {
+    const timelineData = content.timeline || content.milestones || [];
+    const updatedTimeline = [...timelineData];
+    updatedTimeline.splice(index, 1);
+    updateModuleContent(pageId, moduleId, { timeline: updatedTimeline });
+  };
+
   const overlayColor = content.backgroundOverlayColor ?? (content.backgroundImage ? 'rgba(0, 0, 0, 0.3)' : undefined);
   const imageUrl = content.image ? resolveMediaUrl(content.image) : '';
   const spacingClass = style?.spacing || '';
@@ -26,20 +87,46 @@ const NarrativeAbout = ({ content, style }) => {
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-6xl mx-auto relative z-10">
-        <h2 
-          className={`${headingClass} text-center mb-4`}
-          style={{ color: primaryColor }}
-        >
-          {content.title}
-        </h2>
-        
-        {content.subtitle && (
-          <p 
-            className={`${textClass} text-center italic mb-8 max-w-3xl mx-auto`}
-            style={{ color: textColor, opacity: 0.9 }}
+        {isEditing ? (
+          <EditableText
+            value={content.title || ''}
+            onSave={handleTitleSave}
+            as="h2"
+            className={`${headingClass} text-center mb-4`}
+            style={{ color: primaryColor }}
+            placeholder="Click to edit title..."
+            multiline
+            isModuleSelected={true}
+          />
+        ) : (
+          <h2 
+            className={`${headingClass} text-center mb-4`}
+            style={{ color: primaryColor }}
           >
-            {content.subtitle}
-          </p>
+            {content.title}
+          </h2>
+        )}
+        
+        {(isEditing || content.subtitle) && (
+          isEditing ? (
+            <EditableText
+              value={content.subtitle || ''}
+              onSave={handleSubtitleSave}
+              as="p"
+              className={`${textClass} text-center italic mb-8 max-w-3xl mx-auto`}
+              style={{ color: textColor, opacity: 0.9 }}
+              placeholder="Click to edit subtitle..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <p 
+              className={`${textClass} text-center italic mb-8 max-w-3xl mx-auto`}
+              style={{ color: textColor, opacity: 0.9 }}
+            >
+              {content.subtitle}
+            </p>
+          )
         )}
         
         <div className="grid md:grid-cols-3 gap-8 md:gap-12 items-start mt-8 md:mt-12">
@@ -74,8 +161,17 @@ const NarrativeAbout = ({ content, style }) => {
                   {highlightsData.map((highlight, index) => (
                     <div 
                       key={index}
-                      className={`flex gap-4 items-start ${animationClass}`}
+                      className={`flex gap-4 items-start ${animationClass} relative`}
                     >
+                      {isEditing && (
+                        <button
+                          onClick={() => handleDeleteHighlight(index)}
+                          className="absolute top-0 right-0 z-10 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                          style={{ fontSize: '18px' }}
+                        >
+                          ×
+                        </button>
+                      )}
                       <div 
                         className={`${roundedClass} p-3 flex-shrink-0`}
                         style={{ backgroundColor: `${primaryColor}15` }}
@@ -87,22 +183,59 @@ const NarrativeAbout = ({ content, style }) => {
                         </span>
                       </div>
                       <div>
-                        <h4 
-                          className="font-semibold text-lg mb-1"
-                          style={{ color: primaryColor }}
-                        >
-                          {highlight.title}
-                        </h4>
-                        <p 
-                          className={`${textClass}`}
-                          style={{ color: textColor }}
-                        >
-                          {highlight.description}
-                        </p>
+                        {isEditing ? (
+                          <EditableText
+                            value={highlight.title || ''}
+                            onSave={(newValue) => handleHighlightFieldSave(index, 'title', newValue)}
+                            as="h4"
+                            className="font-semibold text-lg mb-1"
+                            style={{ color: primaryColor }}
+                            placeholder="Click to edit title..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <h4 
+                            className="font-semibold text-lg mb-1"
+                            style={{ color: primaryColor }}
+                          >
+                            {highlight.title}
+                          </h4>
+                        )}
+                        {isEditing ? (
+                          <EditableText
+                            value={highlight.description || ''}
+                            onSave={(newValue) => handleHighlightFieldSave(index, 'description', newValue)}
+                            as="p"
+                            className={`${textClass}`}
+                            style={{ color: textColor }}
+                            placeholder="Click to edit description..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <p 
+                            className={`${textClass}`}
+                            style={{ color: textColor }}
+                          >
+                            {highlight.description}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
+                {isEditing && (
+                  <div className="flex justify-center mt-6">
+                    <button
+                      onClick={handleAddHighlight}
+                      className="bg-[rgb(146,0,32)] text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-[rgb(114,0,21)] transition-colors shadow-lg"
+                      style={{ fontSize: '20px' }}
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             
@@ -119,8 +252,17 @@ const NarrativeAbout = ({ content, style }) => {
                   {timelineData.map((milestone, index) => (
                     <div 
                       key={index}
-                      className={`flex gap-4 ${animationClass}`}
+                      className={`flex gap-4 ${animationClass} relative`}
                     >
+                      {isEditing && (
+                        <button
+                          onClick={() => handleDeleteMilestone(index)}
+                          className="absolute top-0 right-0 z-10 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                          style={{ fontSize: '18px' }}
+                        >
+                          ×
+                        </button>
+                      )}
                       <div 
                         className={`${roundedClass} px-4 py-2 h-fit ${shadowClass}`}
                         style={{ 
@@ -128,25 +270,74 @@ const NarrativeAbout = ({ content, style }) => {
                           color: style?.background || '#ffffff' 
                         }}
                       >
-                        <span className="font-bold">{milestone.year}</span>
+                        {isEditing ? (
+                          <EditableText
+                            value={milestone.year || ''}
+                            onSave={(newValue) => handleTimelineFieldSave(index, 'year', newValue)}
+                            as="span"
+                            className="font-bold"
+                            style={{ color: style?.background || '#ffffff' }}
+                            placeholder="Year..."
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <span className="font-bold">{milestone.year}</span>
+                        )}
                       </div>
                       <div className="flex-1">
-                        <h4 
-                          className="font-semibold text-lg mb-1"
-                          style={{ color: primaryColor }}
-                        >
-                          {milestone.title}
-                        </h4>
-                        <p 
-                          className={textClass}
-                          style={{ color: textColor }}
-                        >
-                          {milestone.description || milestone.desc}
-                        </p>
+                        {isEditing ? (
+                          <EditableText
+                            value={milestone.title || ''}
+                            onSave={(newValue) => handleTimelineFieldSave(index, 'title', newValue)}
+                            as="h4"
+                            className="font-semibold text-lg mb-1"
+                            style={{ color: primaryColor }}
+                            placeholder="Click to edit title..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <h4 
+                            className="font-semibold text-lg mb-1"
+                            style={{ color: primaryColor }}
+                          >
+                            {milestone.title}
+                          </h4>
+                        )}
+                        {isEditing ? (
+                          <EditableText
+                            value={milestone.description || milestone.desc || ''}
+                            onSave={(newValue) => handleTimelineFieldSave(index, 'description', newValue)}
+                            as="p"
+                            className={textClass}
+                            style={{ color: textColor }}
+                            placeholder="Click to edit description..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <p 
+                            className={textClass}
+                            style={{ color: textColor }}
+                          >
+                            {milestone.description || milestone.desc}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
+                {isEditing && (
+                  <div className="flex justify-center mt-6">
+                    <button
+                      onClick={handleAddMilestone}
+                      className="bg-[rgb(146,0,32)] text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-[rgb(114,0,21)] transition-colors shadow-lg"
+                      style={{ fontSize: '20px' }}
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
