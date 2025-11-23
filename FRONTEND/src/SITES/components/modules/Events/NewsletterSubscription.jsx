@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 
 const NewsletterSubscription = ({ siteIdentifier, accentColor, textColor }) => {
   const [email, setEmail] = useState('');
-  const [frequency, setFrequency] = useState('weekly');
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
   const [message, setMessage] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
@@ -53,8 +52,7 @@ const NewsletterSubscription = ({ siteIdentifier, accentColor, textColor }) => {
         },
         body: JSON.stringify({
           site_identifier: siteIdentifier,
-          email,
-          frequency
+          email
         })
       });
 
@@ -66,9 +64,7 @@ const NewsletterSubscription = ({ siteIdentifier, accentColor, textColor }) => {
         if (data.reactivated) {
           successMessage = 'Witamy ponownie! Będziesz dostawać info o nowych Big Eventach.';
         } else if (data.already_subscribed) {
-          successMessage = data.preferences_updated
-            ? 'Zapis był aktualny, ale zaktualizowaliśmy preferencje.'
-            : 'Ten adres email jest już na liście powiadomień.';
+          successMessage = 'Ten adres email jest już na liście powiadomień.';
         }
         setMessage(successMessage);
         if (!data.already_subscribed) {
@@ -120,20 +116,6 @@ const NewsletterSubscription = ({ siteIdentifier, accentColor, textColor }) => {
                 backgroundColor: 'white'
               }}
             />
-          </div>
-
-          <div className="md:w-48">
-            <select
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              disabled={status === 'loading'}
-              className="w-full px-4 py-3 rounded-lg border border-black/20 focus:outline-none focus:ring-2 transition-all bg-white"
-              style={{ focusRingColor: accentColor }}
-            >
-              <option value="daily">Codziennie</option>
-              <option value="weekly">Co tydzień</option>
-              <option value="monthly">Co miesiąc</option>
-            </select>
           </div>
 
           <motion.button

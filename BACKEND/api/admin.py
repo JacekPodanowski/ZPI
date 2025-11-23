@@ -163,9 +163,9 @@ class TestimonialSummaryAdmin(admin.ModelAdmin):
 
 @admin.register(NewsletterSubscription)
 class NewsletterSubscriptionAdmin(admin.ModelAdmin):
-	list_display = ('email', 'site', 'frequency', 'is_active', 'is_confirmed', 'emails_sent', 'emails_opened', 'emails_clicked', 'open_rate', 'click_rate', 'subscribed_at', 'confirmed_at', 'last_sent_at')
+	list_display = ('email', 'site', 'is_active', 'is_confirmed', 'emails_sent', 'emails_opened', 'emails_clicked', 'open_rate', 'click_rate', 'subscribed_at', 'confirmed_at', 'last_sent_at')
 	search_fields = ('email', 'site__name', 'site__identifier')
-	list_filter = ('frequency', 'is_active', 'is_confirmed', 'subscribed_at')
+	list_filter = ('is_active', 'is_confirmed', 'subscribed_at')
 	ordering = ('-subscribed_at',)
 	autocomplete_fields = ('site',)
 	readonly_fields = ('subscribed_at', 'confirmed_at', 'unsubscribe_token', 'confirmation_token', 'emails_sent', 'emails_opened', 'emails_clicked', 'open_rate', 'click_rate')
@@ -224,6 +224,6 @@ class PaymentAdmin(admin.ModelAdmin):
 class BigEventAdmin(admin.ModelAdmin):
 	list_display = ('title', 'site', 'creator', 'start_date', 'status', 'current_participants', 'max_participants', 'email_sent')
 	search_fields = ('title', 'description', 'location')
-	list_filter = ('status', 'send_email_on_publish', 'email_sent', 'created_at')
+	list_filter = ('status', 'email_sent', 'created_at')
 	autocomplete_fields = ('site', 'creator')
 	readonly_fields = ('created_at', 'updated_at', 'published_at', 'email_sent_at')

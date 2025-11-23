@@ -365,10 +365,7 @@ CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
 # Celery Beat Schedule (periodic tasks)
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
-    'send-event-newsletters': {
-        'task': 'api.tasks.send_event_newsletters',
-        'schedule': crontab(hour='9', minute='0'),  # Daily at 9:00 AM UTC
-    },
+    # Newsletter tasks removed - newsletters are now sent manually via button
 }
 
 # --- Konfiguracja Django Cache (Redis) ---

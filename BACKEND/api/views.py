@@ -5781,7 +5781,6 @@ def newsletter_subscribe(request):
     
     site_identifier = serializer.validated_data['site_identifier']
     email = serializer.validated_data['email']
-    frequency = serializer.validated_data['frequency']
     now = timezone.now()
     
     try:
@@ -5792,23 +5791,16 @@ def newsletter_subscribe(request):
     existing = NewsletterSubscription.objects.filter(site=site, email=email).first()
     if existing:
         if existing.is_active and existing.is_confirmed:
-            preferences_updated = False
-            if existing.frequency != frequency:
-                existing.frequency = frequency
-                existing.save(update_fields=['frequency'])
-                preferences_updated = True
             return Response({
                 'message': 'Jesteś już zapisany na newsletter.',
-                'already_subscribed': True,
-                'preferences_updated': preferences_updated
+                'already_subscribed': True
             }, status=status.HTTP_200_OK)
         
         # Reactivate or auto-confirm legacy pending subscriptions
         existing.is_active = True
         existing.is_confirmed = True
         existing.confirmed_at = now
-        existing.frequency = frequency
-        existing.save(update_fields=['is_active', 'is_confirmed', 'confirmed_at', 'frequency'])
+        existing.save(update_fields=['is_active', 'is_confirmed', 'confirmed_at'])
         return Response({
             'message': 'Subskrypcja została ponownie aktywowana.',
             'reactivated': True
@@ -5817,7 +5809,6 @@ def newsletter_subscribe(request):
     subscription = NewsletterSubscription.objects.create(
         site=site,
         email=email,
-        frequency=frequency,
         is_active=True,
         is_confirmed=True,
         confirmed_at=now
@@ -5946,13 +5937,6 @@ def newsletter_stats(request, site_id):
     active_subscribers = subscriptions.filter(is_active=True, is_confirmed=True).count()
     pending_confirmation = subscriptions.filter(is_confirmed=False).count()
     
-    # Frequency breakdown
-    frequency_breakdown = {
-        'daily': subscriptions.filter(frequency='daily', is_active=True, is_confirmed=True).count(),
-        'weekly': subscriptions.filter(frequency='weekly', is_active=True, is_confirmed=True).count(),
-        'monthly': subscriptions.filter(frequency='monthly', is_active=True, is_confirmed=True).count(),
-    }
-    
     # Analytics stats
     total_sent = sum(sub.emails_sent for sub in subscriptions)
     total_opened = sum(sub.emails_opened for sub in subscriptions)
@@ -6001,7 +5985,6 @@ def newsletter_stats(request, site_id):
             'total': total_subscribers,
             'active': active_subscribers,
             'pending_confirmation': pending_confirmation,
-            'frequency_breakdown': frequency_breakdown,
         },
         'all_time': {
             'emails_sent': total_sent,

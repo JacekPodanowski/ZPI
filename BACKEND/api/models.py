@@ -1139,14 +1139,9 @@ class TestimonialSummary(models.Model):
 
 class NewsletterSubscription(models.Model):
     """Newsletter subscriptions for event notifications per site."""
-    class Frequency(models.TextChoices):
-        DAILY = 'daily', 'Codziennie'
-        WEEKLY = 'weekly', 'Raz w tygodniu'
-        MONTHLY = 'monthly', 'Raz w miesiącu'
     
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name='newsletter_subscriptions')
     email = models.EmailField()
-    frequency = models.CharField(max_length=20, choices=Frequency.choices, default=Frequency.WEEKLY)
     is_active = models.BooleanField(default=True)
     is_confirmed = models.BooleanField(default=False)  # Double opt-in confirmation
     confirmation_token = models.CharField(max_length=64, unique=True, editable=False, null=True, blank=True)
@@ -1176,7 +1171,7 @@ class NewsletterSubscription(models.Model):
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"{self.email} - {self.site.name} ({self.get_frequency_display()})"
+        return f"{self.email} - {self.site.name}"
 
 
 class NewsletterAnalytics(models.Model):
@@ -1300,8 +1295,7 @@ class BigEvent(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Price per person')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     
-    # Email notification settings
-    send_email_on_publish = models.BooleanField(default=False, help_text='Send email to subscribers when published')
+    # Email notification tracking
     email_sent = models.BooleanField(default=False, help_text='Whether email has been sent')
     email_sent_at = models.DateTimeField(blank=True, null=True)
     
