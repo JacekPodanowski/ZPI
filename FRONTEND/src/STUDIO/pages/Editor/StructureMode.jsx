@@ -61,6 +61,23 @@ const StructureMode = () => {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [aiTaskCompleted, setAiTaskCompleted] = useState(false);
   const titleInputRef = useRef(null);
+  const aiChatRef = useRef(null);
+
+  // Close AI chat when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (aiChatRef.current && !aiChatRef.current.contains(event.target) && aiChatOpen) {
+        setAiChatOpen(false);
+      }
+    };
+
+    if (aiChatOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [aiChatOpen]);
   const pages = useMemo(() => site?.pages ?? [], [site?.pages]);
 
   const BASE_TITLE_PADDING_LEFT = 12;
@@ -691,6 +708,7 @@ const StructureMode = () => {
 
       {/* AI Chat Panel - Singleton instance */}
       <Box
+        ref={aiChatRef}
         sx={{
           position: 'fixed',
           top: '60px',

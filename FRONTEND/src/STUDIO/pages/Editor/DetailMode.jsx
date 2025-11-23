@@ -20,6 +20,23 @@ const DetailMode = () => {
   const [isAiProcessing, setIsAiProcessing] = useState(false); // Track AI processing state
   const [aiTaskCompleted, setAiTaskCompleted] = useState(false); // Track if task completed
   const isDraggingModule = isDragging && draggedItem?.type === 'module';
+  const aiChatRef = useRef(null);
+
+  // Close AI chat when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (aiChatRef.current && !aiChatRef.current.contains(event.target) && aiChatOpen) {
+        setAiChatOpen(false);
+      }
+    };
+
+    if (aiChatOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [aiChatOpen]);
 
   const pages = site?.pages || [];
 
@@ -274,6 +291,7 @@ const DetailMode = () => {
 
       {/* AI Chat Panel - Desktop Overlay (same as StructureMode) */}
       <Box
+        ref={aiChatRef}
         sx={{
           position: 'fixed',
           top: '60px',
