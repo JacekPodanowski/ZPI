@@ -9,6 +9,10 @@ export default defineConfig({
       '@mui/icons-material',
       '@emotion/react',
       '@emotion/styled',
+      '@mui/system',
+      '@mui/base',
+      '@mui/utils',
+      '@emotion/cache',
       'framer-motion',
       'zustand',
       'react-router-dom',
@@ -29,6 +33,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
     strictPort: true,
+  },
+  resolve: {
+    dedupe: ['react', 'react-dom'],
   },
   preview: {
     host: '0.0.0.0',

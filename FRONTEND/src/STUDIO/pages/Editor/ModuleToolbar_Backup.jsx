@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Stack, 
@@ -20,12 +20,11 @@ import { Delete, Close, ViewModule } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import useNewEditorStore from '../../store/newEditorStore';
-import { useShallow } from 'zustand/react/shallow';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
 
 const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
-  const modules = useMemo(() => getAvailableModules(), []);
+  const modules = getAvailableModules();
   const theme = useTheme();
   const isMobile = useMediaQuery('(max-width:900px)');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -44,16 +43,7 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
   const popupHeaderBg = isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)';
   const popupText = isDarkMode ? 'rgba(240, 240, 242, 0.95)' : 'rgb(30, 30, 30)';
   const popupMutedText = isDarkMode ? 'rgba(225, 225, 228, 0.75)' : 'rgba(30, 30, 30, 0.7)';
-  const { currentPage, site } = useNewEditorStore(
-    useShallow((state) => ({
-      currentPage: state.currentPage,
-      site: state.site,
-    }))
-  );
-  const removeModule = useNewEditorStore((state) => state.removeModule);
-  const addPage = useNewEditorStore((state) => state.addPage);
-  const addModule = useNewEditorStore((state) => state.addModule);
-  const setDragging = useNewEditorStore((state) => state.setDragging);
+  const { removeModule, addPage, addModule, setDragging, currentPage, site } = useNewEditorStore();
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
@@ -67,17 +57,14 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
   const [pageSelectionDialogOpen, setPageSelectionDialogOpen] = useState(false);
   const [touchHoldTimer, setTouchHoldTimer] = useState(null);
 
-  const currentPageId = currentPage?.id;
-  const pages = useMemo(() => site?.pages || [], [site]);
-
-  const handleDragStart = useCallback((e, moduleType) => {
+  const handleDragStart = (e, moduleType) => {
     console.log('[ModuleToolbar] Drag started:', moduleType);
     e.dataTransfer.setData('moduleType', moduleType);
     e.dataTransfer.effectAllowed = 'copy';
     setSelectedModule(null); // Close popup when dragging
-  }, [setSelectedModule]);
+  };
 
-  const handleModuleClick = useCallback((e, module) => {
+  const handleModuleClick = (e, module) => {
     e.stopPropagation();
     
     const boxElement = e.currentTarget;
@@ -96,13 +83,13 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
     
     setSelectedModule(module);
     setIsFirstRender(false);
-  }, [setIsFirstRender, setPopupCenterY, setSelectedModule]);
+  };
 
-  const handleAddModule = useCallback((module) => {
+  const handleAddModule = (module) => {
     // Add module to current page instead of creating a new page
-    if (currentPageId) {
+    if (currentPage) {
       const defaultContent = getDefaultModuleContent(module.type);
-      addModule(currentPageId, {
+      addModule(currentPage.id, {
         type: module.type,
         content: defaultContent
       });
@@ -110,10 +97,10 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
     
     setSelectedModule(null);
     setIsFirstRender(true);
-  }, [addModule, currentPageId, setIsFirstRender, setSelectedModule]);
+  };
 
   // Mobile: Add module to specific page or create new page
-  const handleAddModuleToPage = useCallback((pageId) => {
+  const handleAddModuleToPage = (pageId) => {
     if (!selectedModuleForPage) return;
     
     const defaultContent = getDefaultModuleContent(selectedModuleForPage.type);
@@ -137,26 +124,26 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
     setPageSelectionDialogOpen(false);
     setSelectedModuleForPage(null);
     setMobileDrawerOpen(false);
-  }, [addModule, addPage, selectedModuleForPage, setMobileDrawerOpen, setPageSelectionDialogOpen, setSelectedModuleForPage]);
+  };
 
   // Mobile: Handle touch hold to select module
-  const handleTouchStart = useCallback((module) => {
+  const handleTouchStart = (module) => {
     const timer = setTimeout(() => {
       setSelectedModuleForPage(module);
       setPageSelectionDialogOpen(true);
     }, 500); // 500ms hold time
     
     setTouchHoldTimer(timer);
-  }, [setPageSelectionDialogOpen, setSelectedModuleForPage, setTouchHoldTimer]);
+  };
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = () => {
     if (touchHoldTimer) {
       clearTimeout(touchHoldTimer);
       setTouchHoldTimer(null);
     }
-  }, [setTouchHoldTimer, touchHoldTimer]);
+  };
 
-  const handleTrashDrop = useCallback((e) => {
+  const handleTrashDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -181,16 +168,16 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
       setIsOverTrash(false);
       setDragging(false);
     }
-  }, [removeModule, setDragging, setIsOverTrash]);
+  };
 
-  const handleTrashDragOver = useCallback((e) => {
+  const handleTrashDragOver = (e) => {
     if (!isDraggingModule) return;
     e.preventDefault();
     e.stopPropagation();
     setIsOverTrash(true);
-  }, [isDraggingModule, setIsOverTrash]);
+  };
 
-  const handleTrashDragLeave = useCallback((e) => {
+  const handleTrashDragLeave = (e) => {
     if (!isDraggingModule) return;
     // Only reset if we're actually leaving the trash zone
     const rect = e.currentTarget.getBoundingClientRect();
@@ -200,7 +187,7 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
     if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       setIsOverTrash(false);
     }
-  }, [isDraggingModule]);
+  };
 
   // Reset isOverTrash when dragging stops
   useEffect(() => {
@@ -229,6 +216,8 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
 
   // Mobile FAB button
   if (isMobile) {
+    const pages = site?.pages || [];
+    
     return (
       <>
         {/* Floating Action Button */}
@@ -458,7 +447,7 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
                       fontWeight: 500,
                       color: textPrimary
                     }}
-                    secondary={page.id === currentPageId ? 'Current page' : ''}
+                    secondary={page.id === currentPage?.id ? 'Current page' : ''}
                     secondaryTypographyProps={{
                       fontSize: '12px',
                       color: accentColor,
@@ -495,20 +484,36 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
 
   // Desktop version
   return (
-    <Box
-      ref={toolbarRef}
-      sx={{
-        width: '100%',
+    <motion.div
+      initial={hasInitiallyAnimated.current ? false : { x: -280 }}
+      animate={{ x: 0 }}
+      exit={hasInitiallyAnimated.current ? false : { x: -280 }}
+      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
         height: '100%',
-        bgcolor: moduleListBg,
-        display: 'flex',
-        flexDirection: 'column',
-        p: 2,
-        gap: 1,
-        position: 'relative',
-        overflow: 'hidden'
+        width: '180px',
+        zIndex: 10
       }}
     >
+      {/* Module List - Always Present */}
+      <Box
+        ref={toolbarRef}
+        sx={{
+          width: '100%',
+          height: '100%',
+          bgcolor: moduleListBg,
+          backdropFilter: 'blur(20px)',
+          borderRight: `1px solid ${moduleListBorder}`,
+          display: 'flex',
+          flexDirection: 'column',
+          p: 2,
+          gap: 1,
+          position: 'relative'
+        }}
+      >
         {/* Header with title and close button */}
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, px: 1 }}>
           <Typography
@@ -749,13 +754,16 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
             </motion.div>
           )}
         </AnimatePresence>
+      </Box>
 
       {/* Trash Zone Overlay - Always mounted, visibility controlled by opacity */}
-      <Box
-        sx={{
+      <motion.div
+        animate={{ 
           opacity: isDraggingModule ? 1 : 0,
-          pointerEvents: isDraggingModule ? 'auto' : 'none',
-          transition: 'opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          pointerEvents: isDraggingModule ? 'auto' : 'none'
+        }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        style={{
           position: 'absolute',
           top: 0,
           left: 0,
@@ -793,13 +801,16 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
               gap: 2
             }}
           >
-            <Box
-              sx={{
-                animation: isOverTrash ? 'trashBounce 1.1s ease-in-out infinite' : 'none',
-                '@keyframes trashBounce': {
-                  '0%, 100%': { transform: 'translateY(0) scale(1)' },
-                  '50%': { transform: 'translateY(-10px) scale(1.08)' }
-                }
+            <motion.div
+              animate={{ 
+                y: isOverTrash ? [0, -10, 0] : 0,
+                scale: isOverTrash ? [1, 1.08, 1] : 1
+              }}
+              transition={{ 
+                duration: 1.1,
+                repeat: isOverTrash ? Infinity : 0,
+                repeatType: 'loop',
+                ease: 'easeInOut'
               }}
             >
               <Delete 
@@ -808,7 +819,7 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
                   color: 'rgba(220, 220, 220, 0.7)'
                 }} 
               />
-            </Box>
+            </motion.div>
             <Typography
               sx={{
                 fontSize: '15px',
@@ -823,9 +834,9 @@ const ModuleToolbar = ({ isDraggingModule = false, onClose }) => {
             </Typography>
           </Box>
         </Box>
-      </Box>
-    </Box>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export default React.memo(ModuleToolbar);
+export default ModuleToolbar;
