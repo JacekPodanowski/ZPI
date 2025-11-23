@@ -23,7 +23,6 @@ import ToastTestPage from './pages/Settings/ToastTestPage';
 import PaymentSuccessPage from './pages/Settings/PaymentSuccessPage';
 import PaymentFailedPage from './pages/Settings/PaymentFailedPage';
 import SiteLabPage from './pages/Lab/SiteLabPage';
-import ComponentLabPage from './pages/Lab/ComponentLabPage';
 import TeamPage from './pages/Team/TeamPage';
 import DomainPage from './pages/Domain/DomainPage';
 import BuyDomainPage from './pages/Domain/BuyDomainPage';
@@ -90,7 +89,6 @@ const StudioApp = () => (
       <Route path="new_project" element={<NewProjectPage />} />
       <Route path="new/style" element={<StyleSelectionPage />} />
       <Route path="sites/modules/:siteId" element={<ManageModulesPage />} />
-      <Route path="lab/components" element={<ProtectedRoute><ComponentLabPage /></ProtectedRoute>} />
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
       <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
       <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
