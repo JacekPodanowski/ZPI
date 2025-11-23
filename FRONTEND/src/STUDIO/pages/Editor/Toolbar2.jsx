@@ -373,6 +373,7 @@ const Toolbar2 = ({
         setToolbarWidth(COLLAPSED_TOOLBAR_WIDTH);
         onWidthChange?.(COLLAPSED_TOOLBAR_WIDTH);
         setCollapseIndicatorSize(0);
+        // Keep activeCategory in state for when toolbar is expanded again
         return;
       }
 
@@ -397,10 +398,15 @@ const Toolbar2 = ({
       setIsCollapsed(false);
       setToolbarWidth(TOOLBAR_WIDTH_DEFAULT);
       onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
+      // Restore active category or set to default
+      if (!activeCategory) {
+        setActiveCategory('modules');
+      }
     } else {
       setIsCollapsed(true);
       setToolbarWidth(COLLAPSED_TOOLBAR_WIDTH);
       onWidthChange?.(COLLAPSED_TOOLBAR_WIDTH);
+      // Keep activeCategory in state, don't clear it
     }
   };
 
@@ -892,6 +898,11 @@ const Toolbar2 = ({
         {isCollapsed ? (
           // Collapsed View - Vertical Icons Only
           <Box
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleToggleCollapse();
+            }}
             sx={{
               width: '100%',
               height: '100%',
@@ -900,13 +911,14 @@ const Toolbar2 = ({
               alignItems: 'center',
               pt: 1,
               pb: 2,
-              gap: 1
+              gap: 1,
+              userSelect: 'none'
             }}
           >
             {/* Category Icons */}
             {CATEGORIES.map((category) => {
               const Icon = category.icon;
-              const isActive = activeCategory === category.id;
+              const isActive = false; // Never show as active in collapsed state
               
               return (
                 <Tooltip key={category.id} title={category.label} placement="right">
