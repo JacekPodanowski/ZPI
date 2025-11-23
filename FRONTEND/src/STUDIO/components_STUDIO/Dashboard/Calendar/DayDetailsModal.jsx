@@ -75,10 +75,10 @@ const TIMELINE_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const POSITION_TRANSITION = `top 0.45s ${TIMELINE_EASE}, height 0.45s ${TIMELINE_EASE}, left 0.45s ${TIMELINE_EASE}, width 0.45s ${TIMELINE_EASE}`;
 
 const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
+    const fallbackMetrics = { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 }; // Default to 1 hour at start
     // Handle undefined or invalid time strings
     if (!start || !end || typeof start !== 'string' || typeof end !== 'string') {
-        console.warn('Invalid time values:', { start, end });
-        return { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 }; // Default to 1 hour at start
+        return fallbackMetrics;
     }
     
     const startParts = start.split(':');
@@ -86,16 +86,14 @@ const computeBlockMetrics = (start, end, dayStartMinutes, dayEndMinutes) => {
     
     // Accept both HH:MM and HH:MM:SS formats
     if (startParts.length < 2 || startParts.length > 3 || endParts.length < 2 || endParts.length > 3) {
-        console.warn('Invalid time format:', { start, end });
-        return { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 };
+        return fallbackMetrics;
     }
     
     const [startHour, startMinute] = startParts.map(Number);
     const [endHour, endMinute] = endParts.map(Number);
     
     if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
-        console.warn('Non-numeric time values:', { start, end });
-        return { top: '0%', height: '8.33%', startMinutes: 0, endMinutes: 60 };
+        return fallbackMetrics;
     }
     
     const startMinutes = startHour * 60 + startMinute;
@@ -713,7 +711,7 @@ const DayDetailsModal = ({
         
         ensureSiteRoster(activeSiteId)
             .catch((error) => {
-                console.error('Nie udało się wczytać listy zespołu', error);
+                addToast('Nie udało się wczytać listy zespołu. Odśwież stronę i spróbuj ponownie.', { variant: 'error' });
                 rosterFetchedRef.current.delete(activeSiteId);
             })
             .finally(() => {
@@ -971,7 +969,6 @@ const DayDetailsModal = ({
                 message: 'Witam,\n\nNiestety muszę wprowadzić zmiany w harmonogramie. Proszę o kontakt w celu ustalenia nowego terminu.\n\nPrzepraszam za niedogodności.\nPozdrawiam'
             });
         } catch (error) {
-            console.error('Error sending message:', error);
             addToast('Nie udało się wysłać wiadomości', { variant: 'error' });
         }
     };
@@ -1006,7 +1003,6 @@ const DayDetailsModal = ({
 
             onBookingRemoved?.({ eventId, bookingId });
         } catch (error) {
-            console.error('Error removing booking:', error);
             addToast('Nie udało się usunąć uczestnika', { variant: 'error' });
         }
     };
@@ -1061,7 +1057,6 @@ const DayDetailsModal = ({
             }
             handleClose();
         } catch (error) {
-            console.error('Error deleting item:', error);
             addToast(`Nie udało się usunąć ${itemType}`, { variant: 'error' });
         }
     };
@@ -1165,7 +1160,7 @@ const DayDetailsModal = ({
                 date: dateKey,
                 assignee: assigneePayload
             };
-            console.log('Creating event with capacity:', finalCapacity, 'Full data:', eventData);
+            // Debug: event creation payload
             onCreateEvent?.(eventData);
         } else if (view === 'editEvent') {
             if (!canCreateEvents) {
@@ -1184,7 +1179,7 @@ const DayDetailsModal = ({
                 date: dateKey,
                 assignee: assigneePayload
             };
-            console.log('Updating event with capacity:', finalCapacity, 'Full data:', eventData);
+            // Debug: event update payload
             onUpdateEvent?.(eventData);
         } else if (view === 'createAvailability') {
             if (!canManageAvailability) {
@@ -2195,7 +2190,6 @@ const DayDetailsModal = ({
                                                     }
                                                     handleClose();
                                                 } catch (error) {
-                                                    console.error('Error clearing day:', error);
                                                     addToast('Nie udało się usunąć wszystkich elementów', { variant: 'error' });
                                                 }
                                             }

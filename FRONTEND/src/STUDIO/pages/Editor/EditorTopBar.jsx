@@ -169,12 +169,11 @@ const EditorTopBar = () => {
 
     const trimmedName = siteName.trim();
     if (!trimmedName) {
-      console.error('Site name is required');
+      addToast('Site name is required', { variant: 'error' });
       return;
     }
 
     if (!siteId) {
-      console.warn('[Save] No siteId - cannot save');
       addToast('Cannot save yet. Please create the site first.', { variant: 'warning' });
       return;
     }
@@ -182,8 +181,6 @@ const EditorTopBar = () => {
     setIsSaving(true);
 
     try {
-      console.log('[Save] Starting save process...');
-
       // Deep clone the config
       let finalConfig = JSON.parse(JSON.stringify(site));
 
@@ -199,17 +196,13 @@ const EditorTopBar = () => {
         return value;
       });
 
-      console.log('[Save] Found blob URLs:', Array.from(allBlobUrls));
-
       // Upload each blob and create a URL map
       const uploadPromises = Array.from(allBlobUrls).map(async (blobUrl) => {
         let file = null;
 
         if (isTempBlobUrl(blobUrl)) {
-          console.log('[Save] Uploading tracked blob:', blobUrl);
           file = await retrieveTempImage(blobUrl);
         } else {
-          console.warn('[Save] Blob not tracked, attempting direct fetch:', blobUrl);
         }
 
         if (!file) {
@@ -219,9 +212,7 @@ const EditorTopBar = () => {
             const extension = (blob.type && blob.type.split('/')[1]) || 'bin';
             const fallbackName = `upload-${Date.now()}.${extension}`;
             file = new File([blob], fallbackName, { type: blob.type || 'application/octet-stream' });
-            console.log('[Save] Retrieved file via fetch fallback');
           } catch (fetchError) {
-            console.error('[Save] Failed to fetch blob:', blobUrl, fetchError);
           }
         }
 
@@ -245,7 +236,6 @@ const EditorTopBar = () => {
 
         const uploadedUrl = response?.data?.url;
         if (!uploadedUrl) {
-          console.error('[Save] Upload response missing URL');
           return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
         }
 
@@ -257,7 +247,6 @@ const EditorTopBar = () => {
       const failedUploads = results.filter((result) => result.failed);
 
       if (failedUploads.length > 0) {
-        console.error('[Save] Failed uploads:', failedUploads);
         addToast('Failed to upload some images. Please try again.', { variant: 'error' });
         return;
       }
@@ -277,14 +266,11 @@ const EditorTopBar = () => {
         // Verify no blob URLs remain
         const remainingBlobs = JSON.stringify(finalConfig).match(/blob:http[^\s"']*/g);
         if (remainingBlobs) {
-          console.error('[Save] Blob URLs still present after replacement!', remainingBlobs);
         } else {
-          console.log('[Save] ✓ All blob URLs replaced successfully');
         }
       }
 
   await updateSiteTemplate(siteId, finalConfig, trimmedName);
-      console.log('[Save] Site updated successfully');
 
       const changeSummary = 'Manual save'; // Simple default message
 
@@ -294,9 +280,7 @@ const EditorTopBar = () => {
           template_config: finalConfig,
           change_summary: changeSummary
         });
-        console.log('[Save] Version snapshot stored');
       } catch (versionError) {
-        console.error('[Save] Failed to create site version:', versionError);
       }
 
       // Update store with uploaded URLs (only current site state)
@@ -335,7 +319,6 @@ const EditorTopBar = () => {
         : 'Site saved, but version history could not be recorded.';
       addToast(successMessage, { variant: 'success' });
     } catch (error) {
-      console.error('[Save] Save failed:', error);
       addToast('Failed to save site. Please try again.', { variant: 'error' });
     } finally {
       setIsSaving(false);
@@ -366,13 +349,12 @@ const EditorTopBar = () => {
           const json = JSON.parse(e.target.result);
           if (json.site) {
             // TODO: Load imported config into store
-            console.log('Imported config:', json);
             // For now, just log it - implement loadSite() call when ready
           } else {
-            console.error('Invalid config file');
+            addToast('Invalid config file', { variant: 'error' });
           }
         } catch (error) {
-          console.error('Failed to parse JSON:', error);
+          addToast('Failed to parse JSON', { variant: 'error' });
         }
       };
       reader.readAsText(file);
@@ -383,7 +365,6 @@ const EditorTopBar = () => {
 
   const handlePublish = () => {
     // TODO: Implement publish logic
-    console.log('Publishing...');
   };
 
   const handleGoBack = () => {
@@ -404,7 +385,7 @@ const EditorTopBar = () => {
         setSiteName(titleValue.trim());
         setIsEditingTitle(false);
       } catch (error) {
-        console.error('Failed to update site name:', error);
+        addToast('Failed to rename site', { variant: 'error' });
         setTitleValue(siteName); // Revert on error
       } finally {
         setIsSavingTitle(false);

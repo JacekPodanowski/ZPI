@@ -158,7 +158,6 @@ const CreatorCalendarApp = () => {
             }));
             return response;
         } catch (rosterError) {
-            console.error('Failed to load team roster for site', siteId, rosterError);
             throw rosterError;
         } finally {
             rosterInFlightRef.current.delete(siteId);
@@ -263,10 +262,10 @@ const CreatorCalendarApp = () => {
                         allEvents.push(...transformedEvents);
                         allAvailabilityBlocks.push(...transformedBlocks);
                     } catch (siteError) {
-                        console.warn(`Could not fetch calendar data for site ${site.id}:`, siteError);
+                        /* Skip site if calendar data cannot be fetched */
                     }
                 }
-                
+
                 if (active) {
                     setEvents(allEvents);
                     setAvailabilityBlocks(allAvailabilityBlocks);
@@ -287,14 +286,12 @@ const CreatorCalendarApp = () => {
                         }
                     }
                 } catch (templError) {
-                    console.warn('Could not fetch templates:', templError);
                     if (active) {
                         setTemplates([]);
                     }
                 }
             } catch (err) {
                 if (active) {
-                    console.error('Error loading calendar data:', err);
                     setError('Nie udało się pobrać danych kalendarza. Spróbuj ponownie później.');
                 }
             } finally {
@@ -358,10 +355,10 @@ const CreatorCalendarApp = () => {
                     allEvents.push(...transformedEvents);
                     allAvailabilityBlocks.push(...transformedBlocks);
                 } catch (siteError) {
-                    console.warn(`Could not fetch calendar data for site ${site.id}:`, siteError);
+                    /* Ignore single-site failures during refresh */
                 }
             }
-            
+
             setEvents(allEvents);
             setAvailabilityBlocks(allAvailabilityBlocks);
             setCache(`${CACHE_KEYS.EVENTS}_${userId}`, allEvents, 1000 * 60 * 5);
@@ -371,9 +368,10 @@ const CreatorCalendarApp = () => {
             setTemplates(templatesResponse);
             setCache(`${CACHE_KEYS.TEMPLATES}_${userId}`, templatesResponse, 1000 * 60 * 5);
         } catch (err) {
-            console.error('Error refreshing calendar data:', err);
+            setError('Nie udało się odświeżyć danych kalendarza.');
+            addToast('Nie udało się odświeżyć danych kalendarza.', { variant: 'error' });
         }
-    }, [user?.id, computePermissionsFromSites]);
+    }, [user?.id, computePermissionsFromSites, addToast]);
 
     const handleDayClick = (date) => {
         // If in template creation mode, cancel it when clicking non-selectable day
@@ -491,7 +489,6 @@ const CreatorCalendarApp = () => {
                 return updatedEvents;
             });
         } catch (error) {
-            console.error('Error creating event:', error);
             setError('Nie udało się utworzyć wydarzenia. Spróbuj ponownie.');
         }
     };
@@ -563,7 +560,6 @@ const CreatorCalendarApp = () => {
                 return updatedBlocks;
             });
         } catch (error) {
-            console.error('Error creating availability block:', error);
             setError('Nie udało się utworzyć bloku dostępności. Spróbuj ponownie.');
         }
     };
@@ -630,7 +626,6 @@ const CreatorCalendarApp = () => {
                 return updatedEvents;
             });
         } catch (error) {
-            console.error('Error updating event:', error);
             setError('Nie udało się zaktualizować wydarzenia. Spróbuj ponownie.');
         }
     };
@@ -695,7 +690,6 @@ const CreatorCalendarApp = () => {
                 return updatedBlocks;
             });
         } catch (error) {
-            console.error('Error updating availability block:', error);
             setError('Nie udało się zaktualizować dostępności. Spróbuj ponownie.');
         }
     };
@@ -875,7 +869,6 @@ const CreatorCalendarApp = () => {
             setError(null);
             
         } catch (error) {
-            console.error('Error creating template:', error);
             
             // Check for duplicate name constraint violation
             let errorMessage = 'Nie udało się utworzyć szablonu. Spróbuj ponownie.';
@@ -930,7 +923,7 @@ const CreatorCalendarApp = () => {
                             return updatedEvents;
                         });
                     } catch (deleteError) {
-                        console.error('Error deleting event:', deleteError);
+                        /* Continue removing other events even if one fails */
                     }
                 }
             }

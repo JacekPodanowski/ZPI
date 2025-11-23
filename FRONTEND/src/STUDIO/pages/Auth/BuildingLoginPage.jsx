@@ -278,7 +278,6 @@ const BuildingLoginPage = () => {
     const handleCreateSiteAfterLogin = useCallback(async () => {
         // Prevent duplicate site creation
         if (siteCreationAttemptedRef.current) {
-            console.log('[BuildingLoginPage] Site creation already attempted, skipping');
             return;
         }
 
@@ -287,7 +286,6 @@ const BuildingLoginPage = () => {
             const wizardData = getWizardData();
             
             if (!wizardData || !wizardData.templateConfig) {
-                console.log('[BuildingLoginPage] No wizard data or template config, redirecting to category');
                 navigate(getStageRoute(WIZARD_STAGES.CATEGORY), { replace: true });
                 return;
             }
@@ -296,7 +294,7 @@ const BuildingLoginPage = () => {
             siteCreationAttemptedRef.current = true;
             setIsSubmitting(true);
 
-            console.log('[BuildingLoginPage] Creating site with name:', wizardData.name);
+            // Debug: creating site with name
 
             // Utwórz stronę
             const newSite = await createSite({
@@ -304,7 +302,7 @@ const BuildingLoginPage = () => {
                 template_config: wizardData.templateConfig
             });
 
-            console.log('[BuildingLoginPage] Site created successfully:', newSite.id);
+            // Debug: site created successfully
 
             // Wyczyść dane wizard flow - CRITICAL to prevent re-creation
             clearWizardData();
@@ -312,11 +310,11 @@ const BuildingLoginPage = () => {
             // Przekieruj do listy stron
             navigate('/studio/sites', { replace: true });
         } catch (err) {
-            console.error('[BuildingLoginPage] Failed to create site:', err);
+            // Error: failed to create site
             
             // Check if error is due to duplicate identifier
             if (err.response?.data?.identifier) {
-                console.log('[BuildingLoginPage] Duplicate site detected, clearing wizard data and redirecting');
+                // Duplicate site detected, clearing wizard data and redirecting
                 clearWizardData();
                 navigate('/studio/sites', { replace: true });
                 return;
@@ -332,7 +330,6 @@ const BuildingLoginPage = () => {
     useEffect(() => {
         // Sprawdź czy użytkownik jest już zalogowany
         if (user && !siteCreationAttemptedRef.current) {
-            console.log('[BuildingLoginPage] User logged in, creating site');
             handleCreateSiteAfterLogin();
         }
     }, [user, handleCreateSiteAfterLogin]);
@@ -345,7 +342,6 @@ const BuildingLoginPage = () => {
                 await googleLogin(tokenResponse.access_token);
                 // handleCreateSiteAfterLogin zostanie wywołane przez useEffect po zalogowaniu
             } catch (err) {
-                console.error('Google login failed:', err);
                 setError('Nie udało się zalogować przez Google. Spróbuj ponownie.');
                 setIsSubmitting(false);
             }

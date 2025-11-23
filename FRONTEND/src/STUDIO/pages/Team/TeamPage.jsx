@@ -186,7 +186,6 @@ const TeamPage = () => {
                 limit: data.limit,
             }));
         } catch (error) {
-            console.error('Failed to load attendance report', error);
             setReportDialog((prev) => ({
                 ...prev,
                 loading: false,
@@ -214,7 +213,6 @@ const TeamPage = () => {
                 exportRowsToXlsx(data.rows || [], reportDialog.hostLabel);
             }
         } catch (error) {
-            console.error('Failed to download report', error);
             alert('Nie udało się pobrać raportu. Spróbuj ponownie.');
         } finally {
             setReportDialog((prev) => ({ ...prev, downloading: null }));
@@ -226,17 +224,12 @@ const TeamPage = () => {
             try {
                 setLoading(true);
                 const siteData = await fetchSiteById(siteId);
-                if (process.env.NODE_ENV !== 'production') {
-                    console.log('[TeamPage] Loaded site data:', siteData);
-                    console.log('[TeamPage] Owner payload:', siteData?.owner);
-                }
                 setSite(siteData);
                 
                 // Fetch team members from API
                 const members = await fetchTeamMembers(siteId);
                 setTeamMembers(members);
             } catch (err) {
-                console.error('[TeamPage] Failed to load site data:', err);
             } finally {
                 setLoading(false);
             }
@@ -264,7 +257,6 @@ const TeamPage = () => {
             const updatedSite = await fetchSiteById(siteId);
             setSite(updatedSite);
         } catch (error) {
-            console.error('Failed to add team member:', error);
             throw error;
         }
     };
@@ -326,7 +318,6 @@ const TeamPage = () => {
                 setSite(updatedSite);
             }
         } catch (error) {
-            console.error('Failed to update member:', error);
             throw error;
         }
     };
@@ -349,7 +340,6 @@ const TeamPage = () => {
             const updatedSite = await fetchSiteById(siteId);
             setSite(updatedSite);
         } catch (error) {
-            console.error('Failed to update role:', error);
             alert(error.response?.data?.detail || 'Nie udało się zmienić roli.');
         }
     };
@@ -362,9 +352,9 @@ const TeamPage = () => {
                     ? { ...member, invitation_status: result.status, invited_at: new Date().toISOString() }
                     : member
             ));
-        } catch (error) {
-            console.error('Failed to send invitation:', error);
-        }
+            } catch (error) {
+                // Silently fail and keep UI state unchanged
+            }
     };
 
     const handleDeleteMember = async (memberId) => {
@@ -385,7 +375,6 @@ const TeamPage = () => {
             const updatedSite = await fetchSiteById(siteId);
             setSite(updatedSite);
         } catch (error) {
-            console.error('Failed to delete member:', error);
             alert(error.response?.data?.detail || 'Nie udało się usunąć członka zespołu.');
         }
     };

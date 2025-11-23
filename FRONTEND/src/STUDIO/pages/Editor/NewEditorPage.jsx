@@ -105,12 +105,9 @@ const NewEditorPage = () => {
     const loadSiteData = async () => {
       if (siteId) {
         try {
-          console.log('[NewEditorPage] Loading site with ID:', siteId);
           setLoading(true);
           const data = await fetchSiteById(siteId);
           
-          console.log('[NewEditorPage] API Response:', data);
-          console.log('[NewEditorPage] template_config:', data.template_config);
           
           // Set site ID and name
           setSiteId(data.id);
@@ -120,9 +117,6 @@ const NewEditorPage = () => {
           // Load the site structure from template_config
           if (data.template_config && data.template_config.site) {
             // New unified format
-            console.log('[NewEditorPage] Loading from template_config.site format');
-            console.log('[NewEditorPage] Pages found:', data.template_config.site.pages);
-            
             loadSite({
               id: data.id,
               name: data.name,
@@ -130,11 +124,8 @@ const NewEditorPage = () => {
               userLibrary: data.template_config.userLibrary || { customAssets: [] },
               entryPointPageId: data.template_config.entryPointPageId || data.template_config.site.pages[0]?.id
             });
-            console.log('[NewEditorPage] Site loaded successfully from template_config');
           } else if (data.template_config && data.template_config.pages) {
             // Old format - pages at root level
-            console.log('[NewEditorPage] Loading from old template_config.pages format');
-            console.log('[NewEditorPage] Pages found:', data.template_config.pages);
             
             loadSite({
               id: data.id,
@@ -151,28 +142,22 @@ const NewEditorPage = () => {
               userLibrary: { customAssets: [] },
               entryPointPageId: data.template_config.pages[0]?.id
             });
-            console.log('[NewEditorPage] Site loaded successfully from old format');
           } else {
             // No valid config - create default structure
-            console.log('[NewEditorPage] No valid config found, creating default structure');
-            console.log('[NewEditorPage] template_config value:', JSON.stringify(data.template_config, null, 2));
             
             // Check if we have old-style module names array
             const pages = [];
             const homeModules = [];
             
             if (data.template_config && Array.isArray(data.template_config.modules)) {
-              console.log('[NewEditorPage] Converting old module names to new format:', data.template_config.modules);
               
               // Always add Hero to home page
               const heroModule = convertModuleNameToObject('hero', 0);
               homeModules.push(heroModule);
-              console.log('[NewEditorPage] Added Hero to home page:', heroModule);
               
               // Create separate page for each other module
               data.template_config.modules.forEach((moduleName, index) => {
                 const moduleObj = convertModuleNameToObject(moduleName, index + 1);
-                console.log('[NewEditorPage] Processing module:', moduleName, '->', moduleObj);
                 
                 // Skip hero as it's already on home
                 if (moduleObj.type === 'hero') {
@@ -191,7 +176,6 @@ const NewEditorPage = () => {
                   modules: [moduleObj]
                 });
                 
-                console.log('[NewEditorPage] Created page:', { pageId, pageName, route });
               });
             }
             
@@ -225,18 +209,14 @@ const NewEditorPage = () => {
               userLibrary: { customAssets: [] },
               entryPointPageId: 'home'
             });
-            console.log('[NewEditorPage] Default structure created with pages:', allPages);
           }
           
           setLoading(false);
         } catch (err) {
-          console.error('[NewEditorPage] Failed to load site:', err);
-          console.error('[NewEditorPage] Error details:', err.response?.data || err.message);
           setError('Failed to load site data');
           setLoading(false);
         }
       } else {
-        console.log('[NewEditorPage] No siteId provided');
         setLoading(false);
       }
     };
@@ -250,7 +230,6 @@ const NewEditorPage = () => {
     const validation = validateAIResponse(data);
     
     if (!validation.valid) {
-      console.error('[NewEditorPage] Invalid AI response:', validation.error);
       window.dispatchEvent(new CustomEvent('ai-update-received', {
         detail: { status: 'error', explanation: validation.error }
       }));
@@ -258,24 +237,19 @@ const NewEditorPage = () => {
     }
     
     if (validation.warning) {
-      console.warn('[NewEditorPage] AI response warning:', validation.warning);
     }
     
     if (data.status === 'success' && data.site) {
-      console.log('[NewEditorPage] Applying AI-generated site update');
       
       // Extract site using helper (handles unwrapping)
       const siteData = extractSiteFromResponse(data);
       
       if (!siteData) {
-        console.error('[NewEditorPage] Failed to extract site data from response');
         window.dispatchEvent(new CustomEvent('ai-update-received', {
           detail: { status: 'error', explanation: 'Invalid site data structure' }
         }));
         return;
       }
-      
-      console.log('[NewEditorPage] Extracted site data - pages:', siteData.pages?.length || 0);
       
       replaceSiteStateWithHistory(siteData, {
         type: 'ai-update',
@@ -283,14 +257,11 @@ const NewEditorPage = () => {
         explanation: data.explanation
       });
       
-      console.log('[NewEditorPage] replaceSiteStateWithHistory called successfully');
-      
       // Notify chat panel about success
       window.dispatchEvent(new CustomEvent('ai-update-received', {
         detail: { status: 'success', explanation: data.explanation }
       }));
     } else if (data.status === 'error') {
-      console.error('[NewEditorPage] AI task failed:', data.error);
       
       // Notify chat panel about error
       window.dispatchEvent(new CustomEvent('ai-update-received', {
@@ -302,7 +273,6 @@ const NewEditorPage = () => {
   // WebSocket connection for AI updates (now used only for real-time delivery)
   useEffect(() => {
     if (!user?.id) {
-      console.log('[NewEditorPage] No user ID available, skipping WebSocket connection');
       return;
     }
 
@@ -312,35 +282,27 @@ const NewEditorPage = () => {
     const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
     
-    console.log('[NewEditorPage] Establishing WebSocket connection to:', wsUrl);
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-      console.log('[NewEditorPage] WebSocket connected for AI updates');
     };
 
     socket.onmessage = (event) => {
       try {
-        console.log('[NewEditorPage] Raw WebSocket message received:', event.data);
         const data = JSON.parse(event.data);
-        console.log('[NewEditorPage] Parsed AI update:', data);
 
         handleAIUpdate(data);
       } catch (error) {
-        console.error('[NewEditorPage] Error parsing WebSocket message:', error);
       }
     };
 
     socket.onerror = (error) => {
-      console.error('[NewEditorPage] WebSocket error:', error);
     };
 
     socket.onclose = (event) => {
-      console.log('[NewEditorPage] WebSocket closed:', event.code, event.reason);
     };
 
     return () => {
-      console.log('[NewEditorPage] Cleaning up WebSocket connection');
       socket.close();
     };
   }, [user?.id, handleAIUpdate]);
@@ -348,7 +310,6 @@ const NewEditorPage = () => {
   // Also listen for polling-based updates
   useEffect(() => {
     const handlePolledUpdate = (event) => {
-      console.log('[NewEditorPage] Polled AI update received:', event.detail);
       handleAIUpdate(event.detail);
     };
 

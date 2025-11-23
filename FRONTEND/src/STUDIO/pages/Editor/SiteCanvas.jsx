@@ -87,12 +87,6 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
     interactive
   } = editorColors;
 
-  console.log('[SiteCanvas] Render - page:', page);
-  console.log('[SiteCanvas] Render - page.id:', page?.id);
-  console.log('[SiteCanvas] Render - modules:', page?.modules);
-  console.log('[SiteCanvas] Render - modules count:', page?.modules?.length || 0);
-  console.log('[SiteCanvas] Render - renderMode:', renderMode);
-  console.log('[SiteCanvas] Render - devicePreview:', devicePreview);
 
   const previewTheme = useMemo(
     () => getPreviewTheme(site?.theme),
@@ -200,20 +194,17 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   const handleDragOver = (e, index) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent event from bubbling to editor canvas
-    console.log('[SiteCanvas] Drag over index:', index);
     setDragOverIndex(index);
   };
 
   const handleDragLeave = (e) => {
     if (e) e.stopPropagation(); // Prevent event from bubbling
-    console.log('[SiteCanvas] Drag leave');
     setDragOverIndex(null);
   };
 
   const handleDrop = (e, fallbackIndex = page.modules.length) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[SiteCanvas] Drop attempt. Fallback index:', fallbackIndex, 'dragOverIndex:', dragOverIndex);
 
     if (onDropHandled) onDropHandled();
 
@@ -229,7 +220,6 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
       return boundedFallback;
     })();
 
-    console.log('[SiteCanvas] Drop data:', { moduleType, draggedModuleId, sourcePageId, resolvedIndex });
 
     setDragging(false);
     setDragOverIndex(null);
@@ -287,7 +277,7 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
             justifyContent: 'center'
           }}
         >
-          <Icon sx={{ fontSize: 28, color: 'white' }} />
+            <Icon sx={{ fontSize: 28, color: 'white' }} />
         </Box>
         <Typography
           sx={{
