@@ -127,6 +127,7 @@ INSTALLED_APPS = [
     'dj_rest_auth',
     'dj_rest_auth.registration',
     'django_extensions',
+    'axes',  # DDoS & brute-force protection
 ]
 
 MIDDLEWARE = [
@@ -141,6 +142,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'api.ddos_middleware.DDoSProtectionMiddleware',  # DDoS protection
+    'axes.middleware.AxesMiddleware',  # Brute-force protection (must be last)
 ]
 
 # --- Baza Danych ---
@@ -231,7 +234,11 @@ SIMPLE_JWT = {
 }
 
 # --- Autentykacja (dj-rest-auth & allauth) ---
-AUTHENTICATION_BACKENDS = [ 'django.contrib.auth.backends.ModelBackend', 'allauth.account.auth_backends.AuthenticationBackend', ]
+AUTHENTICATION_BACKENDS = [ 
+    'axes.backends.AxesStandaloneBackend',  # AxesStandaloneBackend should be first
+    'django.contrib.auth.backends.ModelBackend', 
+    'allauth.account.auth_backends.AuthenticationBackend', 
+]
 REST_AUTH = {
     'USE_JWT': True,
     'JWT_AUTH_HTTPONLY': False,
@@ -381,3 +388,24 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# --- DDoS Protection Settings ---
+DDOS_REQUESTS_PER_MINUTE = int(os.environ.get('DDOS_REQUESTS_PER_MINUTE', 60))
+DDOS_REQUESTS_PER_HOUR = int(os.environ.get('DDOS_REQUESTS_PER_HOUR', 1000))
+DDOS_BLOCK_DURATION = int(os.environ.get('DDOS_BLOCK_DURATION', 3600))  # 1 hour in seconds
+DDOS_SUSPICIOUS_THRESHOLD = int(os.environ.get('DDOS_SUSPICIOUS_THRESHOLD', 100))
+DDOS_WHITELIST = [
+    '127.0.0.1',
+    'localhost',
+]
+
+# --- Django Axes (Brute-force protection) Settings ---
+AXES_FAILURE_LIMIT = int(os.environ.get('AXES_FAILURE_LIMIT', 5))  # Lock after 5 failed attempts
+AXES_COOLOFF_TIME = int(os.environ.get('AXES_COOLOFF_TIME', 1))  # Lock for 1 hour
+AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_TEMPLATE = None  # Use default lockout response
+AXES_LOCKOUT_URL = None  # No redirect, return 403
+AXES_VERBOSE = True  # Enable detailed logging
+AXES_ENABLE_ADMIN = True  # Enable admin interface for axes
+AXES_HANDLER = 'axes.handlers.database.AxesDatabaseHandler'  # Store attempts in database

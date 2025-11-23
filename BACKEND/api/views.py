@@ -33,6 +33,14 @@ from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 
+# Rate limiting decorators
+from .rate_limiting import (
+    rate_limit_strict,
+    rate_limit_moderate,
+    rate_limit_relaxed,
+    auth_rate_limit_moderate,
+)
+
 from .models import (
     PlatformUser,
     Site,
@@ -283,6 +291,7 @@ class CustomRegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = CustomRegisterSerializer
 
+    @rate_limit_strict  # 5 requests per minute per IP
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -333,6 +342,7 @@ class ResendVerificationEmailView(APIView):
     """Resend email verification link to inactive users."""
     permission_classes = [AllowAny]
 
+    @rate_limit_strict  # 5 requests per minute per IP
     def post(self, request, *args, **kwargs):
         email = request.data.get('email')
         if not email:
@@ -490,6 +500,7 @@ class RequestMagicLinkView(APIView):
     """Request a magic link for passwordless login."""
     permission_classes = [AllowAny]
 
+    @rate_limit_strict  # 5 requests per minute per IP
     def post(self, request, *args, **kwargs):
         email = request.data.get('email', '').strip().lower()
         if not email:
@@ -627,6 +638,7 @@ class RequestPasswordResetView(APIView):
     """Request a password reset magic link."""
     permission_classes = [IsAuthenticated]
 
+    @rate_limit_moderate  # 20 requests per minute
     def post(self, request, *args, **kwargs):
         user = request.user
         email = user.email
@@ -1874,6 +1886,7 @@ class FileUploadView(APIView):
             500: OpenApiResponse(description='Storage backend error'),
         },
     )
+    @auth_rate_limit_moderate  # 50 requests per minute per user
     def post(self, request, *args, **kwargs):
         file_obj = request.data.get('file')
         usage = request.data.get('usage') or MediaUsage.UsageType.SITE_CONTENT
@@ -3028,6 +3041,7 @@ class PublicAvailabilityView(APIView):
 class PublicBookingView(APIView):
     permission_classes = [AllowAny]
 
+    @rate_limit_moderate  # 20 requests per minute per IP
     def post(self, request, site_id, *args, **kwargs):
         try:
             site = Site.objects.get(pk=site_id)
@@ -4871,6 +4885,7 @@ class AITaskView(APIView):
             500: OpenApiResponse(description='AI processing error'),
         }
     )
+    @auth_rate_limit_moderate  # 50 requests per minute per user
     def post(self, request):
         """
         Process AI task - all site editing tasks go directly to Claude via Celery.
