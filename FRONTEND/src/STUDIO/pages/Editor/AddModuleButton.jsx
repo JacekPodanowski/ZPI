@@ -18,8 +18,9 @@ const AddModuleButton = ({
   buttonSx = {},
   label = 'Add Section'
 }) => {
-  const { getSelectedPage, addModule } = useNewEditorStore();
+  const { getSelectedPage, addModule, moveModule, setDragging } = useNewEditorStore();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const page = getSelectedPage();
   const modules = useMemo(() => getAvailableModules(), []);
 
@@ -40,6 +41,67 @@ const AddModuleButton = ({
       }, insertIndex);
     }
     handleClose();
+  };
+
+  const getDragPayload = (event) => {
+    const dragState = useNewEditorStore.getState().draggedItem;
+    let moduleType = dragState?.moduleType || null;
+    let moduleId = dragState?.moduleId || null;
+    let sourcePageId = dragState?.pageId || dragState?.sourcePageId || null;
+
+    if (event?.dataTransfer) {
+      try {
+        moduleType = event.dataTransfer.getData('moduleType') || moduleType;
+        moduleId = event.dataTransfer.getData('moduleId') || moduleId;
+        sourcePageId = event.dataTransfer.getData('sourcePageId') || sourcePageId;
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    return { moduleType, moduleId, sourcePageId };
+  };
+
+  const handleDragOver = (event) => {
+    if (!page) return;
+    const { moduleType, moduleId } = getDragPayload(event);
+    if (!moduleType && !moduleId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = moduleId ? 'move' : 'copy';
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (event) => {
+    if (!isDragOver) return;
+    const nextTarget = event.relatedTarget;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (event) => {
+    if (!page) return;
+    const { moduleType, moduleId, sourcePageId } = getDragPayload(event);
+    if (!moduleType && !moduleId) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (moduleId && sourcePageId) {
+      moveModule(sourcePageId, page.id, moduleId, insertIndex ?? page.modules.length);
+    } else if (moduleType) {
+      const defaultContent = getDefaultModuleContent(moduleType);
+      addModule(page.id, {
+        type: moduleType,
+        content: defaultContent
+      }, insertIndex);
+    }
+
+    setIsDragOver(false);
+    setDragging(false);
   };
 
   if (!page) return null;
@@ -88,7 +150,13 @@ const AddModuleButton = ({
           </IconButton>
         </Tooltip>
       ) : (
-        <Box sx={{ width: '100%', px: { xs: 1.25, sm: 1.75, md: 2 } }}>
+        <Box
+          sx={{ width: '100%', px: { xs: 1.25, sm: 1.75, md: 2 } }}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <Button
             onClick={handleClick}
             startIcon={<Add sx={{ fontSize: { xs: 18, md: 20 } }} />}
@@ -99,8 +167,12 @@ const AddModuleButton = ({
                 mb: { xs: 1.1, md: 1.75 },
                 py: { xs: 1, md: 1.35 },
                 borderRadius: { xs: '12px', md: '14px' },
-                border: '1px dashed rgba(146, 0, 32, 0.35)',
-                bgcolor: 'rgba(146, 0, 32, 0.06)',
+                border: isDragOver
+                  ? '1px dashed rgba(146, 0, 32, 0.9)'
+                  : '1px dashed rgba(146, 0, 32, 0.35)',
+                bgcolor: isDragOver
+                  ? 'rgba(146, 0, 32, 0.12)'
+                  : 'rgba(146, 0, 32, 0.06)',
                 color: 'rgb(146, 0, 32)',
                 fontWeight: 600,
                 textTransform: 'none',

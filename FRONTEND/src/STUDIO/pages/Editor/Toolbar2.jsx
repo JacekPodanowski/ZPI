@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Box, 
   Stack, 
@@ -12,7 +13,7 @@ import {
   Close, 
   ViewModule,
   Palette,
-  Settings,
+  Tune,
   Photo
 } from '@mui/icons-material';
 import { getAvailableModules, getDefaultModuleContent } from './moduleDefinitions';
@@ -36,7 +37,7 @@ const ALL_CATEGORIES = [
   { id: 'modules', label: 'Modules', icon: ViewModule, modes: ['detail', 'structure'] },
   { id: 'styling', label: 'Styling', icon: Palette, modes: ['detail', 'structure'] },
   { id: 'media', label: 'Media', icon: Photo, modes: ['detail'] }, // Only in detail mode
-  { id: 'settings', label: 'Settings', icon: Settings, modes: ['detail', 'structure'] }
+  { id: 'settings', label: 'Settings', icon: Tune, modes: ['detail', 'structure'] }
 ];
 
 const INDICATOR_STYLE_OPTIONS = [
@@ -93,10 +94,19 @@ const getIndicatorVisuals = (styleId, size, accentColor) => {
   return visuals;
 };
 
-const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthChange }) => {
+const Toolbar2 = ({
+  isDraggingModule = false,
+  draggedItem = null,
+  onClose,
+  mode = 'detail',
+  onWidthChange
+}) => {
   const modules = getAvailableModules();
   const theme = useTheme();
   const isDarkMode = theme.mode === 'dark';
+  const site = useNewEditorStore((state) => state.site);
+  const selectedPageId = useNewEditorStore((state) => state.selectedPageId);
+  const selectedModuleId = useNewEditorStore((state) => state.selectedModuleId);
   
   // Filter categories based on mode
   const CATEGORIES = ALL_CATEGORIES.filter(cat => cat.modes.includes(mode));
@@ -124,6 +134,7 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
+  const [popupPosition, setPopupPosition] = useState({ left: 0, top: 0 });
   const [isFirstRender, setIsFirstRender] = useState(true);
   const [toolbarWidth, setToolbarWidth] = useState(TOOLBAR_WIDTH_DEFAULT);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -135,6 +146,16 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
   const moduleRefs = useRef({});
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+
+  const selectedPage = useMemo(() => {
+    if (!site?.pages) return null;
+    return site.pages.find((page) => page.id === selectedPageId) || null;
+  }, [site?.pages, selectedPageId]);
+
+  const selectedModuleInstance = useMemo(() => {
+    if (!selectedPage?.modules) return null;
+    return selectedPage.modules.find((module) => module.id === selectedModuleId) || null;
+  }, [selectedPage?.modules, selectedModuleId]);
 
   const indicatorOption = useMemo(
     () => INDICATOR_STYLE_OPTIONS.find(option => option.id === indicatorStyle) || INDICATOR_STYLE_OPTIONS[0],
@@ -151,12 +172,35 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
     [indicatorStyle, accentColor]
   );
 
+  // Notify parent of default width on mount
+  useEffect(() => {
+    onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
+  }, [onWidthChange]);
+
   const handleDragStart = (e, moduleType) => {
     console.log('[Toolbar2] Drag started:', moduleType);
     e.dataTransfer.setData('moduleType', moduleType);
     e.dataTransfer.effectAllowed = 'copy';
+    setDragging(true, {
+      type: 'module',
+      moduleType,
+      source: 'toolbar'
+    });
     setSelectedModule(null);
   };
+
+  const handleDragEnd = () => {
+    setDragging(false);
+  };
+
+  const computePopupPosition = useCallback((centerOverride = null) => {
+    if (!toolbarRef.current) return;
+    const toolbarRect = toolbarRef.current.getBoundingClientRect();
+    const left = toolbarRect.right + 16;
+    const centerY = centerOverride ?? popupCenterY;
+    const top = toolbarRect.top + centerY - EDITOR_TOP_BAR_HEIGHT;
+    setPopupPosition({ left, top });
+  }, [popupCenterY]);
 
   const handleModuleClick = (e, module) => {
     e.stopPropagation();
@@ -165,19 +209,18 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
     const contentArea = boxElement.closest('[data-toolbar-content]');
     const toolbar = toolbarRef.current;
     
+    let moduleCenterY;
     if (boxElement && contentArea && toolbar) {
       const boxRect = boxElement.getBoundingClientRect();
       const toolbarRect = toolbar.getBoundingClientRect();
       const scrollTop = contentArea.scrollTop || 0;
-      
-      // Calculate position relative to the entire toolbar (subtracting category tabs height)
-      const moduleCenterY = (boxRect.top - toolbarRect.top) + scrollTop + (boxRect.height / 2) - EDITOR_TOP_BAR_HEIGHT;
-      
+      moduleCenterY = (boxRect.top - toolbarRect.top) + scrollTop + (boxRect.height / 2);
       setPopupCenterY(moduleCenterY);
     }
-    
+
     setSelectedModule(module);
     setIsFirstRender(false);
+    computePopupPosition(typeof moduleCenterY === 'number' ? moduleCenterY : undefined);
   };
 
   const handleAddModule = (module) => {
@@ -257,6 +300,25 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedModule]);
 
+  useEffect(() => {
+    if (!selectedModule || typeof window === 'undefined') {
+      return;
+    }
+
+    const handleRealtimePositioning = () => {
+      computePopupPosition();
+    };
+
+    handleRealtimePositioning();
+    window.addEventListener('resize', handleRealtimePositioning);
+    window.addEventListener('scroll', handleRealtimePositioning, true);
+
+    return () => {
+      window.removeEventListener('resize', handleRealtimePositioning);
+      window.removeEventListener('scroll', handleRealtimePositioning, true);
+    };
+  }, [selectedModule, computePopupPosition]);
+
   // Handle resize
   const handleResizeStart = (e) => {
     e.preventDefault();
@@ -279,7 +341,6 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
         const clampedWidth = Math.max(TOOLBAR_WIDTH_MIN, Math.min(targetWidth, TOOLBAR_WIDTH_MAX));
         setToolbarWidth(clampedWidth);
         setCollapseIndicatorSize(0);
-        onWidthChange?.(clampedWidth);
         return;
       }
 
@@ -289,7 +350,6 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
       if (overshoot <= COLLAPSE_INDICATOR_BUFFER) {
         setToolbarWidth(TOOLBAR_WIDTH_MIN);
         setCollapseIndicatorSize(0);
-        onWidthChange?.(TOOLBAR_WIDTH_MIN);
         return;
       }
 
@@ -299,7 +359,6 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
         COLLAPSE_INDICATOR_MAX_DRAG
       );
       setCollapseIndicatorSize(effectiveOvershoot);
-      onWidthChange?.(TOOLBAR_WIDTH_MIN);
     };
 
     const handleMouseUp = (e) => {
@@ -313,9 +372,14 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
         setIsCollapsed(true);
         setToolbarWidth(COLLAPSED_TOOLBAR_WIDTH);
         onWidthChange?.(COLLAPSED_TOOLBAR_WIDTH);
+        setCollapseIndicatorSize(0);
+        return;
       }
-      // Otherwise keep the current width (no snapping)
-      
+
+      // Commit the new width and notify parent once
+      const finalWidth = Math.max(TOOLBAR_WIDTH_MIN, Math.min(targetWidth, TOOLBAR_WIDTH_MAX));
+      setToolbarWidth(finalWidth);
+      onWidthChange?.(finalWidth);
       setCollapseIndicatorSize(0);
     };
 
@@ -340,11 +404,6 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
     }
   };
 
-  // Notify parent on mount and width changes
-  useEffect(() => {
-    onWidthChange?.(toolbarWidth);
-  }, [toolbarWidth, onWidthChange]);
-
   // Render content based on active category
   const renderCategoryContent = () => {
     switch (activeCategory) {
@@ -361,6 +420,7 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
                   transition={{ delay: index * 0.05, duration: 0.3 }}
                   draggable
                   onDragStart={(e) => handleDragStart(e, module.type)}
+                  onDragEnd={handleDragEnd}
                   data-module-item
                 >
                   <Box
@@ -435,78 +495,166 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
         );
       
       case 'settings':
+        const secondaryTitle = mode === 'detail' && selectedModuleInstance
+          ? 'Selected Module Parameters'
+          : 'Site Settings';
+
+        const moduleContentKeys = Object.keys(selectedModuleInstance?.content || {});
+
         return (
-          <Stack spacing={1.5} sx={{ px: 1.5, py: 1.5 }}>
-            <Typography sx={{ fontSize: '13px', letterSpacing: '0.4px', textTransform: 'uppercase', color: textMuted }}>
-              Editor Settings
-            </Typography>
-            <Stack spacing={0.75}>
-              <Typography sx={{ fontSize: '13.5px', fontWeight: 600, color: textPrimary }}>
-                Collapse Indicator Style
+          <Stack spacing={2} sx={{ px: 1.5, py: 1.5 }}>
+            <Stack spacing={1.25}>
+              <Typography sx={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.35em', color: accentColor }}>
+                DEV
               </Typography>
-              <Box
-                component="select"
-                value={indicatorStyle}
-                onChange={(e) => setIndicatorStyle(e.target.value)}
-                sx={{
-                  width: '100%',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: textPrimary,
-                  bgcolor: isDarkMode ? 'rgba(22, 22, 28, 0.85)' : 'rgba(255, 255, 255, 0.92)',
-                  borderRadius: '8px',
-                  border: `1px solid ${moduleListBorder}`,
-                  px: 1.5,
-                  py: 1,
-                  appearance: 'none',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                  '&:focus': {
-                    borderColor: accentColor,
-                    boxShadow: `0 0 0 2px ${alpha(accentColor, 0.16)}`
-                  },
-                  '& option': {
+              <Box sx={{ height: '1px', width: '100%', bgcolor: alpha(textPrimary, 0.08) }} />
+              <Stack spacing={0.75}>
+                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: textPrimary }}>
+                Indicator Style
+                </Typography>
+                <Box
+                  component="select"
+                  value={indicatorStyle}
+                  onChange={(e) => setIndicatorStyle(e.target.value)}
+                  sx={{
+                    width: '100%',
+                    fontSize: '13px',
+                    fontWeight: 500,
                     color: textPrimary,
-                    backgroundColor: isDarkMode ? 'rgba(18, 18, 22, 0.94)' : '#fff'
-                  }
-                }}
-              >
-                {INDICATOR_STYLE_OPTIONS.map(option => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </Box>
-              <Typography sx={{ fontSize: '12.5px', color: textMuted, lineHeight: 1.5 }}>
-                {indicatorOption?.description}
-              </Typography>
-              <Box
-                sx={{
-                  position: 'relative',
-                  height: '52px',
-                  borderRadius: '10px',
-                  border: `1px dashed ${alpha(accentColor, 0.2)}`,
-                  bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.65)',
-                  overflow: 'hidden'
-                }}
-              >
+                    bgcolor: isDarkMode ? 'rgba(22, 22, 28, 0.85)' : 'rgba(255, 255, 255, 0.92)',
+                    borderRadius: '8px',
+                    border: `1px solid ${moduleListBorder}`,
+                    px: 1.5,
+                    py: 1,
+                    appearance: 'none',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                    '&:focus': {
+                      borderColor: accentColor,
+                      boxShadow: `0 0 0 2px ${alpha(accentColor, 0.16)}`
+                    },
+                    '& option': {
+                      color: textPrimary,
+                      backgroundColor: isDarkMode ? 'rgba(18, 18, 22, 0.94)' : '#fff'
+                    }
+                  }}
+                >
+                  {INDICATOR_STYLE_OPTIONS.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Box>
                 <Box
                   sx={{
-                    position: 'absolute',
-                    top: '8px',
-                    bottom: '8px',
-                    right: '18px',
-                    width: `${previewIndicatorVisuals.width}px`,
-                    background: previewIndicatorVisuals.background,
-                    clipPath: previewIndicatorVisuals.clipPath,
-                    transition: 'all 0.1s ease',
-                    ...(previewIndicatorVisuals.boxShadow ? { boxShadow: previewIndicatorVisuals.boxShadow } : {}),
-                    ...(previewIndicatorVisuals.highlight
-                      ? { '&::after': { ...previewIndicatorVisuals.highlight, height: '48%' } }
-                      : {})
+                    position: 'relative',
+                    height: '52px',
+                    borderRadius: '10px',
+                    border: `1px dashed ${alpha(accentColor, 0.2)}`,
+                    bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.65)',
+                    overflow: 'hidden'
                   }}
-                />
-              </Box>
+                >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '8px',
+                      bottom: '8px',
+                      right: '18px',
+                      width: `${previewIndicatorVisuals.width}px`,
+                      background: previewIndicatorVisuals.background,
+                      clipPath: previewIndicatorVisuals.clipPath,
+                      transition: 'all 0.1s ease',
+                      ...(previewIndicatorVisuals.boxShadow ? { boxShadow: previewIndicatorVisuals.boxShadow } : {}),
+                      ...(previewIndicatorVisuals.highlight
+                        ? { '&::after': { ...previewIndicatorVisuals.highlight, height: '48%' } }
+                        : {})
+                    }}
+                  />
+                </Box>
+              </Stack>
+            </Stack>
+
+            <Stack spacing={1.25}>
+              <Typography sx={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.24em', color: textMuted }}>
+                {secondaryTitle.toUpperCase()}
+              </Typography>
+              <Box sx={{ height: '1px', width: '100%', bgcolor: alpha(textPrimary, 0.08) }} />
+
+              {mode === 'detail' && selectedModuleInstance ? (
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '13px', color: textMuted }}>
+                    Manage the live section currently selected on the canvas.
+                  </Typography>
+                  <Stack spacing={0.3}>
+                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Module Type</Typography>
+                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
+                      {selectedModuleInstance.type}
+                    </Typography>
+                  </Stack>
+                  <Stack spacing={0.3}>
+                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Module ID</Typography>
+                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
+                      {selectedModuleInstance.id}
+                    </Typography>
+                  </Stack>
+                  <Stack spacing={0.3}>
+                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Content Fields</Typography>
+                    {moduleContentKeys.length ? (
+                      <Stack direction="row" flexWrap="wrap" gap={0.75}>
+                        {moduleContentKeys.map((key) => (
+                          <Box
+                            key={key}
+                            sx={{
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: '8px',
+                              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(30, 30, 30, 0.06)',
+                              fontSize: '12px',
+                              color: textPrimary
+                            }}
+                          >
+                            {key}
+                          </Box>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography sx={{ fontSize: '12px', color: textMuted }}>
+                        This module does not expose editable parameters yet.
+                      </Typography>
+                    )}
+                  </Stack>
+                </Stack>
+              ) : (
+                <Stack spacing={0.75}>
+                  <Typography sx={{ fontSize: '13px', color: textMuted }}>
+                    Quick overview of the current site context.
+                  </Typography>
+                  <Stack spacing={0.3}>
+                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Site Name</Typography>
+                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
+                      {site?.name || 'Untitled Site'}
+                    </Typography>
+                  </Stack>
+                  <Stack spacing={0.3}>
+                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Current Page</Typography>
+                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
+                      {selectedPage?.name || 'No page selected'}
+                    </Typography>
+                    {selectedPage?.route && (
+                      <Typography sx={{ fontSize: '12px', color: textMuted }}>
+                        Route: {selectedPage.route}
+                      </Typography>
+                    )}
+                  </Stack>
+                  <Stack spacing={0.3}>
+                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Pages</Typography>
+                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
+                      {site?.pages?.length || 0}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              )}
             </Stack>
           </Stack>
         );
@@ -516,6 +664,151 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
     }
   };
 
+  const shouldShowTrash = isDraggingModule && (draggedItem?.source ?? 'canvas') !== 'toolbar';
+
+  const modulePopupPortal = typeof document !== 'undefined'
+    ? createPortal(
+        <AnimatePresence mode="popLayout">
+          {selectedModule && (
+            <motion.div
+              data-module-popup
+              layout
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ 
+                opacity: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
+                x: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] },
+                layout: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+              }}
+              style={{
+                position: 'fixed',
+                left: popupPosition.left,
+                top: popupPosition.top,
+                transform: 'translateY(-50%)',
+                width: '300px',
+                zIndex: 3000,
+                pointerEvents: 'auto'
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: popupBackground,
+                  borderRadius: '10px',
+                  boxShadow: isDarkMode ? '0 12px 32px rgba(0, 0, 0, 0.45)' : '0 4px 20px rgba(0, 0, 0, 0.12)',
+                  overflow: 'visible',
+                  border: `1px solid ${popupBorder}`,
+                  position: 'relative',
+                  maxHeight: '50vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    left: '-10px',
+                    top: '50%',
+                    width: '20px',
+                    height: '20px',
+                    bgcolor: popupBackground,
+                    border: `1px solid ${popupBorder}`,
+                    borderRight: 'none',
+                    borderBottom: 'none',
+                    borderRadius: '3px 0 0 0',
+                    transform: 'translateY(-50%) rotate(-45deg)',
+                    boxShadow: '-2px -2px 4px rgba(0, 0, 0, 0.03)',
+                    zIndex: -1
+                  }
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 1.25,
+                    py: 0.75,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.75,
+                    bgcolor: popupHeaderBg,
+                    borderRadius: '10px 10px 0 0',
+                    position: 'relative',
+                    zIndex: 3
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: '5px',
+                      bgcolor: selectedModule.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <selectedModule.icon sx={{ fontSize: 16, color: 'white' }} />
+                  </Box>
+                  <Typography
+                    sx={{
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      color: popupText,
+                      flex: 1
+                    }}
+                  >
+                    {selectedModule.label}
+                  </Typography>
+                  
+                  <Typography
+                    onClick={() => handleAddModule(selectedModule)}
+                    sx={{
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      color: accentColor,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      '&:hover': {
+                        textDecoration: 'underline',
+                        color: accentHoverColor
+                      }
+                    }}
+                  >
+                    Add
+                  </Typography>
+                </Box>
+
+                <Box 
+                  sx={{ 
+                    px: 1.25, 
+                    py: 1, 
+                    position: 'relative',
+                    overflowY: 'auto',
+                    flex: 1,
+                    minHeight: '60px',
+                    maxHeight: 'calc(50vh - 50px)',
+                    bgcolor: popupBackground
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: '13px',
+                      lineHeight: 1.5,
+                      color: popupMutedText,
+                      textAlign: 'left',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word'
+                    }}
+                  >
+                    {selectedModule?.description || 'No description available'}
+                  </Typography>
+                </Box>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )
+    : null;
+
   return (
     <motion.div
       initial={hasInitiallyAnimated.current ? false : { width: 0, opacity: 0 }}
@@ -524,7 +817,8 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
       transition={isResizing ? { duration: 0 } : { duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       style={{
         height: '100%',
-        flexShrink: 0
+        flexShrink: 0,
+        position: 'relative'
       }}
     >
 
@@ -759,155 +1053,17 @@ const Toolbar2 = ({ isDraggingModule = false, onClose, mode = 'detail', onWidthC
             </motion.div>
           </AnimatePresence>
         </Box>
-
-        {/* Module Info Popup */}
-        <AnimatePresence mode="popLayout">
-          {selectedModule && (
-            <motion.div
-              data-module-popup
-              layout
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ 
-                opacity: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-                x: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] },
-                layout: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
-              }}
-              style={{
-                position: 'absolute',
-                left: `calc(100% + 16px)`,
-                top: `${popupCenterY}px`,
-                transform: 'translateY(-50%)',
-                width: '300px',
-                zIndex: 100
-              }}
-            >
-              <Box
-                sx={{
-                  bgcolor: popupBackground,
-                  borderRadius: '10px',
-                  boxShadow: isDarkMode ? '0 12px 32px rgba(0, 0, 0, 0.45)' : '0 4px 20px rgba(0, 0, 0, 0.12)',
-                  overflow: 'visible',
-                  border: `1px solid ${popupBorder}`,
-                  position: 'relative',
-                  maxHeight: '50vh',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    left: '-10px',
-                    top: '50%',
-                    width: '20px',
-                    height: '20px',
-                    bgcolor: popupBackground,
-                    border: `1px solid ${popupBorder}`,
-                    borderRight: 'none',
-                    borderBottom: 'none',
-                    borderRadius: '3px 0 0 0',
-                    transform: 'translateY(-50%) rotate(-45deg)',
-                    boxShadow: '-2px -2px 4px rgba(0, 0, 0, 0.03)',
-                    zIndex: -1
-                  }
-                }}
-              >
-                {/* Header */}
-                <Box
-                  sx={{
-                    px: 1.25,
-                    py: 0.75,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.75,
-                    bgcolor: popupHeaderBg,
-                    borderRadius: '10px 10px 0 0',
-                    position: 'relative',
-                    zIndex: 3
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '5px',
-                      bgcolor: selectedModule.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}
-                  >
-                    <selectedModule.icon sx={{ fontSize: 16, color: 'white' }} />
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      color: popupText,
-                      flex: 1
-                    }}
-                  >
-                    {selectedModule.label}
-                  </Typography>
-                  
-                  <Typography
-                    onClick={() => handleAddModule(selectedModule)}
-                    sx={{
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      color: accentColor,
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      '&:hover': {
-                        textDecoration: 'underline',
-                        color: accentHoverColor
-                      }
-                    }}
-                  >
-                    Add
-                  </Typography>
-                </Box>
-
-                {/* Description */}
-                <Box 
-                  sx={{ 
-                    px: 1.25, 
-                    py: 1, 
-                    position: 'relative',
-                    overflowY: 'auto',
-                    flex: 1,
-                    minHeight: '60px',
-                    maxHeight: 'calc(50vh - 50px)',
-                    bgcolor: popupBackground
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: '13px',
-                      lineHeight: 1.5,
-                      color: popupMutedText,
-                      textAlign: 'left',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}
-                  >
-                    {selectedModule?.description || 'No description available'}
-                  </Typography>
-                </Box>
-              </Box>
-            </motion.div>
-          )}
-        </AnimatePresence>
         </>
         )}
       </Box>
 
+      {modulePopupPortal}
+
       {/* Trash Zone Overlay */}
       <motion.div
         animate={{ 
-          opacity: isDraggingModule ? 1 : 0,
-          pointerEvents: isDraggingModule ? 'auto' : 'none'
+          opacity: shouldShowTrash ? 1 : 0,
+          pointerEvents: shouldShowTrash ? 'auto' : 'none'
         }}
         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
         style={{

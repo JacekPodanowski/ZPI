@@ -4,8 +4,8 @@ import { Delete } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getPreviewTheme } from './siteThemes';
-import AddModuleButton from './AddModuleButton';
 import { useToast } from '../../../contexts/ToastContext';
+import { getDefaultModuleContent, getModuleDefinition } from './moduleDefinitions';
 
 // Wrapper component to measure module heights
 const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, devicePreview }) => {
@@ -108,16 +108,53 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
 };
 
 const DetailCanvas = () => {
-  const { selectedModuleId, selectedPageId, removeModule } = useNewEditorStore();
+  const { selectedModuleId, selectedPageId, removeModule, addModule, moveModule, setDragging } = useNewEditorStore();
   const addToast = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [moduleToDelete, setModuleToDelete] = React.useState(null);
+  const [isCanvasDragOver, setIsCanvasDragOver] = React.useState(false);
+  const [dragOverIndex, setDragOverIndex] = React.useState(null);
   
   // Subscribe to the pages array so component re-renders when it changes
-  const pages = useNewEditorStore(state => state.site.pages);
+  const pages = useNewEditorStore(state => state.site?.pages || []);
   const site = useNewEditorStore(state => state.site);
   const devicePreview = useNewEditorStore(state => state.devicePreview);
   const page = pages.find(p => p.id === selectedPageId);
+
+  const resolveDropIndex = (fallbackIndex) => {
+    if (!page) return 0;
+    if (dragOverIndex !== null && !Number.isNaN(dragOverIndex)) {
+      return Math.max(0, Math.min(dragOverIndex, page.modules.length));
+    }
+    const safeFallback = typeof fallbackIndex === 'number' ? fallbackIndex : page.modules.length;
+    return Math.max(0, Math.min(safeFallback, page.modules.length));
+  };
+
+  const handleDropAtIndex = (event, fallbackIndex) => {
+    if (!page) return;
+    const payload = getDragPayload(event);
+    if (!payload.moduleType && !payload.moduleId) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const targetIndex = resolveDropIndex(fallbackIndex);
+
+    setIsCanvasDragOver(false);
+    setDragOverIndex(null);
+
+    if (payload.moduleId && payload.sourcePageId) {
+      moveModule(payload.sourcePageId, page.id, payload.moduleId, targetIndex);
+    } else if (payload.moduleType) {
+      const defaultContent = getDefaultModuleContent(payload.moduleType);
+      addModule(page.id, {
+        type: payload.moduleType,
+        content: defaultContent
+      }, targetIndex);
+    }
+
+    setDragging(false);
+  };
 
   const previewTheme = useMemo(
     () => getPreviewTheme(site?.theme),
@@ -135,6 +172,130 @@ const DetailCanvas = () => {
     e.stopPropagation(); // Prevent triggering module selection
     setModuleToDelete(moduleId);
     setDeleteDialogOpen(true);
+  };
+
+  const getDragPayload = (event) => {
+    const dragState = useNewEditorStore.getState().draggedItem;
+    let moduleType = dragState?.moduleType || null;
+    let moduleId = dragState?.moduleId || null;
+    let sourcePageId = dragState?.pageId || dragState?.sourcePageId || null;
+
+    if (event?.dataTransfer) {
+      try {
+        moduleType = event.dataTransfer.getData('moduleType') || moduleType;
+        moduleId = event.dataTransfer.getData('moduleId') || moduleId;
+        sourcePageId = event.dataTransfer.getData('sourcePageId') || sourcePageId;
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    return { moduleType, moduleId, sourcePageId };
+  };
+
+  const handleCanvasDragOver = (event) => {
+    if (!page) return;
+    const { moduleType, moduleId } = getDragPayload(event);
+    if (!moduleType && !moduleId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = moduleId ? 'move' : 'copy';
+    setIsCanvasDragOver(true);
+    setDragOverIndex(page.modules.length);
+  };
+
+  const handleCanvasDragLeave = (event) => {
+    if (!isCanvasDragOver) return;
+    const nextTarget = event.relatedTarget;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setIsCanvasDragOver(false);
+    setDragOverIndex(null);
+  };
+
+  const handleCanvasDrop = (event) => {
+    handleDropAtIndex(event, dragOverIndex ?? page?.modules.length ?? 0);
+  };
+
+  const handleModuleDragStart = (event, module) => {
+    if (!page) return;
+    const definition = getModuleDefinition(module.type);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('moduleId', module.id);
+    event.dataTransfer.setData('sourcePageId', page.id);
+
+    const dragPreview = document.createElement('div');
+    dragPreview.style.cssText = `
+      position: absolute;
+      top: -1000px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+
+    dragPreview.innerHTML = `
+      <div style="
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background: ${definition.color};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      ">
+        <svg style="width: 18px; height: 18px; fill: white;" viewBox="0 0 24 24">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+        </svg>
+      </div>
+      <span style="
+        font-size: 14px;
+        font-weight: 500;
+        color: rgb(30, 30, 30);
+      ">${definition.label}</span>
+    `;
+
+    document.body.appendChild(dragPreview);
+    event.dataTransfer.setDragImage(dragPreview, 75, 25);
+    setTimeout(() => {
+      document.body.removeChild(dragPreview);
+    }, 0);
+
+    event.stopPropagation();
+    setDragging(true, {
+      type: 'module',
+      moduleId: module.id,
+      pageId: page.id,
+      source: 'canvas'
+    });
+  };
+
+  const handleModuleDragEnd = () => {
+    setDragging(false);
+    setIsCanvasDragOver(false);
+    setDragOverIndex(null);
+  };
+
+  const handleModuleDragOver = (event, index) => {
+    const payload = getDragPayload(event);
+    if (!payload.moduleType && !payload.moduleId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const relativeY = event.clientY - rect.top;
+    const halfHeight = rect.height / 2;
+    setDragOverIndex(relativeY < halfHeight ? index : index + 1);
+    setIsCanvasDragOver(true);
+  };
+
+  const handleModuleDrop = (event, index) => {
+    handleDropAtIndex(event, dragOverIndex ?? index + 1);
   };
 
   const confirmDelete = () => {
@@ -173,8 +334,14 @@ const DetailCanvas = () => {
     <Box
       sx={{
         width: '100%',
-        minHeight: '100%'
+        minHeight: '100%',
+        transition: 'background-color 0.2s ease',
+        backgroundColor: isCanvasDragOver ? 'rgba(146, 0, 32, 0.03)' : 'transparent'
       }}
+      onDragOver={handleCanvasDragOver}
+      onDragEnter={handleCanvasDragOver}
+      onDragLeave={handleCanvasDragLeave}
+      onDrop={handleCanvasDrop}
     >
       <Box sx={{ mb: 3 }}>
         <ModuleRenderer
@@ -189,19 +356,6 @@ const DetailCanvas = () => {
         />
       </Box>
 
-      {page.modules.length > 0 && (
-        <AddModuleButton
-          variant="inline"
-          insertIndex={0}
-          label="Wstaw sekcję powyżej"
-          buttonSx={{
-            mt: { xs: 0.75, md: 1.5 },
-            mb: { xs: 1.25, md: 2 },
-            borderStyle: 'dashed'
-          }}
-        />
-      )}
-
       {page.modules.length === 0 ? (
         <Box
           sx={{
@@ -214,39 +368,67 @@ const DetailCanvas = () => {
             textAlign: 'center',
             color: 'rgba(30, 30, 30, 0.35)',
             fontSize: '14px',
-            fontWeight: 500
+            fontWeight: 500,
+            border: '1px dashed rgba(146, 0, 32, 0.4)',
+            borderRadius: '16px'
           }}
         >
-          Add your first section below to start designing this page.
-          <AddModuleButton
-            variant="inline"
-            insertIndex={0}
-            label="Add first section"
-            buttonSx={{ mt: { xs: 1.5, md: 2 } }}
-          />
+          Drag a module from the toolbar to start building this page.
         </Box>
       ) : (
-        page.modules.map((module, index) => (
-          <React.Fragment key={module.id}>
-            <MeasuredModule
-              module={module}
-              pageId={page.id}
-              isSelected={selectedModuleId === module.id}
-              onDelete={(e) => handleDeleteModule(module.id, e)}
-              previewTheme={previewTheme}
-              devicePreview={devicePreview}
-            />
-            <AddModuleButton
-              variant="inline"
-              insertIndex={index + 1}
-              label={index === page.modules.length - 1 ? 'Wstaw sekcję poniżej' : 'Wstaw sekcję tutaj'}
-              buttonSx={{
-                mt: { xs: 1.1, md: 1.75 },
-                mb: index === page.modules.length - 1 ? { xs: 2.5, md: 3 } : { xs: 1.1, md: 1.75 }
-              }}
-            />
-          </React.Fragment>
-        ))
+        page.modules.map((module, index) => {
+          const showTopIndicator = dragOverIndex === index;
+          const showBottomIndicator = dragOverIndex === index + 1;
+
+          return (
+            <React.Fragment key={module.id}>
+              <Box
+                draggable
+                onDragStart={(e) => handleModuleDragStart(e, module)}
+                onDragEnd={handleModuleDragEnd}
+                onDragOver={(e) => handleModuleDragOver(e, index)}
+                onDragEnter={(e) => handleModuleDragOver(e, index)}
+                onDrop={(e) => handleModuleDrop(e, index)}
+                sx={{
+                  position: 'relative',
+                  '&::before': showTopIndicator ? {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: '2px',
+                    backgroundColor: 'rgba(146, 0, 32, 0.7)',
+                    boxShadow: '0 0 14px rgba(146, 0, 32, 0.6)',
+                    zIndex: 3,
+                    pointerEvents: 'none'
+                  } : undefined,
+                  '&::after': showBottomIndicator ? {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: '2px',
+                    backgroundColor: 'rgba(146, 0, 32, 0.7)',
+                    boxShadow: '0 0 14px rgba(146, 0, 32, 0.6)',
+                    zIndex: 3,
+                    pointerEvents: 'none'
+                  } : undefined
+                }}
+              >
+                <MeasuredModule
+                  module={module}
+                  pageId={page.id}
+                  isSelected={selectedModuleId === module.id}
+                  onDelete={(e) => handleDeleteModule(module.id, e)}
+                  previewTheme={previewTheme}
+                  devicePreview={devicePreview}
+                />
+              </Box>
+            </React.Fragment>
+          );
+        })
       )}
 
       {/* Delete Confirmation Dialog */}

@@ -53,7 +53,7 @@ const StructureMode = () => {
   
   const [renderMode, setRenderMode] = useState('icon'); // 'icon' | 'real'
   const [dropHandled, setDropHandled] = useState(false);
-  const isDraggingModule = isDragging && draggedItem?.type === 'module';
+  const isDraggingModule = isDragging && draggedItem?.type === 'module' && draggedItem?.source !== 'toolbar';
   const [focusedPageId, setFocusedPageId] = useState(() => selectedPageId || entryPointPageId || site?.pages?.[0]?.id || null);
   const [editingPageId, setEditingPageId] = useState(null);
   const [draftPageTitle, setDraftPageTitle] = useState('');
@@ -359,7 +359,13 @@ const StructureMode = () => {
       }}
     >
       {/* New Unified Toolbar */}
-      {!isMobile && <Toolbar2 isDraggingModule={isDraggingModule} mode="structure" />}
+      {!isMobile && (
+        <Toolbar2
+          isDraggingModule={isDraggingModule}
+          draggedItem={draggedItem}
+          mode="structure"
+        />
+      )}
 
       {/* EDITOR CANVAS - The Whole Background */}
       <Box

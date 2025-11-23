@@ -21,7 +21,7 @@ const DetailMode = () => {
   const [isAiProcessing, setIsAiProcessing] = useState(false); // Track AI processing state
   const [aiTaskCompleted, setAiTaskCompleted] = useState(false); // Track if task completed
   const [toolbarWidth, setToolbarWidth] = useState(200); // Track toolbar width
-  const isDraggingModule = isDragging && draggedItem?.type === 'module';
+  const isDraggingModule = isDragging && draggedItem?.type === 'module' && draggedItem?.source !== 'toolbar';
   const aiChatRef = useRef(null);
 
   // Close AI chat when clicking outside
@@ -101,6 +101,7 @@ const DetailMode = () => {
         {!isMobile && (
           <Toolbar2 
             isDraggingModule={isDraggingModule} 
+            draggedItem={draggedItem}
             mode="detail"
             onWidthChange={setToolbarWidth}
           />

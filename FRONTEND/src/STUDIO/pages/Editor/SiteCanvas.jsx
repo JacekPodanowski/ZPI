@@ -591,7 +591,8 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                         setDragging(true, {
                           type: 'module',
                           moduleId: module.id,
-                          pageId: page.id
+                          pageId: page.id,
+                          source: 'canvas'
                         });
                     }}
                     onDragEnd={(e) => {
