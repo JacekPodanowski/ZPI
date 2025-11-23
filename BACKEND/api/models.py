@@ -949,12 +949,15 @@ class DomainOrder(models.Model):
     """Stores domain purchase orders with payment and configuration tracking."""
     
     class OrderStatus(models.TextChoices):
+        FREE = 'free', 'Added to Cloudflare - Awaiting Configuration'
+        PENDING = 'pending', 'Waiting for Nameserver Propagation'
         PENDING_PAYMENT = 'pending_payment', 'Pending Payment'
         CONFIGURING_DNS = 'configuring_dns', 'Configuring DNS'
         ACTIVE = 'active', 'Active'
         DNS_ERROR = 'dns_error', 'DNS Configuration Error'
         EXPIRED = 'expired', 'Expired'
         CANCELLED = 'cancelled', 'Cancelled'
+        ERROR = 'error', 'Configuration Error'
     
     user = models.ForeignKey(
         PlatformUser,
@@ -966,7 +969,9 @@ class DomainOrder(models.Model):
         Site,
         on_delete=models.CASCADE,
         related_name='domain_orders',
-        help_text='Site this domain is for'
+        null=True,
+        blank=True,
+        help_text='Site this domain is for (optional)'
     )
     domain_name = models.CharField(
         max_length=255,
@@ -1021,6 +1026,17 @@ class DomainOrder(models.Model):
         blank=True,
         null=True,
         help_text='Error message if DNS configuration failed'
+    )
+    cloudflare_zone_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Cloudflare Zone ID for this domain'
+    )
+    cloudflare_nameservers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Cloudflare nameservers assigned to this domain'
     )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

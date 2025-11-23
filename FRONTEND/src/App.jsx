@@ -24,6 +24,11 @@ const App = () => {
             <Route path="/cancel-booking/:bookingId" element={<CancelBookingPage />} />
             <Route path="/newsletter/confirm/:token" element={<NewsletterConfirmPage />} />
             <Route path="/newsletter/unsubscribe/:token" element={<NewsletterUnsubscribePage />} />
+            
+            {/* Redirect /domain to /studio/domain */}
+            <Route path="/domain" element={<Navigate to="/studio/domain" replace />} />
+            <Route path="/domain/:siteId" element={<Navigate to="/studio/domain/:siteId" replace />} />
+            
             <Route path="/studio/*" element={<StudioRoutes />} />
 
             {/* Warunkowa ścieżka dla trybu deweloperskiego */}

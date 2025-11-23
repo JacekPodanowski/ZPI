@@ -816,7 +816,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                 </MenuItem>
                 <MenuItem onClick={() => {
                     handleMenuClose();
-                    navigate(`/studio/domain/${site.id}`);
+                    navigate(`/studio/${site.id}/domain`);
                 }}>
                     <LanguageIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
                     Change Domain

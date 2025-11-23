@@ -4371,20 +4371,20 @@ def get_domain_pricing(request):
     }
 )
 def get_domain_orders(request):
-    """Get all domain orders for a specific site, or all orders if user is admin."""
+    """Get all domain orders for a specific site, or all user's orders if no site specified."""
     site_id = request.GET.get('site_id')
     
-    # If user is admin and no site_id provided, return ALL orders
-    if request.user.is_staff and not site_id:
-        orders = DomainOrder.objects.all().select_related('site').order_by('-created_at')
+    # If no site_id provided, return all orders for this user
+    if not site_id:
+        if request.user.is_staff:
+            # Admins see all orders
+            orders = DomainOrder.objects.all().select_related('site').order_by('-created_at')
+        else:
+            # Regular users see only their orders
+            orders = DomainOrder.objects.filter(user=request.user).select_related('site').order_by('-created_at')
+        
         serializer = DomainOrderSerializer(orders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    if not site_id:
-        return Response(
-            {'error': 'site_id is required'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
     
     # Verify user has access to the site (admins can access all sites)
     try:
@@ -4836,6 +4836,424 @@ def retry_dns_configuration(request):
         'order_id': order.id,
         'status': order.status,
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Add domain and create Cloudflare zone',
+    description='Creates a new Cloudflare zone for the domain and stores nameservers in database.',
+    request=inline_serializer(
+        name='AddDomainRequest',
+        fields={
+            'domain_name': serializers.CharField(help_text='Domain name (e.g., example.com)'),
+            'site_id': serializers.IntegerField(help_text='Site ID this domain is for', required=False),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name='AddDomainResponse',
+            fields={
+                'order_id': serializers.IntegerField(),
+                'domain_name': serializers.CharField(),
+                'cloudflare_zone_id': serializers.CharField(),
+                'nameservers': serializers.ListField(child=serializers.CharField()),
+                'status': serializers.CharField(),
+                'message': serializers.CharField(),
+            }
+        ),
+        400: OpenApiResponse(description='Invalid request'),
+        500: OpenApiResponse(description='Cloudflare API error'),
+    }
+)
+def add_domain_with_cloudflare(request):
+    """
+    Add a domain by creating a Cloudflare zone and storing nameservers.
+    
+    Steps:
+    1. Create zone in Cloudflare
+    2. Get zone_id and nameservers from response
+    3. Save domain order in database with status 'pending' or 'free'
+    4. Return nameservers to display to user
+    """
+    domain_name = request.data.get('domain_name')
+    site_id = request.data.get('site_id')
+    
+    if not domain_name:
+        return Response(
+            {'error': 'domain_name is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate domain name format
+    domain_name = domain_name.lower().strip()
+    
+    # Check if domain already exists for this user
+    existing_order = DomainOrder.objects.filter(
+        user=request.user,
+        domain_name=domain_name
+    ).first()
+    
+    if existing_order:
+        return Response(
+            {'error': f'Domain {domain_name} already exists in your account'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Get site if provided
+    site = None
+    if site_id:
+        try:
+            site = Site.objects.get(id=site_id, owner=request.user)
+        except Site.DoesNotExist:
+            return Response(
+                {'error': 'Site not found or access denied'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    try:
+        # Create Cloudflare zone
+        cf_headers = {
+            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        
+        cf_create_zone = requests.post(
+            'https://api.cloudflare.com/client/v4/zones',
+            headers=cf_headers,
+            json={
+                'name': domain_name,
+                'account': {'id': settings.CLOUDFLARE_ACCOUNT_ID},
+                'jump_start': True,
+            }
+        )
+        
+        zone_created = False
+        zone_id = None
+        nameservers = []
+        zone_status = 'free'
+        
+        if cf_create_zone.status_code == 200:
+            cf_zone_data = cf_create_zone.json()['result']
+            zone_id = cf_zone_data['id']
+            nameservers = cf_zone_data.get('name_servers', [])
+            cloudflare_status = cf_zone_data.get('status', 'pending')
+            
+            # Map Cloudflare status to our status
+            if cloudflare_status == 'active':
+                zone_status = 'active'
+            elif cloudflare_status == 'pending':
+                zone_status = 'pending'
+            else:
+                zone_status = 'free'
+            
+            zone_created = True
+            logger.info(f"[add_domain] Cloudflare zone created: {zone_id} for {domain_name}")
+            
+        else:
+            # Zone might already exist - try to get it
+            logger.info(f"[add_domain] Zone creation returned {cf_create_zone.status_code}, checking for existing zone")
+            cf_zones = requests.get(
+                f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
+                headers=cf_headers
+            )
+            
+            if cf_zones.status_code == 200 and cf_zones.json()['result']:
+                cf_zone_data = cf_zones.json()['result'][0]
+                zone_id = cf_zone_data['id']
+                nameservers = cf_zone_data.get('name_servers', [])
+                cloudflare_status = cf_zone_data.get('status', 'pending')
+                
+                if cloudflare_status == 'active':
+                    zone_status = 'active'
+                elif cloudflare_status == 'pending':
+                    zone_status = 'pending'
+                else:
+                    zone_status = 'free'
+                
+                zone_created = True
+                logger.info(f"[add_domain] Using existing zone: {zone_id} for {domain_name}")
+            else:
+                error_msg = cf_create_zone.json().get('errors', [{}])[0].get('message', 'Unknown error')
+                logger.error(f"[add_domain] Failed to create/find Cloudflare zone: {error_msg}")
+                return Response(
+                    {'error': f'Failed to create Cloudflare zone: {error_msg}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        # Create domain order in database
+        domain_order = DomainOrder.objects.create(
+            user=request.user,
+            site=site,
+            domain_name=domain_name,
+            cloudflare_zone_id=zone_id,
+            cloudflare_nameservers=nameservers,
+            status=zone_status,
+            dns_configuration={
+                'cloudflare_zone_created': zone_created,
+                'created_at': timezone.now().isoformat()
+            }
+        )
+        
+        message = ''
+        if zone_status == 'pending':
+            message = f'Domain added to Cloudflare. Please update your domain nameservers to the provided Cloudflare nameservers.'
+        elif zone_status == 'active':
+            message = 'Domain is already active in Cloudflare! DNS configuration will start automatically.'
+        else:
+            message = 'Domain registered. Waiting for Cloudflare zone activation.'
+        
+        return Response({
+            'order_id': domain_order.id,
+            'domain_name': domain_name,
+            'cloudflare_zone_id': zone_id,
+            'nameservers': nameservers,
+            'status': zone_status,
+            'message': message,
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f'[add_domain] Error adding domain {domain_name}: {e}')
+        return Response(
+            {'error': f'Failed to add domain: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@extend_schema(
+    tags=['Domains'],
+    summary='Get Cloudflare nameservers',
+    description='Returns the Cloudflare nameservers that users should configure their domains to use.',
+    responses={
+        200: inline_serializer(
+            name='CloudflareNameserversResponse',
+            fields={
+                'nameservers': serializers.ListField(
+                    child=serializers.CharField(),
+                    help_text='List of Cloudflare nameservers'
+                ),
+                'instructions': serializers.CharField(help_text='Setup instructions'),
+            }
+        ),
+    }
+)
+def get_cloudflare_nameservers(request):
+    """
+    Get Cloudflare nameservers for domain configuration.
+    Returns the nameservers users should point their domains to.
+    """
+    # Standard Cloudflare nameservers
+    # In production, you might want to retrieve these from your Cloudflare account
+    nameservers = [
+        'ada.ns.cloudflare.com',
+        'cid.ns.cloudflare.com'
+    ]
+    
+    instructions = (
+        "To use your custom domain, update your domain's nameservers to the following Cloudflare nameservers. "
+        "This process can take 24-48 hours to propagate worldwide."
+    )
+    
+    return Response({
+        'nameservers': nameservers,
+        'instructions': instructions,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@extend_schema(
+    tags=['Domains'],
+    summary='Track domain status via Cloudflare',
+    description='Check domain status using Cloudflare API and return current DNS configuration status.',
+    request=inline_serializer(
+        name='TrackDomainStatusRequest',
+        fields={
+            'domain_name': serializers.CharField(help_text='Domain name to track (e.g., example.com)'),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name='TrackDomainStatusResponse',
+            fields={
+                'domain_name': serializers.CharField(),
+                'status': serializers.CharField(help_text='active, pending, or error'),
+                'cloudflare_zone_id': serializers.CharField(allow_null=True),
+                'nameservers': serializers.ListField(child=serializers.CharField()),
+                'nameservers_configured': serializers.BooleanField(),
+                'dns_records': serializers.ListField(child=serializers.DictField()),
+                'message': serializers.CharField(),
+            }
+        ),
+        400: OpenApiResponse(description='Invalid request'),
+        404: OpenApiResponse(description='Domain not found'),
+        500: OpenApiResponse(description='Cloudflare API error'),
+    }
+)
+def track_domain_status(request):
+    """
+    Track domain status via Cloudflare API.
+    Checks if domain is properly configured and returns current status.
+    """
+    domain_name = request.data.get('domain_name')
+    
+    if not domain_name:
+        return Response(
+            {'error': 'domain_name is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        # Check if user has access to this domain
+        domain_order = DomainOrder.objects.filter(
+            domain_name=domain_name
+        ).first()
+        
+        if not domain_order:
+            return Response(
+                {'error': 'Domain order not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check permissions
+        if not request.user.is_staff and domain_order.user != request.user:
+            return Response(
+                {'error': 'Access denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Query Cloudflare API
+        cf_headers = {
+            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        
+        # Get zone info from Cloudflare
+        cf_zones_response = requests.get(
+            f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
+            headers=cf_headers
+        )
+        
+        if cf_zones_response.status_code != 200:
+            return Response(
+                {
+                    'error': 'Failed to query Cloudflare API',
+                    'details': cf_zones_response.json()
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        zones_data = cf_zones_response.json()
+        
+        if not zones_data.get('result'):
+            # Domain not added to Cloudflare yet
+            return Response({
+                'domain_name': domain_name,
+                'status': 'pending',
+                'cloudflare_zone_id': None,
+                'nameservers': [],
+                'nameservers_configured': False,
+                'dns_records': [],
+                'message': 'Domain not yet added to Cloudflare. DNS configuration pending.',
+            }, status=status.HTTP_200_OK)
+        
+        zone = zones_data['result'][0]
+        zone_id = zone['id']
+        zone_status = zone['status']
+        nameservers = zone.get('name_servers', [])
+        
+        # Check if nameservers are configured (zone is active)
+        nameservers_configured = zone_status == 'active'
+        
+        # Get DNS records for this zone
+        dns_records = []
+        if zone_id:
+            dns_response = requests.get(
+                f'https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records',
+                headers=cf_headers
+            )
+            
+            if dns_response.status_code == 200:
+                dns_data = dns_response.json()
+                dns_records = [
+                    {
+                        'type': record['type'],
+                        'name': record['name'],
+                        'content': record['content'],
+                        'proxied': record.get('proxied', False)
+                    }
+                    for record in dns_data.get('result', [])
+                ]
+        
+        # Determine overall status and update database
+        previous_status = domain_order.status
+        
+        if zone_status == 'active':
+            overall_status = 'active'
+            message = 'Domain is fully configured and active on Cloudflare'
+            
+            # Update database if status changed
+            if previous_status != 'active':
+                domain_order.status = 'active'
+                domain_order.cloudflare_zone_id = zone_id
+                domain_order.cloudflare_nameservers = nameservers
+                domain_order.save(update_fields=['status', 'cloudflare_zone_id', 'cloudflare_nameservers'])
+                
+                # Trigger automatic DNS configuration
+                from .tasks import configure_domain_dns
+                configure_domain_dns.delay(domain_order.id)
+                logger.info(f'[track_domain_status] Domain {domain_name} activated - DNS configuration triggered')
+                
+        elif zone_status == 'pending':
+            overall_status = 'pending'
+            message = 'Domain added to Cloudflare. Waiting for nameserver updates to propagate.'
+            
+            # Update database
+            if previous_status != 'pending':
+                domain_order.status = 'pending'
+                domain_order.cloudflare_zone_id = zone_id
+                domain_order.cloudflare_nameservers = nameservers
+                domain_order.save(update_fields=['status', 'cloudflare_zone_id', 'cloudflare_nameservers'])
+                
+        elif zone_status in ['moved', 'deleted']:
+            overall_status = 'error'
+            message = f'Domain configuration error: zone is {zone_status}'
+            
+            # Update database
+            domain_order.status = 'error'
+            domain_order.error_message = f'Cloudflare zone status: {zone_status}'
+            domain_order.save(update_fields=['status', 'error_message'])
+            
+        else:
+            overall_status = 'error'
+            message = f'Domain configuration issue. Cloudflare status: {zone_status}'
+            
+            # Update database
+            if previous_status != 'error':
+                domain_order.status = 'error'
+                domain_order.error_message = f'Unknown Cloudflare status: {zone_status}'
+                domain_order.save(update_fields=['status', 'error_message'])
+        
+        return Response({
+            'domain_name': domain_name,
+            'status': overall_status,
+            'cloudflare_zone_id': zone_id,
+            'nameservers': nameservers,
+            'nameservers_configured': nameservers_configured,
+            'dns_records': dns_records,
+            'message': message,
+            'cloudflare_status': zone_status,
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f'[track_domain_status] Error tracking domain {domain_name}: {e}')
+        return Response(
+            {'error': f'Failed to track domain status: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class AITaskView(APIView):

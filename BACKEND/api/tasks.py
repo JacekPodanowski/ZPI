@@ -1638,3 +1638,100 @@ def send_random_test_notification():
         logger.exception(f"[Celery] Failed to send test notification: {exc}")
         return {"status": "error", "message": str(exc)}
 
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300)
+def sync_cloudflare_domain_status(self):
+    """
+    Periodically sync domain statuses from Cloudflare API.
+    Runs every 10 minutes to check domain activation status.
+    
+    - Updates domain status in database
+    - Triggers DNS configuration when domain becomes active
+    - Handles errors and status changes
+    """
+    from .models import DomainOrder
+    import requests
+    
+    logger.info("[Celery] Starting Cloudflare domain status sync")
+    
+    try:
+        # Get all domains that are not yet active
+        pending_domains = DomainOrder.objects.filter(
+            status__in=['free', 'pending', 'pending_payment']
+        ).exclude(cloudflare_zone_id__isnull=True).exclude(cloudflare_zone_id='')
+        
+        cf_headers = {
+            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        
+        synced_count = 0
+        activated_count = 0
+        error_count = 0
+        
+        for domain_order in pending_domains:
+            try:
+                # Query Cloudflare for zone status
+                cf_response = requests.get(
+                    f'https://api.cloudflare.com/client/v4/zones/{domain_order.cloudflare_zone_id}',
+                    headers=cf_headers,
+                    timeout=10
+                )
+                
+                if cf_response.status_code != 200:
+                    logger.warning(f"[Celery] Failed to get status for {domain_order.domain_name}: {cf_response.status_code}")
+                    continue
+                
+                zone_data = cf_response.json()['result']
+                zone_status = zone_data.get('status')
+                nameservers = zone_data.get('name_servers', [])
+                
+                previous_status = domain_order.status
+                
+                # Update status based on Cloudflare response
+                if zone_status == 'active' and previous_status != 'active':
+                    domain_order.status = 'active'
+                    domain_order.cloudflare_nameservers = nameservers
+                    domain_order.save(update_fields=['status', 'cloudflare_nameservers'])
+                    
+                    # Trigger DNS configuration
+                    configure_domain_dns.delay(domain_order.id)
+                    logger.info(f"[Celery] Domain {domain_order.domain_name} activated - DNS config triggered")
+                    activated_count += 1
+                    
+                elif zone_status == 'pending' and previous_status != 'pending':
+                    domain_order.status = 'pending'
+                    domain_order.cloudflare_nameservers = nameservers
+                    domain_order.save(update_fields=['status', 'cloudflare_nameservers'])
+                    logger.info(f"[Celery] Domain {domain_order.domain_name} still pending")
+                    
+                elif zone_status in ['moved', 'deleted']:
+                    domain_order.status = 'error'
+                    domain_order.error_message = f'Cloudflare zone status: {zone_status}'
+                    domain_order.save(update_fields=['status', 'error_message'])
+                    logger.error(f"[Celery] Domain {domain_order.domain_name} error: {zone_status}")
+                    error_count += 1
+                
+                synced_count += 1
+                
+            except Exception as e:
+                logger.error(f"[Celery] Error syncing domain {domain_order.domain_name}: {e}")
+                error_count += 1
+                continue
+        
+        logger.info(f"[Celery] Domain sync complete: {synced_count} synced, {activated_count} activated, {error_count} errors")
+        
+        return {
+            "status": "success",
+            "synced": synced_count,
+            "activated": activated_count,
+            "errors": error_count
+        }
+        
+    except Exception as exc:
+        logger.exception(f"[Celery] Domain sync task failed: {exc}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc, countdown=300)
+        return {"status": "error", "message": str(exc)}
+
+

@@ -17,10 +17,10 @@ import {
   Tooltip
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LanguageIcon from '@mui/icons-material/Language';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import HistoryIcon from '@mui/icons-material/History';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -29,7 +29,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import useTheme from '../../../theme/useTheme';
 import apiClient from '../../../services/apiClient';
-import { checkOrderStatus, getOrderHistory, retryDnsConfiguration } from '../../../services/domainService';
+import { checkOrderStatus, getOrderHistory, retryDnsConfiguration, trackDomainStatus } from '../../../services/domainService';
 
 const OrdersPage = () => {
   const theme = useTheme();
@@ -45,6 +45,9 @@ const OrdersPage = () => {
   const [targetValue, setTargetValue] = useState('');
   const [proxyModeValue, setProxyModeValue] = useState(false);
   const [savingTarget, setSavingTarget] = useState(false);
+  const [trackingStatus, setTrackingStatus] = useState(null); // order ID being tracked
+  const [domainStatusData, setDomainStatusData] = useState({});
+  const [expandedOrders, setExpandedOrders] = useState({}); // {orderId: statusData}
 
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
@@ -144,6 +147,30 @@ const OrdersPage = () => {
       setError(err.message || 'Nie udało się ponownie uruchomić konfiguracji DNS.');
     } finally {
       setRetryingDns(null);
+    }
+  };
+
+  const handleTrackDomainStatus = async (order) => {
+    try {
+      setTrackingStatus(order.id);
+      const statusData = await trackDomainStatus(order.domain_name);
+      
+      // Store status data with timestamp
+      setDomainStatusData(prev => ({
+        ...prev,
+        [order.id]: {
+          ...statusData,
+          last_checked: new Date().toISOString()
+        }
+      }));
+      
+      // Reload orders to get updated status from database
+      await loadAllOrders();
+    } catch (err) {
+      console.error('Failed to track domain status:', err);
+      setError(err.message || 'Nie udało się sprawdzić statusu domeny.');
+    } finally {
+      setTrackingStatus(null);
     }
   };
 
@@ -281,23 +308,42 @@ const OrdersPage = () => {
             Twoje domeny
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          href="/domain"
-          sx={{
-            bgcolor: accentColor,
-            color: '#fff',
-            borderRadius: '8px',
-            textTransform: 'none',
-            px: 3,
-            '&:hover': {
-              bgcolor: alpha(accentColor, 0.9)
-            }
-          }}
-        >
-          Dodaj domenę
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            startIcon={<AddIcon />}
+            href="/studio/domain"
+            sx={{
+              borderColor: accentColor,
+              color: accentColor,
+              borderRadius: '8px',
+              textTransform: 'none',
+              px: 3,
+              '&:hover': {
+                borderColor: accentColor,
+                bgcolor: alpha(accentColor, 0.08)
+              }
+            }}
+          >
+            Mam domenę
+          </Button>
+          <Button
+            variant="contained"
+            href="/studio/domain/buy"
+            sx={{
+              bgcolor: accentColor,
+              color: '#fff',
+              borderRadius: '8px',
+              textTransform: 'none',
+              px: 3,
+              '&:hover': {
+                bgcolor: alpha(accentColor, 0.9)
+              }
+            }}
+          >
+            Kup domenę
+          </Button>
+        </Box>
       </Box>
       
       <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary }}>
@@ -431,6 +477,138 @@ const OrdersPage = () => {
                 {order.status === 'configuring_dns' && (
                   <Alert severity="info" sx={{ mt: 2, borderRadius: '8px' }}>
                     Konfiguracja przekierowania domeny w toku... Zazwyczaj zajmuje to 1-2 minuty.
+                  </Alert>
+                )}
+
+                {/* Track Domain Status Button */}
+                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={trackingStatus === order.id}
+                    onClick={() => handleTrackDomainStatus(order)}
+                    startIcon={trackingStatus === order.id ? <CircularProgress size={16} /> : null}
+                    sx={{
+                      borderRadius: '8px',
+                      borderColor: accentColor,
+                      color: accentColor,
+                      '&:hover': {
+                        borderColor: accentColor,
+                        backgroundColor: alpha(accentColor, 0.08)
+                      }
+                    }}
+                  >
+                    {trackingStatus === order.id ? 'Sprawdzam Cloudflare...' : 'Sprawdź status w Cloudflare'}
+                  </Button>
+                </Box>
+
+                {/* Domain Status Display */}
+                {domainStatusData[order.id] && (
+                  <Alert 
+                    severity={
+                      domainStatusData[order.id].status === 'active' ? 'success' :
+                      domainStatusData[order.id].status === 'pending' ? 'warning' : 'info'
+                    }
+                    sx={{ mt: 2, borderRadius: '8px' }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                      Status Cloudflare: {domainStatusData[order.id].message}
+                    </Typography>
+                    {domainStatusData[order.id].last_checked && (
+                      <Typography variant="caption" display="block" sx={{ mb: 1, fontStyle: 'italic', color: 'text.secondary' }}>
+                        Ostatnie sprawdzenie: {new Date(domainStatusData[order.id].last_checked).toLocaleString('pl-PL')}
+                      </Typography>
+                    )}
+                    <Box sx={{ fontSize: '0.875rem', mt: 1 }}>
+                      {domainStatusData[order.id].cloudflare_zone_id && (
+                        <Typography variant="caption" display="block">
+                          Zone ID: {domainStatusData[order.id].cloudflare_zone_id}
+                        </Typography>
+                      )}
+                      {domainStatusData[order.id].nameservers && domainStatusData[order.id].nameservers.length > 0 && (
+                        <>
+                          <Typography variant="caption" display="block" sx={{ fontWeight: 600, mt: 1, mb: 0.5 }}>
+                            Nameservery Cloudflare:
+                          </Typography>
+                          {domainStatusData[order.id].nameservers.map((ns, idx) => (
+                            <Typography key={idx} variant="caption" display="block" sx={{ ml: 1, fontFamily: 'monospace' }}>
+                              • {ns}
+                            </Typography>
+                          ))}
+                        </>
+                      )}
+                      
+                      {!domainStatusData[order.id].nameservers_configured && (
+                        <Box sx={{ mt: 2 }}>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            color="warning"
+                            onClick={() => setExpandedOrders(prev => ({ ...prev, [order.id]: !prev[order.id] }))}
+                            endIcon={
+                              <ExpandMoreIcon
+                                sx={{
+                                  transform: expandedOrders[order.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                                  transition: 'transform 0.3s'
+                                }}
+                              />
+                            }
+                            sx={{
+                              justifyContent: 'space-between',
+                              textTransform: 'none',
+                              borderColor: 'warning.main',
+                              color: 'warning.dark',
+                              '&:hover': {
+                                borderColor: 'warning.dark',
+                                bgcolor: alpha('#ed6c02', 0.08)
+                              }
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              ⚠️ Konfiguracja nameserverów
+                            </Typography>
+                          </Button>
+                          <Collapse in={expandedOrders[order.id]} timeout="auto">
+                            <Box sx={{ mt: 2, p: 2, bgcolor: alpha('#ed6c02', 0.08), borderRadius: 1, border: '1px solid', borderColor: 'warning.main' }}>
+                              <Alert severity="warning" sx={{ mb: 2 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  ⚠️ Ustaw nameservery u rejestratora domeny
+                                </Typography>
+                              </Alert>
+                              <Typography variant="caption" display="block" sx={{ mb: 1 }}>
+                                Jeśli nie zmieniłeś jeszcze nameserverów - zmień je u rejestratora na powyższe wartości Cloudflare.
+                              </Typography>
+                              <Typography variant="caption" display="block" sx={{ mb: 1 }}>
+                                Jeśli już zmieniłeś - nie rób nic, propagacja DNS trwa do 48 godzin.
+                              </Typography>
+                              <Typography variant="caption" display="block" sx={{ fontStyle: 'italic' }}>
+                                Jeśli po 2 dniach status się nie zmieni, skontaktuj się z pomocą techniczną.
+                              </Typography>
+                            </Box>
+                          </Collapse>
+                        </Box>
+                      )}
+                      
+                      {domainStatusData[order.id].nameservers_configured && (
+                        <Alert severity="success" sx={{ mt: 2 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            ✓ Nameservery wykryte przez Cloudflare
+                          </Typography>
+                        </Alert>
+                      )}
+                      {domainStatusData[order.id].dns_records && domainStatusData[order.id].dns_records.length > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="caption" display="block" sx={{ fontWeight: 600 }}>
+                            Rekordy DNS:
+                          </Typography>
+                          {domainStatusData[order.id].dns_records.map((record, idx) => (
+                            <Typography key={idx} variant="caption" display="block" sx={{ ml: 1 }}>
+                              • {record.type} {record.name} → {record.content}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                   </Alert>
                 )}
 

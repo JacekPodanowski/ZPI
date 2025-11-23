@@ -88,9 +88,8 @@ export const confirmDomainPayment = async (orderId) => {
 export const getDomainOrders = async (siteId) => {
     try {
         console.log('[domainService] Getting domain orders for site:', siteId);
-        const response = await apiClient.get('/domains/orders/', {
-            params: { site_id: siteId }
-        });
+        const params = siteId ? { site_id: siteId } : {};
+        const response = await apiClient.get('/domains/orders/', { params });
         console.log('[domainService] Orders response:', response.data);
         return response.data;
     } catch (error) {
@@ -155,5 +154,66 @@ export const retryDnsConfiguration = async (orderId) => {
         console.error('[domainService] Failed to retry DNS configuration:', error);
         console.error('[domainService] Error response:', error.response?.data);
         throw new Error(error.response?.data?.error || 'Failed to retry DNS configuration');
+    }
+};
+
+/**
+ * Get Cloudflare nameservers
+ * @returns {Promise<Object>} Nameservers and instructions
+ */
+export const getCloudflareNameservers = async () => {
+    try {
+        console.log('[domainService] Getting Cloudflare nameservers');
+        const response = await apiClient.get('/domains/nameservers/');
+        console.log('[domainService] Nameservers response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[domainService] Failed to get nameservers:', error);
+        console.error('[domainService] Error response:', error.response?.data);
+        throw new Error(error.response?.data?.error || 'Failed to get Cloudflare nameservers');
+    }
+};
+
+/**
+ * Track domain status via Cloudflare API
+ * @param {string} domainName - Full domain name (e.g., "example.com")
+ * @returns {Promise<Object>} Domain status information
+ */
+export const trackDomainStatus = async (domainName) => {
+    try {
+        console.log('[domainService] Tracking domain status for:', domainName);
+        const response = await apiClient.post('/domains/track-status/', {
+            domain_name: domainName
+        });
+        console.log('[domainService] Domain status response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[domainService] Failed to track domain status:', error);
+        console.error('[domainService] Error response:', error.response?.data);
+        throw new Error(error.response?.data?.error || 'Failed to track domain status');
+    }
+};
+
+/**
+ * Add a domain by creating Cloudflare zone
+ * @param {string} domainName - Full domain name (e.g., "example.com")
+ * @param {number} siteId - Site ID (optional)
+ * @returns {Promise<Object>} Domain add response with nameservers
+ */
+export const addDomainWithCloudflare = async (domainName, siteId = null) => {
+    try {
+        console.log('[domainService] Adding domain with Cloudflare:', domainName);
+        const payload = { domain_name: domainName };
+        if (siteId) {
+            payload.site_id = siteId;
+        }
+        
+        const response = await apiClient.post('/domains/add/', payload);
+        console.log('[domainService] Domain add response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('[domainService] Failed to add domain:', error);
+        console.error('[domainService] Error response:', error.response?.data);
+        throw new Error(error.response?.data?.error || 'Failed to add domain');
     }
 };
