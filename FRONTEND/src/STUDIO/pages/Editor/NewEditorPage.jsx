@@ -198,6 +198,61 @@ const NewEditorPage = () => {
     loadSiteData();
   }, [siteId, loadSite, setSiteId, setSiteName]);
 
+  // Unified AI update handler - defined before useEffect hooks that use it
+  const handleAIUpdate = useCallback((data) => {
+    // Validate response structure
+    const validation = validateAIResponse(data);
+    
+    if (!validation.valid) {
+      console.error('[NewEditorPage] Invalid AI response:', validation.error);
+      window.dispatchEvent(new CustomEvent('ai-update-received', {
+        detail: { status: 'error', explanation: validation.error }
+      }));
+      return;
+    }
+    
+    if (validation.warning) {
+      console.warn('[NewEditorPage] AI response warning:', validation.warning);
+    }
+    
+    if (data.status === 'success' && data.site) {
+      console.log('[NewEditorPage] Applying AI-generated site update');
+      
+      // Extract site using helper (handles unwrapping)
+      const siteData = extractSiteFromResponse(data);
+      
+      if (!siteData) {
+        console.error('[NewEditorPage] Failed to extract site data from response');
+        window.dispatchEvent(new CustomEvent('ai-update-received', {
+          detail: { status: 'error', explanation: 'Invalid site data structure' }
+        }));
+        return;
+      }
+      
+      console.log('[NewEditorPage] Extracted site data - pages:', siteData.pages?.length || 0);
+      
+      replaceSiteStateWithHistory(siteData, {
+        type: 'ai-update',
+        prompt: data.prompt || 'AI modification',
+        explanation: data.explanation
+      });
+      
+      console.log('[NewEditorPage] replaceSiteStateWithHistory called successfully');
+      
+      // Notify chat panel about success
+      window.dispatchEvent(new CustomEvent('ai-update-received', {
+        detail: { status: 'success', explanation: data.explanation }
+      }));
+    } else if (data.status === 'error') {
+      console.error('[NewEditorPage] AI task failed:', data.error);
+      
+      // Notify chat panel about error
+      window.dispatchEvent(new CustomEvent('ai-update-received', {
+        detail: { status: 'error', explanation: data.error }
+      }));
+    }
+  }, [replaceSiteStateWithHistory]);
+
   // WebSocket connection for AI updates (now used only for real-time delivery)
   useEffect(() => {
     if (!user?.id) {
@@ -254,61 +309,6 @@ const NewEditorPage = () => {
     window.addEventListener('ai-site-updated', handlePolledUpdate);
     return () => window.removeEventListener('ai-site-updated', handlePolledUpdate);
   }, [handleAIUpdate]);
-
-  // Unified AI update handler
-  const handleAIUpdate = useCallback((data) => {
-    // Validate response structure
-    const validation = validateAIResponse(data);
-    
-    if (!validation.valid) {
-      console.error('[NewEditorPage] Invalid AI response:', validation.error);
-      window.dispatchEvent(new CustomEvent('ai-update-received', {
-        detail: { status: 'error', explanation: validation.error }
-      }));
-      return;
-    }
-    
-    if (validation.warning) {
-      console.warn('[NewEditorPage] AI response warning:', validation.warning);
-    }
-    
-    if (data.status === 'success' && data.site) {
-      console.log('[NewEditorPage] Applying AI-generated site update');
-      
-      // Extract site using helper (handles unwrapping)
-      const siteData = extractSiteFromResponse(data);
-      
-      if (!siteData) {
-        console.error('[NewEditorPage] Failed to extract site data from response');
-        window.dispatchEvent(new CustomEvent('ai-update-received', {
-          detail: { status: 'error', explanation: 'Invalid site data structure' }
-        }));
-        return;
-      }
-      
-      console.log('[NewEditorPage] Extracted site data - pages:', siteData.pages?.length || 0);
-      
-      replaceSiteStateWithHistory(siteData, {
-        type: 'ai-update',
-        prompt: data.prompt || 'AI modification',
-        explanation: data.explanation
-      });
-      
-      console.log('[NewEditorPage] replaceSiteStateWithHistory called successfully');
-      
-      // Notify chat panel about success
-      window.dispatchEvent(new CustomEvent('ai-update-received', {
-        detail: { status: 'success', explanation: data.explanation }
-      }));
-    } else if (data.status === 'error') {
-      console.error('[NewEditorPage] AI task failed:', data.error);
-      
-      // Notify chat panel about error
-      window.dispatchEvent(new CustomEvent('ai-update-received', {
-        detail: { status: 'error', explanation: data.error }
-      }));
-    }
-  }, [replaceSiteStateWithHistory]);
 
   if (loading) {
     return (

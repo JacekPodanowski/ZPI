@@ -31,11 +31,19 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
     }
   }, [module.type, recordModuleHeight]);
   
+  const handleModuleClick = (e) => {
+    // Don't select module if clicking on editable text
+    if (e.target.closest('[data-editable-text="true"]')) {
+      return;
+    }
+    selectModule(module.id);
+  };
+
   return (
     <Box
       id={`module-${module.id}`}
       ref={moduleRef}
-      onClick={() => selectModule(module.id)}
+      onClick={handleModuleClick}
       sx={{
         position: 'relative',
         outline: isSelected 

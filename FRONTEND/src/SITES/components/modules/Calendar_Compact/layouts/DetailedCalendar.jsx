@@ -1,25 +1,66 @@
 // layouts/DetailedCalendar.jsx - Detailed with options display
-const DetailedCalendar = ({ content, style }) => {
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
+
+const DetailedCalendar = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleDescriptionSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
   return (
     <section 
   className={`${style.spacing} ${style.rounded}`}
   style={{ backgroundColor: style.background }}
     >
       <div className="max-w-5xl mx-auto">
-        <h2 
-          className={`${style.headingSize} text-center`}
-          style={{ color: style.primary }}
-        >
-          {content.title}
-        </h2>
+        {(isEditing || content.title) && (
+          isEditing ? (
+            <EditableText
+              value={content.title || ''}
+              onSave={handleTitleSave}
+              as="h2"
+              className={`${style.headingSize} text-center`}
+              style={{ color: style.primary }}
+              placeholder="Click to edit title..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <h2 
+              className={`${style.headingSize} text-center`}
+              style={{ color: style.primary }}
+            >
+              {content.title}
+            </h2>
+          )
+        )}
         
-        {content.description && (
-          <p 
-            className={`${style.textSize} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
-            style={{ color: style.text }}
-          >
-            {content.description}
-          </p>
+        {(isEditing || content.description) && (
+          isEditing ? (
+            <EditableText
+              value={content.description || ''}
+              onSave={handleDescriptionSave}
+              as="p"
+              className={`${style.textSize} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
+              style={{ color: style.text }}
+              placeholder="Click to edit description..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <p 
+              className={`${style.textSize} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
+              style={{ color: style.text }}
+            >
+              {content.description}
+            </p>
+          )
         )}
         
         {/* Booking Options */}

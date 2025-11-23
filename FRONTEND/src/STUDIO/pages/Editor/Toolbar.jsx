@@ -40,6 +40,22 @@ const Toolbar = ({ isDraggingModule = false, mode = 'structure' }) => {
   const [isOverTrash, setIsOverTrash] = useState(false);
   const toolbarRef = useRef(null);
 
+  // Close panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target) && activeSection) {
+        setActiveSection(null);
+      }
+    };
+
+    if (activeSection) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [activeSection]);
+
   const currentStyleId = site?.styleId || 'auroraMinimal';
 
   // Styling
@@ -259,7 +275,7 @@ const Toolbar = ({ isDraggingModule = false, mode = 'structure' }) => {
               overflow: 'hidden'
             }}
           >
-            <Box sx={{ px: 0, py: 0, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ px: 2, py: 2, flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
               {activeSection === 'modules' && mode === 'structure' && (
                 <ModuleToolbar 
                   isDraggingModule={isDraggingModule}

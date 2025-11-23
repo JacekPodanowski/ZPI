@@ -5,11 +5,49 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import FlipCard from '../../../../../components/FlipCard';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { isVideoUrl } from '../../../../../utils/mediaUtils';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const getTrimmedText = (value) => (typeof value === 'string' ? value.trim() : '');
 const hasRichText = (value) => typeof value === 'string' && value.trim() !== '';
 
-const CardServices = ({ content, style }) => {
+const CardServices = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
+  const handleServiceFieldSave = (index, field, newValue) => {
+    const updatedServices = [...(content.services || content.items || [])];
+    updatedServices[index] = { ...updatedServices[index], [field]: newValue };
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
+  const handleAddService = () => {
+    const newService = {
+      id: Date.now(),
+      name: 'Nowa usługa',
+      description: 'Kliknij aby edytować opis',
+      category: '',
+      price: '',
+      image: null
+    };
+    const updatedServices = [...(content.services || content.items || []), newService];
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
+  const handleDeleteService = (index) => {
+    const updatedServices = [...(content.services || content.items || [])];
+    updatedServices.splice(index, 1);
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
   const {
     title = 'Oferta',
     subtitle = 'Sprawdź naszą ofertę i przejrzyste ceny',
@@ -57,15 +95,41 @@ const CardServices = ({ content, style }) => {
         {/* Header */}
         {(title || subtitle) && (
           <div className="text-center space-y-3">
-            {title && (
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
-                {title}
-              </h2>
+            {(isEditing || title) && (
+              isEditing ? (
+                <EditableText
+                  value={title || 'Oferta'}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className="text-3xl md:text-4xl lg:text-5xl font-semibold"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                  {title}
+                </h2>
+              )
             )}
-            {subtitle && (
-              <p className="text-base opacity-70" style={{ color: textColor }}>
-                {subtitle}
-              </p>
+            {(isEditing || subtitle) && (
+              isEditing ? (
+                <EditableText
+                  value={subtitle || 'Sprawdź naszą ofertę i przejrzyste ceny'}
+                  onSave={handleSubtitleSave}
+                  as="p"
+                  className="text-base opacity-70"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit subtitle..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p className="text-base opacity-70" style={{ color: textColor }}>
+                  {subtitle}
+                </p>
+              )
             )}
           </div>
         )}
@@ -96,21 +160,31 @@ const CardServices = ({ content, style }) => {
                   <div 
                     className={`${style.cardStyle} h-full flex flex-col ${cardClasses}`}
                   >
-                    {hasValidImage && (
+                    {(isEditing || hasValidImage) && (
                       <div className="aspect-video overflow-hidden bg-black flex-shrink-0">
-                        {isVideoUrl(service.image) ? (
-                          <video
-                            src={resolvedImage}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
+                        {isEditing ? (
+                          <EditableImage
+                            value={service.image}
+                            onSave={(newUrl) => handleServiceFieldSave(index, 'image', newUrl)}
+                            alt={serviceName || 'Usługa'}
                             className="w-full h-full object-cover"
-                          >
-                            Twoja przeglądarka nie obsługuje odtwarzania wideo.
-                          </video>
+                            isModuleSelected={true}
+                          />
                         ) : (
-                          <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          isVideoUrl(service.image) ? (
+                            <video
+                              src={resolvedImage}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                            >
+                              Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                            </video>
+                          ) : (
+                            <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          )
                         )}
                       </div>
                     )}
@@ -128,19 +202,57 @@ const CardServices = ({ content, style }) => {
                             {categoryLabel}
                           </span>
                         )}
-                        {serviceName && (
-                          <h3 className="text-xl font-semibold mb-2">{serviceName}</h3>
+                        {(isEditing || serviceName) && (
+                          isEditing ? (
+                            <EditableText
+                              value={serviceName || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
+                              as="h3"
+                              className="text-xl font-semibold mb-2"
+                              style={{ color: textColor }}
+                              placeholder="Click to edit service name..."
+                              multiline
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <h3 className="text-xl font-semibold mb-2">{serviceName}</h3>
+                          )
                         )}
-                      {descriptionHtml && (
-                        <p className="text-sm opacity-75 leading-relaxed" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                      {(isEditing || descriptionHtml) && (
+                        isEditing ? (
+                          <EditableText
+                            value={service.description || ''}
+                            onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
+                            as="p"
+                            className="text-sm opacity-75 leading-relaxed"
+                            style={{ color: textColor }}
+                            placeholder="Click to edit description..."
+                            multiline
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <p className="text-sm opacity-75 leading-relaxed" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                        )
                       )}
                       </div>
-                      {service.price && service.price.trim() !== '' && (
+                      {(isEditing || (service.price && service.price.trim() !== '')) && (
                         <div className="flex items-baseline justify-between pt-2 border-t border-black/10">
                           <span className="text-sm uppercase tracking-[0.2em] opacity-60">Cena</span>
-                          <span className="text-2xl font-semibold" style={{ color: accentColor }}>
-                            {service.price} {currency}
-                          </span>
+                          {isEditing ? (
+                            <EditableText
+                              value={service.price || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
+                              as="span"
+                              className="text-2xl font-semibold"
+                              style={{ color: accentColor }}
+                              placeholder="Click to edit price..."
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                              {service.price} {currency}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -178,7 +290,16 @@ const CardServices = ({ content, style }) => {
                 );
 
                 return (
-                  <div key={service.id || index} style={{ display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
+                  <div key={service.id || index} style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', position: 'relative' }}>
+                    {isEditing && (
+                      <button
+                        onClick={() => handleDeleteService(index)}
+                        className="absolute top-2 right-2 z-20 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                        style={{ fontSize: '18px' }}
+                      >
+                        ×
+                      </button>
+                    )}
                     <FlipCard
                       frontContent={frontContent}
                       backContent={backContent}
@@ -189,26 +310,46 @@ const CardServices = ({ content, style }) => {
               } else {
                 // Simple non-flipping card
                 return (
-                  <motion.article
+                  <div key={service.id || index} style={{ position: 'relative' }}>
+                    {isEditing && (
+                      <button
+                        onClick={() => handleDeleteService(index)}
+                        className="absolute top-2 right-2 z-20 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                        style={{ fontSize: '18px' }}
+                      >
+                        ×
+                      </button>
+                    )}
+                    <motion.article
                     key={service.id || index}
                     whileHover={{ y: -6 }}
                     className={`${style.cardStyle} ${cardClasses}`}
                   >
-                    {hasValidImage && (
+                    {(isEditing || hasValidImage) && (
                       <div className="aspect-video overflow-hidden bg-black">
-                        {isVideoUrl(service.image) ? (
-                          <video
-                            src={resolvedImage}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
+                        {isEditing ? (
+                          <EditableImage
+                            value={service.image}
+                            onSave={(newUrl) => handleServiceFieldSave(index, 'image', newUrl)}
+                            alt={serviceName || 'Usługa'}
                             className="w-full h-full object-cover"
-                          >
-                            Twoja przeglądarka nie obsługuje odtwarzania wideo.
-                          </video>
+                            isModuleSelected={true}
+                          />
                         ) : (
-                          <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          isVideoUrl(service.image) ? (
+                            <video
+                              src={resolvedImage}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="w-full h-full object-cover"
+                            >
+                              Twoja przeglądarka nie obsługuje odtwarzania wideo.
+                            </video>
+                          ) : (
+                            <img src={resolvedImage} alt={serviceName || 'Usługa'} className="w-full h-full object-cover" />
+                          )
                         )}
                       </div>
                     )}
@@ -219,23 +360,62 @@ const CardServices = ({ content, style }) => {
                             {categoryLabel}
                           </span>
                         )}
-                        {serviceName && (
-                          <h3 className="text-xl font-semibold">{serviceName}</h3>
+                        {(isEditing || serviceName) && (
+                          isEditing ? (
+                            <EditableText
+                              value={serviceName || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
+                              as="h3"
+                              className="text-xl font-semibold"
+                              style={{ color: textColor }}
+                              placeholder="Click to edit service name..."
+                              multiline
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <h3 className="text-xl font-semibold">{serviceName}</h3>
+                          )
                         )}
-                        {descriptionHtml && (
-                          <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                        {(isEditing || descriptionHtml) && (
+                          isEditing ? (
+                            <EditableText
+                              value={service.description || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
+                              as="p"
+                              className="text-sm opacity-75 mt-2 leading-relaxed"
+                              style={{ color: textColor }}
+                              placeholder="Click to edit description..."
+                              multiline
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <p className="text-sm opacity-75 mt-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                          )
                         )}
                       </div>
-                      {service.price && service.price.trim() !== '' && (
+                      {(isEditing || (service.price && service.price.trim() !== '')) && (
                         <div className="flex items-baseline justify-between pt-2 border-t border-black/10">
                           <span className="text-sm uppercase tracking-[0.2em] opacity-60">Cena</span>
-                          <span className="text-2xl font-semibold" style={{ color: accentColor }}>
-                            {service.price} {currency}
-                          </span>
+                          {isEditing ? (
+                            <EditableText
+                              value={service.price || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
+                              as="span"
+                              className="text-2xl font-semibold"
+                              style={{ color: accentColor }}
+                              placeholder="Click to edit price..."
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                              {service.price} {currency}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   </motion.article>
+                </div>
                 );
               }
             })}
@@ -243,6 +423,17 @@ const CardServices = ({ content, style }) => {
         ) : (
           <div className="text-center py-12 text-sm text-black/40">
             Dodaj usługi w konfiguratorze, aby wypełnić sekcję.
+          </div>
+        )}
+        {isEditing && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={handleAddService}
+              className="bg-[rgb(146,0,32)] text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-[rgb(114,0,21)] transition-colors shadow-lg"
+              style={{ fontSize: '24px' }}
+            >
+              +
+            </button>
           </div>
         )}
       </div>

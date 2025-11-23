@@ -4,6 +4,8 @@ import moment from 'moment';
 import PublicCalendar from '../components/PublicCalendar';
 import BookingModal from '../../../../../components/Calendar/BookingModal';
 import { applyOpacity } from '../../../../../utils/color';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const normalizeEvents = (events = []) => {
   const entries = Array.isArray(events) ? events : [];
@@ -57,7 +59,17 @@ const normalizeEvents = (events = []) => {
   return map;
 };
 
-const FullWidthCalendar = ({ content, style, siteId }) => {
+const FullWidthCalendar = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
   const [activeDay, setActiveDay] = useState(null);
   const [apiEvents, setApiEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -217,18 +229,44 @@ const FullWidthCalendar = ({ content, style, siteId }) => {
       <div className="mx-auto max-w-6xl px-4">
         {(content.title || content.subtitle) && (
           <header className="text-center mb-12">
-            {content.title && (
-              <h2 className={style?.headingSize || 'text-4xl font-semibold tracking-tight'} style={{ color: headingColor }}>
-                {content.title}
-              </h2>
+            {(isEditing || content.title) && (
+              isEditing ? (
+                <EditableText
+                  value={content.title || ''}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className={style?.headingSize || 'text-4xl font-semibold tracking-tight'}
+                  style={{ color: headingColor }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className={style?.headingSize || 'text-4xl font-semibold tracking-tight'} style={{ color: headingColor }}>
+                  {content.title}
+                </h2>
+              )
             )}
-            {content.subtitle && (
-              <p
-                className={`${style?.textSize || 'text-lg'} mt-4`}
-                style={{ color: subtleText }}
-              >
-                {content.subtitle}
-              </p>
+            {(isEditing || content.subtitle) && (
+              isEditing ? (
+                <EditableText
+                  value={content.subtitle || ''}
+                  onSave={handleSubtitleSave}
+                  as="p"
+                  className={`${style?.textSize || 'text-lg'} mt-4`}
+                  style={{ color: subtleText }}
+                  placeholder="Click to edit subtitle..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p
+                  className={`${style?.textSize || 'text-lg'} mt-4`}
+                  style={{ color: subtleText }}
+                >
+                  {content.subtitle}
+                </p>
+              )
             )}
             <p className="mt-2 text-sm" style={{ color: neutralText }}>
               Źródło danych: {siteId ? (apiEvents.length > 0 ? 'API Backend' : 'dane przykładowe (brak odpowiedzi API)') : 'dane przykładowe (brak siteId)'}

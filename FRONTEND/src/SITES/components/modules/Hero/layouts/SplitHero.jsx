@@ -1,7 +1,24 @@
 // layouts/SplitHero.jsx - Split layout with mobile/desktop responsiveness
 import { resolveMediaUrl } from '../../../../../config/api';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import EditableImage from '../../../../../STUDIO/components/EditableImage';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const SplitHero = ({ content, style }) => {
+const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
+  const handleImageSave = (newUrl) => {
+    updateModuleContent(pageId, moduleId, { image: newUrl });
+  };
+
   const imageOnLeft = content.imagePosition === 'left';
   const heroMedia = content.image || content.backgroundImage;
   const imageUrl = heroMedia ? resolveMediaUrl(heroMedia) : '';
@@ -34,17 +51,43 @@ const SplitHero = ({ content, style }) => {
       `}>
         {/* Text Content */}
         <div className={imageOnLeft ? 'md:col-start-2' : ''}>
-          <h1 
-            className={headingClass}
-            style={{ color: primaryColor }}
-          >
-            {content.title || content.heading}
-          </h1>
+          {isEditing ? (
+            <EditableText
+              value={content.title || content.heading || ''}
+              onSave={handleTitleSave}
+              as="h1"
+              className={headingClass}
+              style={{ color: primaryColor }}
+              placeholder="Click to edit title..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <h1 
+              className={headingClass}
+              style={{ color: primaryColor }}
+            >
+              {content.title || content.heading}
+            </h1>
+          )}
           
-          {(content.subtitle || content.subheading) && (
-            <p className={`${textClass} mt-4 md:mt-6`} style={{ color: textColor }}>
-              {content.subtitle || content.subheading}
-            </p>
+          {(isEditing || content.subtitle || content.subheading) && (
+            isEditing ? (
+              <EditableText
+                value={content.subtitle || content.subheading || ''}
+                onSave={handleSubtitleSave}
+                as="p"
+                className={`${textClass} mt-4 md:mt-6`}
+                style={{ color: textColor }}
+                placeholder="Click to edit subtitle..."
+                multiline
+                isModuleSelected={true}
+              />
+            ) : (
+              <p className={`${textClass} mt-4 md:mt-6`} style={{ color: textColor }}>
+                {content.subtitle || content.subheading}
+              </p>
+            )
           )}
           
           {content.showButton !== false && content.ctaText && (
@@ -64,11 +107,21 @@ const SplitHero = ({ content, style }) => {
         
         {/* Image */}
         <div className={`relative w-full h-full ${imageOnLeft ? 'md:col-start-1 md:row-start-1' : ''}`}>
-          <img 
-            src={imageUrl || 'https://picsum.photos/seed/hero-placeholder/800/600'} 
-            alt={content.title || content.heading || 'Hero image'}
-            className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
-          />
+          {isEditing ? (
+            <EditableImage
+              value={heroMedia}
+              onSave={handleImageSave}
+              alt={content.title || content.heading || 'Hero image'}
+              className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+              isModuleSelected={true}
+            />
+          ) : (
+            <img 
+              src={imageUrl || 'https://picsum.photos/seed/hero-placeholder/800/600'} 
+              alt={content.title || content.heading || 'Hero image'}
+              className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
+            />
+          )}
         </div>
       </div>
     </section>

@@ -12,13 +12,13 @@ const LAYOUTS = {
   split: SplitVideo
 };
 
-const VideoModule = ({ layout = 'embedded', content = {}, style }) => {
+const VideoModule = ({ layout = 'embedded', content = {}, style, isEditing, moduleId, pageId }) => {
   const defaultOptions = VIDEO_DEFAULTS[layout] || VIDEO_DEFAULTS.embedded;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = { ...defaults, ...content };
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.standard;
-  return <LayoutComponent content={mergedContent} style={style} />;
+  return <LayoutComponent content={mergedContent} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
 };
 
 VideoModule.descriptor = VIDEO_DESCRIPTOR;

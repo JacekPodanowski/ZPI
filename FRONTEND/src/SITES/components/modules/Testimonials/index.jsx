@@ -5,7 +5,7 @@ import { TESTIMONIALS_DESCRIPTOR } from './descriptor';
 import CardsLayout from './layouts/CardsLayout';
 import CarouselLayout from './layouts/CarouselLayout';
 
-const Testimonials = ({ content = {}, layout = 'cards', siteId, siteConfig }) => {
+const Testimonials = ({ content = {}, layout = 'cards', siteId, siteConfig, isEditing, moduleId, pageId }) => {
     // Merge defaults with provided content
     const defaults = TESTIMONIALS_DEFAULTS[layout] || TESTIMONIALS_DEFAULTS.cards;
     const mergedContent = { ...defaults, ...content };
@@ -22,6 +22,9 @@ const Testimonials = ({ content = {}, layout = 'cards', siteId, siteConfig }) =>
             content={mergedContent}
             siteId={siteId}
             siteConfig={siteConfig}
+            isEditing={isEditing}
+            moduleId={moduleId}
+            pageId={pageId}
         />
     );
 };

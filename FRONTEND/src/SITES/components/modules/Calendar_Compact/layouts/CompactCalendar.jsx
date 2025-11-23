@@ -1,25 +1,66 @@
 // layouts/CompactCalendar.jsx - Minimal calendar with CTA
-const CompactCalendar = ({ content, style }) => {
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
+
+const CompactCalendar = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleDescriptionSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { description: newValue });
+  };
+
   return (
     <section 
       className={`${style.spacing} ${style.rounded}`}
       style={{ backgroundColor: style.background }}
     >
       <div className="max-w-3xl mx-auto text-center">
-        <h2 
-          className={style.headingSize}
-          style={{ color: style.primary }}
-        >
-          {content.title}
-        </h2>
+        {(isEditing || content.title) && (
+          isEditing ? (
+            <EditableText
+              value={content.title || ''}
+              onSave={handleTitleSave}
+              as="h2"
+              className={style.headingSize}
+              style={{ color: style.primary }}
+              placeholder="Click to edit title..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <h2 
+              className={style.headingSize}
+              style={{ color: style.primary }}
+            >
+              {content.title}
+            </h2>
+          )
+        )}
         
-        {content.description && (
-          <p 
-            className={`${style.textSize} mt-4 md:mt-6`}
-            style={{ color: style.text }}
-          >
-            {content.description}
-          </p>
+        {(isEditing || content.description) && (
+          isEditing ? (
+            <EditableText
+              value={content.description || ''}
+              onSave={handleDescriptionSave}
+              as="p"
+              className={`${style.textSize} mt-4 md:mt-6`}
+              style={{ color: style.text }}
+              placeholder="Click to edit description..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <p 
+              className={`${style.textSize} mt-4 md:mt-6`}
+              style={{ color: style.text }}
+            >
+              {content.description}
+            </p>
+          )
         )}
         
         {/* Simple Calendar Visualization */}

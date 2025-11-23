@@ -1,8 +1,32 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const AccordionFAQ = ({ content, style }) => {
+const AccordionFAQ = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleIntroSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { intro: newValue });
+  };
+
+  const handleQuestionSave = (index, newValue) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], question: newValue };
+    updateModuleContent(pageId, moduleId, { items: newItems });
+  };
+
+  const handleAnswerSave = (index, newValue) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], answer: newValue };
+    updateModuleContent(pageId, moduleId, { items: newItems });
+  };
+
   const { 
     title = 'Najczęstsze pytania', 
     intro = '', 
@@ -34,21 +58,47 @@ const AccordionFAQ = ({ content, style }) => {
       <div className="max-w-4xl mx-auto space-y-6 relative z-10">
         {(title || intro) && (
           <div className="text-center space-y-3">
-            {title && (
-              <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || style.text }}>
-                {title}
-              </h2>
+            {(isEditing || title) && (
+              isEditing ? (
+                <EditableText
+                  value={title || ''}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className="text-3xl md:text-4xl lg:text-5xl font-semibold"
+                  style={{ color: textColor || style.text }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className={`text-3xl md:text-4xl lg:text-5xl font-semibold`} style={{ color: textColor || style.text }}>
+                  {title}
+                </h2>
+              )
             )}
-            {intro && (
-              <p className={`${style.textSize} opacity-80`} style={{ color: textColor || style.text }}>
-                {intro}
-              </p>
+            {(isEditing || intro) && (
+              isEditing ? (
+                <EditableText
+                  value={intro || ''}
+                  onSave={handleIntroSave}
+                  as="p"
+                  className={`${style.textSize} opacity-80`}
+                  style={{ color: textColor || style.text }}
+                  placeholder="Click to edit intro..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p className={`${style.textSize} opacity-80`} style={{ color: textColor || style.text }}>
+                  {intro}
+                </p>
+              )
             )}
           </div>
         )}
 
         <div className="space-y-3">
-          {itemsWithIds.map((item) => (
+          {itemsWithIds.map((item, index) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 8 }}
@@ -62,7 +112,20 @@ const AccordionFAQ = ({ content, style }) => {
                 className="w-full text-left px-4 py-4 sm:px-6 sm:py-5 flex items-center justify-between gap-4 sm:gap-6"
                 style={{ color: textColor || style.text }}
               >
-                <span className="text-base sm:text-lg font-medium">{item.question}</span>
+                {isEditing ? (
+                  <EditableText
+                    value={item.question || ''}
+                    onSave={(newValue) => handleQuestionSave(index, newValue)}
+                    as="span"
+                    className="text-base sm:text-lg font-medium"
+                    style={{ color: textColor || style.text }}
+                    placeholder="Click to edit question..."
+                    multiline
+                    isModuleSelected={true}
+                  />
+                ) : (
+                  <span className="text-base sm:text-lg font-medium">{item.question}</span>
+                )}
                 <motion.span
                   animate={{ rotate: openId === item.id ? 45 : 0 }}
                   className="text-2xl leading-none"
@@ -82,11 +145,24 @@ const AccordionFAQ = ({ content, style }) => {
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                     className="px-6 pb-6 overflow-hidden"
                   >
-                    <div
-                      className="prose prose-sm max-w-none"
-                      style={{ color: textColor || style.text }}
-                      dangerouslySetInnerHTML={{ __html: item.answer || '' }}
-                    />
+                    {isEditing ? (
+                      <EditableText
+                        value={item.answer || ''}
+                        onSave={(newValue) => handleAnswerSave(index, newValue)}
+                        as="div"
+                        className="prose prose-sm max-w-none"
+                        style={{ color: textColor || style.text }}
+                        placeholder="Click to edit answer..."
+                        multiline
+                        isModuleSelected={true}
+                      />
+                    ) : (
+                      <div
+                        className="prose prose-sm max-w-none"
+                        style={{ color: textColor || style.text }}
+                        dangerouslySetInnerHTML={{ __html: item.answer || '' }}
+                      />
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

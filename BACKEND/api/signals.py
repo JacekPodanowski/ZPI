@@ -15,10 +15,14 @@ def ensure_attendee_on_booking_save(sender, instance: Booking, created: bool, **
 @receiver(post_delete, sender=Booking)
 def cleanup_attendee_on_booking_delete(sender, instance: Booking, **kwargs):
     """Remove the attendee when their last booking for the event is deleted."""
-    if instance.client:
-        remaining = instance.event.bookings.filter(client=instance.client).exists()
-        if not remaining:
-            instance.event.attendees.remove(instance.client)
+    try:
+        if instance.client:
+            remaining = instance.event.bookings.filter(client=instance.client).exists()
+            if not remaining:
+                instance.event.attendees.remove(instance.client)
+    except Exception:
+        # Client may have been deleted or doesn't exist - skip cleanup
+        pass
 
 
 @receiver(post_delete, sender=MediaUsage)

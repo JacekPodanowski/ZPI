@@ -1,5 +1,7 @@
 // layouts/ListServices.jsx - Vertical list layout with elegant styling
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const getTrimmedText = (value) => (typeof value === 'string' ? value.trim() : '');
 const hasRichText = (value) => typeof value === 'string' && value.trim() !== '';
@@ -12,7 +14,44 @@ const formatPriceValue = (price, currency) => {
   return containsCurrency ? trimmed : `${trimmed}${currency}`;
 };
 
-const ListServices = ({ content, style }) => {
+const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleTitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { title: newValue });
+  };
+
+  const handleSubtitleSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { subtitle: newValue });
+  };
+
+  const handleServiceFieldSave = (index, field, newValue) => {
+    const serviceList = content.services || content.items || [];
+    const updatedServices = [...serviceList];
+    updatedServices[index] = { ...updatedServices[index], [field]: newValue };
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
+  const handleAddService = () => {
+    const serviceList = content.services || content.items || [];
+    const newService = {
+      id: Date.now(),
+      name: 'Nowa usługa',
+      description: 'Kliknij aby edytować opis',
+      category: '',
+      price: '',
+      image: null
+    };
+    updateModuleContent(pageId, moduleId, { services: [...serviceList, newService] });
+  };
+
+  const handleDeleteService = (index) => {
+    const serviceList = content.services || content.items || [];
+    const updatedServices = [...serviceList];
+    updatedServices.splice(index, 1);
+    updateModuleContent(pageId, moduleId, { services: updatedServices });
+  };
+
   const {
     title = 'Oferta',
     subtitle,
@@ -75,15 +114,41 @@ const ListServices = ({ content, style }) => {
         <div className="relative z-10 max-w-5xl mx-auto space-y-10">
           {(title || subtitle) && (
             <div className="text-center space-y-3">
-              {title && (
-                <h2 className="text-3xl md:text-4xl font-semibold tracking-tight" style={{ color: textColor }}>
-                  {title}
-                </h2>
+              {(isEditing || title) && (
+                isEditing ? (
+                  <EditableText
+                    value={title || 'Oferta'}
+                    onSave={handleTitleSave}
+                    as="h2"
+                    className="text-3xl md:text-4xl font-semibold tracking-tight"
+                    style={{ color: textColor }}
+                    placeholder="Click to edit title..."
+                    multiline
+                    isModuleSelected={true}
+                  />
+                ) : (
+                  <h2 className="text-3xl md:text-4xl font-semibold tracking-tight" style={{ color: textColor }}>
+                    {title}
+                  </h2>
+                )
               )}
-              {subtitle && (
-                <p className="text-base opacity-80" style={{ color: mutedTextColor }}>
-                  {subtitle}
-                </p>
+              {(isEditing || subtitle) && (
+                isEditing ? (
+                  <EditableText
+                    value={subtitle || ''}
+                    onSave={handleSubtitleSave}
+                    as="p"
+                    className="text-base opacity-80"
+                    style={{ color: mutedTextColor }}
+                    placeholder="Click to edit subtitle..."
+                    multiline
+                    isModuleSelected={true}
+                  />
+                ) : (
+                  <p className="text-base opacity-80" style={{ color: mutedTextColor }}>
+                    {subtitle}
+                  </p>
+                )
               )}
             </div>
           )}
@@ -100,7 +165,16 @@ const ListServices = ({ content, style }) => {
                   const backTitleText = getTrimmedText(service.backTitle);
                   const displayPrice = formatPriceValue(service.price, currency);
                   return (
-                    <div key={service.id || index} className="py-6 first:pt-0 last:pb-0">
+                    <div key={service.id || index} className="py-6 first:pt-0 last:pb-0 relative" style={isEditing ? { paddingRight: '3rem' } : {}}>
+                      {isEditing && (
+                        <button
+                          onClick={() => handleDeleteService(index)}
+                          className="absolute top-2 right-0 z-10 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                          style={{ fontSize: '18px' }}
+                        >
+                          ×
+                        </button>
+                      )}
                       <div className="flex flex-col gap-4 md:flex-row md:items-end">
                         <div className="flex-1">
                           {categoryLabel && (
@@ -108,30 +182,66 @@ const ListServices = ({ content, style }) => {
                               {categoryLabel}
                             </p>
                           )}
-                          {serviceName && (
-                            <h3 className="text-2xl font-semibold" style={{ color: textColor }}>
-                              {serviceName}
-                            </h3>
+                          {(isEditing || serviceName) && (
+                            isEditing ? (
+                              <EditableText
+                                value={service.name || ''}
+                                onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
+                                as="h3"
+                                className="text-2xl font-semibold"
+                                style={{ color: textColor }}
+                                placeholder="Click to edit service name..."
+                                multiline
+                                isModuleSelected={true}
+                              />
+                            ) : (
+                              <h3 className="text-2xl font-semibold" style={{ color: textColor }}>
+                                {serviceName}
+                              </h3>
+                            )
                           )}
                         </div>
 
-                        {displayPrice && (
+                        {(isEditing || displayPrice) && (
                           <div className="flex items-center gap-4 md:min-w-[180px]">
                             <span
                               aria-hidden="true"
                               className="hidden md:block flex-1 border-t border-dashed"
                               style={{ borderColor: lineColor }}
                             />
-                            <span className="text-2xl font-semibold tracking-tight whitespace-nowrap" style={{ color: accentColor }}>
-                              {displayPrice}
-                            </span>
+                            {isEditing ? (
+                              <EditableText
+                                value={service.price || ''}
+                                onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
+                                as="span"
+                                className="text-2xl font-semibold tracking-tight whitespace-nowrap"
+                                style={{ color: accentColor }}
+                                placeholder="Click to edit price..."
+                                isModuleSelected={true}
+                              />
+                            ) : (
+                              <span className="text-2xl font-semibold tracking-tight whitespace-nowrap" style={{ color: accentColor }}>
+                                {displayPrice}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
 
-                      {descriptionHtml && (
+                      {(isEditing || descriptionHtml) && (
                         <div className="mt-3 space-y-2 text-sm md:text-base leading-relaxed" style={{ color: mutedTextColor }}>
-                          <p dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                          {isEditing ? (
+                            <EditableText
+                              value={service.description || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
+                              as="p"
+                              placeholder="Click to edit description..."
+                              multiline
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <p dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                          )}
                         </div>
                       )}
                       {(backTitleText || backContentText || detailedDescription) && (
@@ -158,6 +268,17 @@ const ListServices = ({ content, style }) => {
               Dodaj usługi w konfiguratorze, aby wypełnić sekcję.
             </div>
           )}
+          {isEditing && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={handleAddService}
+                className="bg-[rgb(146,0,32)] text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-[rgb(114,0,21)] transition-colors shadow-lg"
+                style={{ fontSize: '24px' }}
+              >
+                +
+              </button>
+            </div>
+          )}
         </div>
       </section>
     );
@@ -173,15 +294,41 @@ const ListServices = ({ content, style }) => {
         {/* Header */}
         {(title || subtitle) && (
           <div className="text-center space-y-3">
-            {title && (
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
-                {title}
-              </h2>
+            {(isEditing || title) && (
+              isEditing ? (
+                <EditableText
+                  value={title || 'Oferta'}
+                  onSave={handleTitleSave}
+                  as="h2"
+                  className="text-3xl md:text-4xl lg:text-5xl font-semibold"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit title..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                  {title}
+                </h2>
+              )
             )}
-            {subtitle && (
-              <p className="text-base opacity-70" style={{ color: textColor }}>
-                {subtitle}
-              </p>
+            {(isEditing || subtitle) && (
+              isEditing ? (
+                <EditableText
+                  value={subtitle || ''}
+                  onSave={handleSubtitleSave}
+                  as="p"
+                  className="text-base opacity-70"
+                  style={{ color: textColor }}
+                  placeholder="Click to edit subtitle..."
+                  multiline
+                  isModuleSelected={true}
+                />
+              ) : (
+                <p className="text-base opacity-70" style={{ color: textColor }}>
+                  {subtitle}
+                </p>
+              )
             )}
           </div>
         )}
@@ -201,8 +348,18 @@ const ListServices = ({ content, style }) => {
               return (
                 <div 
                   key={service.id || index}
-                  className={`flex flex-col md:flex-row gap-4 md:gap-6 items-start ${style.cardStyle} ${cardClass} hover:shadow-lg transition-shadow`}
+                  className={`flex flex-col md:flex-row gap-4 md:gap-6 items-start ${style.cardStyle} ${cardClass} hover:shadow-lg transition-shadow relative`}
+                  style={isEditing ? { paddingRight: '3rem' } : {}}
                 >
+                  {isEditing && (
+                    <button
+                      onClick={() => handleDeleteService(index)}
+                      className="absolute top-2 right-0 z-10 bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg"
+                      style={{ fontSize: '18px' }}
+                    >
+                      ×
+                    </button>
+                  )}
                   {service.icon && (
                     <div 
                       className="text-3xl md:text-4xl flex-shrink-0"
@@ -220,28 +377,66 @@ const ListServices = ({ content, style }) => {
                             {categoryLabel}
                           </span>
                         )}
-                        {serviceName && (
-                          <h3 
-                            className="text-xl md:text-2xl font-semibold"
-                            style={{ color: textColor }}
-                          >
-                            {serviceName}
-                          </h3>
+                        {(isEditing || serviceName) && (
+                          isEditing ? (
+                            <EditableText
+                              value={service.name || ''}
+                              onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
+                              as="h3"
+                              className="text-xl md:text-2xl font-semibold"
+                              style={{ color: textColor }}
+                              placeholder="Click to edit service name..."
+                              multiline
+                              isModuleSelected={true}
+                            />
+                          ) : (
+                            <h3 
+                              className="text-xl md:text-2xl font-semibold"
+                              style={{ color: textColor }}
+                            >
+                              {serviceName}
+                            </h3>
+                          )
                         )}
                       </div>
-                      {priceValue && (
-                        <span className="text-2xl font-semibold whitespace-nowrap" style={{ color: accentColor }}>
-                          {priceValue}
-                        </span>
+                      {(isEditing || priceValue) && (
+                        isEditing ? (
+                          <EditableText
+                            value={service.price || ''}
+                            onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
+                            as="span"
+                            className="text-2xl font-semibold whitespace-nowrap"
+                            style={{ color: accentColor }}
+                            placeholder="Click to edit price..."
+                            isModuleSelected={true}
+                          />
+                        ) : (
+                          <span className="text-2xl font-semibold whitespace-nowrap" style={{ color: accentColor }}>
+                            {priceValue}
+                          </span>
+                        )
                       )}
                     </div>
                     
-                    {descriptionHtml && (
-                      <p 
-                        className="text-sm opacity-75 leading-relaxed"
-                        style={{ color: textColor }}
-                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                      />
+                    {(isEditing || descriptionHtml) && (
+                      isEditing ? (
+                        <EditableText
+                          value={service.description || ''}
+                          onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
+                          as="p"
+                          className="text-sm opacity-75 leading-relaxed"
+                          style={{ color: textColor }}
+                          placeholder="Click to edit description..."
+                          multiline
+                          isModuleSelected={true}
+                        />
+                      ) : (
+                        <p 
+                          className="text-sm opacity-75 leading-relaxed"
+                          style={{ color: textColor }}
+                          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                        />
+                      )
                     )}
 
                     {(backTitleText || backContentText || detailedDescription) && (
@@ -269,6 +464,17 @@ const ListServices = ({ content, style }) => {
         ) : (
           <div className="text-center py-12 text-sm text-black/40">
             Dodaj usługi w konfiguratorze, aby wypełnić sekcję.
+          </div>
+        )}
+        {isEditing && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={handleAddService}
+              className="bg-[rgb(146,0,32)] text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-[rgb(114,0,21)] transition-colors shadow-lg"
+              style={{ fontSize: '24px' }}
+            >
+              +
+            </button>
           </div>
         )}
       </div>

@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const CarouselLayout = ({ content, siteId, siteConfig }) => {
+const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId }) => {
+    const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+    const handleTitleSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { title: newValue });
+    };
+
+    const handleSubtitleSave = (newValue) => {
+        updateModuleContent(pageId, moduleId, { subtitle: newValue });
+    };
+
     const {
         title = 'Opinie klientów',
         subtitle = '',
@@ -53,10 +65,39 @@ const CarouselLayout = ({ content, siteId, siteConfig }) => {
     return (
         <section className="py-20 px-4" style={{ backgroundColor: bgColor }}>
             <div className="max-w-4xl mx-auto text-center">
-                <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
-                    {title}
-                </h2>
-                {subtitle && <p className="text-lg mb-12 opacity-80">{subtitle}</p>}
+                {(isEditing || title) && (
+                    isEditing ? (
+                        <EditableText
+                            value={title || ''}
+                            onSave={handleTitleSave}
+                            as="h2"
+                            className="text-4xl font-bold mb-4"
+                            style={{ color: primaryColor }}
+                            placeholder="Click to edit title..."
+                            multiline
+                            isModuleSelected={true}
+                        />
+                    ) : (
+                        <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
+                            {title}
+                        </h2>
+                    )
+                )}
+                {(isEditing || subtitle) && (
+                    isEditing ? (
+                        <EditableText
+                            value={subtitle || ''}
+                            onSave={handleSubtitleSave}
+                            as="p"
+                            className="text-lg mb-12 opacity-80"
+                            placeholder="Click to edit subtitle..."
+                            multiline
+                            isModuleSelected={true}
+                        />
+                    ) : (
+                        <p className="text-lg mb-12 opacity-80">{subtitle}</p>
+                    )
+                )}
 
                 <div className="relative p-12 rounded-2xl shadow-2xl bg-white">
                     <div className="flex items-center justify-center gap-1 mb-6">

@@ -159,7 +159,10 @@ const ModuleRenderer = ({ module, pageId, theme, onNavigate, devicePreview = 'de
     siteId,
     siteIdentifier,
     isEditing: true,
-    devicePreview
+    devicePreview,
+    // Pass module and page IDs to all components for inline editing
+    moduleId: module.id,
+    pageId: pageId
   };
 
   if (isNavigationModule) {

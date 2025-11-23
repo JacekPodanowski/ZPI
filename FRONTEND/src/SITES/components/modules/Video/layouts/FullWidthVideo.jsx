@@ -2,8 +2,16 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
+import EditableText from '../../../../../STUDIO/components/EditableText';
+import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const FullWidthVideo = ({ content, style }) => {
+const FullWidthVideo = ({ content, style, isEditing, moduleId, pageId }) => {
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+
+  const handleCaptionSave = (newValue) => {
+    updateModuleContent(pageId, moduleId, { caption: newValue });
+  };
+
   const { videoUrl, caption, captionColor, muted } = content;
   const embedUrl = applyPlaybackPreferences(normaliseVideoUrl(videoUrl), { muted });
   const isSelfHosted = Boolean(embedUrl && embedUrl.startsWith('/media/'));
@@ -46,11 +54,24 @@ const FullWidthVideo = ({ content, style }) => {
           )
         )}
       </motion.div>
-      {caption && (
+      {(isEditing || caption) && (
         <div className={`${style.spacing} px-6 text-center`}>
-          <p className="max-w-3xl mx-auto text-sm" style={{ color: captionColor || style.text }}>
-            {caption}
-          </p>
+          {isEditing ? (
+            <EditableText
+              value={caption || ''}
+              onSave={handleCaptionSave}
+              as="p"
+              className="max-w-3xl mx-auto text-sm"
+              style={{ color: captionColor || style.text }}
+              placeholder="Click to edit caption..."
+              multiline
+              isModuleSelected={true}
+            />
+          ) : (
+            <p className="max-w-3xl mx-auto text-sm" style={{ color: captionColor || style.text }}>
+              {caption}
+            </p>
+          )}
         </div>
       )}
     </section>
