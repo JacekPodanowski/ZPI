@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, Tooltip, Button } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon, Edit as EditIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
+import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon, Edit as EditIcon, FileDownload as FileDownloadIcon, Groups as GroupsIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers, fetchAttendanceReport } from '../../../services/siteService';
@@ -406,8 +406,51 @@ const TeamPage = () => {
     return (
         <REAL_DefaultLayout
             title="Zespół"
+            titleIcon={<GroupsIcon />}
             subtitle="Dodawaj członków zespołu, przypisuj role i wysyłaj zaproszenia"
         >
+            {/* Page Description */}
+            <Box
+                sx={{
+                    mb: 4,
+                    maxWidth: 800
+                }}
+            >
+                <Typography
+                    variant="body1"
+                    sx={{
+                        color: 'text.secondary',
+                        lineHeight: 1.7,
+                        mb: 2
+                    }}
+                >
+                    Tutaj możesz zarządzać członkami swojego zespołu. Dodawaj nowych współpracowników, 
+                    przypisuj im odpowiednie role i kontroluj dostęp do kalendarza. System ról pozwala na 
+                    precyzyjne określenie, kto może edytować wydarzenia, zarządzać rezerwacjami czy tylko 
+                    przeglądać swój harmonogram.
+                </Typography>
+                <Typography
+                    variant="body2"
+                    sx={{
+                        color: 'text.secondary',
+                        lineHeight: 1.6,
+                        opacity: 0.8
+                    }}
+                >
+                    <strong>Role dostępne w systemie:</strong>
+                    <br />
+                    • <strong>Viewer</strong> – może jedynie przeglądać własne zaplanowane wydarzenia
+                    <br />
+                    • <strong>Contributor</strong> – zarządza swoim kalendarzem i tworzy nowe sesje
+                    <br />
+                    • <strong>Manager</strong> – posiada pełną kontrolę nad kalendarzem całego zespołu
+                    <br />
+                    <br />
+                    Członkowie zespołu wyświetlają się również w publicznej sekcji "Zespół" na Twojej stronie. 
+                    Możesz pobierać raporty obecności dla każdego członka, co ułatwia śledzenie aktywności 
+                    i zaangażowania w prowadzone zajęcia.
+                </Typography>
+            </Box>
 
             {/* Team Members List */}
             <Box

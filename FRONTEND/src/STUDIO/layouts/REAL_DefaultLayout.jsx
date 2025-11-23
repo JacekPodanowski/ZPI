@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
+import { SvgIcon } from '@mui/material';
 
 /**
  * REAL_DefaultLayout - The standard layout for Studio pages
@@ -19,6 +20,7 @@ import { motion } from 'framer-motion';
  */
 const REAL_DefaultLayout = ({
     title,
+    titleIcon,
     subtitle,
     actionButton,
     children,
@@ -64,22 +66,51 @@ const REAL_DefaultLayout = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                 >
-                    <Typography
-                        variant="h3"
-                        sx={{
-                            fontWeight: 600,
-                            letterSpacing: '-0.02em',
-                            background: (theme) => theme.palette.mode === 'light'
-                                ? 'linear-gradient(135deg, rgb(146, 0, 32) 0%, rgb(30, 30, 30) 100%)'
-                                : 'linear-gradient(135deg, rgb(114, 0, 21) 0%, rgb(220, 220, 220) 100%)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            mb: 0.5
-                        }}
-                    >
-                        {title}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                        {titleIcon && (
+                            <Box
+                                component={motion.div}
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ duration: 0.5, delay: 0.1 }}
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    position: 'relative',
+                                    '& > svg': {
+                                        fontSize: 40,
+                                        fill: 'url(#icon-gradient)'
+                                    }
+                                }}
+                            >
+                                <svg width="0" height="0" style={{ position: 'absolute' }}>
+                                    <defs>
+                                        <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" style={{ stopColor: 'rgb(146, 0, 32)', stopOpacity: 1 }} />
+                                            <stop offset="100%" style={{ stopColor: 'rgb(30, 30, 30)', stopOpacity: 1 }} />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                {titleIcon}
+                            </Box>
+                        )}
+                        <Typography
+                            variant="h3"
+                            sx={{
+                                fontWeight: 600,
+                                letterSpacing: '-0.02em',
+                                background: (theme) => theme.palette.mode === 'light'
+                                    ? 'linear-gradient(135deg, rgb(146, 0, 32) 0%, rgb(30, 30, 30) 100%)'
+                                    : 'linear-gradient(135deg, rgb(114, 0, 21) 0%, rgb(220, 220, 220) 100%)',
+                                backgroundClip: 'text',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent'
+                            }}
+                        >
+                            {title}
+                        </Typography>
+                    </Box>
                     {subtitle && (
                         <Typography
                             variant="body1"
@@ -119,6 +150,7 @@ const REAL_DefaultLayout = ({
 
 REAL_DefaultLayout.propTypes = {
     title: PropTypes.string.isRequired,
+    titleIcon: PropTypes.node,
     subtitle: PropTypes.string,
     actionButton: PropTypes.node,
     children: PropTypes.node.isRequired,

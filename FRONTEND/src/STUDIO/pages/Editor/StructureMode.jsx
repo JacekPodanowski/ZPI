@@ -3,7 +3,7 @@ import { Box, Stack, IconButton, Typography, ToggleButtonGroup, ToggleButton, In
 import { GridView, Visibility, RemoveRedEye, Edit, Chat as ChatIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import useNewEditorStore from '../../store/newEditorStore';
-import Toolbar from './Toolbar';
+import Toolbar2 from './Toolbar2';
 import SiteCanvas from './SiteCanvas';
 import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
 import { getDefaultModuleContent } from './moduleDefinitions';
@@ -358,7 +358,7 @@ const StructureMode = () => {
       }}
     >
       {/* New Unified Toolbar */}
-      {!isMobile && <Toolbar isDraggingModule={isDraggingModule} />}
+      {!isMobile && <Toolbar2 isDraggingModule={isDraggingModule} mode="structure" />}
 
       {/* EDITOR CANVAS - The Whole Background */}
       <Box
@@ -431,7 +431,7 @@ const StructureMode = () => {
             sx={{
               position: 'absolute',
               top: 16,
-              left: 32,
+              right: 32,
               zIndex: 5,
               pointerEvents: 'all'
             }}

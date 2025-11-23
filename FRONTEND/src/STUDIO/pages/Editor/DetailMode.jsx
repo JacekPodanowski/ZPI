@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, IconButton, Drawer, useMediaQuery, useTheme as useMuiTheme, CircularProgress } from '@mui/material';
 import { Menu as MenuIcon, Tune as TuneIcon, Chat as ChatIcon, Close as CloseIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import Toolbar from './Toolbar';
+import Toolbar2 from './Toolbar2';
 import PropertiesPanel from './PropertiesPanel';
 import DetailCanvas from './DetailCanvas';
 import AIChatPanel from '../../components_STUDIO/AI/AIChatPanel';
@@ -88,7 +88,7 @@ const DetailMode = () => {
       }}
     >
       {/* New Unified Toolbar (Desktop only) */}
-      {!isMobile && <Toolbar isDraggingModule={isDraggingModule} mode="detail" />}
+      {!isMobile && <Toolbar2 isDraggingModule={isDraggingModule} mode="detail" />}
 
       {/* Mobile floating action buttons */}
       {isMobile && (
