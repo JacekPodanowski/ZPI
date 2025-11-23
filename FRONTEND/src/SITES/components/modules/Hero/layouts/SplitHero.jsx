@@ -4,7 +4,7 @@ import EditableText from '../../../../../STUDIO/components/EditableText';
 import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
+const SplitHero = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -35,11 +35,15 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
   const ctaBackground = content.ctaBgColor || style?.accent || style?.primary || primaryColor;
   const ctaTextColor = content.ctaTextColor || style?.background || '#ffffff';
   
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <section 
       className={`${spacingClass} ${roundedClass} relative overflow-hidden py-16 px-4 md:py-24 md:px-6 lg:py-32`}
       style={{
-        backgroundColor
+        backgroundColor,
+        fontFamily: bodyFont
       }}
     >
       <div className={`
@@ -57,7 +61,7 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
               onSave={handleTitleSave}
               as="h1"
               className={headingClass}
-              style={{ color: primaryColor }}
+              style={{ color: primaryColor, fontFamily: titleFont }}
               placeholder="Click to edit title..."
               multiline
               isModuleSelected={true}
@@ -65,7 +69,7 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
           ) : (
             <h1 
               className={headingClass}
-              style={{ color: primaryColor }}
+              style={{ color: primaryColor, fontFamily: titleFont }}
             >
               {content.title || content.heading}
             </h1>
@@ -78,13 +82,13 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
                 onSave={handleSubtitleSave}
                 as="p"
                 className={`${textClass} mt-4 md:mt-6`}
-                style={{ color: textColor }}
+                style={{ color: textColor, fontFamily: bodyFont }}
                 placeholder="Click to edit subtitle..."
                 multiline
                 isModuleSelected={true}
               />
             ) : (
-              <p className={`${textClass} mt-4 md:mt-6`} style={{ color: textColor }}>
+              <p className={`${textClass} mt-4 md:mt-6`} style={{ color: textColor, fontFamily: bodyFont }}>
                 {content.subtitle || content.subheading}
               </p>
             )
@@ -96,7 +100,8 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId }) => {
                 className={`${buttonClass} ${shadowClass} ${animationClass} mt-6 md:mt-8`}
                 style={{ 
                   backgroundColor: ctaBackground, 
-                  color: ctaTextColor 
+                  color: ctaTextColor,
+                  fontFamily: bodyFont 
                 }}
               >
                 {content.ctaText}

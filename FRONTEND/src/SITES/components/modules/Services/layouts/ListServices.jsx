@@ -14,7 +14,7 @@ const formatPriceValue = (price, currency) => {
   return containsCurrency ? trimmed : `${trimmed}${currency}`;
 };
 
-const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
+const ListServices = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -98,6 +98,9 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
 
   const { cardClass, dividerClass, spacing } = getDividerStyles();
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   const serviceList = services || items || [];
   const hasServices = serviceList && serviceList.length > 0;
 
@@ -108,7 +111,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
     return (
       <section 
         className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`}
-        style={{ backgroundColor: bgColor }}
+        style={{ backgroundColor: bgColor, fontFamily: bodyFont }}
       >
         <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
         <div className="relative z-10 max-w-5xl mx-auto space-y-10">
@@ -121,13 +124,13 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={handleTitleSave}
                     as="h2"
                     className="text-3xl md:text-4xl font-semibold tracking-tight"
-                    style={{ color: textColor }}
+                    style={{ color: textColor, fontFamily: titleFont }}
                     placeholder="Click to edit title..."
                     multiline
                     isModuleSelected={true}
                   />
                 ) : (
-                  <h2 className="text-3xl md:text-4xl font-semibold tracking-tight" style={{ color: textColor }}>
+                  <h2 className="text-3xl md:text-4xl font-semibold tracking-tight" style={{ color: textColor, fontFamily: titleFont }}>
                     {title}
                   </h2>
                 )
@@ -139,13 +142,13 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={handleSubtitleSave}
                     as="p"
                     className="text-base opacity-80"
-                    style={{ color: mutedTextColor }}
+                    style={{ color: mutedTextColor, fontFamily: bodyFont }}
                     placeholder="Click to edit subtitle..."
                     multiline
                     isModuleSelected={true}
                   />
                 ) : (
-                  <p className="text-base opacity-80" style={{ color: mutedTextColor }}>
+                  <p className="text-base opacity-80" style={{ color: mutedTextColor, fontFamily: bodyFont }}>
                     {subtitle}
                   </p>
                 )
@@ -175,7 +178,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                           ×
                         </button>
                       )}
-                      <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-end" style={{ fontFamily: bodyFont }}>
                         <div className="flex-1">
                           {categoryLabel && (
                             <p className="text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
@@ -189,13 +192,13 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                                 onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
                                 as="h3"
                                 className="text-2xl font-semibold"
-                                style={{ color: textColor }}
+                                style={{ color: textColor, fontFamily: titleFont }}
                                 placeholder="Click to edit service name..."
                                 multiline
                                 isModuleSelected={true}
                               />
                             ) : (
-                              <h3 className="text-2xl font-semibold" style={{ color: textColor }}>
+                              <h3 className="text-2xl font-semibold" style={{ color: textColor, fontFamily: titleFont }}>
                                 {serviceName}
                               </h3>
                             )
@@ -215,12 +218,12 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                                 onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
                                 as="span"
                                 className="text-2xl font-semibold tracking-tight whitespace-nowrap"
-                                style={{ color: accentColor }}
+                                style={{ color: accentColor, fontFamily: titleFont }}
                                 placeholder="Click to edit price..."
                                 isModuleSelected={true}
                               />
                             ) : (
-                              <span className="text-2xl font-semibold tracking-tight whitespace-nowrap" style={{ color: accentColor }}>
+                              <span className="text-2xl font-semibold tracking-tight whitespace-nowrap" style={{ color: accentColor, fontFamily: titleFont }}>
                                 {displayPrice}
                               </span>
                             )}
@@ -229,30 +232,31 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                       </div>
 
                       {(isEditing || descriptionHtml) && (
-                        <div className="mt-3 space-y-2 text-sm md:text-base leading-relaxed" style={{ color: mutedTextColor }}>
+                        <div className="mt-3 space-y-2 text-sm md:text-base leading-relaxed" style={{ color: mutedTextColor, fontFamily: bodyFont }}>
                           {isEditing ? (
                             <EditableText
                               value={service.description || ''}
                               onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
                               as="p"
+                              style={{ color: mutedTextColor, fontFamily: bodyFont }}
                               placeholder="Click to edit description..."
                               multiline
                               isModuleSelected={true}
                             />
                           ) : (
-                            <p dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+                            <p style={{ fontFamily: bodyFont }} dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
                           )}
                         </div>
                       )}
                       {(backTitleText || backContentText || detailedDescription) && (
-                        <div className="mt-4 pt-4 border-t border-black/10 space-y-2">
+                        <div className="mt-4 pt-4 border-t border-black/10 space-y-2" style={{ fontFamily: bodyFont }}>
                           {backTitleText && (
-                            <h4 className="text-base font-semibold" style={{ color: accentColor }}>
+                            <h4 className="text-base font-semibold" style={{ color: accentColor, fontFamily: titleFont }}>
                               {backTitleText}
                             </h4>
                           )}
                           {(backContentText || detailedDescription) && (
-                            <p className="text-sm opacity-90 whitespace-pre-line" style={{ color: mutedTextColor }}>
+                            <p className="text-sm opacity-90 whitespace-pre-line" style={{ color: mutedTextColor, fontFamily: bodyFont }}>
                               {backContentText || detailedDescription}
                             </p>
                           )}
@@ -287,7 +291,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
   return (
     <section 
       className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`}
-      style={{ backgroundColor: bgColor }}
+      style={{ backgroundColor: bgColor, fontFamily: bodyFont }}
     >
       <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
       <div className="relative z-10 max-w-4xl mx-auto space-y-10">
@@ -301,13 +305,13 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                   onSave={handleTitleSave}
                   as="h2"
                   className="text-3xl md:text-4xl lg:text-5xl font-semibold"
-                  style={{ color: textColor }}
+                  style={{ color: textColor, fontFamily: titleFont }}
                   placeholder="Click to edit title..."
                   multiline
                   isModuleSelected={true}
                 />
               ) : (
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor, fontFamily: titleFont }}>
                   {title}
                 </h2>
               )
@@ -319,13 +323,13 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                   onSave={handleSubtitleSave}
                   as="p"
                   className="text-base opacity-70"
-                  style={{ color: textColor }}
+                  style={{ color: textColor, fontFamily: bodyFont }}
                   placeholder="Click to edit subtitle..."
                   multiline
                   isModuleSelected={true}
                 />
               ) : (
-                <p className="text-base opacity-70" style={{ color: textColor }}>
+                <p className="text-base opacity-70" style={{ color: textColor, fontFamily: bodyFont }}>
                   {subtitle}
                 </p>
               )
@@ -370,7 +374,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                   )}
                   
                   <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4 mb-2">
+                    <div className="flex items-start justify-between gap-4 mb-2" style={{ fontFamily: bodyFont }}>
                       <div>
                         {categoryLabel && (
                           <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-1" style={{ color: accentColor }}>
@@ -384,7 +388,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                               onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
                               as="h3"
                               className="text-xl md:text-2xl font-semibold"
-                              style={{ color: textColor }}
+                              style={{ color: textColor, fontFamily: titleFont }}
                               placeholder="Click to edit service name..."
                               multiline
                               isModuleSelected={true}
@@ -392,7 +396,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                           ) : (
                             <h3 
                               className="text-xl md:text-2xl font-semibold"
-                              style={{ color: textColor }}
+                              style={{ color: textColor, fontFamily: titleFont }}
                             >
                               {serviceName}
                             </h3>
@@ -406,12 +410,12 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
                             as="span"
                             className="text-2xl font-semibold whitespace-nowrap"
-                            style={{ color: accentColor }}
+                            style={{ color: accentColor, fontFamily: titleFont }}
                             placeholder="Click to edit price..."
                             isModuleSelected={true}
                           />
                         ) : (
-                          <span className="text-2xl font-semibold whitespace-nowrap" style={{ color: accentColor }}>
+                          <span className="text-2xl font-semibold whitespace-nowrap" style={{ color: accentColor, fontFamily: titleFont }}>
                             {priceValue}
                           </span>
                         )
@@ -425,7 +429,7 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                           onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
                           as="p"
                           className="text-sm opacity-75 leading-relaxed"
-                          style={{ color: textColor }}
+                          style={{ color: textColor, fontFamily: bodyFont }}
                           placeholder="Click to edit description..."
                           multiline
                           isModuleSelected={true}
@@ -433,23 +437,23 @@ const ListServices = ({ content, style, isEditing, moduleId, pageId }) => {
                       ) : (
                         <p 
                           className="text-sm opacity-75 leading-relaxed"
-                          style={{ color: textColor }}
+                          style={{ color: textColor, fontFamily: bodyFont }}
                           dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                         />
                       )
                     )}
 
                     {(backTitleText || backContentText || detailedDescription) && (
-                      <div className={`mt-4 pt-4 ${dividerClass} space-y-2`}>
+                      <div className={`mt-4 pt-4 ${dividerClass} space-y-2`} style={{ fontFamily: bodyFont }}>
                         {backTitleText && (
-                          <h4 className="text-base font-semibold" style={{ color: accentColor }}>
+                          <h4 className="text-base font-semibold" style={{ color: accentColor, fontFamily: titleFont }}>
                             {backTitleText}
                           </h4>
                         )}
                         {(backContentText || detailedDescription) && (
                           <p 
                             className="text-sm opacity-75 whitespace-pre-line"
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                           >
                             {backContentText || detailedDescription}
                           </p>

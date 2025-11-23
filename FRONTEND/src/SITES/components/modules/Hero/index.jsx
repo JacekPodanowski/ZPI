@@ -12,7 +12,7 @@ const LAYOUTS = {
   fullscreen: FullscreenHero
 };
 
-const HeroSection = ({ layout = 'centered', content = {}, style, isEditing, moduleId, pageId }) => {
+const HeroSection = ({ layout = 'centered', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   console.log('[HeroSection] Rendering with layout:', layout);
   console.log('[HeroSection] content:', content);
   console.log('[HeroSection] content keys:', Object.keys(content || {}));
@@ -21,7 +21,16 @@ const HeroSection = ({ layout = 'centered', content = {}, style, isEditing, modu
   // Don't merge with defaults - use only actual content from JSON
   // This ensures AI-generated changes are displayed immediately
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.centered;
-  return <LayoutComponent content={content} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
+  return (
+    <LayoutComponent
+      content={content}
+      style={style}
+      isEditing={isEditing}
+      moduleId={moduleId}
+      pageId={pageId}
+      typography={typography}
+    />
+  );
 };
 
 HeroSection.descriptor = HERO_DESCRIPTOR;

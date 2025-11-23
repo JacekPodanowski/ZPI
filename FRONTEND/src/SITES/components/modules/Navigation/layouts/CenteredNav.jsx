@@ -1,7 +1,7 @@
 // layouts/CenteredNav.jsx - Centered navigation with logo above
 import { useState } from 'react';
 
-const CenteredNav = ({ content, style, onNavigate }) => {
+const CenteredNav = ({ content, style, onNavigate, typography }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
 
@@ -39,12 +39,16 @@ const CenteredNav = ({ content, style, onNavigate }) => {
     setIsMenuOpen(false);
   };
   
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <nav 
       className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${shadowClass} ${animationClass}`}
       style={{ 
         backgroundColor,
-        borderBottom: `1px solid ${borderColor}`
+        borderBottom: `1px solid ${borderColor}`,
+        fontFamily: bodyFont
       }}
     >
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
@@ -71,7 +75,7 @@ const CenteredNav = ({ content, style, onNavigate }) => {
           {content.logo?.text && (
             <span 
               className="text-2xl md:text-3xl font-light tracking-wide"
-              style={{ color: activeColor }}
+              style={{ color: activeColor, fontFamily: titleFont || bodyFont }}
             >
               {content.logo.text}
             </span>

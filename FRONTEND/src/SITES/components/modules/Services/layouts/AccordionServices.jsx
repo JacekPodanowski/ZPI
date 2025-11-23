@@ -16,7 +16,7 @@ const formatPriceValue = (price, currency) => {
   return containsCurrency ? trimmed : `${trimmed}${currency}`;
 };
 
-const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
+const AccordionServices = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -100,6 +100,9 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
 
   const { itemClass, dividerClass, spacing } = getAccordionStyles();
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   const serviceList = services || items || [];
   const hasServices = serviceList && serviceList.length > 0;
   const [expandedIndex, setExpandedIndex] = useState(0);
@@ -107,7 +110,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
   return (
     <section 
       className={`relative ${style.spacing} py-12 px-4 md:py-20 md:px-6`}
-      style={{ backgroundColor: bgColor }}
+      style={{ backgroundColor: bgColor, fontFamily: bodyFont }}
     >
       <BackgroundMedia media={backgroundImage} overlayColor={backgroundOverlayColor} />
       <div className="relative z-10 max-w-4xl mx-auto space-y-10">
@@ -121,13 +124,13 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                   onSave={handleTitleSave}
                   as="h2"
                   className="text-3xl md:text-4xl lg:text-5xl font-semibold"
-                  style={{ color: textColor }}
+                  style={{ color: textColor, fontFamily: titleFont }}
                   placeholder="Click to edit title..."
                   multiline
                   isModuleSelected={true}
                 />
               ) : (
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor, fontFamily: titleFont }}>
                   {title}
                 </h2>
               )
@@ -139,13 +142,13 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                   onSave={handleSubtitleSave}
                   as="p"
                   className="text-base opacity-70"
-                  style={{ color: textColor }}
+                  style={{ color: textColor, fontFamily: bodyFont }}
                   placeholder="Click to edit subtitle..."
                   multiline
                   isModuleSelected={true}
                 />
               ) : (
-                <p className="text-base opacity-70" style={{ color: textColor }}>
+                <p className="text-base opacity-70" style={{ color: textColor, fontFamily: bodyFont }}>
                   {subtitle}
                 </p>
               )
@@ -189,7 +192,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                     </button>
                   )}
                   {/* Header */}
-                  <div className="flex justify-between items-start gap-4">
+                  <div className="flex justify-between items-start gap-4" style={{ fontFamily: bodyFont }}>
                     <div className="flex-1">
                       {categoryLabel && (
                         <span className="inline-flex items-center text-xs uppercase tracking-[0.3em] mb-2" style={{ color: accentColor }}>
@@ -203,7 +206,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleServiceFieldSave(index, 'name', newValue)}
                             as="h3"
                             className="text-xl md:text-2xl font-semibold mb-2"
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: titleFont }}
                             placeholder="Click to edit service name..."
                             multiline
                             isModuleSelected={true}
@@ -211,7 +214,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                         ) : (
                           <h3 
                             className="text-xl md:text-2xl font-semibold mb-2"
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: titleFont }}
                           >
                             {serviceName}
                           </h3>
@@ -225,7 +228,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleServiceFieldSave(index, 'description', newValue)}
                             as="p"
                             className="text-sm opacity-75"
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                             placeholder="Click to edit description..."
                             multiline
                             isModuleSelected={true}
@@ -233,7 +236,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                         ) : (
                           <p 
                             className="text-sm opacity-75"
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                             dangerouslySetInnerHTML={{ __html: descriptionHtml }}
                           />
                         )
@@ -248,12 +251,12 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleServiceFieldSave(index, 'price', newValue)}
                             as="span"
                             className="text-2xl font-semibold"
-                            style={{ color: accentColor }}
+                            style={{ color: accentColor, fontFamily: titleFont }}
                             placeholder="Click to edit price..."
                             isModuleSelected={true}
                           />
                         ) : (
-                          <span className="text-2xl font-semibold" style={{ color: accentColor }}>
+                          <span className="text-2xl font-semibold" style={{ color: accentColor, fontFamily: titleFont }}>
                             {priceValue}
                           </span>
                         )
@@ -282,11 +285,11 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                       >
-                        <div className={`mt-4 pt-4 ${dividerClass} space-y-3`}>
+                        <div className={`mt-4 pt-4 ${dividerClass} space-y-3`} style={{ fontFamily: bodyFont }}>
                           {backTitleText && (
                             <h4 
                               className="text-lg font-semibold"
-                              style={{ color: accentColor }}
+                              style={{ color: accentColor, fontFamily: titleFont }}
                             >
                               {backTitleText}
                             </h4>
@@ -294,7 +297,7 @@ const AccordionServices = ({ content, style, isEditing, moduleId, pageId }) => {
                           {(backContentText || detailedDescription) && (
                             <p 
                               className="text-sm opacity-80 whitespace-pre-line leading-relaxed"
-                              style={{ color: textColor }}
+                              style={{ color: textColor, fontFamily: bodyFont }}
                             >
                               {backContentText || detailedDescription}
                             </p>

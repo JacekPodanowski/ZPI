@@ -18,6 +18,31 @@ const ComponentLabPage = () => {
     const [description, setDescription] = useState('');
     const addToast = useToast();
 
+    // Three default example components available to pick from
+    const defaultComponents = [
+        {
+            id: 'default-1',
+            name: 'Simple Text',
+            description: 'Wyświetla prosty nagłówek z props.text',
+            source_code: `(props) => <h1>{props.text || 'Hello from Component Lab'}</h1>`,
+            isDefault: true
+        },
+        {
+            id: 'default-2',
+            name: 'Colored Title',
+            description: 'Nagłówek z kolorem przekazywanym w props.color',
+            source_code: `(props) => <h2 style={{color: props.color || 'crimson'}}>{props.text || 'Stylowany nagłówek'}</h2>`,
+            isDefault: true
+        },
+        {
+            id: 'default-3',
+            name: 'List Renderer',
+            description: 'Renderuje listę elementów przekazanych w props.items',
+            source_code: `(props) => <ul>{(props.items || ['one','two','three']).map((it,i) => <li key={i}>{it}</li>)}</ul>`,
+            isDefault: true
+        }
+    ];
+
     useEffect(() => {
         apiClient.get('/custom-components/').then(res => setComponents(res.data));
     }, []);
@@ -60,9 +85,11 @@ const ComponentLabPage = () => {
         formData.append('file', blob, `${name.toLowerCase().replace(/\s+/g, '_')}.js`);
         formData.append('source_code', jsxCode);
 
-        try {
+            try {
             let componentData;
-            if (selectedComponent) {
+            // If selected component is an existing (non-default) component, PATCH it.
+            // Default examples (isDefault === true) should be treated as new creations.
+            if (selectedComponent && !selectedComponent.isDefault) {
                 await apiClient.patch(`/custom-components/${selectedComponent.id}/`, {
                     name,
                     description,
@@ -116,6 +143,26 @@ const ComponentLabPage = () => {
                 <div className="md:col-span-1 space-y-4">
                     <h3 className="text-lg font-medium">Zapisane komponenty</h3>
                     <div className="space-y-2">
+                        {/* Default example components */}
+                        {defaultComponents.map(component => (
+                            <button
+                                type="button"
+                                key={component.id}
+                                onClick={() => handleSelectComponent(component)}
+                                className={`w-full text-left px-3 py-2 rounded-lg border transition ${
+                                    selectedComponent?.id === component.id
+                                        ? 'border-black bg-gray-100'
+                                        : 'border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                                <div className="font-semibold">{component.name}</div>
+                                {component.description && (
+                                    <p className="text-sm text-gray-600">{component.description}</p>
+                                )}
+                            </button>
+                        ))}
+
+                        {/* Saved/custom components from backend */}
                         {components.map(component => (
                             <button
                                 type="button"
@@ -133,6 +180,7 @@ const ComponentLabPage = () => {
                                 )}
                             </button>
                         ))}
+
                         {components.length === 0 && (
                             <p className="text-sm text-gray-500">Brak komponentów. Utwórz pierwszy.</p>
                         )}
@@ -183,9 +231,7 @@ const ComponentLabPage = () => {
                         </button>
                         <p className="text-sm text-gray-600">
                             Przykład:{' '}
-                            <code>
-                                (props) =&gt; &lt;h1 style={{color: props.color}}&gt;{'{'}props.text{'}'}&lt;/h1&gt;
-                            </code>
+                            <code>{`(props) => <h1 style={{color: props.color}}>{props.text}</h1>`}</code>
                         </p>
                     </div>
                 </div>

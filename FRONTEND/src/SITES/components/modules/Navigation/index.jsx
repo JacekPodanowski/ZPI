@@ -13,7 +13,7 @@ const LAYOUTS = {
   mobile: MobileNav
 };
 
-const Navigation = ({ layout = 'horizontal', content = {}, style, onNavigate }) => {
+const Navigation = ({ layout = 'horizontal', content = {}, style, onNavigate, typography }) => {
   const defaults = NAVIGATION_DEFAULTS[layout] || NAVIGATION_DEFAULTS.horizontal;
 
   const mergedContent = {
@@ -26,7 +26,14 @@ const Navigation = ({ layout = 'horizontal', content = {}, style, onNavigate }) 
   }
 
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.horizontal;
-  return <LayoutComponent content={mergedContent} style={style} onNavigate={onNavigate} />;
+  return (
+    <LayoutComponent
+      content={mergedContent}
+      style={style}
+      onNavigate={onNavigate}
+      typography={typography}
+    />
+  );
 };
 
 Navigation.descriptor = NAVIGATION_DESCRIPTOR;

@@ -9,7 +9,7 @@ import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
+const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -44,6 +44,9 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
   } = content || {};
 
   const overlayColor = backgroundOverlayColor ?? (backgroundImage ? 'rgba(0, 0, 0, 0.35)' : undefined);
+
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
 
   // Fetch team members from API
   useEffect(() => {
@@ -85,7 +88,7 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
   const displayMembers = teamMembers.length > 0 ? teamMembers : members;
 
   return (
-    <section className="py-4 relative overflow-hidden" style={{ backgroundColor: bgColor }}>
+    <section className="py-4 relative overflow-hidden" style={{ backgroundColor: bgColor, fontFamily: bodyFont }}>
       <BackgroundMedia media={backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-6xl mx-auto space-y-6 relative z-10 px-4">
         {(title || subtitle) && (
@@ -97,13 +100,13 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
                   onSave={handleTitleSave}
                   as="h2"
                   className="text-3xl md:text-4xl lg:text-5xl font-semibold"
-                  style={{ color: textColor }}
+                  style={{ color: textColor, fontFamily: titleFont }}
                   placeholder="Click to edit title..."
                   multiline
                   isModuleSelected={true}
                 />
               ) : (
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor }}>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold" style={{ color: textColor, fontFamily: titleFont }}>
                   {title}
                 </h2>
               )
@@ -115,13 +118,13 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
                   onSave={handleSubtitleSave}
                   as="p"
                   className="text-base opacity-70"
-                  style={{ color: textColor }}
+                  style={{ color: textColor, fontFamily: bodyFont }}
                   placeholder="Click to edit subtitle..."
                   multiline
                   isModuleSelected={true}
                 />
               ) : (
-                <p className="text-base opacity-70" style={{ color: textColor }}>
+                <p className="text-base opacity-70" style={{ color: textColor, fontFamily: bodyFont }}>
                   {subtitle}
                 </p>
               )
@@ -190,15 +193,19 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   <div className="absolute inset-x-0 bottom-0 p-6 text-white opacity-0 translate-y-6 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
                     {member.bio && (
-                      <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: member.bio }} />
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{ fontFamily: bodyFont }}
+                        dangerouslySetInnerHTML={{ __html: member.bio }}
+                      />
                     )}
                   </div>
                 </div>
-                <div className="p-4 space-y-2" style={{ color: textColor }}>
+                <div className="p-4 space-y-2" style={{ color: textColor, fontFamily: bodyFont }}>
                   <div>
-                    <h3 className="text-xl font-semibold">{member.name || 'Nowa osoba'}</h3>
+                    <h3 className="text-xl font-semibold" style={{ fontFamily: titleFont }}>{member.name || 'Nowa osoba'}</h3>
                     {member.role && (
-                      <p className="text-sm uppercase tracking-[0.3em]" style={{ color: accentColor }}>
+                      <p className="text-sm uppercase tracking-[0.3em]" style={{ color: accentColor, fontFamily: bodyFont }}>
                         {member.role}
                       </p>
                     )}
@@ -211,7 +218,8 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId }) => {
                         overflow: 'hidden',
                         display: '-webkit-box',
                         WebkitLineClamp: 4,
-                        WebkitBoxOrient: 'vertical'
+                        WebkitBoxOrient: 'vertical',
+                        fontFamily: bodyFont
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.display = 'block';

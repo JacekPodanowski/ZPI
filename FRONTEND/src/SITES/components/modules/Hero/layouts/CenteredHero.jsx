@@ -4,7 +4,7 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
+const CenteredHero = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   console.log('[CenteredHero] content:', JSON.stringify(content, null, 2));
   console.log('[CenteredHero] isEditing:', isEditing, 'moduleId:', moduleId, 'pageId:', pageId);
 
@@ -41,11 +41,15 @@ const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
     }
   };
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <section 
       className={`${spacingClass} ${roundedClass} text-center relative overflow-hidden py-16 px-4 md:py-24 md:px-6 lg:py-32`}
       style={{ 
-        backgroundColor
+        backgroundColor,
+        fontFamily: bodyFont
       }}
     >
       <BackgroundMedia media={heroMedia} overlayColor={overlayColor} />
@@ -57,7 +61,7 @@ const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
             onSave={handleTitleSave}
             as="h1"
             className={headingClass}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
             placeholder="Click to edit title..."
             multiline
             isModuleSelected={isModuleSelected}
@@ -65,7 +69,7 @@ const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
         ) : (
           <h1 
             className={headingClass}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
           >
             {content.title || content.heading}
           </h1>
@@ -78,7 +82,7 @@ const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
               onSave={handleSubtitleSave}
               as="p"
               className={`${textClass} mt-4 md:mt-6`}
-              style={{ color: textColor }}
+              style={{ color: textColor, fontFamily: bodyFont }}
               placeholder="Click to edit subtitle..."
               multiline
               isModuleSelected={isModuleSelected}
@@ -86,7 +90,7 @@ const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
           ) : (content.subtitle || content.subheading) ? (
             <p 
               className={`${textClass} mt-4 md:mt-6`} 
-              style={{ color: textColor }}
+              style={{ color: textColor, fontFamily: bodyFont }}
             >
               {content.subtitle || content.subheading}
             </p>
@@ -99,7 +103,8 @@ const CenteredHero = ({ content, style, isEditing, moduleId, pageId }) => {
               className={`${buttonClass} ${shadowClass} ${animationClass} mt-8 md:mt-10`}
               style={{ 
                 backgroundColor: ctaBackground, 
-                color: ctaTextColor 
+                color: ctaTextColor,
+                fontFamily: bodyFont 
               }}
             >
               {content.ctaText}

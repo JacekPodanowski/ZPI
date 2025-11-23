@@ -22,6 +22,7 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
+import CodeOutlinedIcon from '@mui/icons-material/CodeOutlined';
 import LanguageIcon from '@mui/icons-material/Language';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -29,6 +30,11 @@ import useTheme from '../../theme/useTheme';
 import Navigation from '../../components/Navigation/Navigation';
 
 const devNavigation = [
+  {
+    label: 'Laboratorium komponentów',
+    path: '/studio/lab/components',
+    icon: <CodeOutlinedIcon />
+  },
   {
     label: 'Toast',
     path: '/studio/account/toast',

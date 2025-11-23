@@ -3,7 +3,7 @@ import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
+const TimelineAbout = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -51,10 +51,13 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
   // Support both old (milestones) and new (timeline) field names
   const timelineData = content.timeline || content.milestones || [];
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <section 
       className={`${spacingClass} ${roundedClass} relative overflow-hidden`}
-      style={{ backgroundColor }}
+      style={{ backgroundColor, fontFamily: bodyFont }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-5xl mx-auto relative z-10">
@@ -64,7 +67,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
             onSave={handleTitleSave}
             as="h2"
             className={`${headingClass} text-center`}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
             placeholder="Click to edit title..."
             multiline
             isModuleSelected={true}
@@ -72,7 +75,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
         ) : (
           <h2 
             className={`${headingClass} text-center`}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
           >
             {content.title}
           </h2>
@@ -85,7 +88,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
               onSave={handleDescriptionSave}
               as="p"
               className={`${textClass} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
-              style={{ color: textColor }}
+              style={{ color: textColor, fontFamily: bodyFont }}
               placeholder="Click to edit description..."
               multiline
               isModuleSelected={true}
@@ -93,7 +96,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
           ) : (
             <p 
               className={`${textClass} text-center mt-4 md:mt-6 max-w-3xl mx-auto`}
-              style={{ color: textColor }}
+              style={{ color: textColor, fontFamily: bodyFont }}
             >
               {content.description}
             </p>
@@ -120,7 +123,8 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                 className={`${roundedClass} px-4 py-2 ${shadowClass} flex-shrink-0`}
                 style={{ 
                   backgroundColor: primaryColor, 
-                  color: style?.background || '#ffffff' 
+                  color: style?.background || '#ffffff',
+                  fontFamily: titleFont 
                 }}
               >
                 {isEditing ? (
@@ -129,12 +133,14 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={(newValue) => handleMilestoneFieldSave(index, 'year', newValue)}
                     as="span"
                     className="font-bold text-lg md:text-xl"
-                    style={{ color: style?.background || '#ffffff' }}
+                    style={{ color: style?.background || '#ffffff', fontFamily: titleFont }}
                     placeholder="Year..."
                     isModuleSelected={true}
                   />
                 ) : (
-                  <span className="font-bold text-lg md:text-xl">{milestone.year}</span>
+                  <span className="font-bold text-lg md:text-xl" style={{ fontFamily: titleFont }}>
+                    {milestone.year}
+                  </span>
                 )}
               </div>
               
@@ -145,7 +151,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={(newValue) => handleMilestoneFieldSave(index, 'title', newValue)}
                     as="h3"
                     className="text-xl md:text-2xl font-semibold mb-2"
-                    style={{ color: primaryColor }}
+                    style={{ color: primaryColor, fontFamily: titleFont }}
                     placeholder="Click to edit milestone title..."
                     multiline
                     isModuleSelected={true}
@@ -153,7 +159,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                 ) : (
                   <h3 
                     className="text-xl md:text-2xl font-semibold mb-2"
-                    style={{ color: primaryColor }}
+                    style={{ color: primaryColor, fontFamily: titleFont }}
                   >
                     {milestone.title}
                   </h3>
@@ -164,7 +170,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={(newValue) => handleMilestoneFieldSave(index, 'description', newValue)}
                     as="p"
                     className={textClass}
-                    style={{ color: textColor }}
+                    style={{ color: textColor, fontFamily: bodyFont }}
                     placeholder="Click to edit description..."
                     multiline
                     isModuleSelected={true}
@@ -172,7 +178,7 @@ const TimelineAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                 ) : (
                   <p 
                     className={textClass}
-                    style={{ color: textColor }}
+                    style={{ color: textColor, fontFamily: bodyFont }}
                   >
                     {milestone.description || milestone.desc}
                   </p>

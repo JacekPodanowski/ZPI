@@ -1,7 +1,7 @@
 // layouts/HorizontalNav.jsx - Traditional horizontal navigation
 import { useState } from 'react';
 
-const HorizontalNav = ({ content, style, onNavigate }) => {
+const HorizontalNav = ({ content, style, onNavigate, typography }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
 
@@ -39,12 +39,16 @@ const HorizontalNav = ({ content, style, onNavigate }) => {
     setIsMenuOpen(false);
   };
   
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <nav 
       className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${shadowClass} ${animationClass}`}
       style={{ 
         backgroundColor,
-        borderBottom: `1px solid ${borderColor}`
+        borderBottom: `1px solid ${borderColor}`,
+        fontFamily: bodyFont
       }}
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-5">
@@ -72,7 +76,7 @@ const HorizontalNav = ({ content, style, onNavigate }) => {
             {content.logo?.text && (
               <span 
                 className="text-xl md:text-2xl font-semibold"
-                style={{ color: activeColor }}
+                style={{ color: activeColor, fontFamily: titleFont || bodyFont }}
               >
                 {content.logo.text}
               </span>

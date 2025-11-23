@@ -1,7 +1,7 @@
 // layouts/MinimalNav.jsx - Ultra minimal navigation
 import { useState } from 'react';
 
-const MinimalNav = ({ content, style, onNavigate }) => {
+const MinimalNav = ({ content, style, onNavigate, typography }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
 
@@ -35,11 +35,15 @@ const MinimalNav = ({ content, style, onNavigate }) => {
     setIsMenuOpen(false);
   };
   
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <nav 
       className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${animationClass}`}
       style={{ 
-        backgroundColor
+        backgroundColor,
+        fontFamily: bodyFont
       }}
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
@@ -49,7 +53,7 @@ const MinimalNav = ({ content, style, onNavigate }) => {
             <a 
               href="/" 
               className="text-lg md:text-xl font-light tracking-wider"
-              style={{ color: activeColor }}
+              style={{ color: activeColor, fontFamily: titleFont || bodyFont }}
               onClick={(e) => {
                 e.preventDefault();
                 // Znajdź link do strony głównej

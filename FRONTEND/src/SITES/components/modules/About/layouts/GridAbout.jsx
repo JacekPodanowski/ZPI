@@ -5,7 +5,7 @@ import EditableText from '../../../../../STUDIO/components/EditableText';
 import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
+const GridAbout = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -59,10 +59,13 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
   // Support both old (highlights) and new (keyHighlights) field names
   const highlightsData = content.keyHighlights || content.highlights || [];
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <section 
       className={`${spacingClass} ${roundedClass} relative overflow-hidden py-12 px-4 md:py-20 md:px-6`}
-      style={{ backgroundColor }}
+      style={{ backgroundColor, fontFamily: bodyFont }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-7xl mx-auto relative z-10">
@@ -72,7 +75,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
             onSave={handleTitleSave}
             as="h2"
             className={`${headingClass} text-center`}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
             placeholder="Click to edit title..."
             multiline
             isModuleSelected={true}
@@ -80,7 +83,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
         ) : (
           <h2 
             className={`${headingClass} text-center`}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
           >
             {content.title}
           </h2>
@@ -111,7 +114,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                 onSave={handleDescriptionSave}
                 as="p"
                 className={`${textClass} text-left`}
-                style={{ color: textColor, textAlign: 'left' }}
+                style={{ color: textColor, textAlign: 'left', fontFamily: bodyFont }}
                 placeholder="Click to edit description..."
                 multiline
                 isModuleSelected={true}
@@ -119,7 +122,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
             ) : (
               <p 
                 className={`${textClass} text-left`}
-                style={{ color: textColor }}
+                style={{ color: textColor, fontFamily: bodyFont }}
               >
                 {content.description}
               </p>
@@ -151,7 +154,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={(newValue) => handleHighlightFieldSave(index, 'title', newValue)}
                     as="h3"
                     className="text-lg md:text-xl font-semibold mb-2"
-                    style={{ color: primaryColor }}
+                    style={{ color: primaryColor, fontFamily: titleFont }}
                     placeholder="Click to edit highlight title..."
                     multiline
                     isModuleSelected={true}
@@ -159,7 +162,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                 ) : (
                   <h3 
                     className="text-lg md:text-xl font-semibold mb-2"
-                    style={{ color: primaryColor }}
+                    style={{ color: primaryColor, fontFamily: titleFont }}
                   >
                     {highlight.title}
                   </h3>
@@ -170,7 +173,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                     onSave={(newValue) => handleHighlightFieldSave(index, 'description', newValue)}
                     as="p"
                     className={`${textClass} text-sm`}
-                    style={{ color: textColor }}
+                    style={{ color: textColor, fontFamily: bodyFont }}
                     placeholder="Click to edit description..."
                     multiline
                     isModuleSelected={true}
@@ -178,7 +181,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                 ) : (
                   <p 
                     className={`${textClass} text-sm`}
-                    style={{ color: textColor }}
+                    style={{ color: textColor, fontFamily: bodyFont }}
                   >
                     {highlight.description || highlight.desc}
                   </p>

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId }) => {
+const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId, typography }) => {
     const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
     const handleTitleSave = (newValue) => {
@@ -56,6 +56,9 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
     const primaryColor = theme.colors?.light?.primary || '#920020';
     const bgColor = theme.colors?.light?.background || '#e4e5da';
 
+    const titleFont = typography?.titleFont;
+    const bodyFont = typography?.textFont;
+
     if (loading || testimonials.length === 0) {
         return null;
     }
@@ -63,7 +66,7 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
     const currentTestimonial = testimonials[currentIndex];
 
     return (
-        <section className="py-20 px-4" style={{ backgroundColor: bgColor }}>
+        <section className="py-20 px-4" style={{ backgroundColor: bgColor, fontFamily: bodyFont }}>
             <div className="max-w-4xl mx-auto text-center">
                 {(isEditing || title) && (
                     isEditing ? (
@@ -72,13 +75,13 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
                             onSave={handleTitleSave}
                             as="h2"
                             className="text-4xl font-bold mb-4"
-                            style={{ color: primaryColor }}
+                            style={{ color: primaryColor, fontFamily: titleFont }}
                             placeholder="Click to edit title..."
                             multiline
                             isModuleSelected={true}
                         />
                     ) : (
-                        <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
+                        <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor, fontFamily: titleFont }}>
                             {title}
                         </h2>
                     )
@@ -90,12 +93,13 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
                             onSave={handleSubtitleSave}
                             as="p"
                             className="text-lg mb-12 opacity-80"
+                            style={{ fontFamily: bodyFont }}
                             placeholder="Click to edit subtitle..."
                             multiline
                             isModuleSelected={true}
                         />
                     ) : (
-                        <p className="text-lg mb-12 opacity-80">{subtitle}</p>
+                        <p className="text-lg mb-12 opacity-80" style={{ fontFamily: bodyFont }}>{subtitle}</p>
                     )
                 )}
 
@@ -110,12 +114,12 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
                             </span>
                         ))}
                     </div>
-                    <p className="text-xl leading-relaxed mb-8 italic">
+                    <p className="text-xl leading-relaxed mb-8 italic" style={{ fontFamily: bodyFont }}>
                         "{currentTestimonial.content}"
                     </p>
                     <div>
-                        <p className="font-bold text-lg">{currentTestimonial.author_name}</p>
-                        <p className="text-sm opacity-60">
+                        <p className="font-bold text-lg" style={{ fontFamily: titleFont }}>{currentTestimonial.author_name}</p>
+                        <p className="text-sm opacity-60" style={{ fontFamily: bodyFont }}>
                             {new Date(currentTestimonial.created_at).toLocaleDateString('pl-PL')}
                         </p>
                     </div>
@@ -125,14 +129,14 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
                             <button
                                 onClick={prevTestimonial}
                                 className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:shadow-xl"
-                                style={{ backgroundColor: primaryColor, color: 'white' }}
+                                style={{ backgroundColor: primaryColor, color: 'white', fontFamily: titleFont }}
                             >
                                 ‹
                             </button>
                             <button
                                 onClick={nextTestimonial}
                                 className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:shadow-xl"
-                                style={{ backgroundColor: primaryColor, color: 'white' }}
+                                style={{ backgroundColor: primaryColor, color: 'white', fontFamily: titleFont }}
                             >
                                 ›
                             </button>
@@ -162,7 +166,8 @@ const CarouselLayout = ({ content, siteId, siteConfig, isEditing, moduleId, page
 CarouselLayout.propTypes = {
     content: PropTypes.object.isRequired,
     siteId: PropTypes.number.isRequired,
-    siteConfig: PropTypes.object.isRequired
+    siteConfig: PropTypes.object.isRequired,
+    typography: PropTypes.object
 };
 
 export default CarouselLayout;

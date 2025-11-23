@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const MobileNav = ({ content, style, onNavigate }) => {
+const MobileNav = ({ content, style, onNavigate, typography }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activePageId = content.activePageId;
 
@@ -20,12 +20,16 @@ const MobileNav = ({ content, style, onNavigate }) => {
     setIsMenuOpen(false);
   };
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <nav
       className={`${content.sticky ? 'sticky top-0 z-50' : ''} ${animationClass}`}
       style={{
         backgroundColor,
-        borderBottom: `1px solid ${borderColor}`
+        borderBottom: `1px solid ${borderColor}`,
+        fontFamily: bodyFont
       }}
     >
       <div className="px-4 py-3 flex items-center justify-between">
@@ -40,7 +44,7 @@ const MobileNav = ({ content, style, onNavigate }) => {
           {content.logo?.text && (
             <span
               className="text-lg font-semibold"
-              style={{ color: activeColor }}
+              style={{ color: activeColor, fontFamily: titleFont || bodyFont }}
             >
               {content.logo.text}
             </span>

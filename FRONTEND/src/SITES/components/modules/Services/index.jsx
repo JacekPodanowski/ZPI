@@ -12,7 +12,7 @@ const LAYOUTS = {
   accordion: AccordionServices
 };
 
-const ServicesSection = ({ layout = 'cards', content = {}, style, isEditing, moduleId, pageId }) => {
+const ServicesSection = ({ layout = 'cards', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   const defaultOptions = SERVICES_DEFAULTS[layout] || SERVICES_DEFAULTS.cards;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
@@ -27,7 +27,16 @@ const ServicesSection = ({ layout = 'cards', content = {}, style, isEditing, mod
   }
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.cards;
-  return <LayoutComponent content={mergedContent} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
+  return (
+    <LayoutComponent
+      content={mergedContent}
+      style={style}
+      isEditing={isEditing}
+      moduleId={moduleId}
+      pageId={pageId}
+      typography={typography}
+    />
+  );
 };
 
 ServicesSection.descriptor = SERVICES_DESCRIPTOR;

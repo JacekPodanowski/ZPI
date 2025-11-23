@@ -12,14 +12,23 @@ const LAYOUTS = {
   narrative: NarrativeAbout
 };
 
-const AboutSection = ({ layout = 'grid', content = {}, style, isEditing, moduleId, pageId }) => {
+const AboutSection = ({ layout = 'grid', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   const defaultOptions = ABOUT_DEFAULTS[layout] || ABOUT_DEFAULTS.grid;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
-  return <LayoutComponent content={mergedContent} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
+  return (
+    <LayoutComponent
+      content={mergedContent}
+      style={style}
+      isEditing={isEditing}
+      moduleId={moduleId}
+      pageId={pageId}
+      typography={typography}
+    />
+  );
 };
 
 AboutSection.descriptor = ABOUT_DESCRIPTOR;

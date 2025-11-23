@@ -2,17 +2,19 @@ import React from 'react';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const CenteredText = ({ content, style, isEditing, moduleId, pageId }) => {
+const CenteredText = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleContentSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { content: newValue });
   };
 
+  const bodyFont = typography?.textFont;
+
   return (
     <div 
       className={`${style.spacing} ${style.rounded} text-center`}
-      style={{ backgroundColor: style.background }}
+      style={{ backgroundColor: style.background, fontFamily: bodyFont }}
     >
       {isEditing ? (
         <EditableText
@@ -22,7 +24,8 @@ const CenteredText = ({ content, style, isEditing, moduleId, pageId }) => {
           className={`max-w-4xl mx-auto ${style.textSize}`}
           style={{ 
             color: content.textColor || style.text,
-            fontSize: content.fontSize || '18px'
+            fontSize: content.fontSize || '18px',
+            fontFamily: bodyFont
           }}
           placeholder="Click to edit text..."
           multiline
@@ -33,7 +36,8 @@ const CenteredText = ({ content, style, isEditing, moduleId, pageId }) => {
           className={`max-w-4xl mx-auto ${style.textSize}`}
           style={{ 
             color: content.textColor || style.text,
-            fontSize: content.fontSize || '18px'
+            fontSize: content.fontSize || '18px',
+            fontFamily: bodyFont
           }}
           dangerouslySetInnerHTML={{ __html: content.content || '' }}
         />

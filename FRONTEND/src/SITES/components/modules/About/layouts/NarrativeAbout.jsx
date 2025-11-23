@@ -5,7 +5,7 @@ import EditableText from '../../../../../STUDIO/components/EditableText';
 import EditableImage from '../../../../../STUDIO/components/EditableImage';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
+const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleTitleSave = (newValue) => {
@@ -85,10 +85,13 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
   const timelineData = content.timeline || content.milestones || [];
   const highlightsData = content.keyHighlights || content.highlights || [];
 
+  const titleFont = typography?.titleFont;
+  const bodyFont = typography?.textFont;
+
   return (
     <section 
       className={`${spacingClass} ${roundedClass} relative overflow-hidden`}
-      style={{ backgroundColor }}
+      style={{ backgroundColor, fontFamily: bodyFont }}
     >
       <BackgroundMedia media={content.backgroundImage} overlayColor={overlayColor} />
       <div className="max-w-6xl mx-auto relative z-10">
@@ -98,7 +101,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
             onSave={handleTitleSave}
             as="h2"
             className={`${headingClass} text-center mb-4`}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
             placeholder="Click to edit title..."
             multiline
             isModuleSelected={true}
@@ -106,7 +109,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
         ) : (
           <h2 
             className={`${headingClass} text-center mb-4`}
-            style={{ color: primaryColor }}
+            style={{ color: primaryColor, fontFamily: titleFont }}
           >
             {content.title}
           </h2>
@@ -119,7 +122,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
               onSave={handleSubtitleSave}
               as="p"
               className={`${textClass} text-center italic mb-8 max-w-3xl mx-auto`}
-              style={{ color: textColor, opacity: 0.9 }}
+              style={{ color: textColor, opacity: 0.9, fontFamily: bodyFont }}
               placeholder="Click to edit subtitle..."
               multiline
               isModuleSelected={true}
@@ -127,7 +130,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
           ) : (
             <p 
               className={`${textClass} text-center italic mb-8 max-w-3xl mx-auto`}
-              style={{ color: textColor, opacity: 0.9 }}
+              style={{ color: textColor, opacity: 0.9, fontFamily: bodyFont }}
             >
               {content.subtitle}
             </p>
@@ -159,7 +162,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
             {/* Description */}
             <div 
               className={`${textClass} leading-relaxed prose prose-lg max-w-none`}
-              style={{ color: textColor }}
+              style={{ color: textColor, fontFamily: bodyFont }}
               dangerouslySetInnerHTML={{ __html: content.description }}
             />
             
@@ -168,7 +171,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
               <div className="mt-8 md:mt-12">
                 <h3 
                   className="text-2xl font-semibold mb-6"
-                  style={{ color: primaryColor }}
+                  style={{ color: primaryColor, fontFamily: titleFont }}
                 >
                   Kluczowe Osiągnięcia
                 </h3>
@@ -189,7 +192,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                       )}
                       <div 
                         className={`${roundedClass} p-3 flex-shrink-0`}
-                        style={{ backgroundColor: `${primaryColor}15` }}
+                        style={{ backgroundColor: `${primaryColor}15`, fontFamily: titleFont }}
                       >
                         <span className="text-2xl">
                           {highlight.icon === 'award' ? '🏆' : 
@@ -204,7 +207,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleHighlightFieldSave(index, 'title', newValue)}
                             as="h4"
                             className="font-semibold text-lg mb-1"
-                            style={{ color: primaryColor }}
+                            style={{ color: primaryColor, fontFamily: titleFont }}
                             placeholder="Click to edit title..."
                             multiline
                             isModuleSelected={true}
@@ -212,7 +215,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                         ) : (
                           <h4 
                             className="font-semibold text-lg mb-1"
-                            style={{ color: primaryColor }}
+                            style={{ color: primaryColor, fontFamily: titleFont }}
                           >
                             {highlight.title}
                           </h4>
@@ -223,7 +226,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleHighlightFieldSave(index, 'description', newValue)}
                             as="p"
                             className={`${textClass}`}
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                             placeholder="Click to edit description..."
                             multiline
                             isModuleSelected={true}
@@ -231,7 +234,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                         ) : (
                           <p 
                             className={`${textClass}`}
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                           >
                             {highlight.description}
                           </p>
@@ -259,7 +262,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
               <div className="mt-8 md:mt-12">
                 <h3 
                   className="text-2xl font-semibold mb-6"
-                  style={{ color: primaryColor }}
+                  style={{ color: primaryColor, fontFamily: titleFont }}
                 >
                   Moja Droga
                 </h3>
@@ -282,7 +285,8 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                         className={`${roundedClass} px-4 py-2 h-fit ${shadowClass}`}
                         style={{ 
                           backgroundColor: primaryColor, 
-                          color: style?.background || '#ffffff' 
+                          color: style?.background || '#ffffff',
+                          fontFamily: titleFont 
                         }}
                       >
                         {isEditing ? (
@@ -291,12 +295,12 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleTimelineFieldSave(index, 'year', newValue)}
                             as="span"
                             className="font-bold"
-                            style={{ color: style?.background || '#ffffff' }}
+                            style={{ color: style?.background || '#ffffff', fontFamily: titleFont }}
                             placeholder="Year..."
                             isModuleSelected={true}
                           />
                         ) : (
-                          <span className="font-bold">{milestone.year}</span>
+                          <span className="font-bold" style={{ fontFamily: titleFont }}>{milestone.year}</span>
                         )}
                       </div>
                       <div className="flex-1">
@@ -306,7 +310,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleTimelineFieldSave(index, 'title', newValue)}
                             as="h4"
                             className="font-semibold text-lg mb-1"
-                            style={{ color: primaryColor }}
+                            style={{ color: primaryColor, fontFamily: titleFont }}
                             placeholder="Click to edit title..."
                             multiline
                             isModuleSelected={true}
@@ -314,7 +318,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                         ) : (
                           <h4 
                             className="font-semibold text-lg mb-1"
-                            style={{ color: primaryColor }}
+                            style={{ color: primaryColor, fontFamily: titleFont }}
                           >
                             {milestone.title}
                           </h4>
@@ -325,7 +329,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                             onSave={(newValue) => handleTimelineFieldSave(index, 'description', newValue)}
                             as="p"
                             className={textClass}
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                             placeholder="Click to edit description..."
                             multiline
                             isModuleSelected={true}
@@ -333,7 +337,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId }) => {
                         ) : (
                           <p 
                             className={textClass}
-                            style={{ color: textColor }}
+                            style={{ color: textColor, fontFamily: bodyFont }}
                           >
                             {milestone.description || milestone.desc}
                           </p>

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId }) => {
+const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId, typography }) => {
     const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
     const handleTitleSave = (newValue) => {
@@ -131,8 +131,11 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
     const bgColor = theme.colors?.light?.background || '#e4e5da';
     const textColor = theme.colors?.light?.text || '#1e1e1e';
 
+    const titleFont = typography?.titleFont;
+    const bodyFont = typography?.textFont;
+
     return (
-        <section className="py-16 px-4" style={{ backgroundColor: bgColor, color: textColor }}>
+        <section className="py-16 px-4" style={{ backgroundColor: bgColor, color: textColor, fontFamily: bodyFont }}>
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-12">
@@ -143,13 +146,13 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                 onSave={handleTitleSave}
                                 as="h2"
                                 className="text-4xl font-bold mb-4"
-                                style={{ color: primaryColor }}
+                                style={{ color: primaryColor, fontFamily: titleFont }}
                                 placeholder="Click to edit title..."
                                 multiline
                                 isModuleSelected={true}
                             />
                         ) : (
-                            <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor }}>
+                            <h2 className="text-4xl font-bold mb-4" style={{ color: primaryColor, fontFamily: titleFont }}>
                                 {title}
                             </h2>
                         )
@@ -161,12 +164,13 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                 onSave={handleSubtitleSave}
                                 as="p"
                                 className="text-lg opacity-80 max-w-2xl mx-auto"
+                                style={{ fontFamily: bodyFont }}
                                 placeholder="Click to edit subtitle..."
                                 multiline
                                 isModuleSelected={true}
                             />
                         ) : (
-                            <p className="text-lg opacity-80 max-w-2xl mx-auto">
+                            <p className="text-lg opacity-80 max-w-2xl mx-auto" style={{ fontFamily: bodyFont }}>
                                 {subtitle}
                             </p>
                         )
@@ -177,19 +181,20 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                 {showSummary && summary && summary.average_rating !== undefined && (
                     <div className="mb-12 p-6 rounded-xl" style={{
                         backgroundColor: 'rgba(146, 0, 32, 0.05)',
-                        border: `1px solid ${primaryColor}33`
+                        border: `1px solid ${primaryColor}33`,
+                        fontFamily: bodyFont
                     }}>
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-xl font-semibold">Podsumowanie opinii</h3>
+                            <h3 className="text-xl font-semibold" style={{ fontFamily: titleFont }}>Podsumowanie opinii</h3>
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl font-bold" style={{ color: primaryColor }}>
+                                <span className="text-2xl font-bold" style={{ color: primaryColor, fontFamily: titleFont }}>
                                     {summary.average_rating.toFixed(1)}
                                 </span>
                                 <span className="text-yellow-500">★</span>
-                                <span className="text-sm opacity-70">({summary.total_count || 0} opinii)</span>
+                                <span className="text-sm opacity-70" style={{ fontFamily: bodyFont }}>({summary.total_count || 0} opinii)</span>
                             </div>
                         </div>
-                        <p className="text-base leading-relaxed opacity-90">
+                        <p className="text-base leading-relaxed opacity-90" style={{ fontFamily: bodyFont }}>
                             {summary.summary}
                         </p>
                     </div>
@@ -206,7 +211,7 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8" style={{ fontFamily: bodyFont }}>
                             {displayedTestimonials.map((testimonial) => (
                                 <div
                                     key={testimonial.id}
@@ -218,8 +223,8 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                 >
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
-                                            <h4 className="font-semibold text-lg">{testimonial.author_name}</h4>
-                                            <p className="text-sm opacity-60">
+                                            <h4 className="font-semibold text-lg" style={{ fontFamily: titleFont }}>{testimonial.author_name}</h4>
+                                            <p className="text-sm opacity-60" style={{ fontFamily: bodyFont }}>
                                                 {new Date(testimonial.created_at).toLocaleDateString('pl-PL')}
                                             </p>
                                         </div>
@@ -234,7 +239,7 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                             ))}
                                         </div>
                                     </div>
-                                    <p className="text-base leading-relaxed opacity-90">
+                                    <p className="text-base leading-relaxed opacity-90" style={{ fontFamily: bodyFont }}>
                                         {testimonial.content}
                                     </p>
                                 </div>
@@ -249,7 +254,8 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                     className="px-8 py-3 rounded-lg font-semibold transition-all hover:shadow-lg"
                                     style={{
                                         backgroundColor: primaryColor,
-                                        color: 'white'
+                                        color: 'white',
+                                        fontFamily: titleFont
                                     }}
                                 >
                                     Pokaż wszystkie ({testimonials.length})
@@ -262,20 +268,20 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                 {/* Feedback Form */}
                 {showForm && (
                     <div className="mt-16 max-w-2xl mx-auto">
-                        <div className="p-8 rounded-xl shadow-lg" style={{ backgroundColor: 'white' }}>
+                        <div className="p-8 rounded-xl shadow-lg" style={{ backgroundColor: 'white', fontFamily: bodyFont }}>
                             {isEditing ? (
                                 <EditableText
                                     value={content.formTitle || 'Podziel się swoją opinią'}
                                     onSave={handleFormTitleSave}
                                     as="h3"
                                     className="text-2xl font-bold mb-6"
-                                    style={{ color: primaryColor }}
+                                    style={{ color: primaryColor, fontFamily: titleFont }}
                                     placeholder="Click to edit form title..."
                                     multiline
                                     isModuleSelected={true}
                                 />
                             ) : (
-                                <h3 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>
+                                <h3 className="text-2xl font-bold mb-6" style={{ color: primaryColor, fontFamily: titleFont }}>
                                     {content.formTitle || 'Podziel się swoją opinią'}
                                 </h3>
                             )}
@@ -287,11 +293,12 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                             onSave={handleFormNameLabelSave}
                                             as="label"
                                             className="block mb-2 font-medium"
+                                            style={{ fontFamily: bodyFont }}
                                             placeholder="Click to edit label..."
                                             isModuleSelected={true}
                                         />
                                     ) : (
-                                        <label className="block mb-2 font-medium">{content.formNameLabel || 'Twoje imię *'}</label>
+                                        <label className="block mb-2 font-medium" style={{ fontFamily: bodyFont }}>{content.formNameLabel || 'Twoje imię *'}</label>
                                     )}
                                     <input
                                         type="text"
@@ -299,7 +306,7 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                         value={formData.author_name}
                                         onChange={(e) => setFormData({ ...formData, author_name: e.target.value })}
                                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2"
-                                        style={{ focusRingColor: primaryColor }}
+                                        style={{ focusRingColor: primaryColor, fontFamily: bodyFont }}
                                     />
                                 </div>
                                 <div>
@@ -309,18 +316,19 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                             onSave={handleFormEmailLabelSave}
                                             as="label"
                                             className="block mb-2 font-medium"
+                                            style={{ fontFamily: bodyFont }}
                                             placeholder="Click to edit label..."
                                             isModuleSelected={true}
                                         />
                                     ) : (
-                                        <label className="block mb-2 font-medium">{content.formEmailLabel || 'Email (opcjonalnie)'}</label>
+                                        <label className="block mb-2 font-medium" style={{ fontFamily: bodyFont }}>{content.formEmailLabel || 'Email (opcjonalnie)'}</label>
                                     )}
                                     <input
                                         type="email"
                                         value={formData.author_email}
                                         onChange={(e) => setFormData({ ...formData, author_email: e.target.value })}
                                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2"
-                                        style={{ focusRingColor: primaryColor }}
+                                        style={{ focusRingColor: primaryColor, fontFamily: bodyFont }}
                                     />
                                 </div>
                                 <div>
@@ -330,11 +338,12 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                             onSave={handleFormRatingLabelSave}
                                             as="label"
                                             className="block mb-2 font-medium"
+                                            style={{ fontFamily: bodyFont }}
                                             placeholder="Click to edit label..."
                                             isModuleSelected={true}
                                         />
                                     ) : (
-                                        <label className="block mb-2 font-medium">{content.formRatingLabel || 'Ocena *'}</label>
+                                        <label className="block mb-2 font-medium" style={{ fontFamily: bodyFont }}>{content.formRatingLabel || 'Ocena *'}</label>
                                     )}
                                     <div className="flex gap-2">
                                         {[1, 2, 3, 4, 5].map((rating) => (
@@ -344,7 +353,8 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                                 onClick={() => setFormData({ ...formData, rating })}
                                                 className="text-3xl transition-colors"
                                                 style={{
-                                                    color: rating <= formData.rating ? '#fbbf24' : '#d1d5db'
+                                                    color: rating <= formData.rating ? '#fbbf24' : '#d1d5db',
+                                                    fontFamily: titleFont
                                                 }}
                                             >
                                                 ★
@@ -359,11 +369,12 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                             onSave={handleFormContentLabelSave}
                                             as="label"
                                             className="block mb-2 font-medium"
+                                            style={{ fontFamily: bodyFont }}
                                             placeholder="Click to edit label..."
                                             isModuleSelected={true}
                                         />
                                     ) : (
-                                        <label className="block mb-2 font-medium">{content.formContentLabel || 'Twoja opinia *'}</label>
+                                        <label className="block mb-2 font-medium" style={{ fontFamily: bodyFont }}>{content.formContentLabel || 'Twoja opinia *'}</label>
                                     )}
                                     <textarea
                                         required
@@ -371,7 +382,7 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                         value={formData.content}
                                         onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2"
-                                        style={{ focusRingColor: primaryColor }}
+                                        style={{ focusRingColor: primaryColor, fontFamily: bodyFont }}
                                     />
                                 </div>
                                 {submitMessage && (
@@ -391,7 +402,8 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
                                     className="w-full py-3 rounded-lg font-semibold transition-all hover:shadow-lg disabled:opacity-50"
                                     style={{
                                         backgroundColor: primaryColor,
-                                        color: 'white'
+                                        color: 'white',
+                                        fontFamily: titleFont
                                     }}
                                 >
                                     {submitting ? 'Wysyłanie...' : 'Wyślij opinię'}
@@ -408,7 +420,8 @@ const CardsLayout = ({ content, siteId, siteConfig, isEditing, moduleId, pageId 
 CardsLayout.propTypes = {
     content: PropTypes.object.isRequired,
     siteId: PropTypes.number.isRequired,
-    siteConfig: PropTypes.object.isRequired
+    siteConfig: PropTypes.object.isRequired,
+    typography: PropTypes.object
 };
 
 export default CardsLayout;

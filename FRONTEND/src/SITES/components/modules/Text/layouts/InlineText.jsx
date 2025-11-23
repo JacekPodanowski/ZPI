@@ -2,12 +2,14 @@ import React from 'react';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';
 
-const InlineText = ({ content, style, isEditing, moduleId, pageId }) => {
+const InlineText = ({ content, style, isEditing, moduleId, pageId, typography }) => {
   const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
 
   const handleContentSave = (newValue) => {
     updateModuleContent(pageId, moduleId, { content: newValue });
   };
+
+  const bodyFont = typography?.textFont;
 
   return (
     <div 
@@ -15,7 +17,8 @@ const InlineText = ({ content, style, isEditing, moduleId, pageId }) => {
       style={{ 
         textAlign: content.align || 'left',
         color: content.textColor || style.text,
-        fontSize: content.fontSize || '14px'
+        fontSize: content.fontSize || '14px',
+        fontFamily: bodyFont
       }}
     >
       {isEditing ? (
@@ -26,7 +29,8 @@ const InlineText = ({ content, style, isEditing, moduleId, pageId }) => {
           className="inline-block"
           style={{ 
             color: content.textColor || style.text,
-            fontSize: content.fontSize || '14px'
+            fontSize: content.fontSize || '14px',
+            fontFamily: bodyFont
           }}
           placeholder="Click to edit text..."
           multiline
@@ -35,6 +39,7 @@ const InlineText = ({ content, style, isEditing, moduleId, pageId }) => {
       ) : (
         <div
           className="inline-block"
+          style={{ fontFamily: bodyFont, color: content.textColor || style.text }}
           dangerouslySetInnerHTML={{ __html: content.content || '' }}
         />
       )}
