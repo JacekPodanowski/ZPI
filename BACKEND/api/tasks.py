@@ -1643,6 +1643,124 @@ Wygeneruj analizę w następującym formacie:
         return {"status": "error", "message": str(exc)}
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_big_event_notification_emails(self, event_id: int):
+    """
+    Send email notifications to all newsletter subscribers when a BigEvent is published.
+    This task is triggered automatically when an event is published.
+    
+    Args:
+        self: Celery task instance
+        event_id: ID of the BigEvent that was published
+        
+    Returns:
+        dict: Email sending result with status
+    """
+    from .models import BigEvent, NewsletterSubscription, NewsletterAnalytics
+    from django.template.loader import render_to_string
+    from django.utils.html import strip_tags
+    
+    logger.info(f"[Celery] Sending BigEvent notification emails for event {event_id}")
+    
+    try:
+        event = BigEvent.objects.select_related('site', 'creator').get(id=event_id)
+    except BigEvent.DoesNotExist:
+        logger.error(f"[Celery] BigEvent {event_id} not found")
+        return {"status": "error", "message": "Event not found"}
+    
+    # Check if emails were already sent
+    if event.email_sent:
+        logger.info(f"[Celery] Emails already sent for event {event_id}, skipping")
+        return {"status": "skipped", "message": "Emails already sent"}
+    
+    # Get active newsletter subscribers for this site
+    subscribers = NewsletterSubscription.objects.filter(
+        site=event.site,
+        is_active=True,
+        is_confirmed=True
+    )
+    
+    if not subscribers.exists():
+        logger.info(f"[Celery] No active subscribers for site {event.site.identifier}")
+        event.email_sent = True
+        event.email_sent_at = timezone.now()
+        event.save(update_fields=['email_sent', 'email_sent_at'])
+        return {"status": "success", "message": "No subscribers", "sent_count": 0}
+    
+    # Prepare event data for template
+    subject = f'Nowe wydarzenie: {event.title}'
+    sent_count = 0
+    failed_count = 0
+    
+    for subscriber in subscribers:
+        try:
+            # Create analytics tracking for this email
+            analytics = NewsletterAnalytics.objects.create(subscription=subscriber)
+            
+            # Build tracking URLs
+            tracking_pixel_url = f"{settings.BACKEND_URL}/api/v1/newsletter/track/open/{analytics.tracking_token}/"
+            unsubscribe_url = f"{settings.FRONTEND_URL}/newsletter/unsubscribe/{subscriber.unsubscribe_token}"
+            
+            # Prepare context with single event
+            context = {
+                'site_name': event.site.name,
+                'events': [{
+                    'title': event.title,
+                    'date': event.start_date.strftime('%Y-%m-%d'),
+                    'location': event.location,
+                    'description': event.description,
+                    'price': float(event.price) if event.price else None,
+                    'max_participants': event.max_participants,
+                    'current_participants': event.current_participants,
+                    'image_url': event.image_url,
+                }],
+                'unsubscribe_url': unsubscribe_url,
+                'tracking_pixel_url': tracking_pixel_url,
+                'tracking_token': analytics.tracking_token,
+                'backend_url': settings.BACKEND_URL,
+                'is_big_event': True,
+            }
+            
+            # Render email template
+            html_content = render_to_string('emails/newsletter/event_newsletter.html', context)
+            text_content = strip_tags(html_content)
+            
+            # Send email via custom task
+            send_custom_email_task_async.delay(
+                recipient_list=[subscriber.email],
+                subject=subject,
+                message=text_content,
+                html_content=html_content
+            )
+            
+            # Update subscriber stats
+            subscriber.last_sent_at = timezone.now()
+            subscriber.emails_sent += 1
+            subscriber.save(update_fields=['last_sent_at', 'emails_sent'])
+            
+            sent_count += 1
+            logger.debug(f"[Celery] Queued BigEvent email to {subscriber.email}")
+            
+        except Exception as e:
+            failed_count += 1
+            logger.error(f"[Celery] Failed to send BigEvent email to {subscriber.email}: {e}")
+            continue
+    
+    # Mark event as email sent
+    event.email_sent = True
+    event.email_sent_at = timezone.now()
+    event.save(update_fields=['email_sent', 'email_sent_at'])
+    
+    logger.info(f"[Celery] BigEvent notification complete: {sent_count} sent, {failed_count} failed")
+    
+    return {
+        "status": "success",
+        "event_id": event_id,
+        "sent_count": sent_count,
+        "failed_count": failed_count
+    }
+
+
 @shared_task(bind=True, max_retries=3)
 def send_welcome_newsletter(self, subscription_id):
     """

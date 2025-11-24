@@ -5734,7 +5734,6 @@ def newsletter_subscribe(request):
         is_confirmed=True,
         confirmed_at=now
     )
-    
     return Response({
         'message': 'Jesteś zapisany! Powiadomimy Cię o nowych wydarzeniach.',
         'auto_confirmed': True,
@@ -6010,7 +6009,7 @@ class BigEventViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
-        """Publish a big event and optionally send email notifications."""
+        """Publish a big event and automatically send email notifications to all newsletter subscribers."""
         event = self.get_object()
         
         if event.status == 'published':
@@ -6021,59 +6020,18 @@ class BigEventViewSet(viewsets.ModelViewSet):
         
         event.status = 'published'
         event.published_at = timezone.now()
-        
-        # Check if email notification should be sent
-        send_email = request.data.get('send_email', event.send_email_on_publish)
-        
-        if send_email and not event.email_sent:
-            # Get active newsletter subscribers for this site
-            from .models import NewsletterSubscription
-            subscribers = NewsletterSubscription.objects.filter(
-                site=event.site,
-                is_active=True,
-                is_confirmed=True
-            )
-            
-            if subscribers.exists():
-                # Send email to all subscribers
-                subject = f'Nowe wydarzenie: {event.title}'
-                
-                for subscriber in subscribers:
-                    try:
-                        # Prepare email content with unsubscribe link
-                        unsubscribe_url = f'{settings.FRONTEND_URL}/newsletter/unsubscribe/{subscriber.unsubscribe_token}'
-                        context = {
-                            'event': event,
-                            'subscriber': subscriber,
-                            'site': event.site,
-                            'unsubscribe_url': unsubscribe_url,
-                        }
-                        
-                        # Template removed - new_event_notification.html
-                        # html_message = render_to_string('emails/new_event_notification.html', context)
-                        html_message = render_to_string('emails/newsletter/event_newsletter.html', context)
-                        plain_message = strip_tags(html_message)
-                        
-                        send_mail(
-                            subject=subject,
-                            message=plain_message,
-                            html_message=html_message,
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[subscriber.email],
-                            fail_silently=True,
-                        )
-                    except Exception as e:
-                        logger.error(f'Failed to send event notification to {subscriber.email}: {str(e)}')
-                
-                event.email_sent = True
-                event.email_sent_at = timezone.now()
-        
         event.save()
+        
+        # Automatically send email to all newsletter subscribers (unless already sent)
+        if not event.email_sent:
+            from .tasks import send_big_event_notification_emails
+            send_big_event_notification_emails.delay(event.id)
+            logger.info(f'[BigEvent] Queued email notifications for event {event.id}')
         
         serializer = self.get_serializer(event)
         return Response({
-            'message': 'Event published successfully.',
-            'email_sent': event.email_sent,
+            'message': 'Event published successfully. Email notifications are being sent.',
+            'email_queued': not event.email_sent,
             'event': serializer.data
         }, status=status.HTTP_200_OK)
     
