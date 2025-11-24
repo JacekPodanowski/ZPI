@@ -1063,6 +1063,236 @@ def configure_domain_dns(self, order_id: int):
         }
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def reconfigure_domain_target(self, order_id: int):
+    """
+    Reconfigure domain DNS target and proxy mode in Cloudflare.
+    This updates existing domain configuration when target or proxy_mode changes.
+    
+    Updates:
+    - DNS records (A/CNAME) to point to new target
+    - Page Rules for redirects
+    - Worker routing (via DNS only - Worker handles actual routing)
+    
+    Args:
+        self: Celery task instance
+        order_id: ID of the domain order to reconfigure
+        
+    Returns:
+        dict: Reconfiguration result with status
+    """
+    from .models import DomainOrder
+    from django.conf import settings
+    import requests
+    import time
+    
+    logger.info(f"[Celery] Starting DNS reconfiguration for order {order_id}")
+    
+    try:
+        order = DomainOrder.objects.select_related('user', 'site').get(id=order_id)
+    except DomainOrder.DoesNotExist:
+        logger.error(f"[Celery] Order {order_id} not found")
+        return {"status": "error", "message": "Order not found"}
+    
+    domain_name = order.domain_name
+    target = order.target
+    proxy_mode = order.proxy_mode
+    
+    if not target:
+        logger.error(f"[Celery] No target configured for {domain_name}")
+        return {"status": "error", "message": "No target configured"}
+    
+    # Get Zone ID (from order or fetch from Cloudflare)
+    cf_zone_id = order.cloudflare_zone_id
+    if not cf_zone_id:
+        try:
+            cf_zone_id = get_cloudflare_zone_id(settings.CLOUDFLARE_API_TOKEN, domain_name)
+            order.cloudflare_zone_id = cf_zone_id
+            order.save(update_fields=['cloudflare_zone_id'])
+        except Exception as e:
+            logger.error(f"[Celery] Could not find Zone ID for {domain_name}: {e}")
+            return {"status": "error", "message": f"Domain not in Cloudflare: {domain_name}"}
+    
+    cf_headers = {
+        'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+        'Content-Type': 'application/json',
+    }
+    
+    try:
+        # STEP 1: Update DNS records
+        logger.info(f"[Celery] Step 1: Updating DNS records for {domain_name}")
+        logger.info(f"[Celery] Target: {target}, Proxy Mode: {proxy_mode}")
+        
+        # Get existing DNS records
+        cf_records_resp = requests.get(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/dns_records',
+            headers=cf_headers
+        )
+        existing_records = {}
+        for record in cf_records_resp.json().get('result', []):
+            if record['name'] in [domain_name, f'www.{domain_name}'] and record['type'] in ['A', 'CNAME']:
+                existing_records[record['name']] = record
+        
+        # Determine record type and content based on target
+        if target.replace('http://', '').replace('https://', '').replace('/', '').replace(':443', '').replace(':80', '').count('.') >= 2:
+            # Target looks like a domain (e.g., youreasysite-production.up.railway.app)
+            record_type = 'CNAME'
+            record_content = target.replace('http://', '').replace('https://', '').split('/')[0].replace(':443', '').replace(':80', '')
+        else:
+            # Target is an IP or use dummy IP for Worker routing
+            record_type = 'A'
+            record_content = '192.0.2.1'  # Dummy IP - Worker handles routing
+        
+        dns_updates = []
+        for subdomain in ['@', 'www']:
+            record_name = domain_name if subdomain == '@' else f'www.{domain_name}'
+            
+            record_data = {
+                'type': record_type,
+                'name': subdomain,
+                'content': record_content,
+                'ttl': 1,  # Auto
+                'proxied': True  # Always proxied for Cloudflare features
+            }
+            
+            if record_name in existing_records:
+                # Update existing record
+                record_id = existing_records[record_name]['id']
+                logger.info(f"[Celery] Updating {record_type} record: {record_name} -> {record_content}")
+                cf_dns = requests.put(
+                    f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/dns_records/{record_id}',
+                    headers=cf_headers,
+                    json=record_data
+                )
+            else:
+                # Create new record
+                logger.info(f"[Celery] Creating {record_type} record: {record_name} -> {record_content}")
+                cf_dns = requests.post(
+                    f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/dns_records',
+                    headers=cf_headers,
+                    json=record_data
+                )
+            
+            if cf_dns.status_code in [200, 201]:
+                dns_updates.append(f"{record_name} -> {record_content}")
+                logger.info(f"[Celery] DNS record updated successfully")
+            else:
+                logger.error(f"[Celery] Failed to update DNS record: {cf_dns.text}")
+        
+        # STEP 2: Update/Remove Page Rules based on proxy_mode
+        logger.info(f"[Celery] Step 2: Configuring Page Rules (proxy_mode={proxy_mode})")
+        
+        # Get existing page rules
+        existing_rules_resp = requests.get(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules',
+            headers=cf_headers
+        )
+        existing_rules = {}
+        if existing_rules_resp.status_code == 200:
+            for rule in existing_rules_resp.json().get('result', []):
+                pattern = rule.get('targets', [{}])[0].get('constraint', {}).get('value')
+                if pattern and domain_name in pattern:
+                    existing_rules[pattern] = rule
+        
+        page_rules_result = []
+        
+        if not proxy_mode:
+            # REDIRECT MODE: Create/update Page Rules for 301 redirect
+            target_url = target if target.startswith('http') else f'https://{target}'
+            
+            for pattern in [f'{domain_name}/*', f'www.{domain_name}/*']:
+                page_rule_config = {
+                    'targets': [{
+                        'target': 'url',
+                        'constraint': {
+                            'operator': 'matches',
+                            'value': pattern
+                        }
+                    }],
+                    'actions': [{
+                        'id': 'forwarding_url',
+                        'value': {
+                            'url': f'{target_url}/$1',
+                            'status_code': 301
+                        }
+                    }],
+                    'priority': 1,
+                    'status': 'active'
+                }
+                
+                if pattern in existing_rules:
+                    rule_id = existing_rules[pattern]['id']
+                    logger.info(f"[Celery] Updating Page Rule for {pattern}")
+                    cf_rule = requests.patch(
+                        f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules/{rule_id}',
+                        headers=cf_headers,
+                        json=page_rule_config
+                    )
+                else:
+                    logger.info(f"[Celery] Creating Page Rule for {pattern}")
+                    cf_rule = requests.post(
+                        f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules',
+                        headers=cf_headers,
+                        json=page_rule_config
+                    )
+                
+                if cf_rule.status_code in [200, 201]:
+                    page_rules_result.append(f"{pattern} -> {target_url} (301 redirect)")
+                    logger.info(f"[Celery] Page Rule configured successfully")
+                else:
+                    logger.warning(f"[Celery] Failed to configure Page Rule: {cf_rule.text}")
+        else:
+            # PROXY MODE: Remove Page Rules (Worker handles routing)
+            for pattern, rule in existing_rules.items():
+                rule_id = rule['id']
+                logger.info(f"[Celery] Removing Page Rule for {pattern} (proxy mode active)")
+                requests.delete(
+                    f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/pagerules/{rule_id}',
+                    headers=cf_headers
+                )
+                page_rules_result.append(f"{pattern} - removed (proxy mode)")
+        
+        # STEP 3: Purge Cloudflare cache
+        logger.info(f"[Celery] Step 3: Purging Cloudflare cache")
+        purge_cloudflare_cache.delay(domain_name)
+        
+        # Update order configuration
+        order.dns_configuration = order.dns_configuration or {}
+        order.dns_configuration.update({
+            'last_reconfigured_at': str(time.time()),
+            'target': target,
+            'proxy_mode': proxy_mode,
+            'dns_updates': dns_updates,
+            'page_rules': page_rules_result,
+            'method': 'worker_routing' if proxy_mode else 'page_rule_redirect'
+        })
+        order.save(update_fields=['dns_configuration'])
+        
+        logger.info(f"[Celery] DNS reconfiguration completed for {domain_name}")
+        
+        return {
+            "status": "success",
+            "domain": domain_name,
+            "target": target,
+            "proxy_mode": proxy_mode,
+            "dns_updates": dns_updates,
+            "page_rules": page_rules_result,
+            "zone_id": cf_zone_id
+        }
+        
+    except Exception as exc:
+        logger.exception(f"[Celery] Failed to reconfigure DNS for {domain_name}: {exc}")
+        
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+        
+        return {
+            "status": "error",
+            "message": str(exc),
+            "domain": domain_name
+        }
+
+
 def get_cloudflare_zone_id(api_token, zone_name):
     """
     Get Cloudflare Zone ID for a given domain.
