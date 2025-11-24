@@ -72,8 +72,8 @@ services:
       # Mount SSL certificates from Let's Encrypt
       - /etc/letsencrypt/live/youreasysite.pl:/certs:ro
     ports:
-      - "${BACKEND_PORT_HOST:-443}:8443"  # HTTPS on 8443
-      - "8000:8000"  # HTTP fallback on 8000
+      - "3000:8000"  # HTTP API on port 3000
+      - "8443:8443"  # HTTPS with SSL cert (internal)
     env_file:
       - ./BACKEND/.env
     depends_on:
@@ -110,10 +110,15 @@ services:
     volumes:
       - ./FRONTEND:/app
       - /app/node_modules
+      - /etc/letsencrypt/live/youreasysite.pl:/certs:ro
     ports:
-      - "${FRONTEND_PORT_HOST:-80}:3000"   # HTTP on port 80
+      - "80:3000"    # HTTP on port 80
+      - "443:3001"   # HTTPS on port 443 (Vite HTTPS dev server)
     environment:
       - NODE_ENV=development
+      - VITE_HTTPS=true
+      - VITE_SSL_CERT=/certs/fullchain.pem
+      - VITE_SSL_KEY=/certs/privkey.pem
       # Niezbędne do poprawnego działania hot-reload w Dockerze
       - CHOKIDAR_USEPOLLING=true
       # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)

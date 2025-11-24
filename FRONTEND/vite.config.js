@@ -41,6 +41,11 @@ export default defineConfig({
       '.railway.app',
       '.up.railway.app',
     ],
+    // SSL configuration for HTTPS (port 3001)
+    https: process.env.VITE_HTTPS === 'true' && process.env.VITE_SSL_CERT ? {
+      cert: process.env.VITE_SSL_CERT,
+      key: process.env.VITE_SSL_KEY,
+    } : false,
   },
   resolve: {
     dedupe: ['react', 'react-dom'],

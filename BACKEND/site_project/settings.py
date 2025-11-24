@@ -91,6 +91,7 @@ ALLOWED_HOSTS = [
     '.trycloudflare.com',
     'youreasysite.pl',
     'www.youreasysite.pl',
+    'api.youreasysite.pl',
     '.up.railway.app',
     'youreasysite-production.up.railway.app',
 ]
@@ -206,8 +207,10 @@ cors_origins.update({
     # Production domains
     "https://youreasysite.pl",
     "https://www.youreasysite.pl",
+    "https://api.youreasysite.pl",
     "http://youreasysite.pl",
     "http://www.youreasysite.pl",
+    "http://api.youreasysite.pl",
     # Railway domains
     "https://youreasysite-production.up.railway.app",
     # Keep some old ports for backward compatibility during transition
