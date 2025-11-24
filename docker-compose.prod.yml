@@ -5,10 +5,6 @@ services:
   studio-frontend:
     build:
       target: production
-    volumes: []  # Remove volume mounts in production
+    volumes: []  # Clear all volumes from base config
     environment:
       - NODE_ENV=production
-      # Remove dev-only environment variables
-      - CHOKIDAR_USEPOLLING=
-      - WATCHPACK_POLLING=
-      - FAST_REFRESH=
