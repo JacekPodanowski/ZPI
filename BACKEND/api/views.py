@@ -96,12 +96,6 @@ from .serializers import (
     NotificationSerializer,
     AvailabilityBlockSerializer,
     SendEmailSerializer,
-    AdminSessionCancellationEmailSerializer,
-    AdminSessionNewReservationEmailSerializer,
-    SessionCanceledByAdminEmailSerializer,
-    SessionConfirmedDiscordEmailSerializer,
-    SessionConfirmedGoogleMeetEmailSerializer,
-    SessionNewReservationEmailSerializer,
     EmailTemplateSerializer,
     TestEmailSerializer,
     TeamMemberSerializer,
@@ -531,7 +525,7 @@ class RequestMagicLinkView(APIView):
         
         # Render email
         email_subject = 'Your Magic Login Link'
-        email_html = render_to_string('emails/magic_link_login.html', {
+        email_html = render_to_string('emails/account/magic_link_login.html', {
             'user': user,
             'magic_link_url': magic_link_url,
             'expiry_minutes': 15,
@@ -660,7 +654,7 @@ class RequestPasswordResetView(APIView):
             
             # Render email with existing link
             email_subject = 'Zresetuj swoje hasło'
-            email_html = render_to_string('emails/password_reset_link.html', {
+            email_html = render_to_string('emails/account/password_reset_link.html', {
                 'user': user,
                 'reset_link_url': reset_link_url,
                 'expiry_minutes': 30,
@@ -1528,7 +1522,9 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
         }
         
         # Send cancellation email asynchronously through Celery
-        html_message = render_to_string('emails/admin_session_cancellation_notification.html', context)
+        # OLD SESSION SYSTEM - Template removed
+        # html_message = render_to_string('emails/admin_session_cancellation_notification.html', context)
+        html_message = render_to_string('emails/booking/booking_cancelled_by_creator.html', context)
         plain_message = strip_tags(html_message)
         
         logger.info("Queueing cancellation email to %s for event: %s", recipient_email, event.title)
@@ -1621,7 +1617,7 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             'event_time': f"{event.start_time.strftime('%H:%M')} - {event.end_time.strftime('%H:%M')}",
         }
         
-        owner_html = render_to_string('emails/booking_cancelled_by_guest.html', owner_context)
+        owner_html = render_to_string('emails/booking/booking_cancelled_by_client.html', owner_context)
         owner_plain = strip_tags(owner_html)
         
         logger.info("Queueing guest cancellation notification to owner: %s", booking.site.owner.email)
@@ -1669,7 +1665,9 @@ class BookingViewSet(SiteScopedMixin, viewsets.ModelViewSet):
             'site_name': booking.site.name,
         }
         
-        html_message = render_to_string('emails/creator_contact_client.html', context)
+        # Template removed - creator_contact_client.html
+        # TODO: Create proper contact email template if needed
+        html_message = f"<p>{message}</p>"  # Temporary simple HTML
         plain_message = strip_tags(html_message)
         
         logger.info("Queueing contact email to %s", recipient_email)
@@ -2529,141 +2527,6 @@ class BaseTemplatedEmailView(APIView):
 
 
 @extend_schema(
-    tags=['Messaging'],
-    summary='Send admin session cancellation notification',
-    description='Queue an email informing admin about a student-cancelled session.',
-    request=AdminSessionCancellationEmailSerializer,
-    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
-)
-class AdminSessionCancellationEmailView(BaseTemplatedEmailView):
-    serializer_class = AdminSessionCancellationEmailSerializer
-    template_name = 'emails/admin_session_cancellation_notification.html'
-    default_subject = 'Powiadomienie: Student anulował sesję'
-
-    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            'student_name': data['student_name'],
-            'subject': data['session_title'],
-            'date': data['date'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-        }
-
-
-@extend_schema(
-    tags=['Messaging'],
-    summary='Send pending reservation notification to admin',
-    description='Queue an email notifying admin about a new reservation awaiting confirmation.',
-    request=AdminSessionNewReservationEmailSerializer,
-    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
-)
-class AdminSessionNewReservationEmailView(BaseTemplatedEmailView):
-    serializer_class = AdminSessionNewReservationEmailSerializer
-    template_name = 'emails/admin_session_new_reservation_notification.html'
-    default_subject = 'Nowa rezerwacja sesji oczekuje na potwierdzenie!'
-
-    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            'student_name': data['student_name'],
-            'subject': data['session_title'],
-            'date': data['date'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-            'admin_url': data['admin_url'],
-        }
-
-
-@extend_schema(
-    tags=['Messaging'],
-    summary='Send cancellation notice to student',
-    description='Queue an email informing student that the tutor cancelled the session.',
-    request=SessionCanceledByAdminEmailSerializer,
-    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
-)
-class SessionCanceledByAdminEmailView(BaseTemplatedEmailView):
-    serializer_class = SessionCanceledByAdminEmailSerializer
-    template_name = 'emails/session_canceled_by_admin.html'
-    default_subject = 'Twoja sesja korepetycji została odwołana'
-
-    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            'student_name': data['student_name'],
-            'subject': data['session_title'],
-            'date': data['date'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-            'calendar_url': data['calendar_url'],
-        }
-
-
-@extend_schema(
-    tags=['Messaging'],
-    summary='Send Discord confirmation to student',
-    description='Queue an email confirming a Discord session for the student.',
-    request=SessionConfirmedDiscordEmailSerializer,
-    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
-)
-class SessionConfirmedDiscordEmailView(BaseTemplatedEmailView):
-    serializer_class = SessionConfirmedDiscordEmailSerializer
-    template_name = 'emails/session_confirmed_discord.html'
-    default_subject = 'Twoja sesja na Discord została potwierdzona!'
-
-    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            'student_name': data['student_name'],
-            'subject': data['session_title'],
-            'date': data['date'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-            'discord_url': data['discord_url'],
-        }
-
-
-@extend_schema(
-    tags=['Messaging'],
-    summary='Send Google Meet confirmation to student',
-    description='Queue an email confirming a Google Meet session for the student.',
-    request=SessionConfirmedGoogleMeetEmailSerializer,
-    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
-)
-class SessionConfirmedGoogleMeetEmailView(BaseTemplatedEmailView):
-    serializer_class = SessionConfirmedGoogleMeetEmailSerializer
-    template_name = 'emails/session_confirmed_google_meet.html'
-    default_subject = 'Twoja sesja na Google Meet została potwierdzona!'
-
-    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            'student_name': data['student_name'],
-            'subject': data['session_title'],
-            'date': data['date'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-        }
-
-
-@extend_schema(
-    tags=['Messaging'],
-    summary='Send reservation receipt to student',
-    description='Queue an email confirming reception of a new reservation to the student.',
-    request=SessionNewReservationEmailSerializer,
-    responses={202: EMAIL_ACCEPTED_RESPONSE, 400: OpenApiResponse(description='Validation error')},
-)
-class SessionNewReservationEmailView(BaseTemplatedEmailView):
-    serializer_class = SessionNewReservationEmailSerializer
-    template_name = 'emails/session_new_reservation.html'
-    default_subject = 'Potwierdzenie rezerwacji sesji'
-
-    def build_context(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            'student_name': data['student_name'],
-            'subject': data['session_title'],
-            'date': data['date'],
-            'start_time': data['start_time'],
-            'end_time': data['end_time'],
-        }
-
-
-@extend_schema(
     tags=['Terms of Service'],
     summary='Get latest Terms of Service',
     description='Returns the version and markdown content of the latest Terms of Service document. This is a public endpoint.',
@@ -3472,7 +3335,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     'owner_name': team_member.site.owner.get_full_name() or team_member.site.owner.email,
                     'invitation_link': invitation_url,
                 }
-                html_message = render_to_string('emails/team_invitation_existing_user.html', context)
+                html_message = render_to_string('emails/team/team_invitation_existing_user.html', context)
                 plain_message = strip_tags(html_message)
                 
                 send_mail(
@@ -3532,7 +3395,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     'temp_password': temp_password,
                     'setup_link': setup_url,
                 }
-                html_message = render_to_string('emails/team_invitation_new_user.html', context)
+                html_message = render_to_string('emails/team/team_invitation_new_user.html', context)
                 plain_message = strip_tags(html_message)
                 
                 send_mail(
@@ -3575,7 +3438,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                 'email': team_member.email,
                 'setup_link': setup_url,
             }
-            html_message = render_to_string('emails/team_invitation_new_user.html', context)
+            html_message = render_to_string('emails/team/team_invitation_new_user.html', context)
             plain_message = strip_tags(html_message)
             
             send_mail(
@@ -6178,7 +6041,9 @@ class BigEventViewSet(viewsets.ModelViewSet):
                             'unsubscribe_url': unsubscribe_url,
                         }
                         
-                        html_message = render_to_string('emails/new_event_notification.html', context)
+                        # Template removed - new_event_notification.html
+                        # html_message = render_to_string('emails/new_event_notification.html', context)
+                        html_message = render_to_string('emails/newsletter/event_newsletter.html', context)
                         plain_message = strip_tags(html_message)
                         
                         send_mail(

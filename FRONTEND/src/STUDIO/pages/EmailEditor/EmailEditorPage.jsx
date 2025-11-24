@@ -85,7 +85,7 @@ const EmailPreviewFrame = ({ html }) => {
         backgroundColor: 'white'
       }}
       title="Email Preview"
-      sandbox="allow-same-origin"
+      sandbox="allow-same-origin allow-scripts"
     />
   );
 };
@@ -248,7 +248,7 @@ const EmailEditorPage = () => {
   const getCategoryLabel = (category) => {
     const labels = {
       booking_confirmation: 'Potwierdzenie rezerwacji',
-      session_cancelled_by_creator: 'Sesja odwołana przez kreatora'
+      session_cancelled_by_creator: 'Odwołanie rezerwacji'
     };
     return labels[category] || category;
   };
@@ -260,6 +260,7 @@ const EmailEditorPage = () => {
     // Replace template variables with mock data
     const mockData = {
       client_name: 'Jan Kowalski',
+      student_name: 'Jan Kowalski',
       owner_name: 'Anna Nowak',
       event_title: 'Sesja Jogi dla Początkujących',
       event_date: '15 grudnia 2025',
@@ -271,7 +272,12 @@ const EmailEditorPage = () => {
       reason: 'Zmiana planów',
       session_title: 'Sesja Jogi dla Początkujących',
       session_date: '15 grudnia 2025',
-      session_time: '18:00'
+      session_time: '18:00',
+      subject: 'Sesja Jogi dla Początkujących',
+      date: '15 grudnia 2025',
+      start_time: '18:00',
+      end_time: '19:00',
+      calendar_url: '#'
     };
     
     Object.keys(mockData).forEach(key => {
@@ -380,10 +386,10 @@ const EmailEditorPage = () => {
               size="small"
             >
               <ToggleButton value="default">
-                Zwykłe ({templates.filter(t => t.is_default).length})
+                Domyślne ({templates.filter(t => t.is_default).length})
               </ToggleButton>
               <ToggleButton value="custom">
-                Custom ({templates.filter(t => !t.is_default).length})
+                Twoje ({templates.filter(t => !t.is_default).length})
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -410,13 +416,9 @@ const EmailEditorPage = () => {
                 >
                   <ListItemText
                     primary={template.name}
-                    secondary={getCategoryLabel(template.category)}
                     primaryTypographyProps={{
                       fontWeight: selectedTemplate?.id === template.id ? 600 : 400,
                       fontSize: '0.95rem'
-                    }}
-                    secondaryTypographyProps={{
-                      fontSize: '0.8rem'
                     }}
                   />
                 </ListItemButton>
@@ -458,15 +460,6 @@ const EmailEditorPage = () => {
               }}
             >
               <Box sx={{ flex: 1 }} />
-
-              <Button
-                variant="outlined"
-                startIcon={<SendIcon />}
-                onClick={() => setTestEmailOpen(true)}
-                disabled={!selectedTemplate}
-              >
-                Wyślij test
-              </Button>
 
               {!editedTemplate.is_default && selectedTemplate && (
                 <IconButton

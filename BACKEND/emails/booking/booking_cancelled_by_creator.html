@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sesja Anulowana przez Studenta</title>
+    <title>Sesja Odwołana</title>
     <style>
         * {
             margin: 0;
@@ -39,17 +39,29 @@
         .content {
             padding: 48px 40px;
         }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 32px;
+            color: rgb(30, 30, 30);
+        }
         .message {
             font-size: 15px;
             margin-bottom: 32px;
             color: rgb(30, 30, 30);
             line-height: 1.8;
         }
-        .cancellation-details {
+        .session-details {
             background-color: rgba(228, 229, 218, 0.3);
             padding: 32px;
             border-radius: 2px;
             margin: 32px 0;
+        }
+        .session-title {
+            font-size: 20px;
+            font-weight: 400;
+            color: rgb(146, 0, 32);
+            margin-bottom: 24px;
+            letter-spacing: 0.3px;
         }
         .detail-row {
             display: flex;
@@ -62,7 +74,7 @@
         .detail-label {
             font-size: 14px;
             color: rgb(188, 186, 179);
-            min-width: 120px;
+            min-width: 100px;
         }
         .detail-value {
             font-size: 15px;
@@ -77,6 +89,22 @@
             font-size: 14px;
             line-height: 1.6;
         }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 16px 48px;
+            background-color: rgb(146, 0, 32);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 2px;
+            font-weight: 400;
+            font-size: 15px;
+            letter-spacing: 0.3px;
+            transition: background-color 0.3s ease;
+        }
         .footer {
             padding: 32px 40px;
             background-color: rgba(228, 229, 218, 0.2);
@@ -88,22 +116,28 @@
             margin: 8px 0;
             line-height: 1.6;
         }
+        .signature {
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 1px solid rgba(188, 186, 179, 0.3);
+            font-size: 14px;
+            color: rgb(30, 30, 30);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Sesja Anulowana</h1>
+            <h1>Sesja Odwołana</h1>
         </div>
         
         <div class="content">
-            <p class="message">Student <strong>{{ student_name }}</strong> właśnie anulował swoją sesję.</p>
+            <p class="greeting">Cześć {{ student_name }},</p>
             
-            <div class="cancellation-details">
-                <div class="detail-row">
-                    <span class="detail-label">Temat</span>
-                    <span class="detail-value">{{ subject }}</span>
-                </div>
+            <p class="message">Z przykrością informuję, że Twoja sesja została odwołana z nieprzewidzianych przyczyn.</p>
+            
+            <div class="session-details">
+                <div class="session-title">{{ subject }}</div>
                 <div class="detail-row">
                     <span class="detail-label">Data</span>
                     <span class="detail-value">{{ date }}</span>
@@ -115,12 +149,23 @@
             </div>
             
             <div class="info-box">
-                Powiązane terminy zostały automatycznie zwolnione i są ponownie dostępne w kalendarzu.
+                Bardzo przepraszam za tę sytuację i wszelkie niedogodności, które mogła ona spowodować.
             </div>
+            
+            <p class="message">Zapraszam do wyboru innego, dogodnego dla Ciebie terminu w kalendarzu. Jeśli żaden z dostępnych terminów Ci nie odpowiada, skontaktuj się ze mną bezpośrednio.</p>
+            
+            <div class="button-container">
+                <a href="{{ calendar_url }}" class="button">Zobacz Dostępne Terminy</a>
+            </div>
+            
+            <p class="signature">
+                Pozdrawiam,<br>
+                Jacek
+            </p>
         </div>
         
         <div class="footer">
-            <p>To jest automatyczne powiadomienie o anulowaniu sesji.</p>
+            <p>To jest automatyczne powiadomienie o odwołaniu sesji.</p>
         </div>
     </div>
 </body>

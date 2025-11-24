@@ -28,4 +28,8 @@ echo "--- Entrypoint: Creating mock sites for superuser..."
 python manage.py create_mock_sites
 echo "--- Entrypoint: Mock sites creation complete."
 
+echo "--- Entrypoint: Initializing default email templates..."
+python manage.py init_email_templates
+echo "--- Entrypoint: Email templates initialization complete."
+
 echo "--- Entrypoint: Setup tasks complete. ---"

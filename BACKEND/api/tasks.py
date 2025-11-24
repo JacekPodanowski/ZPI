@@ -352,7 +352,7 @@ def send_booking_confirmation_emails(self, booking_id):
         'cancellation_url': cancellation_url,
         'booking_id': booking.id,
     }
-    client_html = render_to_string('emails/booking_confirmation_client.html', client_context)
+    client_html = render_to_string('emails/booking/booking_confirmation_to_client.html', client_context)
     
     send_custom_email_task_async.delay(
         recipient_list=[guest_email],
@@ -372,7 +372,7 @@ def send_booking_confirmation_emails(self, booking_id):
         'event_title': event.title,
         'start_time': event.start_time,
     }
-    owner_html = render_to_string('emails/booking_notification_owner.html', owner_context)
+    owner_html = render_to_string('emails/booking/booking_confirmation_to_creator.html', owner_context)
 
     send_custom_email_task_async.delay(
         recipient_list=[owner.email],
@@ -1357,7 +1357,7 @@ def send_welcome_newsletter(self, subscription_id):
         }
         
         # Render email
-        html_content = render_to_string('emails/event_newsletter.html', context)
+        html_content = render_to_string('emails/newsletter/event_newsletter.html', context)
         text_content = strip_tags(html_content)
         
         # Send email
