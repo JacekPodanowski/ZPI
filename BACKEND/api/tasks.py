@@ -1064,6 +1064,59 @@ def configure_domain_dns(self, order_id: int):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def get_cloudflare_zone_id(api_token: str, zone_name: str) -> str:
+    """
+    Get Cloudflare Zone ID for a given domain.
+    This function caches the result to avoid repeated API calls.
+    
+    Args:
+        api_token: Cloudflare API token
+        zone_name: Domain name (e.g., 'youreasysite.pl')
+        
+    Returns:
+        str: Zone ID
+        
+    Raises:
+        Exception: If zone not found or API error
+    """
+    import requests
+    from django.core.cache import cache
+    
+    # Try to get from cache first (cache for 1 hour)
+    cache_key = f"cf_zone_id_{zone_name}"
+    cached_zone_id = cache.get(cache_key)
+    if cached_zone_id:
+        logger.info(f"[Cloudflare] Using cached Zone ID for {zone_name}: {cached_zone_id}")
+        return cached_zone_id
+    
+    # Fetch from Cloudflare API
+    logger.info(f"[Cloudflare] Fetching Zone ID for {zone_name}")
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.get(
+        f"https://api.cloudflare.com/client/v4/zones?name={zone_name}",
+        headers=headers,
+        timeout=10
+    )
+    response.raise_for_status()
+    
+    result = response.json()
+    
+    if not result.get('success') or not result.get('result'):
+        raise Exception(f"Zone not found for domain: {zone_name}")
+    
+    zone_id = result['result'][0]['id']
+    
+    # Cache for 1 hour
+    cache.set(cache_key, zone_id, 3600)
+    logger.info(f"[Cloudflare] Found Zone ID for {zone_name}: {zone_id}")
+    
+    return zone_id
+
+
 def purge_cloudflare_cache(self, domain_name: str):
     """
     Purge Cloudflare cache for a specific domain when configuration changes.
@@ -1083,19 +1136,34 @@ def purge_cloudflare_cache(self, domain_name: str):
     
     # Get Cloudflare credentials from settings
     cf_api_token = getattr(settings, 'CLOUDFLARE_API_TOKEN', None)
-    cf_zone_id = getattr(settings, 'CLOUDFLARE_ZONE_ID', None)
     
-    if not cf_api_token or not cf_zone_id:
-        logger.warning(f"[Celery] Cloudflare credentials not configured - skipping cache purge")
+    if not cf_api_token:
+        logger.warning(f"[Celery] Cloudflare API token not configured - skipping cache purge")
         return {
             "status": "skipped",
-            "message": "Cloudflare credentials not configured"
+            "message": "Cloudflare API token not configured"
         }
     
     try:
+        # Auto-detect Zone ID for youreasysite.pl (or youreasysite.com)
+        # First try .pl (current production), fallback to .com
+        cf_zone_id = None
+        try:
+            cf_zone_id = get_cloudflare_zone_id(cf_api_token, 'youreasysite.pl')
+        except:
+            try:
+                logger.info("[Celery] youreasysite.pl not found, trying youreasysite.com")
+                cf_zone_id = get_cloudflare_zone_id(cf_api_token, 'youreasysite.com')
+            except Exception as e:
+                logger.error(f"[Celery] Could not find Zone ID for youreasysite domain: {e}")
+                return {
+                    "status": "error",
+                    "message": f"Could not find Cloudflare zone for youreasysite: {str(e)}"
+                }
+        
         # Purge cache for specific files/URLs related to this domain
         # We purge the API endpoint that Worker calls
-        purge_url = f"https://youreasysite.com/api/v1/domains/resolve/{domain_name}"
+        purge_url = f"https://youreasysite.pl/api/v1/domains/resolve/{domain_name}"
         
         url = f"https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/purge_cache"
         headers = {
@@ -1116,7 +1184,8 @@ def purge_cloudflare_cache(self, domain_name: str):
             return {
                 "status": "success",
                 "domain": domain_name,
-                "purged_url": purge_url
+                "purged_url": purge_url,
+                "zone_id": cf_zone_id
             }
         else:
             logger.error(f"[Celery] Cloudflare API returned error: {result}")
