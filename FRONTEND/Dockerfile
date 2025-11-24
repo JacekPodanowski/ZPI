@@ -5,6 +5,8 @@ COPY package*.json ./
 # Install dependencies (use npm install since package-lock.json doesn't exist)
 RUN npm install
 COPY . .
+# Copy production env file
+COPY .env.production .env.production
 # Build for production with optimizations
 RUN npm run build
 # Debug: List contents of dist folder
