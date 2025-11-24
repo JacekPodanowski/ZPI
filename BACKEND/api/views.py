@@ -72,6 +72,7 @@ from .media_helpers import (
 from .media_processing import ImageProcessingError, convert_to_webp
 from .media_storage import StorageError, StorageSaveResult, get_media_storage
 from .permissions import IsOwnerOrTeamMember
+from .signals import ensure_initial_terms_exist
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -2640,6 +2641,9 @@ class LatestTermsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        # Ensure at least one terms version exists
+        ensure_initial_terms_exist()
+        
         try:
             latest_terms = TermsOfService.objects.latest('published_at')
             return Response({
@@ -2671,6 +2675,9 @@ class AcceptTermsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        # Ensure at least one terms version exists
+        ensure_initial_terms_exist()
+        
         try:
             latest_terms = TermsOfService.objects.latest('published_at')
             user = request.user

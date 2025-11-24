@@ -16,6 +16,10 @@ echo "--- Entrypoint: Ensuring initial admin user exists..."
 python manage.py create_initial_superuser
 echo "--- Entrypoint: Admin user check complete."
 
+echo "--- Entrypoint: Loading initial Terms of Service..."
+python manage.py load_initial_terms
+echo "--- Entrypoint: Terms of Service loaded."
+
 echo "--- Entrypoint: Creating default showcase site (YourEasySite_Demo)..."
 python manage.py create_default_site
 echo "--- Entrypoint: Default showcase site ready."
