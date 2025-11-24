@@ -33,6 +33,14 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
     strictPort: true,
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'youreasysite.pl',
+      'www.youreasysite.pl',
+      '.railway.app',
+      '.up.railway.app',
+    ],
   },
   resolve: {
     dedupe: ['react', 'react-dom'],

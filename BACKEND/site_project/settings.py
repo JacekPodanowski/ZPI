@@ -83,7 +83,17 @@ if SUPABASE_URL:
         SUPABASE_STORAGE_PUBLIC_URL = SUPABASE_STORAGE_PUBLIC_URLS.get(default_bucket)
 
 # --- Konfiguracja sieci i bezpieczeństwa ---
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104', '136.115.41.232', '.trycloudflare.com']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '192.168.0.104',
+    '136.115.41.232',
+    '.trycloudflare.com',
+    'youreasysite.pl',
+    'www.youreasysite.pl',
+    '.up.railway.app',
+    'youreasysite-production.up.railway.app',
+]
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
