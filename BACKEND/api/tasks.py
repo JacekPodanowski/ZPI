@@ -1117,6 +1117,7 @@ def get_cloudflare_zone_id(api_token: str, zone_name: str) -> str:
     return zone_id
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def purge_cloudflare_cache(self, domain_name: str):
     """
     Purge Cloudflare cache for a specific domain when configuration changes.
