@@ -1145,47 +1145,50 @@ def purge_cloudflare_cache(self, domain_name: str):
         }
     
     try:
-        # Auto-detect Zone ID for youreasysite.pl (or youreasysite.com)
-        # First try .pl (current production), fallback to .com
-        cf_zone_id = None
+        # Get Zone ID for the user's custom domain (e.g., dronecomponentsfpv.online)
+        # This will work for ANY domain in your Cloudflare account
         try:
-            cf_zone_id = get_cloudflare_zone_id(cf_api_token, 'youreasysite.pl')
-        except:
+            cf_zone_id = get_cloudflare_zone_id(cf_api_token, domain_name)
+            logger.info(f"[Celery] Found Zone ID for {domain_name}: {cf_zone_id}")
+        except Exception as e:
+            logger.error(f"[Celery] Could not find Zone ID for {domain_name}: {e}")
+            # If user domain not in Cloudflare, try to purge main platform cache instead
+            logger.info(f"[Celery] Trying to purge youreasysite.pl cache instead")
             try:
-                logger.info("[Celery] youreasysite.pl not found, trying youreasysite.com")
-                cf_zone_id = get_cloudflare_zone_id(cf_api_token, 'youreasysite.com')
-            except Exception as e:
-                logger.error(f"[Celery] Could not find Zone ID for youreasysite domain: {e}")
-                return {
-                    "status": "error",
-                    "message": f"Could not find Cloudflare zone for youreasysite: {str(e)}"
-                }
+                cf_zone_id = get_cloudflare_zone_id(cf_api_token, 'youreasysite.pl')
+            except:
+                try:
+                    cf_zone_id = get_cloudflare_zone_id(cf_api_token, 'youreasysite.com')
+                except Exception as main_error:
+                    logger.error(f"[Celery] Could not find any zone: {main_error}")
+                    return {
+                        "status": "error",
+                        "message": f"Domain not found in Cloudflare account: {domain_name}"
+                    }
         
-        # Purge cache for specific files/URLs related to this domain
-        # We purge the API endpoint that Worker calls
-        purge_url = f"https://youreasysite.pl/api/v1/domains/resolve/{domain_name}"
+        # Purge all cache for this domain (everything: *, www.*, etc.)
+        purge_data = {
+            "purge_everything": True
+        }
         
         url = f"https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/purge_cache"
         headers = {
             "Authorization": f"Bearer {cf_api_token}",
             "Content-Type": "application/json"
         }
-        data = {
-            "files": [purge_url]
-        }
         
-        response = requests.post(url, json=data, headers=headers, timeout=10)
+        response = requests.post(url, json=purge_data, headers=headers, timeout=10)
         response.raise_for_status()
         
         result = response.json()
         
         if result.get('success'):
-            logger.info(f"[Celery] Successfully purged cache for {domain_name}")
+            logger.info(f"[Celery] Successfully purged all cache for {domain_name}")
             return {
                 "status": "success",
                 "domain": domain_name,
-                "purged_url": purge_url,
-                "zone_id": cf_zone_id
+                "zone_id": cf_zone_id,
+                "message": "All cache purged successfully"
             }
         else:
             logger.error(f"[Celery] Cloudflare API returned error: {result}")
