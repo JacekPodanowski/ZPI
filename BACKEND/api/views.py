@@ -2268,6 +2268,49 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
+@extend_schema(tags=['User Emails'])
+class UserEmailsViewSet(viewsets.ModelViewSet):
+    """ViewSet for user-editable email templates (booking confirmation and cancellation only)."""
+    serializer_class = EmailTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return only client-facing email templates (default + user's custom versions)."""
+        user = self.request.user
+        return EmailTemplate.objects.filter(
+            Q(category__in=['booking_confirmation', 'session_cancelled_by_creator']) &
+            (Q(is_default=True) | Q(owner=user))
+        )
+    
+    def perform_create(self, serializer):
+        """Save custom template with the current user as owner."""
+        category = serializer.validated_data.get('category')
+        if category not in ['booking_confirmation', 'session_cancelled_by_creator']:
+            raise PermissionDenied("Can only create booking confirmation or session cancellation templates")
+        serializer.save(owner=self.request.user, is_default=False)
+    
+    def perform_update(self, serializer):
+        """Only allow updating custom templates (owned by user)."""
+        if serializer.instance.is_default:
+            # If editing a default template, create a new custom template
+            serializer.save(
+                owner=self.request.user,
+                is_default=False,
+                pk=None,  # Force creation of new instance
+                slug=f"{serializer.instance.slug}-custom-{self.request.user.id}"
+            )
+        else:
+            serializer.save()
+    
+    def perform_destroy(self, instance):
+        """Only allow deleting custom templates."""
+        if instance.is_default:
+            raise PermissionDenied("Cannot delete default templates")
+        if instance.owner != self.request.user:
+            raise PermissionDenied("Can only delete your own templates")
+        instance.delete()
+
+
 @extend_schema(tags=['Email Templates'])
 class SendTestEmailView(APIView):
     """Send a test email using a template."""

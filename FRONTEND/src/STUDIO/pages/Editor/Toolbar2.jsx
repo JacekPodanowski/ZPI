@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Box, 
@@ -64,6 +64,76 @@ const INDICATOR_STYLE_OPTIONS = [
   { id: 'spike', label: 'Double Spike', description: 'Aggressive twin-spike cut for decisive collapsing.' },
   { id: 'stream', label: 'Streamline', description: 'Long aerodynamic taper with a narrow impact line.' }
 ];
+
+const polygonToSvgPath = (polygon) => {
+  if (!polygon) return '';
+  const matches = polygon.match(/polygon\((.*)\)/);
+  if (!matches?.[1]) return '';
+  const points = matches[1]
+    .split(',')
+    .map((pair) => pair.trim().split(/\s+/).map((value) => parseFloat(value.replace('%', ''))))
+    .filter((coords) => coords.length === 2 && coords.every((value) => !Number.isNaN(value)));
+  if (!points.length) return '';
+  const commands = points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`);
+  return `${commands.join(' ')} Z`;
+};
+
+const IndicatorShape = ({
+  path,
+  accentColor,
+  blur = 0.8,
+  strokeWidth = 0.35,
+  gradientStops,
+  sx,
+  ...rest
+}) => {
+  const uniqueId = useId();
+  const gradientId = `${uniqueId}-gradient`;
+  const blurId = `${uniqueId}-blur`;
+  const stops = gradientStops ?? [
+    { offset: '0%', color: alpha(accentColor, 0) },
+    { offset: '28%', color: alpha(accentColor, 0.35) },
+    { offset: '62%', color: alpha(accentColor, 0.78) },
+    { offset: '100%', color: alpha(accentColor, 1) }
+  ];
+
+  return (
+    <Box
+      component="svg"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      {...rest}
+      sx={{
+        width: '100%',
+        height: '100%',
+        display: 'block',
+        pointerEvents: 'none',
+        ...(sx || {})
+      }}
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="50%" x2="100%" y2="50%">
+          {stops.map((stop) => (
+            <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
+          ))}
+        </linearGradient>
+        <filter id={blurId} x="-12%" y="-10%" width="130%" height="140%">
+          <feGaussianBlur stdDeviation={blur} edgeMode="duplicate" />
+        </filter>
+      </defs>
+      <path d={path} fill={`url(#${gradientId})`} filter={`url(#${blurId})`} shapeRendering="geometricPrecision" />
+      <path d={path} fill={alpha(accentColor, 0.55)} shapeRendering="geometricPrecision" />
+      <path
+        d={path}
+        fill="none"
+        stroke={alpha('#ffffff', 0.35)}
+        strokeWidth={strokeWidth}
+        shapeRendering="geometricPrecision"
+        opacity={0.65}
+      />
+    </Box>
+  );
+};
 
 // Font options for typography
 const FONT_OPTIONS = [
@@ -154,6 +224,10 @@ const INDICATOR_STYLE_CONFIGS = {
   }
 };
 
+Object.keys(INDICATOR_STYLE_CONFIGS).forEach((key) => {
+  INDICATOR_STYLE_CONFIGS[key].path = polygonToSvgPath(INDICATOR_STYLE_CONFIGS[key].clipPath);
+});
+
 const getIndicatorVisuals = (styleId, size, accentColor) => {
   const config = INDICATOR_STYLE_CONFIGS[styleId] || INDICATOR_STYLE_CONFIGS.blade;
   const appliedSize = Math.min(COLLAPSE_INDICATOR_MAX_DRAG, Math.max(0, size));
@@ -161,7 +235,8 @@ const getIndicatorVisuals = (styleId, size, accentColor) => {
   const visuals = {
     width,
     background: config.background(accentColor),
-    clipPath: config.clipPath
+    clipPath: config.clipPath,
+    path: config.path
   };
 
   return visuals;
@@ -1203,15 +1278,16 @@ const Toolbar2 = ({
                       bottom: '8px',
                       right: '18px',
                       width: `${previewIndicatorVisuals.width}px`,
-                      background: previewIndicatorVisuals.background,
-                      clipPath: previewIndicatorVisuals.clipPath,
-                      transition: 'all 0.1s ease',
-                      ...(previewIndicatorVisuals.boxShadow ? { boxShadow: previewIndicatorVisuals.boxShadow } : {}),
-                      ...(previewIndicatorVisuals.highlight
-                        ? { '&::after': { ...previewIndicatorVisuals.highlight, height: '48%' } }
-                        : {})
+                      transition: 'all 0.1s ease'
                     }}
-                  />
+                  >
+                    <IndicatorShape
+                      path={previewIndicatorVisuals.path}
+                      accentColor={accentColor}
+                      blur={0.55}
+                      strokeWidth={0.25}
+                    />
+                  </Box>
                 </Box>
               </Stack>
             </Stack>
@@ -1526,14 +1602,17 @@ const Toolbar2 = ({
                   cursor: 'ew-resize',
                   zIndex: 1000,
                   pointerEvents: 'none',
-                  background: collapseIndicatorVisuals.background,
-                  clipPath: collapseIndicatorVisuals.clipPath,
                   transition: 'all 0.065s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  filter: 'drop-shadow(-8px 0 14px rgba(0, 0, 0, 0.35))'
                 }}
-              />
+              >
+                <IndicatorShape
+                  path={collapseIndicatorVisuals.path}
+                  accentColor={accentColor}
+                  blur={1.15}
+                  strokeWidth={0.45}
+                />
+              </Box>
             )}
           </>
         )}

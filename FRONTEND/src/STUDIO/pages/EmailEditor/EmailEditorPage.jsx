@@ -29,11 +29,8 @@ import {
   Divider
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CodeIcon from '@mui/icons-material/Code';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { alpha } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -104,8 +101,6 @@ const EmailEditorPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [testEmailOpen, setTestEmailOpen] = useState(false);
-  const [language, setLanguage] = useState('pl');
-  const [viewMode, setViewMode] = useState('rendered'); // 'code' or 'rendered'
   const [templateType, setTemplateType] = useState('default'); // 'default' or 'custom'
   const [saving, setSaving] = useState(false);
 
@@ -127,7 +122,12 @@ const EmailEditorPage = () => {
 
   useEffect(() => {
     // Auto-select first template of the selected type when templates load or type changes
-    const filteredTemplates = getFilteredTemplates();
+    if (templates.length === 0) return;
+    
+    const filteredTemplates = templates.filter(t => 
+      templateType === 'default' ? t.is_default : !t.is_default
+    );
+    
     if (filteredTemplates.length > 0 && !selectedTemplate) {
       handleTemplateClick(filteredTemplates[0]);
     }
@@ -135,8 +135,13 @@ const EmailEditorPage = () => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await apiClient.get('/email-templates/');
-      setTemplates(response.data || []);
+      const response = await apiClient.get('/user-emails/');
+      console.log('[EmailEditor] raw templates response', response.data);
+      const payload = Array.isArray(response.data)
+        ? response.data
+        : response.data?.results || [];
+      console.log('[EmailEditor] normalized templates', payload);
+      setTemplates(payload);
     } catch (err) {
       addToast?.('Nie udało się pobrać szablonów email', {variant: 'error'});
       console.error('Error fetching templates:', err);
@@ -156,22 +161,6 @@ const EmailEditorPage = () => {
     setEditedTemplate({ ...template });
   };
 
-  const handleCreateNew = () => {
-    const newTemplate = {
-      name: '',
-      slug: '',
-      category: 'booking_confirmation',
-      subject_pl: '',
-      subject_en: '',
-      content_pl: '',
-      content_en: '',
-      is_default: false
-    };
-    setSelectedTemplate(null);
-    setEditedTemplate(newTemplate);
-    setTemplateType('custom'); // Switch to custom when creating new
-  };
-
   const handleSaveTemplate = async () => {
     try {
       if (!editedTemplate.name || !editedTemplate.slug) {
@@ -183,7 +172,7 @@ const EmailEditorPage = () => {
 
       if (selectedTemplate && !selectedTemplate.is_default) {
         // Update existing custom template
-        await apiClient.patch(`/email-templates/${selectedTemplate.id}/`, editedTemplate);
+        await apiClient.patch(`/user-emails/${selectedTemplate.id}/`, editedTemplate);
         addToast?.('Szablon zaktualizowany', {variant: 'success'});
       } else {
         // Create new template (or copy of default)
@@ -192,7 +181,7 @@ const EmailEditorPage = () => {
           payload.slug = payload.name.toLowerCase().replace(/\s+/g, '-');
         }
         payload.is_default = false; // Ensure new templates are custom
-        await apiClient.post('/email-templates/', payload);
+        await apiClient.post('/user-emails/', payload);
         addToast?.('Nowy szablon utworzony', {variant: 'success'});
         setTemplateType('custom'); // Switch to custom view
       }
@@ -217,7 +206,7 @@ const EmailEditorPage = () => {
     }
 
     try {
-      await apiClient.delete(`/email-templates/${template.id}/`);
+      await apiClient.delete(`/user-emails/${template.id}/`);
       addToast?.('Szablon usunięty', {variant: 'success'});
       setSelectedTemplate(null);
       setEditedTemplate(null);
@@ -259,35 +248,53 @@ const EmailEditorPage = () => {
   const getCategoryLabel = (category) => {
     const labels = {
       booking_confirmation: 'Potwierdzenie rezerwacji',
-      booking_cancellation: 'Odwołanie rezerwacji',
-      account_registration: 'Rejestracja konta',
-      site_status: 'Status strony',
-      plan_change: 'Zmiana planu',
-      subscription_reminder: 'Przypomnienie o subskrypcji'
+      session_cancelled_by_creator: 'Sesja odwołana przez kreatora'
     };
     return labels[category] || category;
   };
 
   const getCurrentContent = () => {
     if (!editedTemplate) return '';
-    return language === 'pl' ? editedTemplate.content_pl : editedTemplate.content_en;
+    let content = editedTemplate.content_pl || '';
+    
+    // Replace template variables with mock data
+    const mockData = {
+      client_name: 'Jan Kowalski',
+      owner_name: 'Anna Nowak',
+      event_title: 'Sesja Jogi dla Początkujących',
+      event_date: '15 grudnia 2025',
+      event_time: '18:00',
+      event_duration: '60 minut',
+      cancellation_link: '#',
+      cancellation_deadline: '48 godzin',
+      booking_date: '10 grudnia 2025',
+      reason: 'Zmiana planów',
+      session_title: 'Sesja Jogi dla Początkujących',
+      session_date: '15 grudnia 2025',
+      session_time: '18:00'
+    };
+    
+    Object.keys(mockData).forEach(key => {
+      const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+      content = content.replace(regex, mockData[key]);
+    });
+    
+    return content;
   };
 
   const getCurrentSubject = () => {
     if (!editedTemplate) return '';
-    return language === 'pl' ? editedTemplate.subject_pl : editedTemplate.subject_en;
+    return editedTemplate.subject_pl || '';
   };
 
   const updateCurrentContent = (newContent) => {
     if (!editedTemplate) return;
-    const field = language === 'pl' ? 'content_pl' : 'content_en';
-    setEditedTemplate({ ...editedTemplate, [field]: newContent });
+    setEditedTemplate({ ...editedTemplate, content_pl: newContent });
   };
 
   const updateCurrentSubject = (newSubject) => {
     if (!editedTemplate) return;
-    const field = language === 'pl' ? 'subject_pl' : 'subject_en';
-    setEditedTemplate({ ...editedTemplate, [field]: newSubject });
+    setEditedTemplate({ ...editedTemplate, subject_pl: newSubject });
   };
 
   if (loading) {
@@ -312,72 +319,52 @@ const EmailEditorPage = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        backgroundColor: theme.colors?.bg?.default || theme.palette.background.default
+        backgroundColor: theme.colors?.bg?.default || theme.palette.background.default,
+        display: 'flex',
+        flexDirection: 'column'
       }}
     >
       <Navigation />
-
-      {/* Header */}
-      <Box
-        sx={{
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-          backgroundColor: surfaceColor,
-          py: 2,
-          px: 3
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, maxWidth: '100%', mx: 'auto' }}>
-          <IconButton onClick={() => navigate('/studio/account/notifications')}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              Edytor szablonów email
-            </Typography>
-            <Typography variant="body2" sx={{ color: theme.colors?.text?.secondary }}>
-              Twórz i zarządzaj szablonami wiadomości email
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateNew}
-            sx={{ 
-              backgroundColor: accentColor,
-              '&:hover': { backgroundColor: alpha(accentColor, 0.9) }
-            }}
-          >
-            Nowy szablon
-          </Button>
-        </Box>
-      </Box>
 
       {/* Main Editor Layout */}
       <Box
         sx={{
           display: 'flex',
-          height: 'calc(100vh - 180px)',
+          height: 'calc(100vh - 64px)',
           overflow: 'hidden',
-          p: 3,
-          gap: 3,
-          maxWidth: '100%',
-          mx: 'auto'
+          position: 'relative'
         }}
       >
+        <Box sx={{ position: 'absolute', top: 16, right: 24, zIndex: 10 }}>
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveTemplate}
+            disabled={saving || !editedTemplate}
+            sx={{
+              backgroundColor: accentColor,
+              '&:hover': { backgroundColor: alpha(accentColor, 0.9) }
+            }}
+          >
+            {saving ? 'Zapisywanie...' : 'Zapisz'}
+          </Button>
+        </Box>
+
         {/* Left Sidebar - Template List */}
         <Paper
           elevation={0}
           sx={{
-            width: '320px',
+            width: '250px',
             backgroundColor: surfaceColor,
-            borderRadius: '16px',
-            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            borderRadius: 0,
+            borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            height: '100%'
           }}
         >
-          {/* Template Type Toggle */}
+          {/* Template type toggle */}
           <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
             <ToggleButtonGroup
               value={templateType}
@@ -396,7 +383,7 @@ const EmailEditorPage = () => {
                 Zwykłe ({templates.filter(t => t.is_default).length})
               </ToggleButton>
               <ToggleButton value="custom">
-                Customowe ({templates.filter(t => !t.is_default).length})
+                Custom ({templates.filter(t => !t.is_default).length})
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -448,17 +435,13 @@ const EmailEditorPage = () => {
           </Box>
         </Paper>
 
-        {/* Right Side - Editor */}
         {editedTemplate ? (
-          <Paper
-            elevation={0}
+          <Box
             sx={{
               flex: 1,
-              backgroundColor: surfaceColor,
-              borderRadius: '16px',
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
               display: 'flex',
               flexDirection: 'column',
+              height: '100%',
               overflow: 'hidden'
             }}
           >
@@ -467,49 +450,15 @@ const EmailEditorPage = () => {
               sx={{
                 p: 2,
                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: surfaceColor,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 2,
                 flexWrap: 'wrap'
               }}
             >
-              {/* Language Selector */}
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Język</InputLabel>
-                <Select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  label="Język"
-                >
-                  <MenuItem value="pl">Polski 🇵🇱</MenuItem>
-                  <MenuItem value="en">English 🇬🇧</MenuItem>
-                </Select>
-              </FormControl>
-
-              {/* View Mode Toggle */}
-              <ToggleButtonGroup
-                value={viewMode}
-                exclusive
-                onChange={(e, newMode) => {
-                  if (newMode !== null) {
-                    setViewMode(newMode);
-                  }
-                }}
-                size="small"
-              >
-                <ToggleButton value="rendered">
-                  <VisibilityIcon sx={{ mr: 0.5, fontSize: '1.2rem' }} />
-                  Renderowany
-                </ToggleButton>
-                <ToggleButton value="code">
-                  <CodeIcon sx={{ mr: 0.5, fontSize: '1.2rem' }} />
-                  HTML
-                </ToggleButton>
-              </ToggleButtonGroup>
-
               <Box sx={{ flex: 1 }} />
 
-              {/* Action Buttons */}
               <Button
                 variant="outlined"
                 startIcon={<SendIcon />}
@@ -529,23 +478,16 @@ const EmailEditorPage = () => {
                 </IconButton>
               )}
 
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveTemplate}
-                disabled={saving}
-                sx={{ 
-                  backgroundColor: accentColor,
-                  '&:hover': { backgroundColor: alpha(accentColor, 0.9) }
-                }}
-              >
-                {saving ? 'Zapisywanie...' : 'Zapisz'}
-              </Button>
             </Box>
 
-            {/* Template Basic Info (editable for new/custom) */}
             {(!selectedTemplate || !editedTemplate.is_default) && (
-              <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+              <Box
+                sx={{
+                  p: 2,
+                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  backgroundColor: surfaceColor
+                }}
+              >
                 <Stack spacing={2}>
                   <Stack direction="row" spacing={2}>
                     <TextField
@@ -572,11 +514,7 @@ const EmailEditorPage = () => {
                       label="Kategoria"
                     >
                       <MenuItem value="booking_confirmation">Potwierdzenie rezerwacji</MenuItem>
-                      <MenuItem value="booking_cancellation">Odwołanie rezerwacji</MenuItem>
-                      <MenuItem value="account_registration">Rejestracja konta</MenuItem>
-                      <MenuItem value="site_status">Status strony</MenuItem>
-                      <MenuItem value="plan_change">Zmiana planu</MenuItem>
-                      <MenuItem value="subscription_reminder">Przypomnienie o subskrypcji</MenuItem>
+                      <MenuItem value="session_cancelled_by_creator">Sesja odwołana przez kreatora</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -589,8 +527,13 @@ const EmailEditorPage = () => {
               </Box>
             )}
 
-            {/* Subject Editor */}
-            <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+            <Box
+              sx={{
+                p: 2,
+                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                backgroundColor: surfaceColor
+              }}
+            >
               <TextField
                 label="Temat wiadomości"
                 value={getCurrentSubject()}
@@ -600,69 +543,29 @@ const EmailEditorPage = () => {
               />
             </Box>
 
-            {/* Content Editor/Preview */}
             <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-              {viewMode === 'rendered' ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    backgroundColor: theme.colors?.bg?.default || theme.palette.background.default,
-                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                    borderRadius: '12px',
-                    minHeight: '100%',
-                    p: 2
-                  }}
-                >
-                  <EmailPreviewFrame html={getCurrentContent()} />
-                </Paper>
-              ) : (
-                <TextField
-                  value={getCurrentContent()}
-                  onChange={(e) => updateCurrentContent(e.target.value)}
-                  multiline
-                  fullWidth
-                  rows={20}
-                  variant="outlined"
-                  sx={{
-                    '& textarea': {
-                      fontFamily: 'monospace',
-                      fontSize: '0.875rem'
-                    }
-                  }}
-                  helperText="Użyj {{zmienna}} dla dynamicznych wartości"
-                />
-              )}
+              <Paper
+                elevation={0}
+                sx={{
+                  backgroundColor: theme.colors?.bg?.default || theme.palette.background.default,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  borderRadius: '12px',
+                  minHeight: '100%',
+                  p: 2
+                }}
+              >
+                <EmailPreviewFrame html={getCurrentContent()} />
+              </Paper>
             </Box>
-
-            {/* Template Info Footer */}
-            {selectedTemplate && (
-              <Box sx={{ p: 2, borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  <Chip
-                    label={`Kategoria: ${getCategoryLabel(editedTemplate.category)}`}
-                    size="small"
-                  />
-                  {editedTemplate.is_default && (
-                    <Chip label="Szablon domyślny" size="small" color="primary" />
-                  )}
-                  {selectedTemplate.created_at && (
-                    <Chip
-                      label={`Utworzony: ${new Date(selectedTemplate.created_at).toLocaleDateString('pl-PL')}`}
-                      size="small"
-                      variant="outlined"
-                    />
-                  )}
-                </Stack>
-              </Box>
-            )}
-          </Paper>
+          </Box>
         ) : (
           <Box
             sx={{
               flex: 1,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              backgroundColor: theme.colors?.bg?.default || theme.palette.background.default
             }}
           >
             <Alert severity="info">

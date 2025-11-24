@@ -904,15 +904,12 @@ class MagicLink(models.Model):
 
 
 class EmailTemplate(models.Model):
-    """Email template model supporting both default and custom user templates."""
+    """Email template model supporting both default and custom user templates.
+    Only client-facing email templates are user-editable."""
     
     class Category(models.TextChoices):
         BOOKING_CONFIRMATION = 'booking_confirmation', 'Booking Confirmation'
-        BOOKING_CANCELLATION = 'booking_cancellation', 'Booking Cancellation'
-        ACCOUNT_REGISTRATION = 'account_registration', 'Account Registration'
-        SITE_STATUS = 'site_status', 'Site Status'
-        PLAN_CHANGE = 'plan_change', 'Plan Change'
-        SUBSCRIPTION_REMINDER = 'subscription_reminder', 'Subscription Reminder'
+        SESSION_CANCELLED_BY_CREATOR = 'session_cancelled_by_creator', 'Session Cancelled by Creator'
     
     name = models.CharField(max_length=255, help_text='Template name for display')
     slug = models.SlugField(max_length=255, unique=True, help_text='Unique identifier for the template')

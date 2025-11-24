@@ -46,6 +46,7 @@ from .views import (
     AdminUsersListView,
     AdminSitesListView,
     EmailTemplateViewSet,
+    UserEmailsViewSet,
     SendTestEmailView,
     PublicBookingView,
     PublicAvailabilityView,
@@ -109,6 +110,7 @@ router.register(r'custom-components', CustomReactComponentViewSet, basename='cus
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'availability-blocks', AvailabilityBlockViewSet, basename='availabilityblock')
 router.register(r'email-templates', EmailTemplateViewSet, basename='emailtemplate')
+router.register(r'user-emails', UserEmailsViewSet, basename='useremail')
 router.register(r'team-members', TeamMemberViewSet, basename='teammember')
 router.register(r'testimonials', TestimonialViewSet, basename='testimonial')
 router.register(r'big-events', BigEventViewSet, basename='bigevent')

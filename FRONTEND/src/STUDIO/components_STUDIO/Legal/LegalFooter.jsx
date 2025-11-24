@@ -39,9 +39,9 @@ const LegalFooter = () => {
                             flexDirection: 'column', 
                             alignItems: 'center', 
                             gap: 0.5,
-                            transform: 'translateX(-16px)' // połowa szerokości logo (32px / 2)
+                            width: '100%'
                         }}>
-                            <Box sx={{ width: 32, height: 32, flexShrink: 0 }}>
+                            <Box sx={{ display: 'inline-flex', justifyContent: 'center' }}>
                                 <Logo />
                             </Box>
                             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
