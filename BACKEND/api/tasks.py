@@ -1265,8 +1265,64 @@ def reconfigure_domain_target(self, order_id: int):
                 )
                 page_rules_result.append(f"{pattern} - removed (proxy mode)")
         
-        # STEP 3: Purge Cloudflare cache
-        logger.info(f"[Celery] Step 3: Purging Cloudflare cache")
+        # STEP 3: Configure SSL/TLS settings for HTTPS
+        logger.info(f"[Celery] Step 3: Configuring SSL/TLS settings")
+        ssl_config_result = []
+        
+        # 3.1: Set SSL/TLS mode to "Full (strict)" for secure backend connection
+        ssl_mode_data = {'value': 'full'}  # full = validates SSL cert on origin
+        ssl_mode_resp = requests.patch(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/settings/ssl',
+            headers=cf_headers,
+            json=ssl_mode_data
+        )
+        if ssl_mode_resp.status_code == 200:
+            ssl_config_result.append("SSL mode: Full")
+            logger.info(f"[Celery] SSL/TLS mode set to 'Full'")
+        else:
+            logger.warning(f"[Celery] Failed to set SSL mode: {ssl_mode_resp.text}")
+        
+        # 3.2: Enable "Always Use HTTPS" (HTTP → HTTPS redirect)
+        https_redirect_data = {'value': 'on'}
+        https_redirect_resp = requests.patch(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/settings/always_use_https',
+            headers=cf_headers,
+            json=https_redirect_data
+        )
+        if https_redirect_resp.status_code == 200:
+            ssl_config_result.append("Always Use HTTPS: enabled")
+            logger.info(f"[Celery] Always Use HTTPS enabled")
+        else:
+            logger.warning(f"[Celery] Failed to enable Always Use HTTPS: {https_redirect_resp.text}")
+        
+        # 3.3: Enable "Automatic HTTPS Rewrites"
+        https_rewrite_data = {'value': 'on'}
+        https_rewrite_resp = requests.patch(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/settings/automatic_https_rewrites',
+            headers=cf_headers,
+            json=https_rewrite_data
+        )
+        if https_rewrite_resp.status_code == 200:
+            ssl_config_result.append("Automatic HTTPS Rewrites: enabled")
+            logger.info(f"[Celery] Automatic HTTPS Rewrites enabled")
+        else:
+            logger.warning(f"[Celery] Failed to enable HTTPS Rewrites: {https_rewrite_resp.text}")
+        
+        # 3.4: Set minimum TLS version to 1.2
+        tls_version_data = {'value': '1.2'}
+        tls_version_resp = requests.patch(
+            f'https://api.cloudflare.com/client/v4/zones/{cf_zone_id}/settings/min_tls_version',
+            headers=cf_headers,
+            json=tls_version_data
+        )
+        if tls_version_resp.status_code == 200:
+            ssl_config_result.append("Min TLS version: 1.2")
+            logger.info(f"[Celery] Minimum TLS version set to 1.2")
+        else:
+            logger.warning(f"[Celery] Failed to set TLS version: {tls_version_resp.text}")
+        
+        # STEP 4: Purge Cloudflare cache
+        logger.info(f"[Celery] Step 4: Purging Cloudflare cache")
         purge_cloudflare_cache.delay(domain_name)
         
         # Update order configuration
@@ -1277,6 +1333,7 @@ def reconfigure_domain_target(self, order_id: int):
             'proxy_mode': proxy_mode,
             'dns_updates': dns_updates,
             'page_rules': page_rules_result,
+            'ssl_config': ssl_config_result,
             'method': 'worker_routing' if proxy_mode else 'page_rule_redirect'
         })
         order.save(update_fields=['dns_configuration'])
@@ -1290,6 +1347,7 @@ def reconfigure_domain_target(self, order_id: int):
             "proxy_mode": proxy_mode,
             "dns_updates": dns_updates,
             "page_rules": page_rules_result,
+            "ssl_config": ssl_config_result,
             "zone_id": cf_zone_id
         }
         
