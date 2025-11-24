@@ -12,12 +12,12 @@ RUN npm run build
 FROM node:22-alpine AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
-COPY serve.json ./dist/serve.json
+COPY serve.json ./serve.json
 # Install serve - a lightweight static file server
 RUN npm install -g serve
 EXPOSE 3000
 # Serve the static files with proper SPA routing support and config
-CMD ["serve", "dist", "-l", "3000", "-c", "dist/serve.json"]
+CMD ["serve", "dist", "-l", "3000", "-c", "serve.json"]
 
 # Development stage (default for local dev)
 FROM node:22-alpine AS development
