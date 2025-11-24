@@ -64,14 +64,16 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    # Use Daphne ASGI server to support WebSocket connections
-    #command: python manage.py runserver 0.0.0.0:8000
-    command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
+    # Use Daphne ASGI server to support WebSocket connections with SSL
+    command: daphne -b 0.0.0.0 -p 8000 -e ssl:8443:privateKey=/certs/privkey.pem:certKey=/certs/fullchain.pem site_project.asgi:application
     volumes:
       # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
       - ./BACKEND:/home/appuser/app
+      # Mount SSL certificates from Let's Encrypt
+      - /etc/letsencrypt/live/youreasysite.pl:/certs:ro
     ports:
-      - "${BACKEND_PORT_HOST:-443}:8000"
+      - "${BACKEND_PORT_HOST:-443}:8443"  # HTTPS on 8443
+      - "8000:8000"  # HTTP fallback on 8000
     env_file:
       - ./BACKEND/.env
     depends_on:
@@ -109,7 +111,8 @@ services:
       - ./FRONTEND:/app
       - /app/node_modules
     ports:
-      - "${FRONTEND_PORT_HOST:-80}:3000"
+      - "${FRONTEND_PORT_HOST:-80}:3000"   # HTTP on port 80
+      - "443:3000"                          # HTTPS on port 443 (Vite will handle SSL if configured)
     environment:
       - NODE_ENV=development
       # Niezbędne do poprawnego działania hot-reload w Dockerze
