@@ -64,20 +64,15 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    # Use Daphne ASGI server to support WebSocket connections with SSL
-    command: daphne -b 0.0.0.0 -p 8000 -e ssl:8443:privateKey=/certs/privkey.pem:certKey=/certs/fullchain.pem site_project.asgi:application
+    # Simple HTTP - Nginx handles SSL
+    command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
     volumes:
-      # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
       - ./BACKEND:/home/appuser/app
-      # Mount SSL certificates from Let's Encrypt
-      - /etc/letsencrypt/live/youreasysite.pl:/certs:ro
-    ports:
-      - "3000:8000"  # HTTP API on port 3000
-      - "8443:8443"  # HTTPS with SSL cert (internal)
+    expose:
+      - "8000"
     env_file:
       - ./BACKEND/.env
     depends_on:
-      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
 
@@ -94,7 +89,6 @@ services:
     env_file:
       - ./BACKEND/.env
     depends_on:
-      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
       redis:
@@ -110,22 +104,31 @@ services:
     volumes:
       - ./FRONTEND:/app
       - /app/node_modules
-      - /etc/letsencrypt/live/youreasysite.pl:/certs:ro
-    ports:
-      - "80:3000"    # HTTP on port 80
-      - "443:3001"   # HTTPS on port 443 (Vite HTTPS dev server)
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=development
-      - VITE_HTTPS=true
-      - VITE_SSL_CERT=/certs/fullchain.pem
-      - VITE_SSL_KEY=/certs/privkey.pem
-      # Niezbędne do poprawnego działania hot-reload w Dockerze
       - CHOKIDAR_USEPOLLING=true
-      # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
     depends_on:
       - backend
+
+  # --- Nginx Reverse Proxy with SSL ---
+  nginx:
+    image: nginx:alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - studio-frontend
 
 volumes:
   # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.
