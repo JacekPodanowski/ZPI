@@ -13,9 +13,15 @@ node_modules
 dist
 build
 
-# Local environment variables - never include these in an image
+# Local environment variables - exclude development env files
 .env
-.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+# But ALLOW .env.production for production builds
+!.env.production
 
 # Logs and temporary files
 npm-debug.log*
