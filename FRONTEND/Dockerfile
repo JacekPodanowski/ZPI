@@ -2,8 +2,8 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-# Use clean install for reproducible builds
-RUN npm ci
+# Install dependencies (use npm install since package-lock.json doesn't exist)
+RUN npm install
 COPY . .
 # Build for production with optimizations
 RUN npm run build
@@ -14,7 +14,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 # Install only production dependencies for preview server
-RUN npm ci --only=production
+RUN npm install --only=production
 EXPOSE 3000
 # Use preview mode for optimized production serving
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
