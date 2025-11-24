@@ -174,32 +174,25 @@ LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "ve
 # --- CORS ---
 cors_origins = set()
 
+# Updated ports: frontend on 80, backend on 443
 cors_origins.update({
+    "http://localhost:80",
+    "http://localhost",  # Port 80 is default for HTTP
+    "http://127.0.0.1:80",
+    "http://127.0.0.1",
+    "http://192.168.0.104:80",
+    "http://192.168.0.104",
+    "http://136.115.41.232:80",
+    "http://136.115.41.232",
+    # Keep some old ports for backward compatibility during transition
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.0.104:3000",
     "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://192.168.0.104:3001",
-    "http://localhost:3001",
-    "http://136.115.41.232:3001",
-    "http://136.115.41.232:3000",
 })
-#frontend_env = os.environ.get('FRONTEND_URL')
-#if frontend_env:
-#    cors_origins.add(frontend_env)
-#if DEBUG:
-#    cors_origins.update({
-#        "http://localhost:3000/",
-#        "http://127.0.0.1:3000/",
-#        "http://192.168.0.104:3000/",
-#        "http://localhost:5173/",
-#        "http://127.0.0.1:5173/",
-#        "http://192.168.0.104:3001/",
-#        "http://localhost:3001/",
-#        "http://136.115.41.232:3001/",
-#        "http://136.115.41.232:3000/",
-#    })
+
+frontend_env = os.environ.get('FRONTEND_URL')
+if frontend_env:
+    cors_origins.add(frontend_env)
 
 CORS_ALLOWED_ORIGINS = sorted(cors_origins)
 CORS_ALLOWED_ORIGIN_REGEXES = [
