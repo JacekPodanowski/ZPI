@@ -1722,8 +1722,16 @@ def send_big_event_notification_emails(self, event_id: int):
                 'is_big_event': True,
             }
             
-            # Render email template
-            html_content = render_to_string('emails/newsletter/event_newsletter.html', context)
+            # Render email template using Template object
+            from django.template import Template, Context
+            from pathlib import Path
+            
+            template_path = Path(settings.BASE_DIR) / 'emails' / 'newsletter' / 'event_newsletter.html'
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_string = f.read()
+            
+            template = Template(template_string)
+            html_content = template.render(Context(context))
             text_content = strip_tags(html_content)
             
             # Send email via custom task
