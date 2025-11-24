@@ -42,7 +42,6 @@ export default defineConfig({
             '@emotion/react',
             '@emotion/styled',
             '@mui/system',
-            '@mui/base',
             '@mui/utils'
           ],
           // Animation and utilities
