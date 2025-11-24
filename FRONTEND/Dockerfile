@@ -15,8 +15,11 @@ COPY --from=builder /app/dist ./dist
 # Install serve - a lightweight static file server
 RUN npm install -g serve
 EXPOSE 3000
-# Serve the static files with SPA routing support (-s flag handles all routes -> index.html)
-CMD ["serve", "-s", "dist", "-l", "3000", "--no-port-switching"]
+# Serve the static files with SPA routing support
+# -s = single page app mode (all routes -> index.html)
+# -l = listen on port 3000
+# -n = disable auto-port switching
+CMD ["serve", "-s", "dist", "-l", "tcp://0.0.0.0:3000", "-n"]
 
 # Development stage (default for local dev)
 FROM node:22-alpine AS development
