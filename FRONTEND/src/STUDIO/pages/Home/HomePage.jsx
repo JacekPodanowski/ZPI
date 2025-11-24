@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import Navigation from '../../../components/Navigation/Navigation';
 import AnimatedLogo from '../../../components/Logo/AnimatedLogo';
-import LegalFooter from '../../components/LegalFooter';
+import LegalFooter from '../../components_STUDIO/Legal/LegalFooter';
 
 import { typography } from '../../../theme/typography.js';
 

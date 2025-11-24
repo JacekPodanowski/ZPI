@@ -19,6 +19,7 @@ import AppearancePage from './pages/Settings/AppearancePage';
 import SettingsPage from './pages/Settings/SettingsPage';
 import NotificationsPage from './pages/Settings/NotificationsPage';
 import MailsPage from './pages/Settings/MailsPage';
+import EmailEditorPage from './pages/EmailEditor/EmailEditorPage';
 import ToastTestPage from './pages/Settings/ToastTestPage';
 import PaymentSuccessPage from './pages/Settings/PaymentSuccessPage';
 import PaymentFailedPage from './pages/Settings/PaymentFailedPage';
@@ -93,6 +94,9 @@ const StudioApp = () => (
       <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
       <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
     </Route>
+
+    {/* Email Editor - Standalone page with own navigation */}
+    <Route path="email-editor" element={<ProtectedRoute><EmailEditorPage /></ProtectedRoute>} />
 
     {/* Payment success/failed pages - PUBLIC routes */}
     <Route path="payment/success" element={<PaymentSuccessPage />} />

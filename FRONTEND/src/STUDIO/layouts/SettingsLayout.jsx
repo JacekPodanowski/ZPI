@@ -25,6 +25,7 @@ import BugReportOutlinedIcon from '@mui/icons-material/BugReportOutlined';
 import LanguageIcon from '@mui/icons-material/Language';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsIcon from '@mui/icons-material/Settings';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import useTheme from '../../theme/useTheme';
 import Navigation from '../../components/Navigation/Navigation';
 
@@ -41,13 +42,16 @@ const notificationsNavigation = [
     label: 'Powiadomienia',
     path: '/studio/account/notifications',
     icon: <NotificationsNoneOutlinedIcon />
-  },
-  {
-    label: 'Maile',
-    path: '/studio/account/mails',
-    icon: <EmailOutlinedIcon />
   }
 ];
+
+const emailEditorButton = {
+  label: 'Edytor maili',
+  path: '/studio/email-editor',
+  icon: <EmailOutlinedIcon />,
+  endIcon: <ArrowForwardIcon sx={{ fontSize: '1rem' }} />,
+  isExternal: true
+};
 
 const settingsNavigation = [
   {
@@ -125,9 +129,56 @@ const SettingsLayout = () => {
               fontWeight: isActive ? 600 : 500
             }}
           />
+          {item.endIcon && (
+            <Box sx={{ ml: 1, display: 'flex', alignItems: 'center', color: subduedText }}>
+              {item.endIcon}
+            </Box>
+          )}
         </ListItemButton>
       );
     });
+
+  const renderEmailEditorButton = () => (
+    <ListItemButton
+      key={emailEditorButton.path}
+      onClick={() => {
+        navigate(emailEditorButton.path);
+        if (isMobile) setDrawerOpen(false);
+      }}
+      sx={{
+        borderRadius: '12px',
+        mb: 0.5,
+        backgroundColor: alpha(accentColor, 0.05),
+        border: `1px solid ${alpha(accentColor, 0.2)}`,
+        color: accentColor,
+        '&:hover': {
+          backgroundColor: alpha(accentColor, 0.12),
+          borderColor: alpha(accentColor, 0.3)
+        }
+      }}
+    >
+      <ListItemIcon
+        sx={{
+          minWidth: 40,
+          color: accentColor
+        }}
+      >
+        {emailEditorButton.icon}
+      </ListItemIcon>
+      <ListItemText
+        primary={emailEditorButton.label}
+        primaryTypographyProps={{
+          variant: 'body2',
+          fontWeight: 600
+        }}
+      />
+      {emailEditorButton.endIcon && (
+        <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
+          {emailEditorButton.endIcon}
+        </Box>
+      )}
+    </ListItemButton>
+  );
 
   const sidebarContent = (
     <>
@@ -163,6 +214,7 @@ const SettingsLayout = () => {
       </Typography>
       <List disablePadding sx={{ mt: 1 }}>
         {renderNavItems(notificationsNavigation)}
+        {renderEmailEditorButton()}
       </List>
 
       <Divider sx={{ my: 2 }} />
