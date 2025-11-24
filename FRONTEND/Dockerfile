@@ -7,11 +7,15 @@ RUN npm install
 COPY . .
 # Build for production with optimizations
 RUN npm run build
+# Debug: List contents of dist folder
+RUN echo "=== Contents of dist folder ===" && ls -la dist/
 
 # Production stage - serve with lightweight static server
 FROM node:22-alpine AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
+# Debug: Verify dist contents in production stage
+RUN echo "=== Production stage - dist contents ===" && ls -la dist/
 # Install serve - a lightweight static file server
 RUN npm install -g serve
 EXPOSE 3000
