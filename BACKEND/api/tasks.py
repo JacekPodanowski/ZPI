@@ -1133,15 +1133,28 @@ def reconfigure_domain_target(self, order_id: int):
             if record['name'] in [domain_name, f'www.{domain_name}'] and record['type'] in ['A', 'CNAME']:
                 existing_records[record['name']] = record
         
-        # Determine record type and content based on target
-        if target.replace('http://', '').replace('https://', '').replace('/', '').replace(':443', '').replace(':80', '').count('.') >= 2:
+        # Clean target (remove protocol, port, path)
+        clean_target = target.replace('http://', '').replace('https://', '').split('/')[0].split(':')[0]
+        
+        # Determine if target is IP address or domain
+        import re
+        is_ip = re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', clean_target)
+        
+        if is_ip:
+            # Target is an IP address - use A record with that IP
+            record_type = 'A'
+            record_content = clean_target
+            logger.info(f"[Celery] Detected IP address target: {clean_target}")
+        elif '.' in clean_target and len(clean_target.split('.')) >= 2:
             # Target looks like a domain (e.g., youreasysite-production.up.railway.app)
             record_type = 'CNAME'
-            record_content = target.replace('http://', '').replace('https://', '').split('/')[0].replace(':443', '').replace(':80', '')
+            record_content = clean_target
+            logger.info(f"[Celery] Detected domain target: {clean_target}")
         else:
-            # Target is an IP or use dummy IP for Worker routing
+            # Fallback: use dummy IP for Worker routing
             record_type = 'A'
-            record_content = '192.0.2.1'  # Dummy IP - Worker handles routing
+            record_content = '192.0.2.1'
+            logger.info(f"[Celery] Using dummy IP for Worker routing (invalid target: {clean_target})")
         
         dns_updates = []
         for subdomain in ['@', 'www']:
