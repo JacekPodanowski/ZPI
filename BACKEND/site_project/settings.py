@@ -194,6 +194,13 @@ cors_origins.update({
     "http://192.168.0.104",
     "http://136.115.41.232:80",
     "http://136.115.41.232",
+    # Production domains
+    "https://youreasysite.pl",
+    "https://www.youreasysite.pl",
+    "http://youreasysite.pl",
+    "http://www.youreasysite.pl",
+    # Railway domains
+    "https://youreasysite-production.up.railway.app",
     # Keep some old ports for backward compatibility during transition
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -211,6 +218,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://192\.168\.0\.104:\d+$",
     r"^http://136\.115\.41\.232:\d+$",
     r"^https://.*\.trycloudflare\.com$",  # Allow Cloudflare Tunnel
+    r"^https://.*\.up\.railway\.app$",     # Allow Railway deployments
     r"^null$",  # Allow local HTML files for testing
 ]
 CORS_ALLOW_CREDENTIALS = True
