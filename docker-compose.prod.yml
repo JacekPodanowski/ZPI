@@ -1,5 +1,5 @@
 # Production override for docker-compose
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 services:
   studio-frontend:
@@ -8,3 +8,7 @@ services:
     volumes: []  # Remove volume mounts in production
     environment:
       - NODE_ENV=production
+      # Remove dev-only environment variables
+      - CHOKIDAR_USEPOLLING=
+      - WATCHPACK_POLLING=
+      - FAST_REFRESH=

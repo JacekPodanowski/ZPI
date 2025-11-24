@@ -8,16 +8,15 @@ COPY . .
 # Build for production with optimizations
 RUN npm run build
 
-# Production stage - serve with lightweight server
+# Production stage - serve with lightweight static server
 FROM node:22-alpine AS production
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-# Install only production dependencies for preview server
-RUN npm install --only=production
+# Install serve - a lightweight static file server
+RUN npm install -g serve
 EXPOSE 3000
-# Use preview mode for optimized production serving
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
+# Serve the static files with proper SPA routing support
+CMD ["serve", "-s", "dist", "-l", "3000"]
 
 # Development stage (default for local dev)
 FROM node:22-alpine AS development
