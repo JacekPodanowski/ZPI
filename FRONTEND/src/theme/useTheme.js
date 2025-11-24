@@ -8,12 +8,40 @@ import { useThemeContext } from './ThemeProvider';
  * the new color system under the `colors` key.
  */
 const useTheme = () => {
+	// Safely get context - it might not be ready during initial render
 	const context = useThemeContext();
-	const muiTheme = useMuiTheme();
+	
+	// Use optional chaining and provide fallback for MUI theme
+	let muiTheme;
+	try {
+		muiTheme = useMuiTheme();
+	} catch (error) {
+		// MUI theme might not be ready yet
+		muiTheme = null;
+	}
+	
 	const contextMuiTheme = context?.muiTheme;
 
 	return useMemo(() => {
 		const semanticTheme = context?.theme;
+
+		// If neither theme is ready, return a minimal safe object
+		if (!semanticTheme && !muiTheme && !contextMuiTheme) {
+			return {
+				mode: context?.mode || 'light',
+				toggleMode: context?.toggleMode || (() => {}),
+				selectTheme: context?.selectTheme || (() => {}),
+				updateWorkingTheme: context?.updateWorkingTheme || (() => {}),
+				saveCustomTheme: context?.saveCustomTheme || (() => {}),
+				deleteCustomTheme: context?.deleteCustomTheme || (() => {}),
+				workingTheme: context?.workingTheme || null,
+				hasUnsavedChanges: context?.hasUnsavedChanges || false,
+				themeConfig: context?.themeConfig || {},
+				availableThemes: context?.availableThemes || [],
+				colors: {},
+				typography: {}
+			};
+		}
 
 		if (!semanticTheme || !muiTheme) {
 			return {

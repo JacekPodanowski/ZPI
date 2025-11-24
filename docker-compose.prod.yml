@@ -1,0 +1,10 @@
+# Production override for docker-compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  studio-frontend:
+    build:
+      target: production
+    volumes: []  # Remove volume mounts in production
+    environment:
+      - NODE_ENV=production

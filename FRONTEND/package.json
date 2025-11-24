@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --mode production",
+    "build:analyze": "vite build --mode production && vite-bundle-visualizer",
     "preview": "vite preview",
     "tailwind:init": "npx tailwindcss init -p"
   },

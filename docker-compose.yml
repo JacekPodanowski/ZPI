@@ -99,15 +99,18 @@ services:
     build:
       context: ./FRONTEND
       dockerfile: Dockerfile
+      # Use production target for optimized build
+      target: ${FRONTEND_BUILD_TARGET:-development}
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_studio_frontend_app
     restart: unless-stopped
     volumes:
+      # Only mount in development mode
       - ./FRONTEND:/app
       - /app/node_modules
     expose:
       - "3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
