@@ -5,6 +5,7 @@ services:
   studio-frontend:
     build:
       target: production
-    volumes: []  # Clear all volumes from base config
+    # Don't mount any volumes - remove ALL volume declarations
+    volumes: !reset []
     environment:
       - NODE_ENV=production

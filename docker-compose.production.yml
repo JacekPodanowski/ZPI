@@ -1,0 +1,122 @@
+services:
+  # --- Serwis Bazy Danych (PostgreSQL) ---
+  db:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_postgres_db
+    restart: unless-stopped
+    volumes:
+      - site_db_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --- Serwis Redis (Message Broker dla Celery) ---
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT_HOST:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # --- NOWY Serwis Setup (Uruchamia migracje, etc.) ---
+  backend-setup:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_backend_setup
+    command: sh /home/appuser/app/entrypoint.sh
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --- Serwis Backendu (Django) ---
+  backend:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
+    restart: unless-stopped
+    command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    expose:
+      - "8000"
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      backend-setup:
+        condition: service_completed_successfully
+
+  # --- Serwis Celery Worker (Asynchroniczne przetwarzanie) ---
+  celery-worker:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
+    restart: unless-stopped
+    command: celery -A site_project worker --loglevel=info
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      backend-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # --- Serwis Studio Frontendu (React) - PRODUCTION ---
+  studio-frontend:
+    build:
+      context: ./FRONTEND
+      dockerfile: Dockerfile
+      target: production
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_studio_frontend_app
+    restart: unless-stopped
+    # NO VOLUMES - use built-in dist folder
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
+
+  # --- Nginx Reverse Proxy with SSL ---
+  nginx:
+    image: nginx:alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - studio-frontend
+
+volumes:
+  site_db_data: {}
