@@ -32,4 +32,8 @@ echo "--- Entrypoint: Initializing default email templates..."
 python manage.py init_email_templates
 echo "--- Entrypoint: Email templates initialization complete."
 
+echo "--- Entrypoint: Loading DEV email templates (all templates for testing)..."
+python manage.py load_dev_email_templates
+echo "--- Entrypoint: DEV email templates loaded."
+
 echo "--- Entrypoint: Setup tasks complete. ---"

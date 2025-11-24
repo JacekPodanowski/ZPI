@@ -2273,10 +2273,10 @@ class UserEmailsViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        """Return only client-facing email templates (default + user's custom versions)."""
+        """Return email templates: client-facing (default + user's custom versions) + dev templates."""
         user = self.request.user
         return EmailTemplate.objects.filter(
-            Q(category__in=['booking_confirmation', 'session_cancelled_by_creator']) &
+            Q(category__in=['booking_confirmation', 'session_cancelled_by_creator', 'dev']) &
             (Q(is_default=True) | Q(owner=user))
         )
     

@@ -910,6 +910,7 @@ class EmailTemplate(models.Model):
     class Category(models.TextChoices):
         BOOKING_CONFIRMATION = 'booking_confirmation', 'Booking Confirmation'
         SESSION_CANCELLED_BY_CREATOR = 'session_cancelled_by_creator', 'Session Cancelled by Creator'
+        DEV = 'dev', 'Development/Testing'
     
     name = models.CharField(max_length=255, help_text='Template name for display')
     slug = models.SlugField(max_length=255, unique=True, help_text='Unique identifier for the template')

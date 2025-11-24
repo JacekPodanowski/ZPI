@@ -101,7 +101,7 @@ const EmailEditorPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [testEmailOpen, setTestEmailOpen] = useState(false);
-  const [templateType, setTemplateType] = useState('default'); // 'default' or 'custom'
+  const [templateType, setTemplateType] = useState('default'); // 'default', 'custom', or 'dev'
   const [saving, setSaving] = useState(false);
 
   // Editor state - directly editable
@@ -124,9 +124,11 @@ const EmailEditorPage = () => {
     // Auto-select first template of the selected type when templates load or type changes
     if (templates.length === 0) return;
     
-    const filteredTemplates = templates.filter(t => 
-      templateType === 'default' ? t.is_default : !t.is_default
-    );
+    const filteredTemplates = templates.filter(t => {
+      if (templateType === 'dev') return t.category === 'dev';
+      if (templateType === 'default') return t.is_default && t.category !== 'dev';
+      return !t.is_default && t.category !== 'dev';
+    });
     
     if (filteredTemplates.length > 0 && !selectedTemplate) {
       handleTemplateClick(filteredTemplates[0]);
@@ -151,9 +153,11 @@ const EmailEditorPage = () => {
   };
 
   const getFilteredTemplates = () => {
-    return templates.filter(t => 
-      templateType === 'default' ? t.is_default : !t.is_default
-    );
+    return templates.filter(t => {
+      if (templateType === 'dev') return t.category === 'dev';
+      if (templateType === 'default') return t.is_default && t.category !== 'dev';
+      return !t.is_default && t.category !== 'dev';
+    });
   };
 
   const handleTemplateClick = (template) => {
@@ -248,7 +252,8 @@ const EmailEditorPage = () => {
   const getCategoryLabel = (category) => {
     const labels = {
       booking_confirmation: 'Potwierdzenie rezerwacji',
-      session_cancelled_by_creator: 'Odwołanie rezerwacji'
+      session_cancelled_by_creator: 'Odwołanie rezerwacji',
+      dev: 'Development/Testing'
     };
     return labels[category] || category;
   };
@@ -386,10 +391,13 @@ const EmailEditorPage = () => {
               size="small"
             >
               <ToggleButton value="default">
-                Domyślne ({templates.filter(t => t.is_default).length})
+                Domyślne ({templates.filter(t => t.is_default && t.category !== 'dev').length})
               </ToggleButton>
               <ToggleButton value="custom">
-                Twoje ({templates.filter(t => !t.is_default).length})
+                Twoje ({templates.filter(t => !t.is_default && t.category !== 'dev').length})
+              </ToggleButton>
+              <ToggleButton value="dev">
+                Dev ({templates.filter(t => t.category === 'dev').length})
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>

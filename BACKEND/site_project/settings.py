@@ -399,7 +399,7 @@ DDOS_WHITELIST = [
 # --- Django Axes (Brute-force protection) Settings ---
 AXES_FAILURE_LIMIT = int(os.environ.get('AXES_FAILURE_LIMIT', 5))  # Lock after 5 failed attempts
 AXES_COOLOFF_TIME = int(os.environ.get('AXES_COOLOFF_TIME', 1))  # Lock for 1 hour
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_TEMPLATE = None  # Use default lockout response
 AXES_LOCKOUT_URL = None  # No redirect, return 403
