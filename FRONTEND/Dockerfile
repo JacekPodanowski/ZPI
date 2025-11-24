@@ -4,10 +4,9 @@ WORKDIR /app
 COPY package*.json ./
 # Install dependencies (use npm install since package-lock.json doesn't exist)
 RUN npm install
+# Copy all source files including .env.production
 COPY . .
-# Copy production env file
-COPY .env.production .env.production
-# Build for production with optimizations
+# Build for production with optimizations (Vite will automatically use .env.production)
 RUN npm run build
 # Debug: List contents of dist folder
 RUN echo "=== Contents of dist folder ===" && \
