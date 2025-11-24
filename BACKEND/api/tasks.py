@@ -1713,9 +1713,8 @@ def send_big_event_notification_emails(self, event_id: int):
                     'max_participants': event.max_participants,
                     'current_participants': event.current_participants,
                     'image_url': event.image_url,
-                    'summary': event.description,  # Add summary for template
+                    'summary': event.description,
                 }],
-                'frequency': subscriber.get_frequency_display(),  # Add frequency
                 'unsubscribe_url': unsubscribe_url,
                 'tracking_pixel_url': tracking_pixel_url,
                 'tracking_token': analytics.tracking_token,
@@ -1843,11 +1842,10 @@ def send_welcome_newsletter(self, subscription_id):
             'site_name': subscription.site.name,
             'events': upcoming_events,
             'unsubscribe_url': unsubscribe_url,
-            'frequency': subscription.get_frequency_display(),
             'tracking_pixel_url': tracking_pixel_url,
             'tracking_token': analytics.tracking_token,
             'backend_url': settings.BACKEND_URL,
-            'is_welcome': True,  # Flag for welcome email
+            'is_welcome': True,
         }
         
         # Render email
