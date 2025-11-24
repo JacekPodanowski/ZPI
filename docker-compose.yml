@@ -64,15 +64,18 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    # Simple HTTP - Nginx handles SSL
+    # Use Daphne ASGI server to support WebSocket connections
+    #command: python manage.py runserver 0.0.0.0:8000
     command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
     volumes:
+      # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
       - ./BACKEND:/home/appuser/app
-    expose:
-      - "8000"
+    ports:
+      - "${BACKEND_PORT_HOST:-8000}:8000"
     env_file:
       - ./BACKEND/.env
     depends_on:
+      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
 
@@ -89,6 +92,7 @@ services:
     env_file:
       - ./BACKEND/.env
     depends_on:
+      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
       redis:
@@ -104,31 +108,17 @@ services:
     volumes:
       - ./FRONTEND:/app
       - /app/node_modules
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     environment:
       - NODE_ENV=development
+      # Niezbędne do poprawnego działania hot-reload w Dockerze
       - CHOKIDAR_USEPOLLING=true
+      # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
     depends_on:
       - backend
-
-  # --- Nginx Reverse Proxy with SSL ---
-  nginx:
-    image: nginx:alpine
-    container_name: ${COMPOSE_PROJECT_NAME:-site777}_nginx
-    restart: unless-stopped
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/certbot:/var/www/certbot:ro
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
-      - studio-frontend
 
 volumes:
   # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.

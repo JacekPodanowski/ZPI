@@ -83,24 +83,11 @@ if SUPABASE_URL:
         SUPABASE_STORAGE_PUBLIC_URL = SUPABASE_STORAGE_PUBLIC_URLS.get(default_bucket)
 
 # --- Konfiguracja sieci i bezpieczeństwa ---
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '192.168.0.104',
-    '136.115.41.232',
-    '.trycloudflare.com',
-    'youreasysite.pl',
-    'www.youreasysite.pl',
-    'api.youreasysite.pl',
-    '.up.railway.app',
-    'youreasysite-production.up.railway.app',
-]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.0.104', '136.115.41.232', '.trycloudflare.com']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# SSL/HTTPS Configuration
-# Always redirect to HTTPS in production, but allow HTTP in development
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000
@@ -108,13 +95,6 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-else:
-    # In development, allow both HTTP and HTTPS
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-    # Trust X-Forwarded-Proto from Cloudflare/Nginx proxy
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # --- Konfiguracja aplikacji Django ---
@@ -194,34 +174,32 @@ LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "ve
 # --- CORS ---
 cors_origins = set()
 
-# Updated ports: frontend on 80, backend on 443
 cors_origins.update({
-    "http://localhost:80",
-    "http://localhost",  # Port 80 is default for HTTP
-    "http://127.0.0.1:80",
-    "http://127.0.0.1",
-    "http://192.168.0.104:80",
-    "http://192.168.0.104",
-    "http://136.115.41.232:80",
-    "http://136.115.41.232",
-    # Production domains
-    "https://youreasysite.pl",
-    "https://www.youreasysite.pl",
-    "https://api.youreasysite.pl",
-    "http://youreasysite.pl",
-    "http://www.youreasysite.pl",
-    "http://api.youreasysite.pl",
-    # Railway domains
-    "https://youreasysite-production.up.railway.app",
-    # Keep some old ports for backward compatibility during transition
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.0.104:3000",
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://192.168.0.104:3001",
+    "http://localhost:3001",
+    "http://136.115.41.232:3001",
+    "http://136.115.41.232:3000",
 })
-
-frontend_env = os.environ.get('FRONTEND_URL')
-if frontend_env:
-    cors_origins.add(frontend_env)
+#frontend_env = os.environ.get('FRONTEND_URL')
+#if frontend_env:
+#    cors_origins.add(frontend_env)
+#if DEBUG:
+#    cors_origins.update({
+#        "http://localhost:3000/",
+#        "http://127.0.0.1:3000/",
+#        "http://192.168.0.104:3000/",
+#        "http://localhost:5173/",
+#        "http://127.0.0.1:5173/",
+#        "http://192.168.0.104:3001/",
+#        "http://localhost:3001/",
+#        "http://136.115.41.232:3001/",
+#        "http://136.115.41.232:3000/",
+#    })
 
 CORS_ALLOWED_ORIGINS = sorted(cors_origins)
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -230,7 +208,6 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://192\.168\.0\.104:\d+$",
     r"^http://136\.115\.41\.232:\d+$",
     r"^https://.*\.trycloudflare\.com$",  # Allow Cloudflare Tunnel
-    r"^https://.*\.up\.railway\.app$",     # Allow Railway deployments
     r"^null$",  # Allow local HTML files for testing
 ]
 CORS_ALLOW_CREDENTIALS = True
