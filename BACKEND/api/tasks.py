@@ -1063,11 +1063,11 @@ def configure_domain_dns(self, order_id: int):
         }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def get_cloudflare_zone_id(api_token, zone_name):
     """
     Get Cloudflare Zone ID for a given domain.
     This function caches the result to avoid repeated API calls.
+    This is a HELPER FUNCTION, not a Celery task.
     
     Args:
         api_token: Cloudflare API token
