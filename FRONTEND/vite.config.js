@@ -10,7 +10,6 @@ export default defineConfig({
       '@emotion/react',
       '@emotion/styled',
       '@mui/system',
-      '@mui/base',
       '@mui/utils',
       '@emotion/cache',
       'framer-motion',
