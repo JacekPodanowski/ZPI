@@ -1,17 +1,14 @@
+# Włącz lokalnie
+docker-compose -f docker-compose.dev.yml up
+
+# Włącz deployment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+
 # Wyłącz
 docker-compose down 
 
 # Wyłącz z usunięciem bazy:
 docker-compose down -v --remove-orphans
-
-# Włącz :
-docker-compose up --build
-
-# Włącz w tle:
-docker-compose up --build -d
-
-# Rebuild :
-docker-compose build --no-cache
 
 # Wyświetl logi
 docker-compose logs -f                      

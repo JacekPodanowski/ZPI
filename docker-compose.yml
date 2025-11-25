@@ -64,18 +64,14 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    # Use Daphne ASGI server to support WebSocket connections
-    #command: python manage.py runserver 0.0.0.0:8000
     command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
     volumes:
-      # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
       - ./BACKEND:/home/appuser/app
     ports:
-      - "${BACKEND_PORT_HOST:-8000}:8000"
+      - "${BACKEND_PORT_LOCAL:-8000}:8000"
     env_file:
       - ./BACKEND/.env
     depends_on:
-      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
 
@@ -92,7 +88,6 @@ services:
     env_file:
       - ./BACKEND/.env
     depends_on:
-      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
       redis:
@@ -103,22 +98,25 @@ services:
     build:
       context: ./FRONTEND
       dockerfile: Dockerfile
+      target: ${FRONTEND_BUILD_TARGET:-development}
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_studio_frontend_app
     restart: unless-stopped
     volumes:
       - ./FRONTEND:/app
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT_LOCAL:-3000}:3000"
     environment:
-      - NODE_ENV=development
-      # Niezbędne do poprawnego działania hot-reload w Dockerze
+      - NODE_ENV=${NODE_ENV:-development}
       - CHOKIDAR_USEPOLLING=true
-      # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
     depends_on:
       - backend
+
+  # --- Nginx Reverse Proxy with SSL ---
+  # Nginx jest uruchamiany tylko w trybie produkcyjnym przez docker-compose.prod.yml
+  # W trybie lokalnym frontend i backend są dostępne bezpośrednio na portach 3000 i 8000
 
 volumes:
   # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.

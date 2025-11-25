@@ -178,7 +178,6 @@ const FlipCard = ({
         <motion.div
           initial={false}
           animate={{ rotateY: isFlipped ? -90 : 0 }}
-          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
           transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
           style={{
             position: 'absolute',
@@ -194,7 +193,6 @@ const FlipCard = ({
         <motion.div
           initial={false}
           animate={{ rotateY: isFlipped ? 0 : 90 }}
-          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
           transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
           style={{
             position: 'absolute',

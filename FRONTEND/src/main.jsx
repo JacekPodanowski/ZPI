@@ -19,7 +19,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 // W trybie subdomeny, renderujemy bezpośrednio SiteApp, jeśli nie jesteśmy na domenie "studio" lub "localhost"
 // To pozwala uniknąć ładowania całego routera Studio dla stron publicznych.
 const hostname = window.location.hostname;
-const isStudioDomain = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('studio.');
+const isStudioDomain = hostname === 'localhost' || 
+                       hostname === '127.0.0.1' || 
+                       hostname === 'youreasysite.pl' ||
+                       hostname === 'www.youreasysite.pl' ||
+                       hostname.startsWith('studio.');
 const renderSiteDirectly = routingMode === 'subdomain' && !isStudioDomain;
 
 // If the build target is 'SITE', render only the user's public site

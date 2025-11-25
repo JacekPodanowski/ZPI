@@ -4321,7 +4321,7 @@ def get_domain_orders(request):
 @permission_classes([IsAuthenticated])
 def update_domain_order(request, order_id):
     """Update domain order configuration (e.g., target URL, proxy mode)."""
-    from .tasks import purge_cloudflare_cache
+    from .tasks import purge_cloudflare_cache, reconfigure_domain_target
     
     try:
         # Get the order
@@ -4339,25 +4339,33 @@ def update_domain_order(request, order_id):
     
     # Allow updating target and proxy_mode fields
     updated = False
+    needs_dns_reconfig = False
     
     target = request.data.get('target')
-    if target is not None:
+    if target is not None and target != order.target:
         order.target = target
         updated = True
+        needs_dns_reconfig = True
         logger.info(f"[Domain Order] Updated target for {order.domain_name}: {target}")
     
     proxy_mode = request.data.get('proxy_mode')
-    if proxy_mode is not None:
+    if proxy_mode is not None and proxy_mode != order.proxy_mode:
         order.proxy_mode = proxy_mode
         updated = True
+        needs_dns_reconfig = True
         logger.info(f"[Domain Order] Updated proxy_mode for {order.domain_name}: {proxy_mode}")
     
     if updated:
         order.save()
         
-        # Purge Cloudflare cache so Worker sees changes immediately
-        purge_cloudflare_cache.delay(order.domain_name)
-        logger.info(f"[Domain Order] Triggered cache purge for {order.domain_name}")
+        if needs_dns_reconfig and order.status == DomainOrder.OrderStatus.ACTIVE:
+            # Trigger full DNS reconfiguration (updates DNS records, Page Rules, etc.)
+            reconfigure_domain_target.delay(order.id)
+            logger.info(f"[Domain Order] Triggered DNS reconfiguration for {order.domain_name}")
+        else:
+            # Just purge cache if order not active yet
+            purge_cloudflare_cache.delay(order.domain_name)
+            logger.info(f"[Domain Order] Triggered cache purge for {order.domain_name}")
     
     serializer = DomainOrderSerializer(order)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -5726,7 +5734,6 @@ def newsletter_subscribe(request):
         is_confirmed=True,
         confirmed_at=now
     )
-    
     return Response({
         'message': 'Jesteś zapisany! Powiadomimy Cię o nowych wydarzeniach.',
         'auto_confirmed': True,
@@ -6002,7 +6009,7 @@ class BigEventViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
-        """Publish a big event and optionally send email notifications."""
+        """Publish a big event and automatically send email notifications to all newsletter subscribers."""
         event = self.get_object()
         
         if event.status == 'published':
@@ -6013,59 +6020,18 @@ class BigEventViewSet(viewsets.ModelViewSet):
         
         event.status = 'published'
         event.published_at = timezone.now()
-        
-        # Check if email notification should be sent
-        send_email = request.data.get('send_email', event.send_email_on_publish)
-        
-        if send_email and not event.email_sent:
-            # Get active newsletter subscribers for this site
-            from .models import NewsletterSubscription
-            subscribers = NewsletterSubscription.objects.filter(
-                site=event.site,
-                is_active=True,
-                is_confirmed=True
-            )
-            
-            if subscribers.exists():
-                # Send email to all subscribers
-                subject = f'Nowe wydarzenie: {event.title}'
-                
-                for subscriber in subscribers:
-                    try:
-                        # Prepare email content with unsubscribe link
-                        unsubscribe_url = f'{settings.FRONTEND_URL}/newsletter/unsubscribe/{subscriber.unsubscribe_token}'
-                        context = {
-                            'event': event,
-                            'subscriber': subscriber,
-                            'site': event.site,
-                            'unsubscribe_url': unsubscribe_url,
-                        }
-                        
-                        # Template removed - new_event_notification.html
-                        # html_message = render_to_string('emails/new_event_notification.html', context)
-                        html_message = render_to_string('emails/newsletter/event_newsletter.html', context)
-                        plain_message = strip_tags(html_message)
-                        
-                        send_mail(
-                            subject=subject,
-                            message=plain_message,
-                            html_message=html_message,
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[subscriber.email],
-                            fail_silently=True,
-                        )
-                    except Exception as e:
-                        logger.error(f'Failed to send event notification to {subscriber.email}: {str(e)}')
-                
-                event.email_sent = True
-                event.email_sent_at = timezone.now()
-        
         event.save()
+        
+        # Automatically send email to all newsletter subscribers (unless already sent)
+        if not event.email_sent:
+            from .tasks import send_big_event_notification_emails
+            send_big_event_notification_emails.delay(event.id)
+            logger.info(f'[BigEvent] Queued email notifications for event {event.id}')
         
         serializer = self.get_serializer(event)
         return Response({
-            'message': 'Event published successfully.',
-            'email_sent': event.email_sent,
+            'message': 'Event published successfully. Email notifications are being sent.',
+            'email_queued': not event.email_sent,
             'event': serializer.data
         }, status=status.HTTP_200_OK)
     

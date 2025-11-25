@@ -36,7 +36,6 @@ const DEFAULT_PREFERENCES = {
  */
 export const PreferencesProvider = ({ children }) => {
     const { user, updatePreferences: updateUserPreferences, isAuthenticated } = useAuth();
-    const theme = useTheme();
     
     // Initialize preferences from cache, user data, or defaults
     const [preferences, setPreferences] = useState(() => {
@@ -70,34 +69,43 @@ export const PreferencesProvider = ({ children }) => {
 
     const [hasInitialized, setHasInitialized] = useState(false);
     
+    // Get theme context - will be null initially but that's fine
+    const theme = useTheme();
+    
     // Debounce theme preferences to avoid too many API calls during theme selection
     // Calendar preferences are saved immediately (no debounce)
     const debouncedThemePreferences = useDebounce(preferences.theme, 1000);
 
     // Sync theme from ThemeProvider to preferences on mount and when theme changes
     useEffect(() => {
-        if (theme?.themeId && theme?.mode) {
-            const currentThemePrefs = preferences.theme || {};
-            if (currentThemePrefs.themeId !== theme.themeId || currentThemePrefs.mode !== theme.mode) {
-                setPreferences(prev => ({
-                    ...prev,
-                    theme: {
-                        themeId: theme.themeId,
-                        mode: theme.mode
-                    }
-                }));
-            }
+        if (!theme || !theme.themeId || !theme.mode) {
+            return; // Theme context not ready yet
+        }
+        
+        const currentThemePrefs = preferences.theme || {};
+        if (currentThemePrefs.themeId !== theme.themeId || currentThemePrefs.mode !== theme.mode) {
+            setPreferences(prev => ({
+                ...prev,
+                theme: {
+                    themeId: theme.themeId,
+                    mode: theme.mode
+                }
+            }));
         }
     }, [theme?.themeId, theme?.mode]);
 
     // Apply theme preferences to ThemeProvider when preferences load
     useEffect(() => {
-        if (preferences.theme?.themeId && theme?.selectTheme) {
+        if (!theme || !theme.selectTheme || !theme.toggleMode) {
+            return; // Theme context not ready yet
+        }
+        
+        if (preferences.theme?.themeId) {
             if (preferences.theme.themeId !== theme.themeId) {
                 theme.selectTheme(preferences.theme.themeId);
             }
         }
-        if (preferences.theme?.mode && theme?.mode && theme?.toggleMode) {
+        if (preferences.theme?.mode && theme.mode) {
             if (preferences.theme.mode !== theme.mode) {
                 theme.toggleMode();
             }

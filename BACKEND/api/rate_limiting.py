@@ -29,10 +29,30 @@ def rate_limit(requests=10, window=60, key_prefix='api'):
         @api_view(['POST'])
         def my_view(request):
             ...
+        
+        Or for class-based views:
+        @rate_limit(requests=5, window=60)
+        def create(self, request, *args, **kwargs):
+            ...
     """
     def decorator(func):
         @wraps(func)
-        def wrapper(request, *args, **kwargs):
+        def wrapper(first_arg, *args, **kwargs):
+            # Handle both function-based views and class-based view methods
+            # If first_arg has META attribute, it's the request object
+            # Otherwise, it's self and request is the first element of args
+            if hasattr(first_arg, 'META'):
+                request = first_arg
+                actual_args = args
+            else:
+                # Class-based view method: first_arg is self, args[0] is request
+                request = args[0] if args else None
+                actual_args = args[1:] if len(args) > 1 else ()
+                
+            if request is None:
+                logger.error("Rate limit decorator: could not find request object")
+                return func(first_arg, *args, **kwargs)
+            
             # Get client IP
             ip = get_client_ip(request)
             
@@ -60,8 +80,8 @@ def rate_limit(requests=10, window=60, key_prefix='api'):
             # Increment counter
             cache.set(window_key, count + 1, window)
             
-            # Process request
-            return func(request, *args, **kwargs)
+            # Process request with original arguments
+            return func(first_arg, *args, **kwargs)
         
         return wrapper
     return decorator
@@ -79,7 +99,20 @@ def authenticated_rate_limit(requests=20, window=60, key_prefix='auth_api'):
     """
     def decorator(func):
         @wraps(func)
-        def wrapper(request, *args, **kwargs):
+        def wrapper(first_arg, *args, **kwargs):
+            # Handle both function-based views and class-based view methods
+            if hasattr(first_arg, 'META'):
+                request = first_arg
+                actual_args = args
+            else:
+                # Class-based view method: first_arg is self, args[0] is request
+                request = args[0] if args else None
+                actual_args = args[1:] if len(args) > 1 else ()
+                
+            if request is None:
+                logger.error("Authenticated rate limit decorator: could not find request object")
+                return func(first_arg, *args, **kwargs)
+            
             # Determine identifier (user ID or IP)
             if hasattr(request, 'user') and request.user.is_authenticated:
                 identifier = f'user_{request.user.id}'
@@ -110,8 +143,8 @@ def authenticated_rate_limit(requests=20, window=60, key_prefix='auth_api'):
             # Increment counter
             cache.set(window_key, count + 1, window)
             
-            # Process request
-            return func(request, *args, **kwargs)
+            # Process request with original arguments
+            return func(first_arg, *args, **kwargs)
         
         return wrapper
     return decorator

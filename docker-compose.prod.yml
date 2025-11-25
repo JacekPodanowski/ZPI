@@ -1,0 +1,35 @@
+# Production override for docker-compose
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    # W produkcji backend jest dostępny tylko przez nginx
+    ports: !reset
+      - "${BACKEND_PORT_HOST:-443}:8000"
+
+  studio-frontend:
+    build:
+      target: production
+    # Usuń volume mounting w produkcji
+    volumes: !reset []
+    # Frontend dostępny tylko przez nginx
+    ports: !reset
+      - "${FRONTEND_PORT_HOST:-80}:3000"
+    environment:
+      - NODE_ENV=production
+
+  # Nginx reverse proxy - jedyny punkt wejścia
+  nginx:
+    image: nginx:alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - studio-frontend
