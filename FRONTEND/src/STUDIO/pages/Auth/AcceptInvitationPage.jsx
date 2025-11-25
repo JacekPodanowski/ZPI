@@ -23,7 +23,7 @@ const AcceptInvitationPage = () => {
             }
 
             try {
-                const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.0.104:8000';
+                const API_BASE = import.meta.env.VITE_API_BASE;
                 const response = await fetch(`${API_BASE}/api/v1/accept-invitation/${token}/`, {
                     method: 'GET',
                     headers: {
