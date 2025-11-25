@@ -68,7 +68,7 @@ services:
     volumes:
       - ./BACKEND:/home/appuser/app
     ports:
-      - "${BACKEND_PORT_HOST:-8000}:8000"
+      - "${BACKEND_PORT_LOCAL:-8000}:8000"
     env_file:
       - ./BACKEND/.env
     depends_on:
@@ -105,7 +105,7 @@ services:
       - ./FRONTEND:/app
       - /app/node_modules
     ports:
-      - "${FRONTEND_PORT_HOST:-3000}:3000"
+      - "${FRONTEND_PORT_LOCAL:-3000}:3000"
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - CHOKIDAR_USEPOLLING=true

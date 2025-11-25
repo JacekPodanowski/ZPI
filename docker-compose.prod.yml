@@ -4,9 +4,8 @@
 services:
   backend:
     # W produkcji backend jest dostępny tylko przez nginx
-    ports: !reset []
-    expose:
-      - "8000"
+    ports: !reset
+      - "${BACKEND_PORT_HOST:-443}:8000"
 
   studio-frontend:
     build:
@@ -14,9 +13,8 @@ services:
     # Usuń volume mounting w produkcji
     volumes: !reset []
     # Frontend dostępny tylko przez nginx
-    ports: !reset []
-    expose:
-      - "3000"
+    ports: !reset
+      - "${FRONTEND_PORT_HOST:-80}:3000"
     environment:
       - NODE_ENV=production
 
