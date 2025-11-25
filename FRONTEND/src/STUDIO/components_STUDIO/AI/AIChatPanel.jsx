@@ -1309,6 +1309,12 @@ const AIChatPanel = ({
           placeholder="Napisz co chcesz zmienić..."
           value={input}
           onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              handleSubmit(event);
+            }
+          }}
           disabled={isProcessing}
           variant="outlined"
           size="small"

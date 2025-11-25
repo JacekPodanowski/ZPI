@@ -436,7 +436,7 @@ const StructureMode = () => {
             sx={{
               position: 'absolute',
               top: 16,
-              right: 32,
+              left: 32,
               zIndex: 5,
               pointerEvents: 'all'
             }}
