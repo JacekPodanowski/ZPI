@@ -1,6 +1,3 @@
-# docker-compose.dev.yml
-# Tryb lokalny - bez nginx, porty bezpośrednio dostępne
-
 services:
   # --- Serwis Bazy Danych (PostgreSQL) ---
   db:
@@ -8,14 +5,20 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_postgres_db
     restart: unless-stopped
     volumes:
+      # Utrwala dane bazy danych na dysku hosta, aby nie zniknęły po restarcie kontenera
       - site_db_data:/var/lib/postgresql/data/
     environment:
+      # Te zmienne są wczytywane z GŁÓWNEGO pliku .env (w katalogu z docker-compose.yml)
+      # i używane przez obraz Postgres do stworzenia bazy i użytkownika przy pierwszym uruchomieniu.
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
+      # Udostępnia port bazy danych na zewnątrz, aby można było się do niej podłączyć np. DBeaver.
       - "${DB_PORT_HOST:-5432}:5432"
     healthcheck:
+      # Sprawdza, czy baza danych jest gotowa na przyjmowanie połączeń. Kluczowe dla `depends_on`.
+      # Używamy $$ aby Docker Compose poprawnie przekazał zmienne do powłoki wewnątrz kontenera.
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost -p 5432"]
       interval: 10s
       timeout: 5s
@@ -36,7 +39,8 @@ services:
       retries: 5
       start_period: 5s
 
-  # --- Serwis Setup (Uruchamia migracje, etc.) ---
+  # --- NOWY Serwis Setup (Uruchamia migracje, etc.) ---
+  # Ten serwis uruchomi się, wykona skrypt entrypoint.sh i zakończy działanie.
   backend-setup:
     build:
       context: ./BACKEND
@@ -53,7 +57,7 @@ services:
       redis:
         condition: service_healthy
 
-  # --- Serwis Backendu (Django) - BEZPOŚREDNI PORT 8000 ---
+  # --- Serwis Backendu (Django) ---
   backend:
     build:
       context: ./BACKEND
@@ -64,7 +68,7 @@ services:
     volumes:
       - ./BACKEND:/home/appuser/app
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT_HOST:-8000}:8000"
     env_file:
       - ./BACKEND/.env
     depends_on:
@@ -89,26 +93,31 @@ services:
       redis:
         condition: service_healthy
 
-  # --- Serwis Studio Frontendu (React) - BEZPOŚREDNI PORT 3000 ---
+  # --- Serwis Studio Frontendu (React) ---
   studio-frontend:
     build:
       context: ./FRONTEND
       dockerfile: Dockerfile
-      target: development
+      target: ${FRONTEND_BUILD_TARGET:-development}
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_studio_frontend_app
     restart: unless-stopped
     volumes:
       - ./FRONTEND:/app
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT_HOST:-3000}:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
     depends_on:
       - backend
 
+  # --- Nginx Reverse Proxy with SSL ---
+  # Nginx jest uruchamiany tylko w trybie produkcyjnym przez docker-compose.prod.yml
+  # W trybie lokalnym frontend i backend są dostępne bezpośrednio na portach 3000 i 8000
+
 volumes:
+  # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.
   site_db_data: {}
