@@ -186,12 +186,14 @@ class SiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Site
         fields = [
-            'id', 'owner', 'name', 'identifier', 'color_index', 'team_size',
-            'is_mock', 'template_config', 'created_at', 'updated_at', 'latest_version'
+            'id', 'owner', 'name', 'identifier', 'subdomain', 'is_published', 
+            'published_at', 'color_index', 'team_size', 'is_mock', 
+            'template_config', 'created_at', 'updated_at', 'latest_version'
         ]
-        read_only_fields = ['identifier', 'created_at', 'updated_at', 'owner', 'team_size', 'is_mock']
+        read_only_fields = ['identifier', 'subdomain', 'published_at', 'created_at', 'updated_at', 'owner', 'team_size', 'is_mock']
         extra_kwargs = {
-            'color_index': {'required': False}
+            'color_index': {'required': False},
+            'is_published': {'required': False}
         }
 
     def get_latest_version(self, obj):
@@ -237,8 +239,8 @@ class SiteVersionSerializer(serializers.ModelSerializer):
 class PublicSiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Site
-        fields = ['id', 'identifier', 'name', 'template_config', 'updated_at']
-        read_only_fields = ['id', 'identifier', 'name', 'template_config', 'updated_at']
+        fields = ['id', 'identifier', 'name', 'subdomain', 'is_published', 'template_config', 'updated_at']
+        read_only_fields = ['id', 'identifier', 'name', 'subdomain', 'is_published', 'template_config', 'updated_at']
 
 
 class ClientSerializer(serializers.ModelSerializer):

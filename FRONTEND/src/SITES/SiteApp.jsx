@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import apiClient from '../services/apiClient';
+import UnderConstructionPage from './pages/UnderConstructionPage';
 
 // JEDYNE POTRZEBNE IMPORTY SYSTEMOWE
 import { MODULE_REGISTRY } from './components/modules/ModuleRegistry.js';
@@ -58,6 +59,8 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
   const [config, setConfig] = useState(previewConfig || null);
   const [siteId, setSiteId] = useState(null);
   const [siteIdentifier, setSiteIdentifier] = useState(null);
+  const [siteName, setSiteName] = useState('Ta strona');
+  const [isPublished, setIsPublished] = useState(true); // Default true for preview mode
   const [loading, setLoading] = useState(!previewConfig);
   const [error, setError] = useState(null);
   const [activePageKey, setActivePageKey] = useState(null);
@@ -108,6 +111,13 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
       try {
         const siteData = await fetchPublicSiteConfig(identifier);
         setSiteId(siteData.id);
+        
+        // Store site name for Under Construction page
+        setSiteName(siteData.name || 'Ta strona');
+        
+        // Check if site is published
+        setIsPublished(siteData.is_published !== false); // Default true if field doesn't exist
+        
         if (siteData.identifier) {
           setSiteIdentifier(siteData.identifier);
         }
@@ -263,6 +273,12 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
 
   if (loading) return <div>Loading Site...</div>;
   if (error) return <div>Error: {error}</div>;
+  
+  // Show Under Construction page if site is not published (and not in preview mode)
+  if (!isPreview && !isPublished) {
+    return <UnderConstructionPage siteName={siteName} />;
+  }
+  
   if (!config || !activePage) return <div>Site configuration is incomplete.</div>;
 
   const styleId = resolveStyleIdFromConfig(config);
