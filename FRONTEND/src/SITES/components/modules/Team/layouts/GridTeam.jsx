@@ -160,6 +160,7 @@ const GridTeam = ({ content, style, siteId, isEditing, moduleId, pageId, typogra
                     <EditableImage
                       value={member.image}
                       onSave={(newUrl) => handleMemberImageSave(memberIndex, newUrl)}
+                      elementId={`${pageId}-${moduleId}-team-photo-${memberIndex}`}
                       alt={member.name}
                       className="w-full h-full object-cover"
                       isModuleSelected={true}

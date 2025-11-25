@@ -37,6 +37,12 @@ CMD ["sh", "-c", "echo 'Starting serve from:' && pwd && ls -la && ls -la dist/ &
 # Development stage (default for local dev)
 FROM node:22-alpine AS development
 WORKDIR /app
+ENV NODE_ENV=development \
+    CHOKIDAR_USEPOLLING=true \
+    WATCHPACK_POLLING=true \
+    VITE_USE_POLLING=true \
+    VITE_POLL_INTERVAL=200 \
+    FAST_REFRESH=true
 COPY package*.json ./
 RUN npm install
 COPY . .

@@ -175,6 +175,7 @@ const CardServices = ({ content, style, isEditing, moduleId, pageId, typography 
                           <EditableImage
                             value={service.image}
                             onSave={(newUrl) => handleServiceFieldSave(index, 'image', newUrl)}
+                            elementId={`${pageId}-${moduleId}-service-card-image-${index}`}
                             alt={serviceName || 'Usługa'}
                             className="w-full h-full object-cover"
                             isModuleSelected={true}
@@ -342,6 +343,7 @@ const CardServices = ({ content, style, isEditing, moduleId, pageId, typography 
                           <EditableImage
                             value={service.image}
                             onSave={(newUrl) => handleServiceFieldSave(index, 'image', newUrl)}
+                            elementId={`${pageId}-${moduleId}-service-simple-image-${index}`}
                             alt={serviceName || 'Usługa'}
                             className="w-full h-full object-cover"
                             isModuleSelected={true}

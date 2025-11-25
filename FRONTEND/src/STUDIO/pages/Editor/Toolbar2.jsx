@@ -37,6 +37,7 @@ import useNewEditorStore from '../../store/newEditorStore';
 import { alpha } from '@mui/material/styles';
 import { STYLE_LIST, DEFAULT_STYLE_ID } from '../../../SITES/styles';
 import ImageUploader from '../../../components/ImageUploader';
+import MediaPanel from '../../components/MediaPanel';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
 const TOOLBAR_WIDTH_MIN = 175;
@@ -1203,11 +1204,12 @@ const Toolbar2 = ({
       
       case 'media':
         return (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '13px', color: textMuted }}>
-              Media library coming soon
-            </Typography>
-          </Box>
+          <MediaPanel
+            textPrimary={textPrimary}
+            textMuted={textMuted}
+            accentColor={accentColor}
+            isDarkMode={isDarkMode}
+          />
         );
       
       case 'settings':

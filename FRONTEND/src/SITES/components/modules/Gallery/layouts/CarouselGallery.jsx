@@ -71,6 +71,7 @@ const CarouselGallery = ({ content, style, isEditing, moduleId, pageId }) => {
                   <EditableImage
                     value={imgUrlRaw}
                     onSave={(newUrl) => handleImageSave(idx, newUrl)}
+                    elementId={`${pageId}-${moduleId}-carousel-image-${idx}`}
                     alt={caption || `Image ${idx + 1}`}
                     className="w-full h-64 object-cover"
                     isModuleSelected={true}

@@ -116,6 +116,7 @@ const SplitHero = ({ content, style, isEditing, moduleId, pageId, typography }) 
             <EditableImage
               value={heroMedia}
               onSave={handleImageSave}
+              elementId={`${pageId}-${moduleId}-hero-image`}
               alt={content.title || content.heading || 'Hero image'}
               className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
               isModuleSelected={true}
