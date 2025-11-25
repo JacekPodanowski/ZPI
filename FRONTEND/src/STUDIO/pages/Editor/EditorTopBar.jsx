@@ -104,12 +104,31 @@ const EditorTopBar = () => {
   const canUndoLocal = currentHistory?.past?.length > 0;
   const canRedoLocal = currentHistory?.future?.length > 0;
 
+  const describeHistoryEntry = (meta) => {
+    if (!meta) {
+      return '';
+    }
+    if (meta.description && meta.description.trim()) {
+      return meta.description.trim();
+    }
+    if (meta.actionType) {
+      return meta.actionType.replace(/_/g, ' ');
+    }
+    return '';
+  };
+
+  const nextUndoMeta = canUndoLocal ? currentHistory?.past?.[currentHistory.past.length - 1]?.meta : null;
+  const nextRedoMeta = canRedoLocal ? currentHistory?.future?.[currentHistory.future.length - 1]?.meta : null;
+
+  const undoActionText = describeHistoryEntry(nextUndoMeta);
+  const redoActionText = describeHistoryEntry(nextRedoMeta);
+
   const undoTooltip = canUndoLocal
-    ? `Undo last change (Ctrl+Z)`
-    : 'No changes to undo';
+    ? `Cofnij: ${undoActionText || 'ostatnia zmiana'} (Ctrl+Z)`
+    : 'Brak zmian do cofnięcia';
   const redoTooltip = canRedoLocal
-    ? `Redo last change (Ctrl+Y)`
-    : 'No changes to redo';
+    ? `Przywróć: ${redoActionText || 'ostatnia zmiana'} (Ctrl+Y)`
+    : 'Brak zmian do przywrócenia';
 
   const selectedPage = getSelectedPage();
   const savedStatusText = isSaving
@@ -119,8 +138,8 @@ const EditorTopBar = () => {
       : lastSavedAt
         ? `Saved ${formatRelativeTime(lastSavedAt)}`
         : 'Never saved';
-  const undoLabel = canUndoLocal ? 'Undo (Ctrl+Z)' : 'Undo';
-  const redoLabel = canRedoLocal ? 'Redo (Ctrl+Y)' : 'Redo';
+  const undoLabel = canUndoLocal ? 'Cofnij (Ctrl+Z)' : 'Cofnij';
+  const redoLabel = canRedoLocal ? 'Przywróć (Ctrl+Y)' : 'Przywróć';
 
   const handleUndo = () => {
     if (canUndoLocal) {
