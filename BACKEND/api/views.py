@@ -4321,7 +4321,7 @@ def get_domain_orders(request):
 @permission_classes([IsAuthenticated])
 def update_domain_order(request, order_id):
     """Update domain order configuration (e.g., target URL, proxy mode)."""
-    from .tasks import purge_cloudflare_cache, reconfigure_domain_target
+    from .tasks import purge_cloudflare_cache
     
     try:
         # Get the order
@@ -4339,33 +4339,25 @@ def update_domain_order(request, order_id):
     
     # Allow updating target and proxy_mode fields
     updated = False
-    needs_dns_reconfig = False
     
     target = request.data.get('target')
-    if target is not None and target != order.target:
+    if target is not None:
         order.target = target
         updated = True
-        needs_dns_reconfig = True
         logger.info(f"[Domain Order] Updated target for {order.domain_name}: {target}")
     
     proxy_mode = request.data.get('proxy_mode')
-    if proxy_mode is not None and proxy_mode != order.proxy_mode:
+    if proxy_mode is not None:
         order.proxy_mode = proxy_mode
         updated = True
-        needs_dns_reconfig = True
         logger.info(f"[Domain Order] Updated proxy_mode for {order.domain_name}: {proxy_mode}")
     
     if updated:
         order.save()
         
-        if needs_dns_reconfig and order.status == DomainOrder.OrderStatus.ACTIVE:
-            # Trigger full DNS reconfiguration (updates DNS records, Page Rules, etc.)
-            reconfigure_domain_target.delay(order.id)
-            logger.info(f"[Domain Order] Triggered DNS reconfiguration for {order.domain_name}")
-        else:
-            # Just purge cache if order not active yet
-            purge_cloudflare_cache.delay(order.domain_name)
-            logger.info(f"[Domain Order] Triggered cache purge for {order.domain_name}")
+        # Purge Cloudflare cache so Worker sees changes immediately
+        purge_cloudflare_cache.delay(order.domain_name)
+        logger.info(f"[Domain Order] Triggered cache purge for {order.domain_name}")
     
     serializer = DomainOrderSerializer(order)
     return Response(serializer.data, status=status.HTTP_200_OK)
