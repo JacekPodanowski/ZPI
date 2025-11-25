@@ -144,6 +144,7 @@ const NarrativeAbout = ({ content, style, isEditing, moduleId, pageId, typograph
               <EditableImage
                 value={content.image}
                 onSave={handleImageSave}
+                elementId={`${pageId}-${moduleId}-narrative-image`}
                 alt={content.title}
                 className={`w-full h-auto ${roundedClass} ${shadowClass} sticky top-8`}
                 isModuleSelected={true}

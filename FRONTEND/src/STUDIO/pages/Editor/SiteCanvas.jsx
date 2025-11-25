@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Box, Stack, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getModuleDefinition, getDefaultModuleContent, buildNavigationContent } from './moduleDefinitions';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
 import { getPreviewTheme } from './siteThemes';
+import ContextMenu from './ContextMenu';
 
 // Component to render module in real mode and measure its height
 const RealModeModule = ({
@@ -73,12 +75,14 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
   const {
     addModule,
     moveModule,
+    removeModule,
     site,
     getModuleHeight,
     setDragging,
     entryPointPageId
   } = useNewEditorStore();
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ open: false, position: { x: 0, y: 0 }, moduleId: null });
   const theme = useTheme();
   const editorColors = getEditorColorTokens(theme);
   const {
@@ -527,6 +531,17 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                 >
                   <Box
                     draggable
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const definition = getModuleDefinition(module.type);
+                      setContextMenu({
+                        open: true,
+                        position: { x: e.clientX, y: e.clientY },
+                        moduleId: module.id,
+                        moduleLabel: definition.label
+                      });
+                    }}
                     onDragStart={(e) => {
                       console.log('[SiteCanvas] Drag start - module:', module.id, 'from page:', page.id);
                       e.dataTransfer.effectAllowed = 'move';
@@ -694,6 +709,26 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
           Drop modules here
         </Box>
       )}
+
+      {/* Context Menu */}
+      <ContextMenu
+        open={contextMenu.open}
+        position={contextMenu.position}
+        onClose={() => setContextMenu({ ...contextMenu, open: false })}
+        title={contextMenu.moduleLabel}
+        options={[
+          {
+            label: 'Usuń',
+            icon: <DeleteIcon sx={{ fontSize: 18 }} />,
+            onClick: () => {
+              if (contextMenu.moduleId) {
+                removeModule(page.id, contextMenu.moduleId);
+              }
+            },
+            color: '#d32f2f'
+          }
+        ]}
+      />
     </Box>
   );
 };

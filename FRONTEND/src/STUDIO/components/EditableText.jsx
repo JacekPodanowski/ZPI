@@ -24,6 +24,8 @@ const EditableText = ({
   const [editValue, setEditValue] = useState(value);
   const inputRef = useRef(null);
   const boxRef = useRef(null);
+  const displayRef = useRef(null);
+  const [capturedStyles, setCapturedStyles] = useState({});
   const theme = useTheme();
   const editorColors = getEditorColorTokens(theme);
 
@@ -39,6 +41,33 @@ const EditableText = ({
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing && displayRef.current) {
+      const computed = window.getComputedStyle(displayRef.current);
+      setCapturedStyles({
+        fontFamily: computed.fontFamily,
+        fontSize: computed.fontSize,
+        fontWeight: computed.fontWeight,
+        lineHeight: computed.lineHeight,
+        letterSpacing: computed.letterSpacing,
+        textTransform: computed.textTransform,
+        textAlign: computed.textAlign,
+        color: computed.color
+      });
+    }
+  }, [isEditing, style, value]);
+
+  const typographyStyles = {
+    fontFamily: capturedStyles.fontFamily || style.fontFamily,
+    fontSize: capturedStyles.fontSize || style.fontSize,
+    fontWeight: capturedStyles.fontWeight || style.fontWeight,
+    lineHeight: capturedStyles.lineHeight || style.lineHeight,
+    letterSpacing: capturedStyles.letterSpacing || style.letterSpacing,
+    textTransform: capturedStyles.textTransform || style.textTransform,
+    textAlign: capturedStyles.textAlign || style.textAlign || 'inherit',
+    color: capturedStyles.color || style.color || 'inherit'
+  };
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -96,8 +125,10 @@ const EditableText = ({
           borderRadius: '4px',
           padding: '4px',
           backgroundColor: 'rgba(146, 0, 32, 0.05)',
-          textAlign: 'center'
+          textAlign: typographyStyles.textAlign,
+          ...typographyStyles
         }}
+        style={style}
       >
         <TextField
           inputRef={inputRef}
@@ -112,25 +143,21 @@ const EditableText = ({
           InputProps={{
             disableUnderline: true,
             style: {
-              textAlign: 'center',
+              ...typographyStyles,
               ...style
             }
           }}
           sx={{
             '& .MuiInputBase-root': {
-              fontSize: 'inherit',
-              fontFamily: 'inherit',
-              fontWeight: 'inherit',
-              color: 'inherit',
-              textAlign: 'center'
+              ...typographyStyles,
+              color: typographyStyles.color,
+              textAlign: typographyStyles.textAlign
             },
             '& .MuiInputBase-input': {
-              fontSize: 'inherit',
-              fontFamily: 'inherit',
-              fontWeight: 'inherit',
-              color: 'inherit',
+              ...typographyStyles,
+              color: typographyStyles.color,
               padding: 0,
-              textAlign: 'center'
+              textAlign: typographyStyles.textAlign
             }
           }}
         />
@@ -140,6 +167,7 @@ const EditableText = ({
 
   return (
     <Component
+      ref={displayRef}
       className={className}
       data-editable-text="true"
       style={{
@@ -147,6 +175,9 @@ const EditableText = ({
         cursor: 'text',
         position: 'relative',
         zIndex: 100
+      }}
+      onMouseDown={(e) => {
+        e.stopPropagation();
       }}
       onClick={handleClick}
       onMouseEnter={(e) => {

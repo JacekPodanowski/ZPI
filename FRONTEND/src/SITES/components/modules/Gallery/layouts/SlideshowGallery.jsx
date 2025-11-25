@@ -75,6 +75,7 @@ const SlideshowGallery = ({ content, style, isEditing, moduleId, pageId }) => {
                 <EditableImage
                   value={imgUrlRaw}
                   onSave={(newUrl) => handleImageSave(currentIndex, newUrl)}
+                  elementId={`${pageId}-${moduleId}-slideshow-image-${currentIndex}`}
                   alt={caption || `Image ${currentIndex + 1}`}
                   className="w-full h-full object-cover"
                   isModuleSelected={true}

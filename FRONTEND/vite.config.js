@@ -1,6 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 
+const enablePolling = process.env.CHOKIDAR_USEPOLLING === 'true' || process.env.VITE_USE_POLLING === 'true';
+const pollInterval = Number(process.env.VITE_POLL_INTERVAL ?? 200);
+const hmrHost = process.env.VITE_HMR_HOST;
+const hmrPort = process.env.VITE_HMR_PORT ? Number(process.env.VITE_HMR_PORT) : undefined;
+const hmrProtocol = process.env.VITE_HMR_PROTOCOL;
+
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
@@ -91,6 +97,15 @@ export default defineConfig({
       '.railway.app',
       '.up.railway.app',
     ],
+    watch: {
+      usePolling: enablePolling,
+      interval: pollInterval,
+    },
+    hmr: hmrHost || hmrPort || hmrProtocol ? {
+      host: hmrHost,
+      port: hmrPort,
+      protocol: hmrProtocol,
+    } : undefined,
     // SSL configuration for HTTPS (port 3001)
     https: process.env.VITE_HTTPS === 'true' && process.env.VITE_SSL_CERT ? {
       cert: process.env.VITE_SSL_CERT,

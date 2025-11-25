@@ -6,6 +6,7 @@ import StructureMode from './StructureMode';
 import DetailMode from './DetailMode';
 import EditorTopBar from './EditorTopBar';
 import EditorErrorBoundary from './EditorErrorBoundary';
+import ImageSearchIntegration from '../../components/ImageSearchIntegration';
 import { fetchSiteById } from '../../../services/siteService';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
@@ -277,7 +278,7 @@ const NewEditorPage = () => {
     }
 
     // Use backend URL for WebSocket
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.104:8000/api/v1';
+    const API_BASE = import.meta.env.VITE_API_BASE_URL;
     const backendHost = API_BASE.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '');
     const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
@@ -369,6 +370,9 @@ const NewEditorPage = () => {
         <Box sx={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           {editorMode === 'structure' ? <StructureMode /> : <DetailMode />}
         </Box>
+
+        {/* Image Search Integration - Floating button + Modal/Panel */}
+        {editorMode === 'detail' && <ImageSearchIntegration />}
       </Box>
     </EditorErrorBoundary>
   );

@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { isTempBlobUrl } from '../services/tempMediaCache'
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://192.168.0.104:8000'
+const API_BASE = import.meta.env.VITE_API_BASE
 
 const trimTrailingSlash = (value = '') => (value.endsWith('/') ? value.slice(0, -1) : value)
 
