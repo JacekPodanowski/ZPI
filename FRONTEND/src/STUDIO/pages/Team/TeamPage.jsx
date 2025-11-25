@@ -276,7 +276,7 @@ const TeamPage = () => {
             // Check if editing owner
             if (editingMember?.is_owner) {
                 // Update owner via user profile endpoint
-                const response = await fetch(`${import.meta.env.VITE_API_BASE , {
+                const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/user/profile/`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
