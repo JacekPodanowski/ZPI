@@ -227,6 +227,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://136\.115\.41\.232:\d+$",
     r"^https://.*\.trycloudflare\.com$",  # Allow Cloudflare Tunnel
     r"^https://.*\.up\.railway\.app$",     # Allow Railway deployments
+    r"^https://.*\.youreasysite\.pl$",     # Allow all subdomains (user sites)
+    r"^http://.*\.youreasysite\.pl$",      # Allow all subdomains (HTTP for dev)
     r"^null$",  # Allow local HTML files for testing
 ]
 CORS_ALLOW_CREDENTIALS = True
