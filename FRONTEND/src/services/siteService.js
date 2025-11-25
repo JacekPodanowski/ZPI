@@ -135,3 +135,8 @@ export const fetchAttendanceReport = async (siteId, { hostType, hostId, limit } 
     const response = await apiClient.get(url);
     return response.data;
 };
+
+export const publishSite = async (siteId) => {
+    const response = await apiClient.post(`/sites/${siteId}/publish/`);
+    return response.data;
+};
