@@ -5349,7 +5349,7 @@ def resolve_domain(request, domain):
     Returns the target URL for domain redirect.
     
     GET /api/v1/domains/resolve/{domain}/
-    Response: {"target": "youtube.com"} or {"target": "1234-mysite.youreasysite.com"}
+    Response: {"target": "youtube.com"} or {"target": "1234-mysite.youreasysite.pl"}
     """
     try:
         # Find active domain order
@@ -5370,7 +5370,7 @@ def resolve_domain(request, domain):
         if not target:
             # Default to site subdomain
             site = domain_order.site
-            target = f"{site.identifier}.youreasysite.com"
+            target = f"{site.identifier}.youreasysite.pl"
             logger.info(f"[Domain Resolve] No target set, using default: {target}")
         
         logger.info(f"[Domain Resolve] {domain} -> {target}")

@@ -111,6 +111,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
+      - VITE_APP_ROUTING_MODE=subdomain
+      - VITE_BUILD_TARGET=STUDIO
     depends_on:
       - backend
 
