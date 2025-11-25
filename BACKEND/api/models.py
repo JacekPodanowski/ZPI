@@ -284,7 +284,7 @@ class Site(models.Model):
         editable=False,
         blank=True,
         null=True,
-        help_text='Auto-generated subdomain (e.g., 1234-nazwa.youreasysite.com)'
+        help_text='Auto-generated subdomain (e.g., 1234-nazwa.youreasysite.pl)'
     )
     is_published = models.BooleanField(
         default=False,
@@ -315,7 +315,7 @@ class Site(models.Model):
         desired_identifier = generate_site_identifier(self.pk, self.name, owner_first, owner_last)
         
         # Auto-generate subdomain based on identifier
-        desired_subdomain = f"{desired_identifier}.youreasysite.com" if desired_identifier else None
+        desired_subdomain = f"{desired_identifier}.youreasysite.pl" if desired_identifier else None
         
         # Update both identifier and subdomain if they changed
         updates = {}
