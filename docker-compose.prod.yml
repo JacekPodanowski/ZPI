@@ -17,6 +17,8 @@ services:
       - "${FRONTEND_PORT_HOST:-80}:3000"
     environment:
       - NODE_ENV=production
+      - VITE_APP_ROUTING_MODE=subdomain
+      - VITE_BUILD_TARGET=STUDIO
 
   # Nginx reverse proxy - jedyny punkt wejścia
   nginx:
