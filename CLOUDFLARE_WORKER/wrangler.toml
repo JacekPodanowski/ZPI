@@ -4,7 +4,7 @@ compatibility_date = "2024-01-01"
 
 # Environment Variables
 [vars]
-BACKEND_API = "https://str-rivers-acrobat-cartridges.trycloudflare.com/api/v1/domains/resolve"
+BACKEND_API = "https://youreasysite-production.up.railway.app/api/v1/domains/resolve/"
 
 # Optional: set custom routes for domains
 # [[routes]]

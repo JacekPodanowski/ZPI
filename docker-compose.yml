@@ -1,3 +1,6 @@
+# docker-compose.dev.yml
+# Tryb lokalny - bez nginx, porty bezpośrednio dostępne
+
 services:
   # --- Serwis Bazy Danych (PostgreSQL) ---
   db:
@@ -5,20 +8,14 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_postgres_db
     restart: unless-stopped
     volumes:
-      # Utrwala dane bazy danych na dysku hosta, aby nie zniknęły po restarcie kontenera
       - site_db_data:/var/lib/postgresql/data/
     environment:
-      # Te zmienne są wczytywane z GŁÓWNEGO pliku .env (w katalogu z docker-compose.yml)
-      # i używane przez obraz Postgres do stworzenia bazy i użytkownika przy pierwszym uruchomieniu.
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      # Udostępnia port bazy danych na zewnątrz, aby można było się do niej podłączyć np. DBeaver.
       - "${DB_PORT_HOST:-5432}:5432"
     healthcheck:
-      # Sprawdza, czy baza danych jest gotowa na przyjmowanie połączeń. Kluczowe dla `depends_on`.
-      # Używamy $$ aby Docker Compose poprawnie przekazał zmienne do powłoki wewnątrz kontenera.
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost -p 5432"]
       interval: 10s
       timeout: 5s
@@ -39,8 +36,7 @@ services:
       retries: 5
       start_period: 5s
 
-  # --- NOWY Serwis Setup (Uruchamia migracje, etc.) ---
-  # Ten serwis uruchomi się, wykona skrypt entrypoint.sh i zakończy działanie.
+  # --- Serwis Setup (Uruchamia migracje, etc.) ---
   backend-setup:
     build:
       context: ./BACKEND
@@ -57,25 +53,21 @@ services:
       redis:
         condition: service_healthy
 
-  # --- Serwis Backendu (Django) ---
+  # --- Serwis Backendu (Django) - BEZPOŚREDNI PORT 8000 ---
   backend:
     build:
       context: ./BACKEND
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    # Use Daphne ASGI server to support WebSocket connections
-    #command: python manage.py runserver 0.0.0.0:8000
     command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
     volumes:
-      # POPRAWKA: Montuje kod z nowego katalogu backendu, aby zapewnić hot-reloading.
       - ./BACKEND:/home/appuser/app
     ports:
-      - "${BACKEND_PORT_HOST:-8000}:8000"
+      - "8000:8000"
     env_file:
       - ./BACKEND/.env
     depends_on:
-      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
 
@@ -92,37 +84,31 @@ services:
     env_file:
       - ./BACKEND/.env
     depends_on:
-      # ZMIANA: Czeka, aż serwis setup zakończy się sukcesem
       backend-setup:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
 
-  # --- Serwis Studio Frontendu (React) ---
+  # --- Serwis Studio Frontendu (React) - BEZPOŚREDNI PORT 3000 ---
   studio-frontend:
     build:
       context: ./FRONTEND
       dockerfile: Dockerfile
-      # Use production target for optimized build
-      target: ${FRONTEND_BUILD_TARGET:-development}
+      target: development
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_studio_frontend_app
     restart: unless-stopped
     volumes:
-      # Only mount in development mode
       - ./FRONTEND:/app
       - /app/node_modules
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      # Niezbędne do poprawnego działania hot-reload w Dockerze
+      - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
-      # Dodatkowa zmienna dla nowszych wersji Reacta (react-scripts >= 5.x)
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
     depends_on:
       - backend
 
 volumes:
-  # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.
   site_db_data: {}
