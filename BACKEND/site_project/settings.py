@@ -86,7 +86,6 @@ if SUPABASE_URL:
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '192.168.0.104',
     '136.115.41.232',
     '.trycloudflare.com',
     'youreasysite.pl',

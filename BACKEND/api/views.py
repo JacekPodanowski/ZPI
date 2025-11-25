@@ -2126,8 +2126,8 @@ class FileUploadView(APIView):
 
 @extend_schema(
     tags=['Sites'],
-    summary='Trigger site publish',
-    description='Invoke the Vercel build hook to publish the specified site and mark it as published.',
+    summary='Publish site',
+    description='Mark the site as published so it becomes publicly accessible on its subdomain.',
     request=None,
     responses={
         200: inline_serializer(
@@ -2141,7 +2141,6 @@ class FileUploadView(APIView):
             },
         ),
         404: OpenApiResponse(description='Site not found'),
-        500: OpenApiResponse(description='Failed to trigger Vercel build'),
     },
 )
 @api_view(['POST'])
@@ -2152,37 +2151,23 @@ def publish_site(request, site_id):
     except Site.DoesNotExist:
         return Response({'error': 'Site not found'}, status=404)
 
-    base_hook_url = getattr(settings, 'VERCEL_BUILD_HOOK_URL', None)
-    if not base_hook_url:
-        logger.error("VERCEL_BUILD_HOOK_URL is not configured in the environment.")
-        return Response({'error': 'Vercel Build Hook URL is not configured on the server.'}, status=500)
-
-    hook_url = f"{base_hook_url}?siteId={site.id}"
-
-    try:
-        response = requests.post(hook_url)
-        response.raise_for_status()
-        
-        # Mark site as published
-        is_first_publish = not site.is_published
-        site.is_published = True
-        if is_first_publish and not site.published_at:
-            site.published_at = timezone.now()
-        site.save()
-        
-        logger.info("Successfully published site ID %s (%s) - subdomain: %s", 
-                   site.id, site.identifier, site.subdomain)
-        
-        return Response({
-            'message': 'Site published successfully',
-            'site_identifier': site.identifier,
-            'subdomain': site.subdomain,
-            'is_published': site.is_published,
-            'published_at': site.published_at,
-        })
-    except requests.RequestException as exc:
-        logger.error("Failed to trigger Vercel build for site ID %s: %s", site.id, exc)
-        return Response({'error': 'Failed to trigger Vercel build', 'details': str(exc)}, status=500)
+    # Mark site as published
+    is_first_publish = not site.is_published
+    site.is_published = True
+    if is_first_publish and not site.published_at:
+        site.published_at = timezone.now()
+    site.save()
+    
+    logger.info("Successfully published site ID %s (%s) - subdomain: %s", 
+               site.id, site.identifier, site.subdomain)
+    
+    return Response({
+        'message': 'Site published successfully',
+        'site_identifier': site.identifier,
+        'subdomain': site.subdomain,
+        'is_published': site.is_published,
+        'published_at': site.published_at,
+    })
 
 
 @tag_viewset('Custom Components')

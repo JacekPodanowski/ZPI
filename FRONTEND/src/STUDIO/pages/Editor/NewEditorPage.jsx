@@ -278,7 +278,7 @@ const NewEditorPage = () => {
     }
 
     // Use backend URL for WebSocket
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://192.168.0.104:8000/api/v1';
+    const API_BASE = import.meta.env.VITE_API_BASE_URL;
     const backendHost = API_BASE.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '');
     const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
