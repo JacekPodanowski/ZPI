@@ -95,6 +95,7 @@ const GridAbout = ({ content, style, isEditing, moduleId, pageId, typography }) 
             <EditableImage
               value={content.image}
               onSave={handleImageSave}
+              elementId={`${pageId}-${moduleId}-about-image`}
               alt={content.title}
               className={`w-full h-auto ${roundedClass} ${shadowClass}`}
               isModuleSelected={true}

@@ -1,14 +1,16 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import { Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { Delete, Tune as TuneIcon, Image as ImageIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
+import useImageSearchStore from '../../store/imageSearchStore';
 import ModuleRenderer from './ModuleRenderer';
 import { getPreviewTheme } from './siteThemes';
 import { useToast } from '../../../contexts/ToastContext';
 import { getDefaultModuleContent, getModuleDefinition } from './moduleDefinitions';
+import ContextMenu from './ContextMenu';
 
 // Wrapper component to measure module heights
-const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, devicePreview }) => {
+const MeasuredModule = ({ module, pageId, isSelected, onDelete, onContextMenu, previewTheme, devicePreview }) => {
   const moduleRef = useRef(null);
   const { recordModuleHeight, selectModule } = useNewEditorStore();
   
@@ -44,6 +46,35 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
       id={`module-${module.id}`}
       ref={moduleRef}
       onClick={handleModuleClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Wykryj typ elementu na którym kliknięto
+        const target = e.target;
+        let targetType = 'module';
+        let targetData = module;
+        
+        // Sprawdź czy kliknięto na edytowalny tekst
+        const editableText = target.closest('[data-editable-text="true"]');
+        if (editableText) {
+          targetType = 'text';
+          targetData = { module, textElement: editableText };
+        }
+        
+        // Sprawdź czy kliknięto na edytowalny obraz
+        const editableImage = target.closest('[data-editable-image="true"]');
+        if (editableImage) {
+          targetType = 'image';
+          const elementId = editableImage.getAttribute('data-element-id');
+          targetData = { module, imageElement: editableImage, elementId };
+        }
+        
+        selectModule(module.id); // Zaznacz moduł
+        if (onContextMenu) {
+          onContextMenu(e, targetData, targetType);
+        }
+      }}
       sx={{
         position: 'relative',
         outline: isSelected 
@@ -108,12 +139,21 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, previewTheme, de
 };
 
 const DetailCanvas = () => {
-  const { selectedModuleId, selectedPageId, removeModule, addModule, moveModule, setDragging } = useNewEditorStore();
+  const { selectedModuleId, selectedPageId, removeModule, addModule, moveModule, setDragging, selectModule } = useNewEditorStore();
   const addToast = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [moduleToDelete, setModuleToDelete] = React.useState(null);
   const [isCanvasDragOver, setIsCanvasDragOver] = React.useState(false);
   const [dragOverIndex, setDragOverIndex] = React.useState(null);
+  const [contextMenu, setContextMenu] = React.useState({ 
+    open: false, 
+    position: { x: 0, y: 0 }, 
+    target: null, 
+    targetType: null,
+    moduleId: null
+  });
+  const setActiveImageElement = useImageSearchStore((state) => state.setActiveElement);
+  const openImageModal = useImageSearchStore((state) => state.openModal);
   
   // Subscribe to the pages array so component re-renders when it changes
   const pages = useNewEditorStore(state => state.site?.pages || []);
@@ -218,68 +258,22 @@ const DetailCanvas = () => {
     handleDropAtIndex(event, dragOverIndex ?? page?.modules.length ?? 0);
   };
 
-  const handleModuleDragStart = (event, module) => {
-    if (!page) return;
-    const definition = getModuleDefinition(module.type);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('moduleId', module.id);
-    event.dataTransfer.setData('sourcePageId', page.id);
-
-    const dragPreview = document.createElement('div');
-    dragPreview.style.cssText = `
-      position: absolute;
-      top: -1000px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 16px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    `;
-
-    dragPreview.innerHTML = `
-      <div style="
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        background: ${definition.color};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      ">
-        <svg style="width: 18px; height: 18px; fill: white;" viewBox="0 0 24 24">
-          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-        </svg>
-      </div>
-      <span style="
-        font-size: 14px;
-        font-weight: 500;
-        color: rgb(30, 30, 30);
-      ">${definition.label}</span>
-    `;
-
-    document.body.appendChild(dragPreview);
-    event.dataTransfer.setDragImage(dragPreview, 75, 25);
-    setTimeout(() => {
-      document.body.removeChild(dragPreview);
-    }, 0);
-
-    event.stopPropagation();
-    setDragging(true, {
-      type: 'module',
-      moduleId: module.id,
-      pageId: page.id,
-      source: 'canvas'
+  const handleContextMenu = (e, target, targetType) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Wyciągnij moduleId z target (może być bezpośrednio module lub obiekt z module)
+    const moduleId = target?.module?.id || target?.id || null;
+    
+    // Use pageX/pageY which are relative to the entire document, not viewport
+    // This prevents toolbar width from offsetting the menu position
+    setContextMenu({
+      open: true,
+      position: { x: e.clientX, y: e.clientY },
+      target,
+      targetType,
+      moduleId
     });
-  };
-
-  const handleModuleDragEnd = () => {
-    setDragging(false);
-    setIsCanvasDragOver(false);
-    setDragOverIndex(null);
   };
 
   const handleModuleDragOver = (event, index) => {
@@ -383,9 +377,6 @@ const DetailCanvas = () => {
           return (
             <React.Fragment key={module.id}>
               <Box
-                draggable
-                onDragStart={(e) => handleModuleDragStart(e, module)}
-                onDragEnd={handleModuleDragEnd}
                 onDragOver={(e) => handleModuleDragOver(e, index)}
                 onDragEnter={(e) => handleModuleDragOver(e, index)}
                 onDrop={(e) => handleModuleDrop(e, index)}
@@ -422,6 +413,7 @@ const DetailCanvas = () => {
                   pageId={page.id}
                   isSelected={selectedModuleId === module.id}
                   onDelete={(e) => handleDeleteModule(module.id, e)}
+                  onContextMenu={handleContextMenu}
                   previewTheme={previewTheme}
                   devicePreview={devicePreview}
                 />
@@ -455,6 +447,87 @@ const DetailCanvas = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Context Menu */}
+      <ContextMenu
+        open={contextMenu.open}
+        position={contextMenu.position}
+        onClose={() => setContextMenu({ ...contextMenu, open: false })}
+        title={
+          contextMenu.targetType === 'text'
+            ? 'Tekst'
+            : contextMenu.targetType === 'image'
+            ? 'Obraz'
+            : contextMenu.target?.type
+            ? getModuleDefinition(contextMenu.target.type)?.label || 'Moduł'
+            : contextMenu.target?.module?.type
+            ? getModuleDefinition(contextMenu.target.module.type)?.label || 'Moduł'
+            : 'Moduł'
+        }
+        options={(() => {
+          if (contextMenu.targetType === 'module' && contextMenu.target) {
+            return [
+              {
+                label: 'Usuń',
+                icon: <Delete sx={{ fontSize: 18 }} />,
+                onClick: () => {
+                  if (contextMenu.moduleId && page) {
+                    removeModule(page.id, contextMenu.moduleId);
+                    addToast('Module deleted', { variant: 'success' });
+                  }
+                },
+                color: '#d32f2f'
+              },
+              {
+                label: 'Ustawienia',
+                icon: <TuneIcon sx={{ fontSize: 18 }} />,
+                onClick: () => {
+                  selectModule(contextMenu.moduleId);
+                }
+              }
+            ];
+          } else if (contextMenu.targetType === 'text') {
+            return [
+              {
+                label: 'Usuń',
+                icon: <Delete sx={{ fontSize: 18 }} />,
+                onClick: () => {
+                  if (contextMenu.moduleId && page) {
+                    removeModule(page.id, contextMenu.moduleId);
+                    addToast('Module deleted', { variant: 'success' });
+                  }
+                },
+                color: '#d32f2f'
+              },
+              {
+                label: 'Ustawienia',
+                icon: <TuneIcon sx={{ fontSize: 18 }} />,
+                onClick: () => {
+                  selectModule(contextMenu.moduleId);
+                }
+              }
+            ];
+          } else if (contextMenu.targetType === 'image' && contextMenu.target) {
+            return [
+              {
+                label: 'Zmień obraz',
+                icon: <ImageIcon sx={{ fontSize: 18 }} />,
+                onClick: () => {
+                  const elementId = contextMenu.target.elementId;
+                  if (elementId) {
+                    localStorage.setItem('selectedImageElement', elementId);
+                    window.dispatchEvent(new Event('imageSelectionChange'));
+                    setActiveImageElement(elementId, 'single');
+                    openImageModal();
+                  }
+                  selectModule(contextMenu.moduleId);
+                }
+              }
+            ];
+          }
+          return [];
+        })()}
+      />
     </Box>
   );
 };

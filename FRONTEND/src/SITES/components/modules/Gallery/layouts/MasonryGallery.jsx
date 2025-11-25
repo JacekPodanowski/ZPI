@@ -75,6 +75,7 @@ const MasonryGallery = ({ content, style, isEditing, moduleId, pageId }) => {
                 <EditableImage
                   value={imgUrlRaw}
                   onSave={(newUrl) => handleImageSave(idx, newUrl)}
+                  elementId={`${pageId}-${moduleId}-masonry-image-${idx}`}
                   alt={caption || `Image ${idx + 1}`}
                   className="w-full object-cover"
                   isModuleSelected={true}

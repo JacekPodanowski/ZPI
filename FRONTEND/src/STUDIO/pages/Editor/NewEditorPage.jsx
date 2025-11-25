@@ -6,6 +6,7 @@ import StructureMode from './StructureMode';
 import DetailMode from './DetailMode';
 import EditorTopBar from './EditorTopBar';
 import EditorErrorBoundary from './EditorErrorBoundary';
+import ImageSearchIntegration from '../../components/ImageSearchIntegration';
 import { fetchSiteById } from '../../../services/siteService';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
@@ -369,6 +370,9 @@ const NewEditorPage = () => {
         <Box sx={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           {editorMode === 'structure' ? <StructureMode /> : <DetailMode />}
         </Box>
+
+        {/* Image Search Integration - Floating button + Modal/Panel */}
+        {editorMode === 'detail' && <ImageSearchIntegration />}
       </Box>
     </EditorErrorBoundary>
   );

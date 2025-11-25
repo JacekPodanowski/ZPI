@@ -120,6 +120,7 @@ const SplitVideo = ({ content, style, isEditing, moduleId, pageId }) => {
                 <EditableImage
                   value={sideImage}
                   onSave={handleSideImageSave}
+                  elementId={`${pageId}-${moduleId}-side-image`}
                   alt={title || 'Video companion image'}
                   className={`w-full h-full object-cover ${roundedClass} ${shadowClass}`}
                   isModuleSelected={true}
