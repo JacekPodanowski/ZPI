@@ -2,7 +2,7 @@
 docker-compose -f docker-compose.dev.yml up
 
 # Włącz deployment
-docker-compose -f docker-compose.yml up -d
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 
 # Wyłącz
 docker-compose down 
