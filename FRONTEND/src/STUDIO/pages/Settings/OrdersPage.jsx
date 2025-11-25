@@ -668,7 +668,7 @@ const OrdersPage = () => {
                               size="small"
                               value={targetValue}
                               onChange={(e) => setTargetValue(e.target.value)}
-                              placeholder="np. youtube.com lub twoja-strona.youreasysite.com"
+                              placeholder="np. youtube.com lub twoja-strona.youreasysite.pl"
                               sx={{ 
                                 '& .MuiOutlinedInput-root': {
                                   borderRadius: '8px',
@@ -719,7 +719,7 @@ const OrdersPage = () => {
                               Docelowy URL:
                             </Typography>
                             <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                              {order.target || `${order.site_identifier}.youreasysite.com (domyślny)`}
+                              {order.target || `${order.site_identifier}.youreasysite.pl (domyślny)`}
                             </Typography>
                             <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block', mt: 0.5 }}>
                               Tryb: {order.proxy_mode ? '🔄 Proxy (zachowuje URL)' : '↗️ Redirect (zmienia URL)'}
