@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, IconButton, Stack, Typography, Tooltip, TextField, useMediaQuery, Menu, MenuItem, ListItemIcon, ListItemText, Slider, alpha } from '@mui/material';
 import { ArrowBack, Smartphone, Monitor, Save, Undo, Redo, Edit, Check, Close, FileDownload, FileUpload, Publish, LightMode, DarkMode, Schema, MoreVert, ZoomIn, ZoomOut } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
-import { renameSite, updateSiteTemplate, createSiteVersion } from '../../../services/siteService';
+import { renameSite, updateSiteTemplate, createSiteVersion, publishSite } from '../../../services/siteService';
 import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
@@ -363,8 +363,35 @@ const EditorTopBar = () => {
     event.target.value = '';
   };
 
-  const handlePublish = () => {
-    // TODO: Implement publish logic
+  const handlePublish = async () => {
+    if (!siteId) {
+      addToast('Nie można opublikować - brak ID strony', { variant: 'error' });
+      return;
+    }
+
+    if (hasUnsavedChanges) {
+      addToast('Zapisz zmiany przed publikacją', { variant: 'warning' });
+      return;
+    }
+
+    try {
+      const result = await publishSite(siteId);
+      addToast(
+        `Strona opublikowana: ${result.subdomain}`,
+        { variant: 'success' }
+      );
+      
+      // Reload site to get updated publication status
+      if (loadSite) {
+        await loadSite(siteId);
+      }
+    } catch (error) {
+      console.error('Publish error:', error);
+      addToast(
+        error.response?.data?.error || 'Nie udało się opublikować strony',
+        { variant: 'error' }
+      );
+    }
   };
 
   const handleGoBack = () => {
