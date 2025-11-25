@@ -2127,7 +2127,7 @@ class FileUploadView(APIView):
 @extend_schema(
     tags=['Sites'],
     summary='Trigger site publish',
-    description='Invoke the Vercel build hook to publish the specified site.',
+    description='Invoke the Vercel build hook to publish the specified site and mark it as published.',
     request=None,
     responses={
         200: inline_serializer(
@@ -2135,6 +2135,9 @@ class FileUploadView(APIView):
             fields={
                 'message': serializers.CharField(),
                 'site_identifier': serializers.CharField(),
+                'subdomain': serializers.CharField(),
+                'is_published': serializers.BooleanField(),
+                'published_at': serializers.DateTimeField(),
             },
         ),
         404: OpenApiResponse(description='Site not found'),
@@ -2159,8 +2162,24 @@ def publish_site(request, site_id):
     try:
         response = requests.post(hook_url)
         response.raise_for_status()
-        logger.info("Successfully triggered Vercel build for site ID %s (%s)", site.id, site.identifier)
-        return Response({'message': 'Site publish initiated successfully', 'site_identifier': site.identifier})
+        
+        # Mark site as published
+        is_first_publish = not site.is_published
+        site.is_published = True
+        if is_first_publish and not site.published_at:
+            site.published_at = timezone.now()
+        site.save()
+        
+        logger.info("Successfully published site ID %s (%s) - subdomain: %s", 
+                   site.id, site.identifier, site.subdomain)
+        
+        return Response({
+            'message': 'Site published successfully',
+            'site_identifier': site.identifier,
+            'subdomain': site.subdomain,
+            'is_published': site.is_published,
+            'published_at': site.published_at,
+        })
     except requests.RequestException as exc:
         logger.error("Failed to trigger Vercel build for site ID %s: %s", site.id, exc)
         return Response({'error': 'Failed to trigger Vercel build', 'details': str(exc)}, status=500)
@@ -5330,7 +5349,7 @@ def resolve_domain(request, domain):
     Returns the target URL for domain redirect.
     
     GET /api/v1/domains/resolve/{domain}/
-    Response: {"target": "youtube.com"} or {"target": "1234-mysite.youreasysite.com"}
+    Response: {"target": "youtube.com"} or {"target": "1234-mysite.youreasysite.pl"}
     """
     try:
         # Find active domain order
@@ -5351,7 +5370,7 @@ def resolve_domain(request, domain):
         if not target:
             # Default to site subdomain
             site = domain_order.site
-            target = f"{site.identifier}.youreasysite.com"
+            target = f"{site.identifier}.youreasysite.pl"
             logger.info(f"[Domain Resolve] No target set, using default: {target}")
         
         logger.info(f"[Domain Resolve] {domain} -> {target}")

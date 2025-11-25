@@ -278,6 +278,23 @@ class Site(models.Model):
     owner = models.ForeignKey(PlatformUser, on_delete=models.CASCADE, related_name='sites')
     name = models.CharField(max_length=255)
     identifier = models.SlugField(max_length=255, unique=True, editable=False, blank=True, null=True)
+    subdomain = models.CharField(
+        max_length=255,
+        unique=True,
+        editable=False,
+        blank=True,
+        null=True,
+        help_text='Auto-generated subdomain (e.g., 1234-nazwa.youreasysite.pl)'
+    )
+    is_published = models.BooleanField(
+        default=False,
+        help_text='Whether this site is published and publicly accessible'
+    )
+    published_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When the site was first published'
+    )
     color_index = models.IntegerField(default=0, help_text='Index of the site color in the palette (0-11)')
     team_size = models.IntegerField(default=1, help_text='Cached count of team members for calendar optimization')
     is_mock = models.BooleanField(default=False, help_text='Flag indicating if this is a mock/demo site for testing (includes showcase)')
@@ -296,9 +313,21 @@ class Site(models.Model):
         owner_first = getattr(owner, 'first_name', '') if owner else ''
         owner_last = getattr(owner, 'last_name', '') if owner else ''
         desired_identifier = generate_site_identifier(self.pk, self.name, owner_first, owner_last)
+        
+        # Auto-generate subdomain based on identifier
+        desired_subdomain = f"{desired_identifier}.youreasysite.pl" if desired_identifier else None
+        
+        # Update both identifier and subdomain if they changed
+        updates = {}
         if self.identifier != desired_identifier:
-            Site.objects.filter(pk=self.pk).update(identifier=desired_identifier)
+            updates['identifier'] = desired_identifier
             self.identifier = desired_identifier
+        if self.subdomain != desired_subdomain:
+            updates['subdomain'] = desired_subdomain
+            self.subdomain = desired_subdomain
+        
+        if updates:
+            Site.objects.filter(pk=self.pk).update(**updates)
 
     def __str__(self):
         return f"{self.name} ({self.identifier})"

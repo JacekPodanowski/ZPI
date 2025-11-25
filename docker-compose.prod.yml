@@ -4,19 +4,20 @@
 services:
   backend:
     # W produkcji backend jest dostępny tylko przez nginx
-    ports: !reset
-      - "${BACKEND_PORT_HOST:-443}:8000"
+    # Usuń external port exposure - tylko internal network
+    ports: !reset []
 
   studio-frontend:
     build:
       target: production
     # Usuń volume mounting w produkcji
     volumes: !reset []
-    # Frontend dostępny tylko przez nginx
-    ports: !reset
-      - "${FRONTEND_PORT_HOST:-80}:3000"
+    # Frontend dostępny tylko przez nginx - usuń external ports
+    ports: !reset []
     environment:
       - NODE_ENV=production
+      - VITE_APP_ROUTING_MODE=subdomain
+      - VITE_BUILD_TARGET=STUDIO
 
   # Nginx reverse proxy - jedyny punkt wejścia
   nginx:
@@ -33,3 +34,5 @@ services:
     depends_on:
       - backend
       - studio-frontend
+    networks:
+      - default

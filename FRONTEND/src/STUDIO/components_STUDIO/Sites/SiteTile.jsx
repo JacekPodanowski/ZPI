@@ -137,7 +137,8 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
 
     const handleVisitSite = () => {
         handleMenuClose();
-        window.open(getSiteUrl(site.identifier), '_blank');
+        const siteUrl = site.subdomain ? `https://${site.subdomain}` : getSiteUrl(site.identifier);
+        window.open(siteUrl, '_blank');
     };
 
     const handleDelete = () => {
@@ -596,7 +597,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     {/* URL - Clickable Link */}
                     <Box
                         component="a"
-                        href={getSiteUrl(site.identifier)}
+                        href={site.subdomain ? `https://${site.subdomain}` : getSiteUrl(site.identifier)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -624,7 +625,7 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                                 fontWeight: 600
                             }}
                         >
-                            {getSiteUrlDisplay(site.identifier)}
+                            {site.subdomain || getSiteUrlDisplay(site.identifier)}
                         </Typography>
                     </Box>
 
