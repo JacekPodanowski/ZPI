@@ -194,16 +194,14 @@ LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "ve
 # --- CORS ---
 cors_origins = set()
 
-# Updated ports: frontend on 80, backend on 443
+# Local development - frontend on port 3000, backend on port 8000
 cors_origins.update({
-    "http://localhost:80",
-    "http://localhost",  # Port 80 is default for HTTP
-    "http://127.0.0.1:80",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+    "http://localhost",
     "http://127.0.0.1",
-    "http://192.168.0.104:80",
-    "http://192.168.0.104",
-    "http://136.115.41.232:80",
-    "http://136.115.41.232",
     # Production domains
     "https://youreasysite.pl",
     "https://www.youreasysite.pl",
@@ -213,9 +211,7 @@ cors_origins.update({
     "http://api.youreasysite.pl",
     # Railway domains
     "https://youreasysite-production.up.railway.app",
-    # Keep some old ports for backward compatibility during transition
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    # Vite dev server fallback
     "http://localhost:5173",
 })
 
