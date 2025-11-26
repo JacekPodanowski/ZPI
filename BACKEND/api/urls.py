@@ -201,7 +201,7 @@ urlpatterns = [
     path('sites/<int:site_id>/images/quota/', pexels_quota, name='pexels-quota'),
     # Google Calendar integration endpoints
     path('sites/<int:site_id>/google-calendar/connect/', google_calendar_connect, name='google-calendar-connect'),
-    path('sites/<int:site_id>/google-calendar/callback/', google_calendar_callback, name='google-calendar-callback'),
+    path('google-calendar/callback/', google_calendar_callback, name='google-calendar-callback'),  # No site_id - extracted from state
     path('sites/<int:site_id>/google-calendar/status/', google_calendar_status, name='google-calendar-status'),
     path('sites/<int:site_id>/google-calendar/disconnect/', google_calendar_disconnect, name='google-calendar-disconnect'),
     path('sites/<int:site_id>/google-calendar/toggle-sync/', google_calendar_toggle_sync, name='google-calendar-toggle-sync'),
