@@ -12,7 +12,7 @@ import ovh
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction, models
+from django.db import transaction, models, IntegrityError
 from django.db.models import Sum, Q, F
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -63,6 +63,8 @@ from .models import (
     Testimonial,
     TestimonialSummary,
     BigEvent,
+    GoogleCalendarIntegration,
+    GoogleCalendarEvent,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -73,6 +75,7 @@ from .media_processing import ImageProcessingError, convert_to_webp
 from .media_storage import StorageError, StorageSaveResult, get_media_storage
 from .permissions import IsOwnerOrTeamMember
 from .signals import ensure_initial_terms_exist
+from .google_calendar_service import google_calendar_service
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -106,6 +109,7 @@ from .serializers import (
     TestimonialSerializer,
     TestimonialSummarySerializer,
     BigEventSerializer,
+    GoogleCalendarIntegrationSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -4768,7 +4772,7 @@ def retry_dns_configuration(request):
 @extend_schema(
     tags=['Domains'],
     summary='Add domain and create Cloudflare zone',
-    description='Creates a new Cloudflare zone for the domain and stores nameservers in database.',
+    description='Creates a new Cloudflare zone for the domain and stores nameservers in database. Prevents duplicate domains across users with atomic transaction.',
     request=inline_serializer(
         name='AddDomainRequest',
         fields={
@@ -4789,6 +4793,7 @@ def retry_dns_configuration(request):
             }
         ),
         400: OpenApiResponse(description='Invalid request'),
+        409: OpenApiResponse(description='Domain already in use by another user'),
         500: OpenApiResponse(description='Cloudflare API error'),
     }
 )
@@ -4796,11 +4801,18 @@ def add_domain_with_cloudflare(request):
     """
     Add a domain by creating a Cloudflare zone and storing nameservers.
     
+    Security features:
+    - Atomic transaction with pessimistic locking (select_for_update)
+    - Database unique constraint on active domains
+    - Race condition protection
+    - 48-hour reservation timeout for unconfigured domains
+    
     Steps:
-    1. Create zone in Cloudflare
-    2. Get zone_id and nameservers from response
-    3. Save domain order in database with status 'pending' or 'free'
-    4. Return nameservers to display to user
+    1. Pre-check if domain is already in use
+    2. Atomic transaction with row lock
+    3. Create zone in Cloudflare
+    4. Save domain order in database with 48h expiration
+    5. Return nameservers to display to user
     """
     domain_name = request.data.get('domain_name')
     site_id = request.data.get('site_id')
@@ -4814,16 +4826,37 @@ def add_domain_with_cloudflare(request):
     # Validate domain name format
     domain_name = domain_name.lower().strip()
     
-    # Check if domain already exists for this user
-    existing_order = DomainOrder.objects.filter(
-        user=request.user,
-        domain_name=domain_name
-    ).first()
+    # SECURITY: Block our platform domains from being added by users
+    PROTECTED_DOMAINS = [
+        'youreasysite.pl',
+        'www.youreasysite.pl',
+        'youreasysite.com',
+        'www.youreasysite.com',
+    ]
     
-    if existing_order:
+    if domain_name in PROTECTED_DOMAINS:
+        logger.warning(f"[add_domain] Attempt to add protected domain: {domain_name} by user {request.user.id}")
         return Response(
-            {'error': f'Domain {domain_name} already exists in your account'},
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                'error': f'Domena {domain_name} jest domeną platformy i nie może być dodana.',
+                'message': 'Ta domena jest zarezerwowana dla platformy YourEasySite.'
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # STEP 1: Quick pre-check (without lock) - fail fast for obvious duplicates
+    active_statuses = ['free', 'pending', 'configuring_dns', 'active']
+    if DomainOrder.objects.filter(
+        domain_name=domain_name,
+        status__in=active_statuses
+    ).exists():
+        return Response(
+            {
+                'error': f'Domena {domain_name} jest już w użyciu.',
+                'message': 'Jeśli uważasz, że ta domena należy do Ciebie, ale nie możesz jej dodać, skontaktuj się z naszym wsparciem technicznym.',
+                'support_email': 'support@youreasysite.com'
+            },
+            status=status.HTTP_409_CONFLICT
         )
     
     # Get site if provided
@@ -4837,59 +4870,49 @@ def add_domain_with_cloudflare(request):
                 status=status.HTTP_404_NOT_FOUND
             )
     
+    # STEP 2: Atomic transaction with pessimistic lock - prevents race conditions
     try:
-        # Create Cloudflare zone
-        cf_headers = {
-            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
-            'Content-Type': 'application/json',
-        }
-        
-        cf_create_zone = requests.post(
-            'https://api.cloudflare.com/client/v4/zones',
-            headers=cf_headers,
-            json={
-                'name': domain_name,
-                'account': {'id': settings.CLOUDFLARE_ACCOUNT_ID},
-                'jump_start': True,
+        with transaction.atomic():
+            # Pessimistic lock - other concurrent requests WAIT here
+            # This is the critical section that prevents duplicate domains
+            locked_domain = DomainOrder.objects.select_for_update().filter(
+                domain_name=domain_name,
+                status__in=active_statuses
+            ).first()
+            
+            if locked_domain:
+                # Someone else reserved this domain while we waited for the lock
+                logger.warning(f"[add_domain] Domain {domain_name} already reserved by user {locked_domain.user_id} during lock wait")
+                raise DomainOrder.DoesNotExist  # Will be caught below
+            
+            # STEP 3: Create Cloudflare zone
+            cf_headers = {
+                'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+                'Content-Type': 'application/json',
             }
-        )
-        
-        zone_created = False
-        zone_id = None
-        nameservers = []
-        zone_status = 'free'
-        
-        if cf_create_zone.status_code == 200:
-            cf_zone_data = cf_create_zone.json()['result']
-            zone_id = cf_zone_data['id']
-            nameservers = cf_zone_data.get('name_servers', [])
-            cloudflare_status = cf_zone_data.get('status', 'pending')
             
-            # Map Cloudflare status to our status
-            if cloudflare_status == 'active':
-                zone_status = 'active'
-            elif cloudflare_status == 'pending':
-                zone_status = 'pending'
-            else:
-                zone_status = 'free'
-            
-            zone_created = True
-            logger.info(f"[add_domain] Cloudflare zone created: {zone_id} for {domain_name}")
-            
-        else:
-            # Zone might already exist - try to get it
-            logger.info(f"[add_domain] Zone creation returned {cf_create_zone.status_code}, checking for existing zone")
-            cf_zones = requests.get(
-                f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
-                headers=cf_headers
+            cf_create_zone = requests.post(
+                'https://api.cloudflare.com/client/v4/zones',
+                headers=cf_headers,
+                json={
+                    'name': domain_name,
+                    'account': {'id': settings.CLOUDFLARE_ACCOUNT_ID},
+                    'jump_start': True,
+                }
             )
             
-            if cf_zones.status_code == 200 and cf_zones.json()['result']:
-                cf_zone_data = cf_zones.json()['result'][0]
+            zone_created = False
+            zone_id = None
+            nameservers = []
+            zone_status = 'free'
+            
+            if cf_create_zone.status_code == 200:
+                cf_zone_data = cf_create_zone.json()['result']
                 zone_id = cf_zone_data['id']
                 nameservers = cf_zone_data.get('name_servers', [])
                 cloudflare_status = cf_zone_data.get('status', 'pending')
                 
+                # Map Cloudflare status to our status
                 if cloudflare_status == 'active':
                     zone_status = 'active'
                 elif cloudflare_status == 'pending':
@@ -4898,36 +4921,68 @@ def add_domain_with_cloudflare(request):
                     zone_status = 'free'
                 
                 zone_created = True
-                logger.info(f"[add_domain] Using existing zone: {zone_id} for {domain_name}")
+                logger.info(f"[add_domain] Cloudflare zone created: {zone_id} for {domain_name}")
+                
             else:
-                error_msg = cf_create_zone.json().get('errors', [{}])[0].get('message', 'Unknown error')
-                logger.error(f"[add_domain] Failed to create/find Cloudflare zone: {error_msg}")
-                return Response(
-                    {'error': f'Failed to create Cloudflare zone: {error_msg}'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                # Zone might already exist - try to get it
+                logger.info(f"[add_domain] Zone creation returned {cf_create_zone.status_code}, checking for existing zone")
+                cf_zones = requests.get(
+                    f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
+                    headers=cf_headers
                 )
-        
-        # Create domain order in database
-        domain_order = DomainOrder.objects.create(
-            user=request.user,
-            site=site,
-            domain_name=domain_name,
-            cloudflare_zone_id=zone_id,
-            cloudflare_nameservers=nameservers,
-            status=zone_status,
-            dns_configuration={
-                'cloudflare_zone_created': zone_created,
-                'created_at': timezone.now().isoformat()
-            }
-        )
+                
+                if cf_zones.status_code == 200 and cf_zones.json()['result']:
+                    cf_zone_data = cf_zones.json()['result'][0]
+                    zone_id = cf_zone_data['id']
+                    nameservers = cf_zone_data.get('name_servers', [])
+                    cloudflare_status = cf_zone_data.get('status', 'pending')
+                    
+                    if cloudflare_status == 'active':
+                        zone_status = 'active'
+                    elif cloudflare_status == 'pending':
+                        zone_status = 'pending'
+                    else:
+                        zone_status = 'free'
+                    
+                    zone_created = True
+                    logger.info(f"[add_domain] Using existing zone: {zone_id} for {domain_name}")
+                else:
+                    error_msg = cf_create_zone.json().get('errors', [{}])[0].get('message', 'Unknown error')
+                    logger.error(f"[add_domain] Failed to create/find Cloudflare zone: {error_msg}")
+                    return Response(
+                        {'error': f'Failed to create Cloudflare zone: {error_msg}'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+            
+            # STEP 4: Create domain order in database with 48h expiration
+            # This will fail with IntegrityError if unique constraint is violated
+            expires_at = timezone.now() + timedelta(hours=48)
+            
+            domain_order = DomainOrder.objects.create(
+                user=request.user,
+                site=site,
+                domain_name=domain_name,
+                cloudflare_zone_id=zone_id,
+                cloudflare_nameservers=nameservers,
+                status=zone_status,
+                expires_at=expires_at,
+                dns_configuration={
+                    'cloudflare_zone_created': zone_created,
+                    'created_at': timezone.now().isoformat()
+                }
+            )
+            
+            logger.info(f"[add_domain] Domain order created: {domain_order.id} for {domain_name} by user {request.user.id}")
+            
+        # Transaction committed successfully
         
         message = ''
         if zone_status == 'pending':
-            message = f'Domain added to Cloudflare. Please update your domain nameservers to the provided Cloudflare nameservers.'
+            message = f'Domain added to Cloudflare. Please update your domain nameservers to the provided Cloudflare nameservers. You have 48 hours to complete the configuration.'
         elif zone_status == 'active':
             message = 'Domain is already active in Cloudflare! DNS configuration will start automatically.'
         else:
-            message = 'Domain registered. Waiting for Cloudflare zone activation.'
+            message = 'Domain registered. Waiting for Cloudflare zone activation. You have 48 hours to complete the configuration.'
         
         return Response({
             'order_id': domain_order.id,
@@ -4935,8 +4990,32 @@ def add_domain_with_cloudflare(request):
             'cloudflare_zone_id': zone_id,
             'nameservers': nameservers,
             'status': zone_status,
+            'expires_at': expires_at.isoformat(),
             'message': message,
         }, status=status.HTTP_200_OK)
+    
+    except DomainOrder.DoesNotExist:
+        # Domain was reserved by someone else during our transaction
+        return Response(
+            {
+                'error': f'Domena {domain_name} została właśnie zarezerwowana przez innego użytkownika.',
+                'message': 'Jeśli uważasz, że ta domena należy do Ciebie, ale nie możesz jej dodać, skontaktuj się z naszym wsparciem technicznym.',
+                'support_email': 'support@youreasysite.com'
+            },
+            status=status.HTTP_409_CONFLICT
+        )
+    
+    except IntegrityError as e:
+        # Database unique constraint violation - extremely rare due to locks
+        logger.error(f"[add_domain] IntegrityError for {domain_name}: {e}")
+        return Response(
+            {
+                'error': f'Domena {domain_name} jest już w użyciu.',
+                'message': 'Jeśli uważasz, że ta domena należy do Ciebie, ale nie możesz jej dodać, skontaktuj się z naszym wsparciem technicznym.',
+                'support_email': 'support@youreasysite.com'
+            },
+            status=status.HTTP_409_CONFLICT
+        )
         
     except Exception as e:
         logger.error(f'[add_domain] Error adding domain {domain_name}: {e}')
@@ -6902,5 +6981,497 @@ def list_event_checkpoints(request, event_id):
     
     return Response({
         'checkpoints': checkpoint_list
+    }, status=status.HTTP_200_OK)
+
+
+# ========================================
+# Google Calendar Integration Views
+# ========================================
+
+def broadcast_calendar_status_update(site_id, status_data):
+    """
+    Broadcast Google Calendar status update to all connected WebSocket clients for a site.
+    This ensures all users with access to the site see real-time changes.
+    """
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        try:
+            async_to_sync(channel_layer.group_send)(
+                f'google_calendar_{site_id}',
+                {
+                    'type': 'calendar_status_update',
+                    'site_id': site_id,
+                    'status_data': status_data
+                }
+            )
+            logger.info(f"Broadcasted calendar status update for site {site_id}")
+        except Exception as e:
+            logger.error(f"Failed to broadcast calendar status for site {site_id}: {e}")
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_connect(request, site_id):
+    """
+    Initiate Google Calendar OAuth flow.
+    Returns the authorization URL for the user to visit.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Create state parameter with site_id for callback
+    state = f"site_{site_id}"
+    
+    # Get authorization URL
+    auth_url = google_calendar_service.get_authorization_url(state)
+    
+    return Response({
+        'authorization_url': auth_url
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_callback(request):
+    """
+    Handle Google OAuth callback.
+    Exchange authorization code for tokens and create integration.
+    Supports both single site and bulk connection (all sites).
+    """
+    code = request.data.get('code')
+    state = request.data.get('state')
+    
+    if not code or not state:
+        return Response(
+            {'error': 'Missing code or state parameter'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if this is a bulk connection (all sites)
+    if state.startswith('all_sites_'):
+        try:
+            user_id = int(state.split('_')[2])
+            if user_id != request.user.id:
+                return Response(
+                    {'error': 'Invalid user in state parameter'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except (ValueError, IndexError):
+            return Response(
+                {'error': 'Invalid state parameter for bulk connection'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all sites the user has access to
+        user_sites = Site.objects.filter(owner=request.user)
+        team_member_sites = Site.objects.filter(
+            team_members__linked_user=request.user,
+            team_members__invitation_status='linked'
+        )
+        
+        all_accessible_sites = (user_sites | team_member_sites).distinct()
+        
+        if not all_accessible_sites.exists():
+            return Response(
+                {'error': 'No sites available to connect'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Exchange code for tokens
+        try:
+            token_data = google_calendar_service.exchange_code_for_tokens(code)
+        except Exception as e:
+            logger.error(f"Failed to exchange code for tokens: {e}")
+            return Response(
+                {'error': 'Failed to connect to Google Calendar'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Create or update integration for all sites
+        connected_sites = []
+        failed_sites = []
+        
+        for site in all_accessible_sites:
+            try:
+                integration, created = GoogleCalendarIntegration.objects.update_or_create(
+                    site=site,
+                    defaults={
+                        'connected_by': request.user,
+                        'google_email': token_data['google_email'],
+                        'access_token': token_data['access_token'],
+                        'refresh_token': token_data['refresh_token'],
+                        'token_expires_at': token_data['token_expires_at'],
+                        'calendar_id': token_data['google_email'],
+                        'calendar_name': token_data['calendar_name'],
+                        'is_active': True,
+                        'sync_enabled': True,
+                    }
+                )
+                
+                # Sync all existing events
+                try:
+                    stats = google_calendar_service.sync_all_events(integration)
+                    logger.info(f"Initial sync completed for site {site.id}: {stats}")
+                except Exception as e:
+                    logger.error(f"Failed to sync events for site {site.id}: {e}")
+                
+                connected_sites.append({
+                    'id': site.id,
+                    'name': site.name,
+                    'action': 'created' if created else 'updated'
+                })
+                
+                # Broadcast status change to all connected users for this site
+                broadcast_calendar_status_update(site.id, {
+                    'connected': True,
+                    'integration': GoogleCalendarIntegrationSerializer(integration).data
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to connect site {site.id}: {e}")
+                failed_sites.append({
+                    'id': site.id,
+                    'name': site.name,
+                    'error': str(e)
+                })
+        
+        return Response({
+            'message': f'Connected {len(connected_sites)} sites to Google Calendar',
+            'connected_sites': connected_sites,
+            'failed_sites': failed_sites,
+            'total_sites': all_accessible_sites.count()
+        }, status=status.HTTP_200_OK)
+    
+    # Single site connection (original behavior)
+    if not state.startswith('site_'):
+        return Response(
+            {'error': 'Invalid state parameter'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        site_id = int(state.split('_')[1])
+        site = Site.objects.get(id=site_id)
+    except (ValueError, IndexError, Site.DoesNotExist):
+        return Response(
+            {'error': 'Invalid site ID in state'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Exchange code for tokens
+    try:
+        token_data = google_calendar_service.exchange_code_for_tokens(code)
+    except Exception as e:
+        logger.error(f"Failed to exchange code for tokens: {e}")
+        return Response(
+            {'error': 'Failed to connect to Google Calendar'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # Create or update integration
+    integration, created = GoogleCalendarIntegration.objects.update_or_create(
+        site=site,
+        defaults={
+            'connected_by': request.user,
+            'google_email': token_data['google_email'],
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data['refresh_token'],
+            'token_expires_at': token_data['token_expires_at'],
+            'calendar_id': token_data['google_email'],
+            'calendar_name': token_data['calendar_name'],
+            'is_active': True,
+            'sync_enabled': True,
+        }
+    )
+    
+    # Sync all existing events
+    try:
+        stats = google_calendar_service.sync_all_events(integration)
+        logger.info(f"Initial sync completed for site {site_id}: {stats}")
+    except Exception as e:
+        logger.error(f"Failed to sync events after connection: {e}")
+    
+    # Broadcast status change to all connected users
+    broadcast_calendar_status_update(site_id, {
+        'connected': True,
+        'integration': GoogleCalendarIntegrationSerializer(integration).data
+    })
+    
+    return Response({
+        'message': 'Google Calendar connected successfully',
+        'integration': GoogleCalendarIntegrationSerializer(integration).data,
+        'action': 'created' if created else 'updated'
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_status(request, site_id):
+    """
+    Get the current Google Calendar integration status for a site.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to view this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        return Response({
+            'connected': True,
+            'integration': GoogleCalendarIntegrationSerializer(integration).data
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'connected': False,
+            'integration': None
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_disconnect(request, site_id):
+    """
+    Disconnect Google Calendar integration for a site.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        integration.delete()
+        
+        # Broadcast status change to all connected users
+        broadcast_calendar_status_update(site_id, {
+            'connected': False,
+            'integration': None
+        })
+        
+        return Response({
+            'message': 'Google Calendar disconnected successfully'
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'error': 'No Google Calendar integration found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_toggle_sync(request, site_id):
+    """
+    Toggle sync_enabled for Google Calendar integration.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        integration.sync_enabled = not integration.sync_enabled
+        integration.save(update_fields=['sync_enabled', 'updated_at'])
+        
+        # Broadcast status change to all connected users
+        broadcast_calendar_status_update(site_id, {
+            'connected': True,
+            'integration': GoogleCalendarIntegrationSerializer(integration).data
+        })
+        
+        return Response({
+            'message': f"Sync {'enabled' if integration.sync_enabled else 'disabled'}",
+            'integration': GoogleCalendarIntegrationSerializer(integration).data
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'error': 'No Google Calendar integration found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_manual_sync(request, site_id):
+    """
+    Manually trigger a full sync of all events to Google Calendar.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        
+        if not integration.sync_enabled or not integration.is_active:
+            return Response({
+                'error': 'Sync is not enabled for this integration'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        stats = google_calendar_service.sync_all_events(integration)
+        
+        return Response({
+            'message': 'Manual sync completed',
+            'stats': stats
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'error': 'No Google Calendar integration found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_connect_all(request):
+    """
+    Initiate Google Calendar OAuth flow for connecting all user's sites at once.
+    Returns the authorization URL for the user to visit.
+    This will later be processed in the callback to connect all sites.
+    """
+    # Get all sites the user has access to
+    from .permissions import get_user_role_for_site
+    
+    user_sites = Site.objects.filter(owner=request.user)
+    team_member_sites = Site.objects.filter(
+        team_members__linked_user=request.user,
+        team_members__invitation_status='linked'
+    )
+    
+    all_accessible_sites = (user_sites | team_member_sites).distinct()
+    
+    if not all_accessible_sites.exists():
+        return Response(
+            {'error': 'No sites available to connect'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create state parameter with "all" flag and user ID
+    state = f"all_sites_{request.user.id}"
+    
+    # Get authorization URL
+    auth_url = google_calendar_service.get_authorization_url(state)
+    
+    return Response({
+        'authorization_url': auth_url,
+        'site_count': all_accessible_sites.count()
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_status_all(request):
+    """
+    Get the Google Calendar integration status for all user's sites.
+    Returns a summary of connected/disconnected sites.
+    """
+    from .permissions import get_user_role_for_site
+    
+    user_sites = Site.objects.filter(owner=request.user)
+    team_member_sites = Site.objects.filter(
+        team_members__linked_user=request.user,
+        team_members__invitation_status='linked'
+    )
+    
+    all_accessible_sites = (user_sites | team_member_sites).distinct()
+    
+    statuses = []
+    for site in all_accessible_sites:
+        try:
+            integration = GoogleCalendarIntegration.objects.get(site=site)
+            statuses.append({
+                'site_id': site.id,
+                'site_name': site.name,
+                'connected': True,
+                'integration': GoogleCalendarIntegrationSerializer(integration).data
+            })
+        except GoogleCalendarIntegration.DoesNotExist:
+            statuses.append({
+                'site_id': site.id,
+                'site_name': site.name,
+                'connected': False,
+                'integration': None
+            })
+    
+    connected_count = sum(1 for s in statuses if s['connected'])
+    
+    return Response({
+        'total_sites': len(statuses),
+        'connected_sites': connected_count,
+        'statuses': statuses
     }, status=status.HTTP_200_OK)
 

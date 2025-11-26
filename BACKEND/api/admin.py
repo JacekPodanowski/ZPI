@@ -4,7 +4,7 @@ from .models import (
 	PlatformUser, Site, SiteVersion, Client, Event, Booking, Template, AttendedSession,
 	MediaAsset, MediaUsage, CustomReactComponent, Notification, TermsOfService, MagicLink, EmailTemplate,
 	Testimonial, TestimonialSummary, NewsletterSubscription, NewsletterAnalytics, Payment,
-	TeamMember, BigEvent
+	TeamMember, BigEvent, GoogleCalendarIntegration, GoogleCalendarEvent
 )
 
 
@@ -227,3 +227,37 @@ class BigEventAdmin(admin.ModelAdmin):
 	list_filter = ('status', 'email_sent', 'created_at')
 	autocomplete_fields = ('site', 'creator')
 	readonly_fields = ('created_at', 'updated_at', 'published_at', 'email_sent_at')
+
+
+@admin.register(GoogleCalendarIntegration)
+class GoogleCalendarIntegrationAdmin(admin.ModelAdmin):
+	list_display = ('site', 'google_email', 'is_active', 'sync_enabled', 'last_sync_at', 'created_at')
+	search_fields = ('site__name', 'google_email', 'calendar_name')
+	list_filter = ('is_active', 'sync_enabled', 'created_at')
+	autocomplete_fields = ('site', 'connected_by')
+	readonly_fields = ('created_at', 'updated_at', 'last_sync_at', 'token_expires_at')
+	
+	fieldsets = (
+		('Basic Info', {
+			'fields': ('site', 'connected_by', 'google_email', 'calendar_name')
+		}),
+		('OAuth Credentials', {
+			'fields': ('access_token', 'refresh_token', 'token_expires_at', 'calendar_id'),
+			'classes': ('collapse',)
+		}),
+		('Sync Settings', {
+			'fields': ('is_active', 'sync_enabled', 'last_sync_at')
+		}),
+		('Timestamps', {
+			'fields': ('created_at', 'updated_at')
+		}),
+	)
+
+
+@admin.register(GoogleCalendarEvent)
+class GoogleCalendarEventAdmin(admin.ModelAdmin):
+	list_display = ('event', 'integration', 'google_event_id', 'last_synced_at', 'created_at')
+	search_fields = ('event__title', 'google_event_id', 'integration__google_email')
+	list_filter = ('created_at', 'last_synced_at')
+	autocomplete_fields = ('event', 'integration')
+	readonly_fields = ('created_at', 'last_synced_at')

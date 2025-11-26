@@ -27,6 +27,10 @@ app.conf.beat_schedule = {
         'task': 'api.tasks.sync_cloudflare_domain_status',
         'schedule': 600.0,  # 10 minutes in seconds
     },
+    'cleanup-expired-domain-reservations-every-30-minutes': {
+        'task': 'api.tasks.cleanup_expired_domain_reservations',
+        'schedule': 1800.0,  # 30 minutes in seconds
+    },
 }
 app.conf.timezone = 'UTC'
 

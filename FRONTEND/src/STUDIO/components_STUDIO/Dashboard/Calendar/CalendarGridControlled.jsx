@@ -11,6 +11,7 @@ import TemplateConfirmationModal from '../Templates/TemplateConfirmationModal';
 import TimeInput from '../../../../components/TimeInput';
 import { useToast } from '../../../../contexts/ToastContext';
 import { getTemplateSelectionStyles } from './TemplateSelectingStyles';
+import GoogleCalendarPopup from './GoogleCalendarPopup';
 
 // Controlled-only view of the calendar grid; all state comes from props.
 const CalendarGridControlled = ({
@@ -463,10 +464,8 @@ const CalendarGridControlled = ({
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: 1,
-                        pointerEvents: 'none', // Allow clicks to pass through
-                        '& > *': {
-                            pointerEvents: 'auto' // Re-enable clicks on children
-                        }
+                        pointerEvents: 'auto', // Enable clicks
+                        zIndex: 10 // Ensure it's above other elements
                     }}
                 >
                     {/* Left Arrow */}
@@ -527,6 +526,9 @@ const CalendarGridControlled = ({
                                 borderColor: isOverMonthName ? 'primary.main' : 'transparent',
                                 position: 'relative',
                                 overflow: 'hidden',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
                                 ...(draggingTemplate && {
                                     cursor: 'pointer',
                                     transform: 'scale(1.1)',
@@ -561,6 +563,9 @@ const CalendarGridControlled = ({
                             >
                                 {currentMonthMoment.format('MMMM YYYY')}
                             </Typography>
+                            
+                            {/* Google Calendar Icon - synchronizuje wszystkie strony użytkownika */}
+                            <GoogleCalendarPopup sites={sites} />
                         </Box>
 
                     {/* Right Arrow */}
