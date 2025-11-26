@@ -108,56 +108,62 @@ const NewEditorPage = () => {
         try {
           setLoading(true);
           const data = await fetchSiteById(siteId);
-          
-          
+          const latestVersionConfig = data.latest_version?.template_config;
+          const templateSource = latestVersionConfig && Object.keys(latestVersionConfig).length
+            ? latestVersionConfig
+            : (data.template_config || {});
+
           // Set site ID and name
           setSiteId(data.id);
           setSiteName(data.name || 'Untitled Site');
           setSiteIdentifier(data.identifier || data.identifier_slug || null);
-          
-          // Load the site structure from template_config
-          if (data.template_config && data.template_config.site) {
+
+          // Load the site structure from template_config (prefer the latest recorded version)
+          if (templateSource && templateSource.site) {
             // New unified format
             loadSite({
               id: data.id,
               name: data.name,
-              site: data.template_config.site,
-              userLibrary: data.template_config.userLibrary || { customAssets: [] },
-              entryPointPageId: data.template_config.entryPointPageId || data.template_config.site.pages[0]?.id
+              site: templateSource.site,
+              userLibrary: templateSource.userLibrary || { customAssets: [] },
+              entryPointPageId: templateSource.entryPointPageId || templateSource.site.pages[0]?.id,
+              currentVersionNumber: data.latest_version?.version_number || 0,
+              lastSavedAt: data.latest_version?.created_at || data.updated_at
             });
-          } else if (data.template_config && data.template_config.pages) {
+          } else if (templateSource && templateSource.pages) {
             // Old format - pages at root level
-            
             loadSite({
               id: data.id,
               name: data.name,
               site: {
-                vibe: data.template_config.vibe || 'auroraMinimal',
-                theme: data.template_config.theme || {
+                vibe: templateSource.vibe || 'auroraMinimal',
+                theme: templateSource.theme || {
                   primary: '#920020',
                   secondary: '#2D5A7B',
                   neutral: '#E4E5DA'
                 },
-                pages: data.template_config.pages
+                pages: templateSource.pages
               },
               userLibrary: { customAssets: [] },
-              entryPointPageId: data.template_config.pages[0]?.id
+              entryPointPageId: templateSource.pages[0]?.id,
+              currentVersionNumber: data.latest_version?.version_number || 0,
+              lastSavedAt: data.latest_version?.created_at || data.updated_at
             });
           } else {
             // No valid config - create default structure
-            
+
             // Check if we have old-style module names array
             const pages = [];
             const homeModules = [];
-            
-            if (data.template_config && Array.isArray(data.template_config.modules)) {
+
+            if (templateSource && Array.isArray(templateSource.modules)) {
               
               // Always add Hero to home page
               const heroModule = convertModuleNameToObject('hero', 0);
               homeModules.push(heroModule);
               
               // Create separate page for each other module
-              data.template_config.modules.forEach((moduleName, index) => {
+              templateSource.modules.forEach((moduleName, index) => {
                 const moduleObj = convertModuleNameToObject(moduleName, index + 1);
                 
                 // Skip hero as it's already on home
@@ -195,10 +201,10 @@ const NewEditorPage = () => {
               id: data.id,
               name: data.name,
               site: {
-                vibe: data.template_config?.vibe || 'auroraMinimal',
-                theme: data.template_config?.colors ? {
-                  primary: data.template_config.colors.primary || '#920020',
-                  secondary: data.template_config.colors.secondary || '#2D5A7B',
+                vibe: templateSource?.vibe || 'auroraMinimal',
+                theme: templateSource?.colors ? {
+                  primary: templateSource.colors.primary || '#920020',
+                  secondary: templateSource.colors.secondary || '#2D5A7B',
                   neutral: '#E4E5DA'
                 } : {
                   primary: '#920020',
@@ -208,7 +214,9 @@ const NewEditorPage = () => {
                 pages: allPages
               },
               userLibrary: { customAssets: [] },
-              entryPointPageId: 'home'
+              entryPointPageId: 'home',
+              currentVersionNumber: data.latest_version?.version_number || 0,
+              lastSavedAt: data.latest_version?.created_at || data.updated_at
             });
           }
           

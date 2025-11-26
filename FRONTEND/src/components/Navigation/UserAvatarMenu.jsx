@@ -18,7 +18,8 @@ import { alpha } from '@mui/material/styles';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import LanguageIcon from '@mui/icons-material/Language';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
 import { useNavigate } from 'react-router-dom';
 import useTheme from '../../theme/useTheme';
@@ -62,30 +63,35 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
     () => ({
       settings: [
         {
-          label: 'Notifications',
+          label: 'Powiadomienia',
           icon: <NotificationsOutlinedIcon fontSize="small" />,
           path: '/studio/account/notifications',
           badge: 0 // Can be updated with actual notification count
         },
         {
-          label: 'Profile Settings',
+          label: 'Ustawienia profilu',
           icon: <PersonOutlineIcon fontSize="small" />,
           path: '/studio/account/profile'
         },
         {
-          label: 'Billing & Plans',
+          label: 'Płatności',
           icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
           path: '/studio/account/billing'
         },
         {
-          label: 'Appearance',
-          icon: <PaletteOutlinedIcon fontSize="small" />,
-          path: '/studio/account/appearance'
+          label: 'Domeny',
+          icon: <LanguageIcon fontSize="small" />,
+          path: '/studio/account/domain'
         },
         {
-          label: 'Settings',
+          label: 'Ustawienia',
           icon: <SettingsOutlinedIcon fontSize="small" />,
           path: '/studio/account/settings'
+        },
+        {
+          label: 'Regulamin i informacje',
+          icon: <InfoOutlinedIcon fontSize="small" />,
+          path: '/info'
         }
       ]
     }),

@@ -180,8 +180,8 @@ const HomePage = () => {
 
     const goToLogin = useCallback(() => {
         setLogoExpanded(false);
-        setTimeout(() => navigate('/login'), 420);
-    }, [navigate]);
+        setTimeout(() => navigate(isAuthenticated ? '/studio' : '/login'), 420);
+    }, [navigate, isAuthenticated]);
 
     const narrativeSlices = useMemo(
         () => ([
@@ -393,7 +393,7 @@ const HomePage = () => {
                                         }
                                     }}
                                 >
-                                    Zaloguj się do Studia
+                                    {isAuthenticated ? 'Przejdź do Studia' : 'Zaloguj się do Studia'}
                                 </Button>
                                 <Typography
                                     variant="body2"
