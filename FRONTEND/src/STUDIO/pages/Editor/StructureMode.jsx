@@ -26,7 +26,7 @@ const StructureMode = () => {
   } = useNewEditorStore();
   
   const theme = useTheme();
-  const isMobile = useMediaQuery('(max-width:900px)');
+  const isMobile = useMediaQuery('(max-width:768px)');
   const editorColors = getEditorColorTokens(theme);
   const toggleButtonStyles = {
     '& .MuiToggleButton-root': {

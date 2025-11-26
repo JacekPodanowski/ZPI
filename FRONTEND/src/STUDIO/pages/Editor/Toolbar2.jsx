@@ -38,11 +38,13 @@ import { alpha } from '@mui/material/styles';
 import { STYLE_LIST, DEFAULT_STYLE_ID } from '../../../SITES/styles';
 import ImageUploader from '../../../components/ImageUploader';
 import MediaPanel from '../../components/MediaPanel';
+import { MODULE_REGISTRY } from '../../../SITES/components/modules/ModuleRegistry';
+import { FieldRenderer } from './PropertiesPanel';
 
 const EDITOR_TOP_BAR_HEIGHT = 56;
 const TOOLBAR_WIDTH_MIN = 175;
 const TOOLBAR_WIDTH_DEFAULT = 200;
-const TOOLBAR_WIDTH_MAX = 300;
+const TOOLBAR_WIDTH_MAX = 500;
 const COLLAPSED_TOOLBAR_WIDTH = 48;
 const COLLAPSE_INDICATOR_BUFFER = 25;
 const COLLAPSE_INDICATOR_MAX_DRAG = 140;
@@ -53,17 +55,9 @@ const INDICATOR_PREVIEW_SAMPLE_DRAG = 110;
 // Define categories with their icons and modes
 const ALL_CATEGORIES = [
   { id: 'modules', label: 'Modules', icon: ViewModule, modes: ['detail', 'structure'] },
-  { id: 'style', label: 'Style', icon: Palette, modes: ['detail', 'structure'] },
+  { id: 'style', label: 'Styl Strony', icon: Palette, modes: ['detail', 'structure'] },
   { id: 'media', label: 'Media', icon: Photo, modes: ['detail'] }, // Only in detail mode
-  { id: 'settings', label: 'Settings', icon: Tune, modes: ['detail', 'structure'] }
-];
-
-const INDICATOR_STYLE_OPTIONS = [
-  { id: 'blade', label: 'Blade Curve', description: 'Smooth tapered shape with a crisp blade-like edge.' },
-  { id: 'arrow', label: 'Arrowhead', description: 'Classic arrow profile with a sharp center hit.' },
-  { id: 'curve', label: 'Soft Curve', description: 'Gentle concave profile that narrows into the canvas.' },
-  { id: 'spike', label: 'Double Spike', description: 'Aggressive twin-spike cut for decisive collapsing.' },
-  { id: 'stream', label: 'Streamline', description: 'Long aerodynamic taper with a narrow impact line.' }
+  { id: 'settings', label: 'Ustawienia', icon: Tune, modes: ['detail', 'structure'] }
 ];
 
 const polygonToSvgPath = (polygon) => {
@@ -192,55 +186,41 @@ const ANIMATION_SPEED_OPTIONS = [
   { value: 'transition-all duration-700 ease-in-out', label: 'Very Slow', description: 'Cinematic effect', duration: '700ms' }
 ];
 
-const INDICATOR_STYLE_CONFIGS = {
-  blade: {
-    minWidth: INDICATOR_BASE_MIN_WIDTH + 6,
-    widthFactor: 0.68,
-    clipPath: 'polygon(100% 0%, 99% 5%, 98% 10%, 96% 15%, 94% 20%, 91% 25%, 87% 30%, 82% 35%, 77% 40%, 72% 45%, 68% 50%, 72% 55%, 77% 60%, 82% 65%, 87% 70%, 91% 75%, 94% 80%, 96% 85%, 98% 90%, 99% 95%, 100% 100%)',
-    background: (accent) => accent
-  },
-  arrow: {
-    minWidth: INDICATOR_BASE_MIN_WIDTH + 4,
-    widthFactor: 0.62,
-    clipPath: 'polygon(100% 0%, 99% 5%, 97% 10%, 95% 15%, 92% 20%, 88% 25%, 83% 30%, 78% 35%, 73% 40%, 68% 45%, 64% 50%, 68% 55%, 73% 60%, 78% 65%, 83% 70%, 88% 75%, 92% 80%, 95% 85%, 97% 90%, 99% 95%, 100% 100%)',
-    background: (accent) => accent
-  },
-  curve: {
-    minWidth: INDICATOR_BASE_MIN_WIDTH + 8,
-    widthFactor: 0.72,
-    clipPath: 'polygon(100% 0%, 99% 5%, 98% 10%, 97% 15%, 95% 20%, 92% 25%, 88% 30%, 84% 35%, 79% 40%, 74% 45%, 70% 50%, 74% 55%, 79% 60%, 84% 65%, 88% 70%, 92% 75%, 95% 80%, 97% 85%, 98% 90%, 99% 95%, 100% 100%)',
-    background: (accent) => accent
-  },
-  spike: {
-    minWidth: INDICATOR_BASE_MIN_WIDTH + 5,
-    widthFactor: 0.66,
-    clipPath: 'polygon(100% 0%, 99% 5%, 97% 10%, 94% 15%, 91% 20%, 87% 25%, 82% 30%, 77% 35%, 72% 40%, 67% 45%, 62% 50%, 67% 55%, 72% 60%, 77% 65%, 82% 70%, 87% 75%, 91% 80%, 94% 85%, 97% 90%, 99% 95%, 100% 100%)',
-    background: (accent) => accent
-  },
-  stream: {
-    minWidth: INDICATOR_BASE_MIN_WIDTH + 7,
-    widthFactor: 0.7,
-    clipPath: 'polygon(100% 0%, 99% 5%, 98% 10%, 96% 15%, 94% 20%, 91% 25%, 87% 30%, 83% 35%, 78% 40%, 73% 45%, 69% 50%, 73% 55%, 78% 60%, 83% 65%, 87% 70%, 91% 75%, 94% 80%, 96% 85%, 98% 90%, 99% 95%, 100% 100%)',
-    background: (accent) => accent
-  }
+const COLLAPSE_INDICATOR = {
+  minWidth: INDICATOR_BASE_MIN_WIDTH + 5,
+  widthFactor: 0.66,
+  clipPath: 'polygon(100% 0%, 99% 5%, 97% 10%, 94% 15%, 91% 20%, 87% 25%, 82% 30%, 77% 35%, 72% 40%, 67% 45%, 62% 50%, 67% 55%, 72% 60%, 77% 65%, 82% 70%, 87% 75%, 91% 80%, 94% 85%, 97% 90%, 99% 95%, 100% 100%)',
+  path: polygonToSvgPath('polygon(100% 0%, 99% 5%, 97% 10%, 94% 15%, 91% 20%, 87% 25%, 82% 30%, 77% 35%, 72% 40%, 67% 45%, 62% 50%, 67% 55%, 72% 60%, 77% 65%, 82% 70%, 87% 75%, 91% 80%, 94% 85%, 97% 90%, 99% 95%, 100% 100%)'),
+  background: (accent) => accent
 };
 
-Object.keys(INDICATOR_STYLE_CONFIGS).forEach((key) => {
-  INDICATOR_STYLE_CONFIGS[key].path = polygonToSvgPath(INDICATOR_STYLE_CONFIGS[key].clipPath);
-});
-
-const getIndicatorVisuals = (styleId, size, accentColor) => {
-  const config = INDICATOR_STYLE_CONFIGS[styleId] || INDICATOR_STYLE_CONFIGS.blade;
+const getIndicatorVisuals = (size, accentColor) => {
   const appliedSize = Math.min(COLLAPSE_INDICATOR_MAX_DRAG, Math.max(0, size));
-  const width = config.minWidth + appliedSize * config.widthFactor;
-  const visuals = {
+  const width = COLLAPSE_INDICATOR.minWidth + appliedSize * COLLAPSE_INDICATOR.widthFactor;
+  return {
     width,
-    background: config.background(accentColor),
-    clipPath: config.clipPath,
-    path: config.path
+    background: COLLAPSE_INDICATOR.background(accentColor),
+    clipPath: COLLAPSE_INDICATOR.clipPath,
+    path: COLLAPSE_INDICATOR.path
   };
+};
 
-  return visuals;
+const TEXT_FIELD_TYPES = new Set(['text', 'textarea', 'richtext']);
+const IMAGE_FIELD_TYPES = new Set(['image']);
+
+const prioritizeFields = (entries = [], priorityKeys = []) => {
+  if (!priorityKeys?.length) return entries;
+  const prioritySet = new Set(priorityKeys);
+  const prioritized = [];
+  const rest = [];
+  entries.forEach((entry) => {
+    if (prioritySet.has(entry[0])) {
+      prioritized.push(entry);
+    } else {
+      rest.push(entry);
+    }
+  });
+  return [...prioritized, ...rest];
 };
 
 const Toolbar2 = ({
@@ -259,9 +239,17 @@ const Toolbar2 = ({
   const selectedModuleId = useNewEditorStore((state) => state.selectedModuleId);
   const setStyleId = useNewEditorStore((state) => state.setStyleId);
   const updateStyleOverrides = useNewEditorStore((state) => state.updateStyleOverrides);
+  const toolbarCategory = useNewEditorStore((state) => state.toolbarCategory);
+  const setToolbarCategory = useNewEditorStore((state) => state.setToolbarCategory);
+  const inspectorTarget = useNewEditorStore((state) => state.inspectorTarget);
+  const setInspectorTarget = useNewEditorStore((state) => state.setInspectorTarget);
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+  const updateModuleProperty = useNewEditorStore((state) => state.updateModuleProperty);
   
   // Filter categories based on mode
   const CATEGORIES = ALL_CATEGORIES.filter(cat => cat.modes.includes(mode));
+
+  const activeCategory = toolbarCategory || 'modules';
   
   // Theme colors
   const accentColor = theme.colors?.interactive?.default || 'rgb(146, 0, 32)';
@@ -282,7 +270,6 @@ const Toolbar2 = ({
   const { removeModule, addModule, setDragging } = useNewEditorStore();
   
   // State
-  const [activeCategory, setActiveCategory] = useState('modules');
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [selectedModule, setSelectedModule] = useState(null);
   const [popupCenterY, setPopupCenterY] = useState(0);
@@ -292,7 +279,6 @@ const Toolbar2 = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [collapseIndicatorSize, setCollapseIndicatorSize] = useState(0);
-  const [indicatorStyle, setIndicatorStyle] = useState('blade');
   const [styleListExpanded, setStyleListExpanded] = useState(false);
   const [showStyleChangeDialog, setShowStyleChangeDialog] = useState(false);
   const [pendingStyleId, setPendingStyleId] = useState(null);
@@ -313,20 +299,170 @@ const Toolbar2 = ({
     return selectedPage.modules.find((module) => module.id === selectedModuleId) || null;
   }, [selectedPage?.modules, selectedModuleId]);
 
-  const indicatorOption = useMemo(
-    () => INDICATOR_STYLE_OPTIONS.find(option => option.id === indicatorStyle) || INDICATOR_STYLE_OPTIONS[0],
-    [indicatorStyle]
+  const inspectorModuleContext = useMemo(() => {
+    const pages = site?.pages || [];
+    const targetModuleId = inspectorTarget?.moduleId || selectedModuleId;
+    if (!targetModuleId) return null;
+    for (const page of pages) {
+      const found = page.modules?.find((module) => module.id === targetModuleId);
+      if (found) {
+        return { module: found, pageId: page.id };
+      }
+    }
+    return null;
+  }, [site?.pages, inspectorTarget?.moduleId, selectedModuleId]);
+
+  const inspectorModule = inspectorModuleContext?.module || null;
+  const inspectorPageId = inspectorModuleContext?.pageId || null;
+  const inspectorModuleDefinition = inspectorModule
+    ? MODULE_REGISTRY[inspectorModule.type]
+    : null;
+  const inspectorTargetType = inspectorTarget?.type || (inspectorModule ? 'module' : 'site');
+  const inspectorFieldKeys = inspectorTarget?.fieldKeys || [];
+  const inspectorPreview = inspectorTarget?.preview || '';
+
+  const availableInspectorLayouts = inspectorModuleDefinition?.layouts || [];
+  const rawInspectorLayout =
+    inspectorModule?.layout ||
+    inspectorModule?.content?.layout ||
+    inspectorModuleDefinition?.defaultLayout ||
+    availableInspectorLayouts[0];
+  const inspectorCurrentLayout = availableInspectorLayouts.includes(rawInspectorLayout)
+    ? rawInspectorLayout
+    : availableInspectorLayouts[0];
+
+  const isInspectorFieldVisible = useCallback((fieldDef) => {
+    if (!fieldDef?.visibleWhen || !inspectorModule) {
+      return true;
+    }
+    return Object.entries(fieldDef.visibleWhen).every(([key, value]) => {
+      if (key === 'layout') {
+        return (
+          inspectorModule.layout || inspectorModule.content?.layout || inspectorModuleDefinition?.defaultLayout
+        ) === value;
+      }
+      return inspectorModule.content?.[key] === value;
+    });
+  }, [inspectorModule, inspectorModuleDefinition?.defaultLayout]);
+
+  const descriptorEntries = useMemo(() => {
+    if (!inspectorModuleDefinition?.descriptor?.fields) return [];
+    return Object.entries(inspectorModuleDefinition.descriptor.fields).filter(([, def]) =>
+      isInspectorFieldVisible(def)
+    );
+  }, [inspectorModuleDefinition, isInspectorFieldVisible]);
+
+  const contentFieldEntries = useMemo(
+    () => descriptorEntries.filter(([, def]) => !def.category || def.category === 'content'),
+    [descriptorEntries]
+  );
+  const layoutFieldEntries = useMemo(
+    () => descriptorEntries.filter(([, def]) => def.category === 'layout'),
+    [descriptorEntries]
+  );
+  const appearanceFieldEntries = useMemo(
+    () => descriptorEntries.filter(([, def]) => def.category === 'appearance'),
+    [descriptorEntries]
+  );
+  const advancedFieldEntries = useMemo(
+    () => descriptorEntries.filter(([, def]) => def.category === 'advanced'),
+    [descriptorEntries]
+  );
+  const textFieldEntries = useMemo(
+    () => descriptorEntries.filter(([, def]) => TEXT_FIELD_TYPES.has(def.t)),
+    [descriptorEntries]
+  );
+  const imageFieldEntries = useMemo(
+    () => descriptorEntries.filter(([, def]) => IMAGE_FIELD_TYPES.has(def.t)),
+    [descriptorEntries]
+  );
+
+  const prioritizedTextFields = useMemo(
+    () => prioritizeFields(textFieldEntries, inspectorFieldKeys),
+    [textFieldEntries, inspectorFieldKeys]
+  );
+  const prioritizedImageFields = useMemo(
+    () => prioritizeFields(imageFieldEntries, inspectorFieldKeys),
+    [imageFieldEntries, inspectorFieldKeys]
+  );
+
+  const handleSettingsFieldChange = useCallback(
+    (fieldKey, value) => {
+      if (!inspectorModule || !inspectorPageId) {
+        return;
+      }
+
+      if (fieldKey === 'layout') {
+        updateModuleProperty(inspectorPageId, inspectorModule.id, 'layout', value);
+      } else {
+        updateModuleContent(inspectorPageId, inspectorModule.id, { [fieldKey]: value });
+      }
+    },
+    [inspectorModule, inspectorPageId, updateModuleContent, updateModuleProperty]
+  );
+
+  const renderFieldGroup = useCallback(
+    (entries, title) => {
+      if (!inspectorModule || !inspectorPageId || !entries?.length) {
+        return null;
+      }
+
+      return (
+        <Box sx={{ mb: 1 }}>
+          {title && (
+            <Typography
+              sx={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: textMuted,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                mb: 1
+              }}
+            >
+              {title}
+            </Typography>
+          )}
+          <Stack spacing={1.5}>
+            {entries.map(([key, def]) => (
+              <FieldRenderer
+                key={key}
+                fieldKey={key}
+                fieldDef={def}
+                module={inspectorModule}
+                pageId={inspectorPageId}
+                onContentChange={handleSettingsFieldChange}
+              />
+            ))}
+          </Stack>
+        </Box>
+      );
+    },
+    [handleSettingsFieldChange, inspectorModule, inspectorPageId, textMuted]
   );
 
   const collapseIndicatorVisuals = useMemo(
-    () => getIndicatorVisuals(indicatorStyle, collapseIndicatorSize, accentColor),
-    [indicatorStyle, collapseIndicatorSize, accentColor]
+    () => getIndicatorVisuals(collapseIndicatorSize, accentColor),
+    [collapseIndicatorSize, accentColor]
   );
 
-  const previewIndicatorVisuals = useMemo(
-    () => getIndicatorVisuals(indicatorStyle, INDICATOR_PREVIEW_SAMPLE_DRAG, accentColor),
-    [indicatorStyle, accentColor]
-  );
+  useEffect(() => {
+    if (!selectedModuleInstance) {
+      if (inspectorTarget?.type !== 'site') {
+        setInspectorTarget({ type: 'site' });
+      }
+      return;
+    }
+
+    if (!inspectorTarget || inspectorTarget.moduleId !== selectedModuleInstance.id) {
+      setInspectorTarget({
+        type: 'module',
+        moduleId: selectedModuleInstance.id,
+        pageId: selectedPage?.id || selectedPageId || null,
+        fieldKeys: []
+      });
+    }
+  }, [selectedModuleInstance, inspectorTarget, setInspectorTarget, selectedPage?.id, selectedPageId]);
 
   // Notify parent of default width on mount
   useEffect(() => {
@@ -568,7 +704,7 @@ const Toolbar2 = ({
       onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
       // Restore active category or set to default
       if (!activeCategory) {
-        setActiveCategory('modules');
+        setToolbarCategory('modules');
       }
     } else {
       setIsCollapsed(true);
@@ -1212,171 +1348,210 @@ const Toolbar2 = ({
           />
         );
       
-      case 'settings':
-        const secondaryTitle = mode === 'detail' && selectedModuleInstance
-          ? 'Selected Module Parameters'
-          : 'Site Settings';
+      case 'settings': {
+        const moduleLabel =
+          inspectorModuleDefinition?.label || inspectorModule?.name || inspectorModule?.type || 'Moduł';
+        const subjectLabel = (() => {
+          switch (inspectorTargetType) {
+            case 'text':
+              return 'Tekst';
+            case 'image':
+              return 'Obraz';
+            case 'module':
+              return 'Sekcja';
+            case 'site':
+              return 'Strona';
+            default:
+              return 'Element';
+          }
+        })();
 
-        const moduleContentKeys = Object.keys(selectedModuleInstance?.content || {});
+        const renderHeader = (descriptor) => (
+          <Stack spacing={0.5}>
+            <Typography
+              sx={{
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.2em',
+                color: textMuted,
+                textTransform: 'uppercase'
+              }}
+            >
+              Edytujesz
+            </Typography>
+            <Typography sx={{ fontSize: '15px', fontWeight: 600, color: textPrimary }}>
+              {subjectLabel}
+              {descriptor ? ` · ${descriptor}` : ''}
+            </Typography>
+          </Stack>
+        );
+
+        if (inspectorTargetType === 'site' && !inspectorModule) {
+          return (
+            <Stack spacing={2} sx={{ px: 1.5, py: 1.5 }}>
+              {renderHeader(site?.name || 'Twoja strona')}
+              <Stack spacing={0.75}>
+                <Stack spacing={0.3}>
+                  <Typography sx={{ fontSize: '12px', color: textMuted }}>Nazwa</Typography>
+                  <Typography sx={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
+                    {site?.name || 'Bez nazwy'}
+                  </Typography>
+                </Stack>
+                <Stack spacing={0.3}>
+                  <Typography sx={{ fontSize: '12px', color: textMuted }}>Strony</Typography>
+                  <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
+                    {site?.pages?.length || 0}
+                  </Typography>
+                </Stack>
+                <Stack spacing={0.3}>
+                  <Typography sx={{ fontSize: '12px', color: textMuted }}>Styl</Typography>
+                  <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
+                    {site?.style?.name || 'Domyślny motyw'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Stack>
+          );
+        }
+
+        if (!inspectorModule) {
+          return (
+            <Stack spacing={1.5} sx={{ px: 1.5, py: 1.5 }}>
+              {renderHeader('Brak wyboru')}
+              <Typography sx={{ fontSize: '13px', color: textMuted }}>
+                Najpierw wybierz moduł lub element na płótnie, aby zobaczyć jego ustawienia.
+              </Typography>
+            </Stack>
+          );
+        }
+
+        const textFieldsToRender = prioritizedTextFields.length ? prioritizedTextFields : textFieldEntries;
+        const imageFieldsToRender = prioritizedImageFields.length ? prioritizedImageFields : imageFieldEntries;
+        const showLayoutSelector = availableInspectorLayouts.length > 1;
+
+        if (inspectorTargetType === 'text') {
+          return (
+            <Stack spacing={2} sx={{ px: 1.5, py: 1.5 }}>
+              {renderHeader(moduleLabel)}
+              {inspectorPreview && (
+                <Box
+                  sx={{
+                    p: 1.25,
+                    borderRadius: '10px',
+                    bgcolor: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(30,30,30,0.04)',
+                    fontSize: '13px',
+                    color: textPrimary,
+                    border: `1px solid ${alpha(textPrimary, 0.08)}`
+                  }}
+                >
+                  {inspectorPreview}
+                </Box>
+              )}
+              {textFieldsToRender.length
+                ? renderFieldGroup(textFieldsToRender, 'Pola tekstowe')
+                : (
+                  <Typography sx={{ fontSize: '13px', color: textMuted }}>
+                    Ten moduł nie udostępnia oddzielnych pól tekstowych w konfiguracji.
+                  </Typography>
+                )}
+            </Stack>
+          );
+        }
+
+        if (inspectorTargetType === 'image') {
+          return (
+            <Stack spacing={2} sx={{ px: 1.5, py: 1.5 }}>
+              {renderHeader(moduleLabel)}
+              {inspectorTarget?.elementId && (
+                <Box
+                  sx={{
+                    fontSize: '12px',
+                    color: textMuted,
+                    borderRadius: '8px',
+                    border: `1px dashed ${alpha(textPrimary, 0.2)}`,
+                    px: 1.25,
+                    py: 0.75
+                  }}
+                >
+                  Element ID: {inspectorTarget.elementId}
+                </Box>
+              )}
+              {imageFieldsToRender.length
+                ? renderFieldGroup(imageFieldsToRender, 'Obrazy w module')
+                : (
+                  <Typography sx={{ fontSize: '13px', color: textMuted }}>
+                    Brak pól obrazów w konfiguracji tego modułu.
+                  </Typography>
+                )}
+            </Stack>
+          );
+        }
+
+        const showContentFields = contentFieldEntries.length > 0;
+        const showAppearanceFields = appearanceFieldEntries.length > 0;
+        const showAdvancedFields = advancedFieldEntries.length > 0;
 
         return (
           <Stack spacing={2} sx={{ px: 1.5, py: 1.5 }}>
-            <Stack spacing={1.25}>
-              <Typography sx={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.35em', color: accentColor }}>
-                DEV
-              </Typography>
-              <Box sx={{ height: '1px', width: '100%', bgcolor: alpha(textPrimary, 0.08) }} />
-              <Stack spacing={0.75}>
-                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: textPrimary }}>
-                Indicator Style
+            {renderHeader(moduleLabel)}
+
+            {showLayoutSelector && (
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: textMuted,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    mb: 1
+                  }}
+                >
+                  Układ sekcji
                 </Typography>
-                <Box
-                  component="select"
-                  value={indicatorStyle}
-                  onChange={(e) => setIndicatorStyle(e.target.value)}
-                  sx={{
-                    width: '100%',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    color: textPrimary,
-                    bgcolor: isDarkMode ? 'rgba(22, 22, 28, 0.85)' : 'rgba(255, 255, 255, 0.92)',
-                    borderRadius: '8px',
-                    border: `1px solid ${moduleListBorder}`,
-                    px: 1.5,
-                    py: 1,
-                    appearance: 'none',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                    '&:focus': {
-                      borderColor: accentColor,
-                      boxShadow: `0 0 0 2px ${alpha(accentColor, 0.16)}`
-                    },
-                    '& option': {
-                      color: textPrimary,
-                      backgroundColor: isDarkMode ? 'rgba(18, 18, 22, 0.94)' : '#fff'
-                    }
-                  }}
-                >
-                  {INDICATOR_STYLE_OPTIONS.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Box>
-                <Box
-                  sx={{
-                    position: 'relative',
-                    height: '52px',
-                    borderRadius: '10px',
-                    border: `1px dashed ${alpha(accentColor, 0.2)}`,
-                    bgcolor: isDarkMode ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.65)',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <Box
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={inspectorCurrentLayout || ''}
+                    onChange={(e) => handleSettingsFieldChange('layout', e.target.value)}
                     sx={{
-                      position: 'absolute',
-                      top: '8px',
-                      bottom: '8px',
-                      right: '18px',
-                      width: `${previewIndicatorVisuals.width}px`,
-                      transition: 'all 0.1s ease'
+                      borderRadius: '8px',
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: accentColor },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: accentColor }
                     }}
                   >
-                    <IndicatorShape
-                      path={previewIndicatorVisuals.path}
-                      accentColor={accentColor}
-                      blur={0.55}
-                      strokeWidth={0.25}
-                    />
+                    {availableInspectorLayouts.map((layout) => (
+                      <MenuItem key={layout} value={layout}>
+                        {layout.charAt(0).toUpperCase() + layout.slice(1)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {layoutFieldEntries.length > 0 && (
+                  <Box sx={{ mt: 1.5 }}>
+                    {renderFieldGroup(layoutFieldEntries, 'Opcje układu')}
                   </Box>
-                </Box>
-              </Stack>
-            </Stack>
+                )}
+              </Box>
+            )}
 
-            <Stack spacing={1.25}>
-              <Typography sx={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.24em', color: textMuted }}>
-                {secondaryTitle.toUpperCase()}
-              </Typography>
-              <Box sx={{ height: '1px', width: '100%', bgcolor: alpha(textPrimary, 0.08) }} />
+            {showContentFields && renderFieldGroup(contentFieldEntries, 'Zawartość')}
 
-              {mode === 'detail' && selectedModuleInstance ? (
-                <Stack spacing={0.75}>
-                  <Typography sx={{ fontSize: '13px', color: textMuted }}>
-                    Manage the live section currently selected on the canvas.
-                  </Typography>
-                  <Stack spacing={0.3}>
-                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Module Type</Typography>
-                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
-                      {selectedModuleInstance.type}
-                    </Typography>
-                  </Stack>
-                  <Stack spacing={0.3}>
-                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Module ID</Typography>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
-                      {selectedModuleInstance.id}
-                    </Typography>
-                  </Stack>
-                  <Stack spacing={0.3}>
-                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Content Fields</Typography>
-                    {moduleContentKeys.length ? (
-                      <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                        {moduleContentKeys.map((key) => (
-                          <Box
-                            key={key}
-                            sx={{
-                              px: 1,
-                              py: 0.5,
-                              borderRadius: '8px',
-                              bgcolor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(30, 30, 30, 0.06)',
-                              fontSize: '12px',
-                              color: textPrimary
-                            }}
-                          >
-                            {key}
-                          </Box>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Typography sx={{ fontSize: '12px', color: textMuted }}>
-                        This module does not expose editable parameters yet.
-                      </Typography>
-                    )}
-                  </Stack>
-                </Stack>
-              ) : (
-                <Stack spacing={0.75}>
-                  <Typography sx={{ fontSize: '13px', color: textMuted }}>
-                    Quick overview of the current site context.
-                  </Typography>
-                  <Stack spacing={0.3}>
-                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Site Name</Typography>
-                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: textPrimary }}>
-                      {site?.name || 'Untitled Site'}
-                    </Typography>
-                  </Stack>
-                  <Stack spacing={0.3}>
-                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Current Page</Typography>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
-                      {selectedPage?.name || 'No page selected'}
-                    </Typography>
-                    {selectedPage?.route && (
-                      <Typography sx={{ fontSize: '12px', color: textMuted }}>
-                        Route: {selectedPage.route}
-                      </Typography>
-                    )}
-                  </Stack>
-                  <Stack spacing={0.3}>
-                    <Typography sx={{ fontSize: '12px', color: textMuted }}>Pages</Typography>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: textPrimary }}>
-                      {site?.pages?.length || 0}
-                    </Typography>
-                  </Stack>
-                </Stack>
-              )}
-            </Stack>
+            {showAppearanceFields && (
+              <>
+                <Box sx={{ height: '1px', bgcolor: alpha(textPrimary, 0.08) }} />
+                {renderFieldGroup(appearanceFieldEntries, 'Wygląd')}
+              </>
+            )}
+
+            {showAdvancedFields && (
+              <>
+                <Box sx={{ height: '1px', bgcolor: alpha(textPrimary, 0.08) }} />
+                {renderFieldGroup(advancedFieldEntries, 'Zaawansowane')}
+              </>
+            )}
           </Stack>
         );
+      }
       
       default:
         return null;
@@ -1648,7 +1823,7 @@ const Toolbar2 = ({
                 <Tooltip key={category.id} title={category.label} placement="right">
                   <IconButton
                     onClick={() => {
-                      setActiveCategory(category.id);
+                      setToolbarCategory(category.id);
                       setIsCollapsed(false);
                       setToolbarWidth(TOOLBAR_WIDTH_DEFAULT);
                       onWidthChange?.(TOOLBAR_WIDTH_DEFAULT);
@@ -1695,7 +1870,7 @@ const Toolbar2 = ({
             return (
               <Tooltip key={category.id} title={category.label} placement="top">
                 <Box
-                  onClick={() => setActiveCategory(category.id)}
+                  onClick={() => setToolbarCategory(category.id)}
                   sx={{
                     position: 'relative',
                     cursor: 'pointer',

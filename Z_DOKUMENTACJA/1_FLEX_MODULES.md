@@ -699,253 +699,19 @@ export const sanitizeStructure = (structure) => {
   return clean(JSON.parse(JSON.stringify(structure)));
 };
 
-### Faza 3: Migration System (1 tydzień)
-**Cel:** Automatyczna konwersja legacy → flexible
+### Faza 3: Direct Migration (⚠️ DEVELOPMENT ONLY - NO BACKWARD COMPATIBILITY)
 
 **Strategia:**
-- Legacy moduły **dekoracyjne** są automatycznie konwertowane przy renderingu
-- Moduły **techniczne** (events, calendar, team) **NIE SĄ KONWERTOWANE** - pozostają w oryginalnej formie
-- AI pracuje z flexible format dla dekoracyjnych, z legacy format dla technicznych
-- Gdy AI zmieni moduł dekoracyjny → zapisujemy w flexible format
-- Gdy AI zmieni moduł techniczny → zapisujemy w legacy format (tylko content/layout)
+- Natychmiastowe usunięcie wszystkich legacy modułów
+- Moduły **techniczne** (events, calendar, team, newsletter, blog) pozostają w oryginalnej formie
+- Wszystkie moduły **dekoracyjne** używają flexible format od razu
+- Ręczna migracja istniejących development stron
 
 **Tasks:**
-- ✅ Napisać `convertLegacyToFlexible()` **TYLKO** dla modułów dekoracyjnych
-- ✅ Backend: `prepareForAI()` - konwersja przed wysłaniem do AI
-- ✅ Frontend: `ModuleRenderer` obsługuje oba formaty (auto-convert)
-- ✅ Dodać `MODULE_CATEGORIES` - lista modułów technicznych (skip conversion)
-- ✅ Testy konwersji (legacy → flexible → render)
-
-**Converter Implementation:**
-```javascript
-// converter.js
-
-// ⚙️ MODUŁY TECHNICZNE - NIE KONWERTUJ (używają API)
-const TECHNICAL_MODULES = new Set([
-  'events',
-  'calendar_compact', 
-  'caldenar_full',
-  'team',
-  'newsletter',
-  'blog'
-]);
-
-export const convertLegacyToFlexible = (legacyModule) => {
-  // ⚠️ SKIP modułów technicznych - zachowaj oryginał
-  if (TECHNICAL_MODULES.has(legacyModule.type)) {
-    console.log(`[Converter] Skipping technical module: ${legacyModule.type}`);
-    return legacyModule; // ← Zwróć bez zmian!
-  }
-  
-  // ✅ Konwertuj tylko moduły dekoracyjne
-  const converters = {
-    hero: convertHero,
-    services: convertServices,
-    about: convertAbout,
-    gallery: convertGallery,
-    contact: convertContact,
-    text: convertText,
-    video: convertVideo,
-    faq: convertFAQ,
-    testimonials: convertTestimonials,
-    button: convertButton,
-    spacer: convertSpacer,
-  };
-  
-  const converter = converters[legacyModule.type];
-  if (!converter) {
-    console.warn(`[Converter] No converter for: ${legacyModule.type}`);
-    return createFallbackModule(legacyModule);
-  }
-  
-  return converter(legacyModule);
-};
-
-const convertHero = (module) => {
-  const isSplit = module.layout === 'split';
-  
-  return {
-    type: 'flexible',
-    moduleId: module.moduleId,
-    structure: {
-      type: 'container',
-      layout: isSplit ? 'grid' : 'flex',
-      columns: isSplit ? 2 : 1,
-      direction: isSplit ? 'row' : 'column',
-      align: isSplit ? 'start' : 'center',
-      padding: '4rem 2rem',
-      bgColor: module.content.bgColor,
-      bgImage: module.content.backgroundImage,
-      children: isSplit ? [
-        {
-          type: 'stack',
-          direction: 'column',
-          spacing: '2rem',
-          children: [
-            {
-              type: 'text',
-              tag: 'h1',
-              value: module.content.title,
-              id: `${module.moduleId}-title`
-            },
-            module.content.subtitle && {
-              type: 'text',
-              tag: 'p',
-              value: module.content.subtitle,
-              id: `${module.moduleId}-subtitle`
-            },
-            module.content.ctaText && {
-              type: 'button',
-              text: module.content.ctaText,
-              link: module.content.ctaLink || '#',
-              id: `${module.moduleId}-cta`
-            }
-          ].filter(Boolean)
-        },
-        module.content.image && {
-          type: 'image',
-          src: module.content.image,
-          alt: module.content.title || 'Hero image',
-          id: `${module.moduleId}-image`
-        }
-      ].filter(Boolean) : [
-        {
-          type: 'text',
-          tag: 'h1',
-          value: module.content.title,
-          id: `${module.moduleId}-title`,
-          style: { textAlign: 'center' }
-        },
-        module.content.subtitle && {
-          type: 'text',
-          tag: 'p',
-          value: module.content.subtitle,
-          id: `${module.moduleId}-subtitle`,
-          style: { textAlign: 'center' }
-        },
-        module.content.ctaText && {
-          type: 'button',
-          text: module.content.ctaText,
-          link: module.content.ctaLink || '#',
-          id: `${module.moduleId}-cta`
-        }
-      ].filter(Boolean)
-    }
-  };
-};
-
-const convertServices = (module) => {
-  const services = module.content.services || [];
-  
-  return {
-    type: 'flexible',
-    moduleId: module.moduleId,
-    structure: {
-      type: 'container',
-      padding: '4rem 2rem',
-      bgColor: module.content.bgColor,
-      children: [
-        module.content.title && {
-          type: 'text',
-          tag: 'h2',
-          value: module.content.title,
-          id: `${module.moduleId}-title`,
-          style: { textAlign: 'center', marginBottom: '3rem' }
-        },
-        {
-          type: 'grid',
-          columns: 3,
-          gap: '2rem',
-          children: services.map((service, idx) => ({
-            type: 'stack',
-            direction: 'column',
-            spacing: '1rem',
-            children: [
-              service.image && {
-                type: 'image',
-                src: service.image,
-                alt: service.name,
-                id: `${module.moduleId}-s${idx}-img`
-              },
-              {
-                type: 'text',
-                tag: 'h3',
-                value: service.name,
-                id: `${module.moduleId}-s${idx}-title`
-              },
-              service.description && {
-                type: 'text',
-                tag: 'p',
-                value: service.description,
-                id: `${module.moduleId}-s${idx}-desc`
-              },
-              service.price && {
-                type: 'text',
-                tag: 'span',
-                value: `${service.price} PLN`,
-                id: `${module.moduleId}-s${idx}-price`,
-                style: { fontSize: '1.25rem', fontWeight: 'bold' }
-              }
-            ].filter(Boolean)
-          }))
-        }
-      ].filter(Boolean)
-    }
-  };
-};
-
-// ... converters for: about, gallery, contact, text, video, faq, testimonials
-// NOTE: Team converter REMOVED - team is technical module (uses API)
-```
-
-**Backend Integration:**
-```python
-# api/views.py
-
-# ⚙️ MODUŁY TECHNICZNE - nie konwertuj
-TECHNICAL_MODULES = {
-    'events', 'calendar_compact', 'caldenar_full', 
-    'team', 'newsletter', 'blog'
-}
-
-def process_ai_request(request, site_id):
-    site = Site.objects.get(id=site_id)
-    config = site.template_config
-    
-    # Convert ONLY decorative modules to flexible
-    converted_config = prepare_for_ai(config)
-    
-    # AI processes with mixed format (flexible + technical)
-    ai_response = site_editor_agent.process_task(
-        user_prompt=request.data['message'],
-        site_config=converted_config
-    )
-    
-    # Save (AI returns mixed format)
-    if ai_response['status'] == 'success':
-        site.template_config = ai_response['site']
-        site.save()
-    
-    return Response(ai_response)
-
-def prepare_for_ai(config):
-    """Convert ONLY decorative modules to flexible, preserve technical."""
-    for page in config.get('pages', []):
-        modules = page.get('modules', [])
-        converted = []
-        for m in modules:
-            # Skip technical modules - keep original format
-            if m['type'] in TECHNICAL_MODULES:
-                converted.append(m)
-            # Convert decorative modules to flexible
-            elif m['type'] != 'flexible':
-                converted.append(convert_legacy_module(m))
-            # Already flexible
-            else:
-                converted.append(m)
-        page['modules'] = converted
-    return config
-```
+- ✅ Usunąć wszystkie legacy komponenty (Hero/, Services/, etc.)
+- ✅ ModuleRenderer obsługuje tylko: `flexible` + technical modules
+- ✅ Ręczna migracja każdej dev strony na nowy format
+- ✅ Update default templates na flexible format
 
 **Frontend Integration:**
 ```jsx
@@ -957,7 +723,7 @@ const TECHNICAL_MODULES = new Set([
 ]);
 
 const ModuleRenderer = ({ module, isEditing, pageId, moduleId, siteId, siteIdentifier }) => {
-  // ⚠️ Technical modules - render original component (NO conversion)
+  // ⚠️ Technical modules - render original component
   if (TECHNICAL_MODULES.has(module.type)) {
     const TechnicalComponent = TECHNICAL_COMPONENTS[module.type];
     return (
@@ -966,142 +732,99 @@ const ModuleRenderer = ({ module, isEditing, pageId, moduleId, siteId, siteIdent
         isEditing={isEditing}
         pageId={pageId}
         moduleId={moduleId}
-        siteId={siteId}              // ← Pass through!
-        siteIdentifier={siteIdentifier}  // ← Pass through!
+        siteId={siteId}
+        siteIdentifier={siteIdentifier}
       />
     );
   }
   
-  // ✅ Decorative modules - convert to flexible on render
-  const renderModule = module.type === 'flexible' 
-    ? module 
-    : convertLegacyToFlexible(module);
+  // ✅ Flexible modules ONLY
+  if (module.type === 'flexible') {
+    return (
+      <FlexibleRenderer
+        structure={module.structure}
+        isEditing={isEditing}
+        pageId={pageId}
+        moduleId={moduleId}
+      />
+    );
+  }
   
-  return (
-    <FlexibleRenderer
-      structure={renderModule.structure}
-      isEditing={isEditing}
-      pageId={pageId}
-      moduleId={moduleId}
-    />
-  );
+  // ❌ Legacy module - throw error (nie obsługiwane!)
+  console.error(`Legacy module type "${module.type}" is not supported. Use flexible format.`);
+  return null;
 };
 ```
 
 **Migration Flow:**
 ```
 ┌─────────────────────────────────────────┐
-│  LEGACY IN DB (before)                  │
-│  { type: 'hero', content: {...} }       │
+│  LEGACY CODE DELETED                    │
+│  Hero/, Services/, About/, etc.         │
 └─────────────────────────────────────────┘
               ↓
-        USER: "change title"
+┌─────────────────────────────────────────┐
+│  MANUAL MIGRATION                       │
+│  Convert each dev site to flexible      │
+└─────────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────────┐
-│  CONVERT for AI (in-memory)            │
+│  FLEXIBLE FORMAT ONLY ✅                │
 │  { type: 'flexible', structure: {...} } │
-└─────────────────────────────────────────┘
-              ↓
-         AI PROCESSES
-              ↓
-┌─────────────────────────────────────────┐
-│  AI RETURNS flexible format             │
-└─────────────────────────────────────────┘
-              ↓
-          SAVE TO DB
-              ↓
-┌─────────────────────────────────────────┐
-│  FLEXIBLE IN DB (after) ✅              │
-│  { type: 'flexible', structure: {...} } │
-│  Legacy format REPLACED                 │
+│  + technical modules (events, team...)  │
 └─────────────────────────────────────────┘
 
-Faza 4: Integration & Testing (1 tydzień)
-Tasks:
+### Faza 4: Integration & Testing
 
- Integracja z NewEditorPage
- Update Zustand store dla flexible modules
- Responsive handling (mobile/tablet/desktop)
- Performance optimization
- Comprehensive testing
+**Tasks:**
+- ☐ Integracja z NewEditorPage
+- ☐ Update Zustand store dla flexible modules
+- ☐ Responsive handling (mobile/tablet/desktop)
+- ☐ Performance optimization
+- ☐ Comprehensive testing
 
-Testing Checklist:
+**Testing Checklist:**
+
 Unit Tests:
-
- All atomic components render correctly
- All layout components handle children
- Validator catches invalid structures
- Sanitizer removes dangerous code
- Converter handles all legacy types
+- ☐ All atomic components render correctly
+- ☐ All layout components handle children
+- ☐ Validator catches invalid structures
+- ☐ Sanitizer removes dangerous code
 
 Integration Tests:
-
- FlexibleRenderer renders nested structures
- Editing updates work (text, image, button)
- AI generates valid structures
- Legacy modules convert and render
+- ☐ FlexibleRenderer renders nested structures
+- ☐ Editing updates work (text, image, button)
+- ☐ AI generates valid structures
 
 E2E Tests:
-
- User can edit text inline
- User can change images via Pexels
- User can edit button text
- AI commands produce expected results
- Mobile responsive works
+- ☐ User can edit text inline
+- ☐ User can change images via Pexels
+- ☐ User can edit button text
+- ☐ AI commands produce expected results
+- ☐ Mobile responsive works
 
 Performance:
+- ☐ Render time < 100ms for typical modules
+- ☐ Brak memory leaks w trybie edycji
 
- Render time < 100ms for typical modules
- No memory leaks in editing mode
+---
 
-
-Faza 5: Stopniowa Migracja (4-6 tygodni)
-Monitoring:
-sql-- Migration progress
-SELECT 
-  COUNT(*) as total_sites,
-  SUM(CASE WHEN template_config::text LIKE '%"type":"flexible"%' 
-      THEN 1 ELSE 0 END) as flexible_sites,
-  ROUND(100.0 * SUM(CASE WHEN template_config::text LIKE '%"type":"flexible"%' 
-      THEN 1 ELSE 0 END) / COUNT(*), 2) as progress_percent
-FROM api_site;
-
--- Legacy module usage
-SELECT 
-  jsonb_path_query(template_config, '$.pages[*].modules[*].type') as module_type,
-  COUNT(*) as usage_count
-FROM api_site
-GROUP BY module_type
-ORDER BY usage_count DESC;
-```
+### Faza 5: Simplified Timeline (⚠️ DEVELOPMENT - BREAKING CHANGES)
 
 **Timeline:**
 ```
 Week 1-2:  Foundation (rendering engine, components)
 Week 3:    Patterns & AI (prompts, validation)
-Week 4:    Migration system (converters)
-Week 5:    Integration & testing
-Week 6-9:  Stopniowa migracja (automatic conversion)
-Week 10:   Monitoring & verification (100% flexible?)
-Week 11:   🧹 Cleanup Phase (po zatwierdzeniu)
-
-Faza 6: Cleanup Phase (po zatwierdzeniu - 2-3 dni)
-⚠️ TYLKO PO ZATWIERDZENIU ŻE NOWY SYSTEM DZIAŁA!
-Checklist przed cleanup:
-bash# Sprawdź czy wszystkie strony używają flexible
-SELECT site_id, COUNT(*) as legacy_count 
-FROM sites 
-WHERE template_config::text LIKE '%"type":"hero"%' 
-   OR template_config::text LIKE '%"type":"services"%';
-
-# Jeśli legacy_count > 0 → CZEKAJ!
-# Jeśli legacy_count = 0 → MOŻNA CZYŚCIĆ ✅
+Week 4:    Direct Migration + Testing
+           - Delete legacy code
+           - Manual migration of dev sites
+           - Integration & testing
 ```
 
-**Do usunięcia:**
+**Do usunięcia NATYCHMIAST (po Fazie 2):**
 ```
 FRONTEND/src/SITES/components/modules/
-├── Hero/                              ← DELETE (cały folder)
+├── Hero/                              ← DELETE
 ├── Services/                          ← DELETE
 ├── About/                             ← DELETE
 ├── Gallery/                           ← DELETE
@@ -1110,32 +833,23 @@ FRONTEND/src/SITES/components/modules/
 ├── Video/                             ← DELETE
 ├── FAQ/                               ← DELETE
 ├── Testimonials/                      ← DELETE
-├── Team/                              ← DELETE
 └── _descriptors.js                    ← DELETE
 ```
 
 **Pozostaje:**
 ```
 FRONTEND/src/SITES/components/modules/
-└── FlexibleModule/                    ← JEDYNY MODUŁ ✅
-    ├── index.jsx
-    ├── FlexibleRenderer.jsx
-    ├── atoms/
-    ├── layouts/
-    ├── patterns.js
-    ├── validator.js
-    └── sanitizer.js
-Rezultat:
-
--70% kodu (~5000 → ~1500 linii)
--70% komponentów (~50 → ~15)
--64% bundle size (~180KB → ~65KB)
-
-Warunki do cleanup:
-
-✅ 100% stron używa flexible format
-✅ Nowy system działa stabilnie >2 tygodnie
-✅ Zero critical bugs
-✅ Pełny backup DB
-
-
+├── FlexibleModule/                    ← Moduły dekoracyjne
+│   ├── index.jsx
+│   ├── FlexibleRenderer.jsx
+│   ├── atoms/
+│   ├── layouts/
+│   ├── patterns.js
+│   ├── validator.js
+│   └── sanitizer.js
+├── Events/                            ← Moduł techniczny (API)
+├── Calendar/                          ← Moduł techniczny (API)
+├── Team/                              ← Moduł techniczny (API)
+├── Newsletter/                        ← Moduł techniczny (API)
+└── Blog/                              ← Moduł techniczny (API)
+```

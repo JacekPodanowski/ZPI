@@ -1,35 +1,47 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box,
   TextField,
   IconButton,
   Typography,
   CircularProgress,
-  Alert
+  Alert,
+  Chip
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  DragIndicator as DragIcon
+  Close as CloseIcon
 } from '@mui/icons-material';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import useImageSearchStore from '../store/imageSearchStore';
 import useNewEditorStore from '../store/newEditorStore';
 import useTheme from '../../theme/useTheme';
+import { getModuleDefinition } from '../pages/Editor/moduleDefinitions';
+
+const MAX_BOOKMARKS = 5;
+const CACHE_EXPIRY_DAYS = 7;
+const CACHE_KEY = 'pexels_search_tabs';
+const CACHE_TIMESTAMP_KEY = 'pexels_search_tabs_timestamp';
 
 /**
  * MediaPanel - Pexels search integrated into Toolbar
  * Features:
- * - Search input with magnifying glass
- * - Bookmark recent searches (up to 3, draggable)
+ * - Search input with Pexels API integration
+ * - Bookmarks as tabs (up to 5, auto-remove oldest)
+ * - Cache cleared every 7 days
  * - Scrollable image results (vertical list)
  * - Click image to select it
  */
 const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchBookmarks, setSearchBookmarks] = useState([]);
+  const [searchTabs, setSearchTabs] = useState([]);
+  const [activeTabIndex, setActiveTabIndex] = useState(null);
   const searchDebounceRef = useRef(null);
   const theme = useTheme();
   const siteId = useNewEditorStore((state) => state.siteId);
+  const selectedModuleId = useNewEditorStore((state) => state.selectedModuleId);
+  const selectedPageId = useNewEditorStore((state) => state.selectedPageId);
+  const updateModuleContent = useNewEditorStore((state) => state.updateModuleContent);
+  const getSelectedModule = useNewEditorStore((state) => state.getSelectedModule);
 
   const {
     searchResults,
@@ -38,34 +50,48 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
     quota
   } = useImageSearchStore();
 
-  // Load bookmarks from localStorage
+  // Load tabs from localStorage and check cache expiry
   useEffect(() => {
-    const saved = localStorage.getItem('pexels_search_bookmarks');
-    if (saved) {
-      try {
-        setSearchBookmarks(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load bookmarks:', e);
+    const timestamp = localStorage.getItem(CACHE_TIMESTAMP_KEY);
+    const now = Date.now();
+    const cacheAge = timestamp ? now - parseInt(timestamp, 10) : Infinity;
+    const expiryMs = CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+    if (cacheAge > expiryMs) {
+      // Cache expired, clear it
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.setItem(CACHE_TIMESTAMP_KEY, now.toString());
+      setSearchTabs([]);
+    } else {
+      // Load existing tabs
+      const saved = localStorage.getItem(CACHE_KEY);
+      if (saved) {
+        try {
+          const tabs = JSON.parse(saved);
+          setSearchTabs(tabs);
+        } catch (e) {
+          console.error('Failed to load search tabs:', e);
+          setSearchTabs([]);
+        }
+      }
+      
+      // Set timestamp if not exists
+      if (!timestamp) {
+        localStorage.setItem(CACHE_TIMESTAMP_KEY, now.toString());
       }
     }
   }, []);
 
-  // Save bookmarks to localStorage
-  const saveBookmarks = (bookmarks) => {
-    setSearchBookmarks(bookmarks);
-    localStorage.setItem('pexels_search_bookmarks', JSON.stringify(bookmarks));
+  // Save tabs to localStorage
+  const saveTabs = (tabs) => {
+    setSearchTabs(tabs);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(tabs));
   };
 
   // Debounced search
   useEffect(() => {
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
-    }
-
-    if (searchQuery.trim()) {
-      searchDebounceRef.current = setTimeout(() => {
-        handleSearch(searchQuery.trim());
-      }, 500);
     }
 
     return () => {
@@ -79,57 +105,121 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
     if (!query) return;
 
     try {
-      await searchImages(siteId, query, {
+      // Search using Pexels API
+      const response = await searchImages(siteId, query, {
         mode: 'bulk',
         page: 1
       });
 
-      // Add to bookmarks
-      addBookmark(query);
+      // Add to tabs (as bookmarks)
+      addTab(query, response.images || []);
     } catch (error) {
       console.error('Search error:', error);
     }
   };
 
-  const addBookmark = (query) => {
-    const newBookmarks = [query, ...searchBookmarks.filter(b => b !== query)];
+  const handleSearchSubmit = () => {
+    const query = searchQuery.trim();
+    if (query) {
+      handleSearch(query);
+    }
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
+    }
+  };
+
+  const addTab = (query, images) => {
+    const newTab = {
+      query,
+      images,
+      timestamp: Date.now()
+    };
+
+    const newTabs = [newTab, ...searchTabs.filter(t => t.query !== query)];
     
-    // Keep only 3 most recent
-    if (newBookmarks.length > 3) {
-      newBookmarks.pop();
+    // Keep only MAX_BOOKMARKS most recent
+    if (newTabs.length > MAX_BOOKMARKS) {
+      newTabs.pop();
     }
     
-    saveBookmarks(newBookmarks);
+    saveTabs(newTabs);
+    setActiveTabIndex(0);
   };
 
-  const handleBookmarkClick = (query) => {
-    setSearchQuery(query);
-    handleSearch(query);
+  const handleTabClick = (index) => {
+    setActiveTabIndex(index);
   };
 
-  const handleDragEnd = (result) => {
-    if (!result.destination) return;
-
-    const items = Array.from(searchBookmarks);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    saveBookmarks(items);
+  const handleTabRemove = (index, e) => {
+    e.stopPropagation();
+    const newTabs = searchTabs.filter((_, i) => i !== index);
+    saveTabs(newTabs);
+    
+    if (activeTabIndex === index) {
+      setActiveTabIndex(newTabs.length > 0 ? 0 : null);
+    } else if (activeTabIndex > index) {
+      setActiveTabIndex(activeTabIndex - 1);
+    }
   };
+
+  const selectedModule = useMemo(() => {
+    if (!selectedModuleId) {
+      return null;
+    }
+    return getSelectedModule?.() || null;
+  }, [getSelectedModule, selectedModuleId, selectedPageId]);
+
+  const selectedModuleLabel = useMemo(() => {
+    if (!selectedModule) {
+      return null;
+    }
+    if (selectedModule.name) {
+      return selectedModule.name;
+    }
+    const definition = getModuleDefinition(selectedModule.type);
+    return definition?.label || selectedModule.type;
+  }, [selectedModule]);
 
   const handleImageClick = (image) => {
-    // Get selected element from localStorage
     const selectedElementId = localStorage.getItem('selectedImageElement');
-    
+    let handled = false;
+
     if (selectedElementId && window.__imageElementCallbacks) {
       const callback = window.__imageElementCallbacks[selectedElementId];
       if (callback) {
         callback(image.src.large);
+        handled = true;
+      }
+    }
+
+    if (!handled && selectedModuleId && selectedPageId && selectedModule) {
+      const bestSrc =
+        image?.src?.large2x || image?.src?.large || image?.src?.original || image?.src?.medium;
+      if (bestSrc) {
+        const currentBg = selectedModule?.content?.backgroundImage;
+        if (currentBg !== bestSrc) {
+          updateModuleContent(
+            selectedPageId,
+            selectedModuleId,
+            { backgroundImage: bestSrc },
+            {
+              description: `Ustawiono tło w sekcji "${selectedModuleLabel || selectedModule.type || 'moduł'}"`,
+              actionType: 'set_module_background'
+            }
+          );
+        }
+        handled = true;
       }
     }
   };
 
   const lowQuota = typeof quota?.remaining === 'number' && quota.remaining < 10;
+
+  const activeTab = activeTabIndex !== null ? searchTabs[activeTabIndex] : null;
+  const displayImages = activeTab ? activeTab.images : searchResults;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -146,15 +236,16 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
         <TextField
           fullWidth
           size="small"
-          placeholder="Wyszukaj obrazy..."
+          placeholder="Wyszukaj obrazy w Pexels..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={handleSearchKeyPress}
           InputProps={{
             endAdornment: (
               <IconButton
                 size="small"
-                onClick={() => handleSearch(searchQuery.trim())}
-                disabled={!searchQuery.trim()}
+                onClick={handleSearchSubmit}
+                disabled={!searchQuery.trim() || isLoading}
                 sx={{ color: textMuted, mr: -1 }}
               >
                 <SearchIcon sx={{ fontSize: 18 }} />
@@ -190,76 +281,70 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
         )}
       </Box>
 
-      {/* Bookmarks */}
-      {searchBookmarks.length > 0 && (
-        <Box sx={{ p: 2, borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}>
+      {/* Module context hint */}
+      {selectedModule && (
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1,
+            borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(146,0,32,0.03)'
+          }}
+        >
           <Typography
             sx={{
               fontSize: '11px',
               fontWeight: 600,
-              color: textMuted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              mb: 1
+              color: textPrimary,
+              mb: 0.25
             }}
           >
-            Ostatnie wyszukiwania
+            {selectedModuleLabel || 'Wybrany moduł'}
           </Typography>
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="bookmarks">
-              {(provided) => (
-                <Box
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}
-                >
-                  {searchBookmarks.map((bookmark, index) => (
-                    <Draggable key={bookmark} draggableId={bookmark} index={index}>
-                      {(provided, snapshot) => (
-                        <Box
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            bgcolor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                            borderRadius: '6px',
-                            px: 1,
-                            py: 0.5,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            opacity: snapshot.isDragging ? 0.5 : 1,
-                            '&:hover': {
-                              bgcolor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
-                            }
-                          }}
-                          onClick={() => handleBookmarkClick(bookmark)}
-                        >
-                          <Box {...provided.dragHandleProps}>
-                            <DragIcon sx={{ fontSize: 14, color: textMuted }} />
-                          </Box>
-                          <Typography
-                            sx={{
-                              fontSize: '12px',
-                              color: textPrimary,
-                              flex: 1,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {bookmark}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </Box>
-              )}
-            </Droppable>
-          </DragDropContext>
+          <Typography sx={{ fontSize: '11px', color: textMuted }}>
+            Kliknięcie obrazu ustawi go jako tło tej sekcji.
+          </Typography>
+        </Box>
+      )}
+
+      {/* Search Tabs */}
+      {searchTabs.length > 0 && (
+        <Box sx={{ 
+          p: 1.5, 
+          borderBottom: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 0.75
+        }}>
+          {searchTabs.map((tab, index) => (
+            <Chip
+              key={tab.query + tab.timestamp}
+              label={tab.query}
+              size="small"
+              onClick={() => handleTabClick(index)}
+              onDelete={(e) => handleTabRemove(index, e)}
+              deleteIcon={<CloseIcon sx={{ fontSize: 14 }} />}
+              sx={{
+                bgcolor: activeTabIndex === index 
+                  ? (isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
+                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'),
+                color: textPrimary,
+                fontSize: '11px',
+                height: '26px',
+                cursor: 'pointer',
+                border: activeTabIndex === index ? `1px solid ${accentColor}` : 'none',
+                '&:hover': {
+                  bgcolor: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'
+                },
+                '& .MuiChip-deleteIcon': {
+                  color: textMuted,
+                  '&:hover': {
+                    color: textPrimary
+                  }
+                }
+              }}
+            />
+          ))}
         </Box>
       )}
 
@@ -285,7 +370,7 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
         }}
       >
         {/* Loading */}
-        {isLoading && (
+        {isLoading && activeTabIndex === null && (
           <Box
             sx={{
               display: 'flex',
@@ -299,7 +384,7 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
         )}
 
         {/* No search yet */}
-        {!isLoading && searchResults.length === 0 && !searchQuery && (
+        {!isLoading && displayImages.length === 0 && searchTabs.length === 0 && (
           <Box
             sx={{
               textAlign: 'center',
@@ -309,15 +394,15 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
           >
             <SearchIcon sx={{ fontSize: 40, mb: 1, opacity: 0.3 }} />
             <Typography sx={{ fontSize: '12px' }}>
-              Wyszukaj obrazy używając pola powyżej
+              Wyszukaj obrazy z Pexels używając pola powyżej
             </Typography>
           </Box>
         )}
 
         {/* Results - Vertical List */}
-        {!isLoading && searchResults.length > 0 && (
+        {displayImages.length > 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {searchResults.map((image) => (
+            {displayImages.map((image) => (
               <Box
                 key={image.id}
                 onClick={() => handleImageClick(image)}
@@ -368,8 +453,8 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
           </Box>
         )}
 
-        {/* No results */}
-        {!isLoading && searchResults.length === 0 && searchQuery && (
+        {/* No results in active tab */}
+        {!isLoading && displayImages.length === 0 && searchTabs.length > 0 && activeTabIndex !== null && (
           <Box
             sx={{
               textAlign: 'center',
@@ -378,7 +463,7 @@ const MediaPanel = ({ textPrimary, textMuted, accentColor, isDarkMode }) => {
             }}
           >
             <Typography sx={{ fontSize: '12px' }}>
-              Brak wyników dla "{searchQuery}"
+              Brak wyników w tej zakładce
             </Typography>
           </Box>
         )}

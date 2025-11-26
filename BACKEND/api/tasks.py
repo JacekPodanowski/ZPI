@@ -2026,3 +2026,111 @@ def sync_cloudflare_domain_status(self):
             raise self.retry(exc=exc, countdown=300)
         return {"status": "error", "message": str(exc)}
 
+
+@shared_task(bind=True, max_retries=3)
+def cleanup_expired_domain_reservations(self):
+    """
+    Auto-cleanup task for expired domain reservations.
+    Runs every 30 minutes to remove domains that were not configured within 48 hours.
+    
+    This task:
+    1. Finds all domain orders with status FREE/PENDING/ERROR where expires_at < now
+    2. Marks them as EXPIRED
+    3. Optionally removes Cloudflare zone (configurable)
+    4. Logs all actions for audit trail
+    
+    Returns:
+        dict: Status with counts of expired, deleted, and errors
+    """
+    from .models import DomainOrder
+    from datetime import datetime
+    import requests
+    
+    try:
+        logger.info("[Celery] Starting expired domain cleanup task")
+        
+        now = timezone.now()
+        expired_count = 0
+        zone_deleted_count = 0
+        error_count = 0
+        
+        # Find expired domain reservations
+        expired_orders = DomainOrder.objects.filter(
+            expires_at__lt=now,
+            status__in=['free', 'pending', 'error', 'configuring_dns']
+        ).select_related('user')
+        
+        total_expired = expired_orders.count()
+        logger.info(f"[Celery] Found {total_expired} expired domain reservations to clean up")
+        
+        if total_expired == 0:
+            return {
+                "status": "success",
+                "message": "No expired domains to clean up",
+                "expired": 0,
+                "zones_deleted": 0,
+                "errors": 0
+            }
+        
+        for order in expired_orders:
+            try:
+                domain_name = order.domain_name
+                zone_id = order.cloudflare_zone_id
+                user_email = order.user.email if order.user else 'Unknown'
+                
+                logger.info(f"[Celery] Expiring domain reservation: {domain_name} (Order #{order.id}, User: {user_email})")
+                
+                # Mark as EXPIRED
+                old_status = order.status
+                order.status = 'expired'
+                order.error_message = f'Domain reservation expired after 48 hours (was {old_status})'
+                order.save(update_fields=['status', 'error_message'])
+                
+                expired_count += 1
+                
+                # Optional: Delete Cloudflare zone to free up resources
+                # Disabled by default - zones are cheap and user might reconfigure later
+                DELETE_CLOUDFLARE_ZONES_ON_EXPIRY = getattr(settings, 'DELETE_CLOUDFLARE_ZONES_ON_EXPIRY', False)
+                
+                if DELETE_CLOUDFLARE_ZONES_ON_EXPIRY and zone_id:
+                    try:
+                        cf_headers = {
+                            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+                            'Content-Type': 'application/json',
+                        }
+                        
+                        delete_response = requests.delete(
+                            f'https://api.cloudflare.com/client/v4/zones/{zone_id}',
+                            headers=cf_headers
+                        )
+                        
+                        if delete_response.status_code in [200, 404]:
+                            logger.info(f"[Celery] Deleted Cloudflare zone {zone_id} for expired domain {domain_name}")
+                            zone_deleted_count += 1
+                        else:
+                            logger.warning(f"[Celery] Failed to delete Cloudflare zone {zone_id}: {delete_response.status_code}")
+                    
+                    except Exception as cf_error:
+                        logger.error(f"[Celery] Error deleting Cloudflare zone {zone_id}: {cf_error}")
+                
+            except Exception as e:
+                logger.error(f"[Celery] Error processing expired domain {order.domain_name}: {e}")
+                error_count += 1
+                continue
+        
+        logger.info(f"[Celery] Domain cleanup complete: {expired_count} expired, {zone_deleted_count} zones deleted, {error_count} errors")
+        
+        return {
+            "status": "success",
+            "expired": expired_count,
+            "zones_deleted": zone_deleted_count,
+            "errors": error_count,
+            "total_processed": total_expired
+        }
+        
+    except Exception as exc:
+        logger.exception(f"[Celery] Domain cleanup task failed: {exc}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc, countdown=600)  # Retry after 10 minutes
+        return {"status": "error", "message": str(exc)}
+

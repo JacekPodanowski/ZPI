@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getDefaultModuleContent } from '../pages/Editor/moduleDefinitions';
+import { getDefaultModuleContent, getModuleDefinition } from '../pages/Editor/moduleDefinitions';
 import { DEFAULT_STYLE_ID } from '../../SITES/styles';
 import composeSiteStyle, {
   normalizeStyleState,
@@ -139,6 +139,48 @@ const buildStyleState = (styleId = DEFAULT_STYLE_ID, overrides = {}) => {
     styleOverrides: cleanOverrides,
     style
   };
+};
+
+const TEXT_KEY_HINTS = ['title', 'subtitle', 'heading', 'text', 'body', 'content', 'label', 'paragraph', 'description', 'quote'];
+const IMAGE_KEY_HINTS = ['image', 'photo', 'background', 'gallery', 'media', 'poster', 'cover'];
+const STYLE_KEY_HINTS = ['color', 'palette', 'font', 'layout', 'spacing', 'shadow', 'border', 'theme'];
+
+const classifyChangeCategory = (keys = []) => {
+  const normalized = keys.map((key) => key.toLowerCase());
+  const matchesHint = (hints) => normalized.some((key) => hints.some((hint) => key.includes(hint)));
+
+  const categories = [];
+  if (matchesHint(IMAGE_KEY_HINTS)) {
+    categories.push('image');
+  }
+  if (matchesHint(TEXT_KEY_HINTS)) {
+    categories.push('text');
+  }
+  if (matchesHint(STYLE_KEY_HINTS)) {
+    categories.push('style');
+  }
+
+  if (categories.length === 1) {
+    return categories[0];
+  }
+  return 'general';
+};
+
+const buildContentChangeDescription = (module, changedKeys = []) => {
+  const moduleDefinition = getModuleDefinition(module?.type);
+  const label = module?.name || moduleDefinition?.label || module?.type || 'sekcja';
+  const category = classifyChangeCategory(changedKeys);
+
+  switch (category) {
+    case 'text':
+      return `Zmieniono tekst w ${label}`;
+    case 'image':
+      return `Zmieniono obraz w ${label}`;
+    case 'style':
+      return `Zmieniono styl w ${label}`;
+    default:
+      return `Zaktualizowano ${label}`;
+  }
 };
 
 const normalizeModule = (module, index, pageId) => {
@@ -301,7 +343,9 @@ const createInitialState = () => ({
   detailHistory: createHistoryStack(),
   aiTransaction: createTransactionState(),
   currentVersionNumber: 0,
-  lastSavedAt: null
+  lastSavedAt: null,
+  toolbarCategory: 'modules',
+  inspectorTarget: null
 });
 
 const useNewEditorStore = create((set, get) => ({
@@ -314,6 +358,27 @@ const useNewEditorStore = create((set, get) => ({
       selectedPageId: pageId,
       selectedModuleId: null
     }),
+
+  setToolbarCategory: (category) => {
+    const fallback = 'modules';
+    set({ toolbarCategory: category || fallback });
+  },
+
+  setInspectorTarget: (target) =>
+    set(() => ({
+      inspectorTarget: target
+        ? {
+            type: target.type || null,
+            moduleId: target.moduleId || null,
+            pageId: target.pageId || null,
+            fieldKeys: Array.isArray(target.fieldKeys) ? target.fieldKeys : [],
+            preview: target.preview || '',
+            elementId: target.elementId || null
+          }
+        : null
+    })),
+
+  clearInspectorTarget: () => set({ inspectorTarget: null }),
   exitDetailMode: () =>
     set({
       editorMode: 'structure',
@@ -443,7 +508,6 @@ const useNewEditorStore = create((set, get) => ({
       if (!pageId || state.entryPointPageId === pageId) {
         return {};
       }
-
       const targetPage = state.site.pages.find((page) => page.id === pageId);
       if (!targetPage) {
         return {};
@@ -737,7 +801,7 @@ const useNewEditorStore = create((set, get) => ({
       return applyChangeWithHistory(state, 'structure', metadata, updates);
     }),
 
-  updateModuleContent: (pageId, moduleId, content = {}) =>
+  updateModuleContent: (pageId, moduleId, content = {}, metadataOverrides = {}) =>
     set((state) => {
       const page = state.site.pages.find((p) => p.id === pageId);
       if (!page) {
@@ -785,12 +849,22 @@ const useNewEditorStore = create((set, get) => ({
         )
       };
 
-      const metadata = {
+      const baseMetadata = {
         source: state.aiTransaction.active ? 'ai' : 'user',
         actionType: 'edit_content',
         description: `Edited ${module.type || 'module'} content`,
         affectedModules: [moduleId],
         changesCount: changedKeys.length
+      };
+
+      const metadata = {
+        ...baseMetadata,
+        ...metadataOverrides,
+        affectedModules: metadataOverrides.affectedModules || baseMetadata.affectedModules,
+        changesCount:
+          typeof metadataOverrides.changesCount === 'number'
+            ? metadataOverrides.changesCount
+            : baseMetadata.changesCount
       };
 
       const updates = {

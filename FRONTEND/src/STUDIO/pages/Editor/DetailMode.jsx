@@ -15,7 +15,7 @@ const DetailMode = () => {
   const muiTheme = useMuiTheme();
   const theme = useTheme();
   const isDarkMode = theme.mode === 'dark';
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('lg'));
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const layoutRef = useRef(null);
   const canvasScrollRef = useRef(null);
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);

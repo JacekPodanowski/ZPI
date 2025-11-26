@@ -32,7 +32,7 @@ const pexelsService = {
         params.append('color', color);
       }
 
-      const response = await apiClient.get(`/api/v1/sites/${siteId}/images/search/?${params}`);
+      const response = await apiClient.get(`/sites/${siteId}/images/search/?${params}`);
       return response.data;
     } catch (error) {
       console.error('Error searching images:', error);
@@ -57,7 +57,7 @@ const pexelsService = {
    */
   getQuota: async (siteId) => {
     try {
-      const response = await apiClient.get(`/api/v1/sites/${siteId}/images/quota/`);
+      const response = await apiClient.get(`/sites/${siteId}/images/quota/`);
       return response.data;
     } catch (error) {
       console.error('Error fetching quota:', error);

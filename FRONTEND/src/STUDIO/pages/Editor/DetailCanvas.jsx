@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Box, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button, DialogContentText } from '@mui/material';
 import { Delete, Tune as TuneIcon, Image as ImageIcon } from '@mui/icons-material';
 import useNewEditorStore from '../../store/newEditorStore';
@@ -139,7 +139,17 @@ const MeasuredModule = ({ module, pageId, isSelected, onDelete, onContextMenu, p
 };
 
 const DetailCanvas = () => {
-  const { selectedModuleId, selectedPageId, removeModule, addModule, moveModule, setDragging, selectModule } = useNewEditorStore();
+  const {
+    selectedModuleId,
+    selectedPageId,
+    removeModule,
+    addModule,
+    moveModule,
+    setDragging,
+    selectModule,
+    setToolbarCategory,
+    setInspectorTarget
+  } = useNewEditorStore();
   const addToast = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [moduleToDelete, setModuleToDelete] = React.useState(null);
@@ -195,6 +205,31 @@ const DetailCanvas = () => {
 
     setDragging(false);
   };
+
+  const focusSettingsPanel = useCallback((target) => {
+    if (!target) {
+      setInspectorTarget(null);
+      return;
+    }
+    setInspectorTarget(target);
+    setToolbarCategory('settings');
+  }, [setInspectorTarget, setToolbarCategory]);
+
+  const normalizeTextValue = (value = '') =>
+    value
+      ?.replace(/<[^>]+>/g, ' ')
+      ?.replace(/\s+/g, ' ')
+      ?.trim();
+
+  const guessTextFieldKeys = useCallback((moduleData, textElement) => {
+    if (!moduleData || !textElement) return [];
+    const normalizedNeedle = normalizeTextValue(textElement.innerText || textElement.textContent || '');
+    if (!normalizedNeedle) return [];
+
+    return Object.entries(moduleData.content || {})
+      .filter(([, value]) => typeof value === 'string' && normalizeTextValue(value) === normalizedNeedle)
+      .map(([key]) => key);
+  }, []);
 
   const previewTheme = useMemo(
     () => getPreviewTheme(site?.theme),
@@ -483,6 +518,15 @@ const DetailCanvas = () => {
                 icon: <TuneIcon sx={{ fontSize: 18 }} />,
                 onClick: () => {
                   selectModule(contextMenu.moduleId);
+                  focusSettingsPanel({
+                    type: 'module',
+                    moduleId: contextMenu.moduleId,
+                    pageId: page?.id || null,
+                    moduleType:
+                      contextMenu.target?.type ||
+                      contextMenu.target?.module?.type ||
+                      null
+                  });
                 }
               }
             ];
@@ -504,6 +548,23 @@ const DetailCanvas = () => {
                 icon: <TuneIcon sx={{ fontSize: 18 }} />,
                 onClick: () => {
                   selectModule(contextMenu.moduleId);
+                  const fieldKeys = guessTextFieldKeys(
+                    contextMenu.target?.module,
+                    contextMenu.target?.textElement
+                  );
+                  const preview =
+                    (contextMenu.target?.textElement?.innerText ||
+                      contextMenu.target?.textElement?.textContent ||
+                      '')
+                      .trim()
+                      .slice(0, 140);
+                  focusSettingsPanel({
+                    type: 'text',
+                    moduleId: contextMenu.moduleId,
+                    pageId: page?.id || null,
+                    fieldKeys,
+                    preview
+                  });
                 }
               }
             ];
@@ -521,6 +582,19 @@ const DetailCanvas = () => {
                     openImageModal();
                   }
                   selectModule(contextMenu.moduleId);
+                }
+              },
+              {
+                label: 'Ustawienia',
+                icon: <TuneIcon sx={{ fontSize: 18 }} />,
+                onClick: () => {
+                  selectModule(contextMenu.moduleId);
+                  focusSettingsPanel({
+                    type: 'image',
+                    moduleId: contextMenu.moduleId,
+                    pageId: page?.id || null,
+                    elementId: contextMenu.target.elementId || null
+                  });
                 }
               }
             ];
