@@ -155,10 +155,11 @@ class GoogleCalendarService:
             # Build event body
             event_body = self._build_event_body(event)
             
-            # Create event
+            # Create event with sendUpdates to force immediate sync
             google_event = service.events().insert(
                 calendarId=integration.calendar_id,
-                body=event_body
+                body=event_body,
+                sendUpdates='all'  # Force immediate notification and cache refresh
             ).execute()
             
             google_event_id = google_event['id']
@@ -212,11 +213,12 @@ class GoogleCalendarService:
             # Build event body
             event_body = self._build_event_body(event)
             
-            # Update event
+            # Update event with sendUpdates to force immediate sync
             service.events().update(
                 calendarId=integration.calendar_id,
                 eventId=google_cal_event.google_event_id,
-                body=event_body
+                body=event_body,
+                sendUpdates='all'  # Force immediate notification and cache refresh
             ).execute()
             
             google_cal_event.last_synced_at = timezone.now()
@@ -260,10 +262,11 @@ class GoogleCalendarService:
             credentials = self.get_credentials(integration)
             service = build('calendar', 'v3', credentials=credentials)
             
-            # Delete event
+            # Delete event with sendUpdates to force immediate sync
             service.events().delete(
                 calendarId=integration.calendar_id,
-                eventId=google_cal_event.google_event_id
+                eventId=google_cal_event.google_event_id,
+                sendUpdates='all'  # Force immediate notification and cache refresh
             ).execute()
             
             # Delete mapping
