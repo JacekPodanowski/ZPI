@@ -5,7 +5,7 @@ import os
 import logging
 
 from .media_helpers import cleanup_asset_if_unused
-from .models import Booking, MediaUsage, TermsOfService, Event, GoogleCalendarIntegration
+from .models import Booking, MediaUsage, TermsOfService, Event, GoogleCalendarIntegration, GoogleCalendarEvent
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,8 @@ def sync_event_to_google_calendar_on_save(sender, instance: Event, created: bool
     Automatically sync Event to Google Calendar when created or updated.
     Only syncs if the site has an active Google Calendar integration.
     """
+    logger.info(f"Signal triggered for Event {instance.id} (created={created})")
+    
     try:
         integration = GoogleCalendarIntegration.objects.filter(
             site=instance.site,
@@ -75,22 +77,31 @@ def sync_event_to_google_calendar_on_save(sender, instance: Event, created: bool
         ).first()
         
         if not integration:
+            logger.info(f"No active Google Calendar integration for site {instance.site.id}")
             return  # No active integration
+        
+        logger.info(f"Found active integration {integration.id} for Event {instance.id}")
         
         # Import here to avoid circular import
         from .google_calendar_service import google_calendar_service
         
         if created:
             # Create new event in Google Calendar
-            google_calendar_service.create_event(integration, instance)
-            logger.info(f"Created Google Calendar event for new Event {instance.id}")
+            google_event_id = google_calendar_service.create_event(integration, instance)
+            if google_event_id:
+                logger.info(f"✓ Created Google Calendar event {google_event_id} for Event {instance.id}")
+            else:
+                logger.error(f"✗ Failed to create Google Calendar event for Event {instance.id}")
         else:
             # Update existing event in Google Calendar
-            google_calendar_service.update_event(integration, instance)
-            logger.info(f"Updated Google Calendar event for Event {instance.id}")
+            success = google_calendar_service.update_event(integration, instance)
+            if success:
+                logger.info(f"✓ Updated Google Calendar event for Event {instance.id}")
+            else:
+                logger.error(f"✗ Failed to update Google Calendar event for Event {instance.id}")
             
     except Exception as e:
-        logger.error(f"Failed to sync Event {instance.id} to Google Calendar: {e}")
+        logger.error(f"Exception syncing Event {instance.id} to Google Calendar: {e}", exc_info=True)
 
 
 @receiver(post_delete, sender=Event)
@@ -99,6 +110,8 @@ def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
     Automatically delete Event from Google Calendar when deleted locally.
     Only syncs if the site has an active Google Calendar integration.
     """
+    logger.info(f"Delete signal triggered for Event {instance.id}")
+    
     try:
         integration = GoogleCalendarIntegration.objects.filter(
             site=instance.site,
@@ -107,13 +120,19 @@ def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
         ).first()
         
         if not integration:
+            logger.info(f"No active Google Calendar integration for site {instance.site.id}")
             return  # No active integration
+        
+        logger.info(f"Found active integration {integration.id} for deleted Event {instance.id}")
         
         # Import here to avoid circular import
         from .google_calendar_service import google_calendar_service
         
-        google_calendar_service.delete_event(integration, instance)
-        logger.info(f"Deleted Google Calendar event for Event {instance.id}")
+        success = google_calendar_service.delete_event(integration, instance)
+        if success:
+            logger.info(f"✓ Deleted Google Calendar event for Event {instance.id}")
+        else:
+            logger.error(f"✗ Failed to delete Google Calendar event for Event {instance.id}")
         
     except Exception as e:
-        logger.error(f"Failed to delete Event {instance.id} from Google Calendar: {e}")
+        logger.error(f"Exception deleting Event {instance.id} from Google Calendar: {e}", exc_info=True)
