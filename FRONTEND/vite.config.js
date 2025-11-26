@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import path from 'path';
 
 const enablePolling = process.env.CHOKIDAR_USEPOLLING === 'true' || process.env.VITE_USE_POLLING === 'true';
 const pollInterval = Number(process.env.VITE_POLL_INTERVAL ?? 200);
@@ -114,6 +115,11 @@ export default defineConfig({
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
+    alias: {
+      // In Docker: SHARED_SETTINGS is mounted at /app/SHARED_SETTINGS
+      // Locally: SHARED_SETTINGS is at ../SHARED_SETTINGS
+      '@shared': path.resolve(__dirname, process.env.VITE_SHARED_PATH || '../SHARED_SETTINGS'),
+    },
   },
   preview: {
     host: '0.0.0.0',

@@ -3,6 +3,9 @@
 /**
  * Size limits and media constraints for the application
  * All sizes are in bytes unless specified otherwise
+ * 
+ * IMPORTANT: Images are scaled on FRONTEND before upload to avoid backend processing.
+ * Users can upload large files, but frontend automatically scales them down.
  */
 
 export const SIZE_LIMITS = {
@@ -14,17 +17,36 @@ export const SIZE_LIMITS = {
   MAX_SITE_SIZE: 500 * 1024 * 1024, // 500MB per site
   
   // ============================================
-  // IMAGE LIMITS
+  // PHOTO/IMAGE LIMITS (General site images)
   // ============================================
-  // Upload limits (before optimization)
-  MAX_IMAGE_UPLOAD_SIZE: 25 * 1024 * 1024, // 25MB raw upload
+  // Upload limits (what user can select - frontend will scale down)
+  MAX_PHOTO_UPLOAD_SIZE: 100 * 1024 * 1024, // 100MB - user can select large files
   
-  // Final storage limits (after WebP conversion)
-  MAX_IMAGE_FINAL_SIZE: 5 * 1024 * 1024, // 5MB after compression
+  // Target size after frontend scaling (what gets sent to backend)
+  MAX_PHOTO_STORED_SIZE: 25 * 1024 * 1024, // 25MB - scaled by frontend
   
-  // Image dimensions
-  MAX_IMAGE_WIDTH: 1920, // pixels
-  MAX_IMAGE_HEIGHT: 1080, // pixels
+  // Frontend will scale images to these dimensions before upload
+  TARGET_PHOTO_WIDTH: 1920, // pixels
+  TARGET_PHOTO_HEIGHT: 1080, // pixels
+  
+  // ============================================
+  // AVATAR LIMITS
+  // ============================================
+  // Upload limits (what user can select - frontend will scale down)
+  MAX_AVATAR_UPLOAD_SIZE: 25 * 1024 * 1024, // 25MB - user can select large files
+  
+  // Target size after frontend scaling (what gets sent to backend)
+  MAX_AVATAR_STORED_SIZE: 5 * 1024 * 1024, // 5MB - scaled by frontend
+  
+  // Frontend will scale avatars to this size before upload (square)
+  TARGET_AVATAR_SIZE: 512, // pixels (square)
+  
+  // ============================================
+  // BACKEND VALIDATION LIMITS
+  // ============================================
+  // These are the absolute max sizes backend will accept (safety limits)
+  BACKEND_MAX_IMAGE_SIZE: 25 * 1024 * 1024, // 25MB
+  BACKEND_MAX_AVATAR_SIZE: 5 * 1024 * 1024, // 5MB
   
   // Allowed formats
   ALLOWED_IMAGE_FORMATS: ['jpg', 'jpeg', 'png', 'gif', 'webp'],

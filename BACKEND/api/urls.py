@@ -147,9 +147,9 @@ urlpatterns = [
     path('public-sites/<int:site_id>/team/', PublicTeamView.as_view(), name='public_team'),
     path('sites/<int:site_id>/attendance-report/', AttendanceReportView.as_view(), name='attendance-report'),
     # Team invitation endpoints
-    path('accept-invitation/<uuid:token>/', accept_invitation, name='accept-invitation'),
-    path('team-invitations/<uuid:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),
-    path('team-invitations/<uuid:token>/reject/', reject_invitation_studio, name='reject-invitation-studio'),
+    path('accept-invitation/<str:token>/', accept_invitation, name='accept-invitation'),
+    path('team-invitations/<str:token>/accept/', accept_invitation_studio, name='accept-invitation-studio'),
+    path('team-invitations/<str:token>/reject/', reject_invitation_studio, name='reject-invitation-studio'),
     # Account setup (new team members)
     path('validate-setup-token/<str:token>/', validate_setup_token, name='validate-setup-token'),
     path('setup-account/<str:token>/', setup_account, name='setup-account'),

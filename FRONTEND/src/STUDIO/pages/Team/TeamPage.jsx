@@ -352,9 +352,11 @@ const TeamPage = () => {
                     ? { ...member, invitation_status: result.status, invited_at: new Date().toISOString() }
                     : member
             ));
-            } catch (error) {
-                // Silently fail and keep UI state unchanged
-            }
+        } catch (error) {
+            console.error('Błąd wysyłania zaproszenia:', error);
+            console.error('Response:', error.response?.data);
+            alert('Błąd wysyłania zaproszenia: ' + (error.response?.data?.error || error.message));
+        }
     };
 
     const handleDeleteMember = async (memberId) => {

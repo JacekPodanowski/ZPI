@@ -185,7 +185,21 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # --- Szablony, Język, Czas ---
-TEMPLATES = [ { 'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [BASE_DIR / 'templates', BASE_DIR / 'emails'], 'APP_DIRS': True, 'OPTIONS': { 'context_processors': [ 'django.template.context_processors.debug', 'django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages', ], }, }, ]
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR],  # Changed from [BASE_DIR / 'templates', BASE_DIR / 'emails'] to just [BASE_DIR]
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 LANGUAGE_CODE = 'pl-pl'
 TIME_ZONE = 'Europe/Warsaw'
 USE_I18N = True
@@ -350,30 +364,62 @@ VERCEL_BUILD_HOOK_URL = os.environ.get('VERCEL_BUILD_HOOK_URL')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-MEDIA_TOTAL_STORAGE_PER_USER = int(os.environ.get('MEDIA_MAX_TOTAL_STORAGE_PER_USER', 1024 * 1024 * 1024))
-MEDIA_IMAGE_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_UPLOAD_BYTES', 10 * 1024 * 1024))
-MEDIA_IMAGE_MAX_FINAL_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_FINAL_BYTES', 5 * 1024 * 1024))
-MEDIA_IMAGE_MAX_DIMENSIONS = (
-    int(os.environ.get('MEDIA_IMAGE_MAX_WIDTH', 1920)),
-    int(os.environ.get('MEDIA_IMAGE_MAX_HEIGHT', 1080)),
-)
-MEDIA_VIDEO_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_VIDEO_MAX_UPLOAD_BYTES', 100 * 1024 * 1024))
-MEDIA_WEBP_QUALITY_DEFAULT = int(os.environ.get('MEDIA_WEBP_QUALITY', 90))
-MEDIA_WEBP_QUALITY_AVATAR = int(os.environ.get('MEDIA_WEBP_QUALITY_AVATAR', 90))
-MEDIA_TEMP_STORAGE_MAX_PER_USER = int(os.environ.get('MEDIA_MAX_TEMP_STORAGE_PER_USER', 100 * 1024 * 1024))
-MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = int(os.environ.get('MEDIA_TEMP_STORAGE_EXPIRE', 24 * 60 * 60))
+# Import shared constants to ensure backend/frontend alignment
+try:
+    from api.shared_constants import (
+        MAX_TOTAL_STORAGE_PER_USER,
+        BACKEND_MAX_IMAGE_SIZE,
+        BACKEND_MAX_AVATAR_SIZE,
+        TARGET_PHOTO_WIDTH,
+        TARGET_PHOTO_HEIGHT,
+        MAX_VIDEO_UPLOAD_SIZE,
+        WEBP_QUALITY,
+        WEBP_QUALITY_AVATAR,
+        MAX_TEMP_STORAGE_PER_USER,
+        TEMP_STORAGE_EXPIRE,
+        ALLOWED_IMAGE_MIMETYPES,
+        ALLOWED_VIDEO_MIMETYPES,
+    )
+    
+    # Use shared constants
+    MEDIA_TOTAL_STORAGE_PER_USER = MAX_TOTAL_STORAGE_PER_USER
+    MEDIA_IMAGE_MAX_UPLOAD_BYTES = BACKEND_MAX_IMAGE_SIZE
+    MEDIA_IMAGE_MAX_FINAL_BYTES = BACKEND_MAX_AVATAR_SIZE  # Final size after processing
+    MEDIA_IMAGE_MAX_DIMENSIONS = (TARGET_PHOTO_WIDTH, TARGET_PHOTO_HEIGHT)
+    MEDIA_VIDEO_MAX_UPLOAD_BYTES = MAX_VIDEO_UPLOAD_SIZE
+    MEDIA_WEBP_QUALITY_DEFAULT = WEBP_QUALITY
+    MEDIA_WEBP_QUALITY_AVATAR = WEBP_QUALITY_AVATAR
+    MEDIA_TEMP_STORAGE_MAX_PER_USER = MAX_TEMP_STORAGE_PER_USER
+    MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = TEMP_STORAGE_EXPIRE
+    MEDIA_ALLOWED_IMAGE_MIME_TYPES = ALLOWED_IMAGE_MIMETYPES
+    MEDIA_ALLOWED_VIDEO_MIME_TYPES = ALLOWED_VIDEO_MIMETYPES
+except ImportError:
+    # Fallback to environment variables if shared_constants not available
+    MEDIA_TOTAL_STORAGE_PER_USER = int(os.environ.get('MEDIA_MAX_TOTAL_STORAGE_PER_USER', 1024 * 1024 * 1024))
+    MEDIA_IMAGE_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_UPLOAD_BYTES', 25 * 1024 * 1024))
+    MEDIA_IMAGE_MAX_FINAL_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_FINAL_BYTES', 5 * 1024 * 1024))
+    MEDIA_IMAGE_MAX_DIMENSIONS = (
+        int(os.environ.get('MEDIA_IMAGE_MAX_WIDTH', 1920)),
+        int(os.environ.get('MEDIA_IMAGE_MAX_HEIGHT', 1080)),
+    )
+    MEDIA_VIDEO_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_VIDEO_MAX_UPLOAD_BYTES', 100 * 1024 * 1024))
+    MEDIA_WEBP_QUALITY_DEFAULT = int(os.environ.get('MEDIA_WEBP_QUALITY', 90))
+    MEDIA_WEBP_QUALITY_AVATAR = int(os.environ.get('MEDIA_WEBP_QUALITY_AVATAR', 90))
+    MEDIA_TEMP_STORAGE_MAX_PER_USER = int(os.environ.get('MEDIA_MAX_TEMP_STORAGE_PER_USER', 100 * 1024 * 1024))
+    MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = int(os.environ.get('MEDIA_TEMP_STORAGE_EXPIRE', 24 * 60 * 60))
+    MEDIA_ALLOWED_IMAGE_MIME_TYPES = (
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+    )
+    MEDIA_ALLOWED_VIDEO_MIME_TYPES = (
+        'video/mp4',
+        'video/webm',
+        'video/quicktime',
+    )
+
 MEDIA_STORAGE_TIMEOUT = int(os.environ.get('MEDIA_STORAGE_TIMEOUT', 15))
-MEDIA_ALLOWED_IMAGE_MIME_TYPES = (
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-)
-MEDIA_ALLOWED_VIDEO_MIME_TYPES = (
-    'video/mp4',
-    'video/webm',
-    'video/quicktime',
-)
 
 # --- Konfiguracja Celery ---
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')

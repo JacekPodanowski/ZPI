@@ -16,7 +16,7 @@ import {
 import { getSiteColorHex } from '../../../theme/siteColors';
 import SiteColorPicker from './SiteColorPicker';
 import { updateSiteColor, acceptTeamInvitation, rejectTeamInvitation } from '../../../services/siteService';
-import { getRoleInfo } from '../../../constants/teamRoles';
+import { getRoleInfo } from '@shared/teamRoles';
 import { getSiteUrl, getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
 
 const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate }) => {

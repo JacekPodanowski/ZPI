@@ -3352,7 +3352,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[team_member.email],
                     html_message=html_message,
-                    fail_silently=False,
+                    fail_silently=True,  # Changed to True to prevent email errors from blocking the invitation
                 )
                 
                 return Response({
@@ -3412,7 +3412,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[team_member.email],
                     html_message=html_message,
-                    fail_silently=False,
+                    fail_silently=True,  # Changed to True to prevent email errors from blocking the invitation
                 )
                 
                 return Response({
@@ -3455,7 +3455,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[team_member.email],
                 html_message=html_message,
-                fail_silently=False,
+                fail_silently=True,  # Changed to True to prevent email errors from blocking the invitation
             )
             
             return Response({
@@ -3666,10 +3666,11 @@ class AttendanceReportView(APIView):
         raise PermissionDenied('You can only view your own attendance report.')
 
     def _format_host_label(self, host_user, host_member):
+        """Format the display label for a host (either a PlatformUser or TeamMember)."""
         if host_user:
             return host_user.get_full_name() or host_user.email
         if host_member:
-            return f"{host_member.first_name} {host_member.last_name}".strip()
+            return host_member.name or host_member.email or '---'
         return '---'
 
 

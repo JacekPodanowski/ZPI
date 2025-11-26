@@ -2,6 +2,7 @@
 
 from rest_framework import permissions
 from .models import TeamMember
+from . import shared_constants as sc
 
 
 class IsOwnerOrTeamMember(permissions.BasePermission):
@@ -63,11 +64,12 @@ class IsOwnerOrTeamMember(permissions.BasePermission):
 class CanManageEvents(permissions.BasePermission):
     """
     Permission class for event management based on team member role.
+    Uses shared constants to ensure frontend/backend alignment.
     
     - Owner: Can manage all events
-    - Manager: Can manage all events
-    - Contributor: Can manage only their own events
-    - Viewer: Cannot manage events
+    - Manager: Can manage all events (editAnyEvent permission)
+    - Contributor: Can manage only their own events (editOwnEvents permission)
+    - Viewer: Cannot manage events (no edit permissions)
     """
     
     def has_object_permission(self, request, view, obj):
@@ -82,26 +84,7 @@ class CanManageEvents(permissions.BasePermission):
         if obj.site.owner == user:
             return True
         
-        # For safe methods (GET, HEAD, OPTIONS), check view permissions
-        if request.method in permissions.SAFE_METHODS:
-            # Get team member
-            team_member = TeamMember.objects.filter(
-                site=obj.site,
-                linked_user=user,
-                invitation_status='linked'
-            ).first()
-            
-            if not team_member:
-                return False
-            
-            # Viewer can only see their own events
-            if team_member.permission_role == 'viewer':
-                return obj.assigned_to_team_member == team_member
-            
-            # Contributor and Manager can see all events
-            return True
-        
-        # For write methods (POST, PUT, PATCH, DELETE)
+        # Get team member
         team_member = TeamMember.objects.filter(
             site=obj.site,
             linked_user=user,
@@ -111,17 +94,24 @@ class CanManageEvents(permissions.BasePermission):
         if not team_member:
             return False
         
-        # Viewer cannot modify events
-        if team_member.permission_role == 'viewer':
-            return False
+        role = team_member.permission_role
         
-        # Contributor can only modify their own events
-        if team_member.permission_role == 'contributor':
+        # For safe methods (GET, HEAD, OPTIONS), check view permissions
+        if request.method in permissions.SAFE_METHODS:
+            # Check if can view other events, otherwise only own events
+            if sc.can_view_other_events(role):
+                return True
+            # Viewer can only see their own events
             return obj.assigned_to_team_member == team_member
         
-        # Manager can modify all events
-        if team_member.permission_role == 'manager':
+        # For write methods (POST, PUT, PATCH, DELETE)
+        # Check if can edit any event
+        if sc.can_edit_any_event(role):
             return True
+        
+        # Check if can edit own events
+        if sc.can_edit_own_events(role):
+            return obj.assigned_to_team_member == team_member
         
         return False
 
@@ -129,6 +119,7 @@ class CanManageEvents(permissions.BasePermission):
 class CanCreateEvents(permissions.BasePermission):
     """
     Permission class for event creation based on team member role.
+    Uses shared constants for permission checks.
     
     - Owner: Can create events
     - Manager: Can create events
@@ -172,12 +163,10 @@ class CanCreateEvents(permissions.BasePermission):
         if not team_member:
             return False
         
-        # Viewer cannot create events
-        if team_member.permission_role == 'viewer':
-            return False
+        role = team_member.permission_role
         
-        # Contributor and Manager can create events
-        return True
+        # Use shared constants to check permission
+        return sc.can_add_events(role)
 
 
 def get_user_role_for_site(user, site):
@@ -205,6 +194,7 @@ def get_user_role_for_site(user, site):
 def can_user_edit_event(user, event):
     """
     Check if user can edit a specific event.
+    Uses shared constants for permission logic.
     
     Args:
         user: PlatformUser instance
@@ -227,16 +217,14 @@ def can_user_edit_event(user, event):
     if not team_member:
         return False
     
-    # Viewer cannot edit
-    if team_member.permission_role == 'viewer':
-        return False
+    role = team_member.permission_role
     
-    # Contributor can only edit own events
-    if team_member.permission_role == 'contributor':
-        return event.assigned_to_team_member == team_member
-    
-    # Manager can edit all events
-    if team_member.permission_role == 'manager':
+    # Check if can edit any event
+    if sc.can_edit_any_event(role):
         return True
+    
+    # Check if can edit own events
+    if sc.can_edit_own_events(role):
+        return event.assigned_to_team_member == team_member
     
     return False

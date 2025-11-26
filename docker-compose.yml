@@ -49,6 +49,7 @@ services:
     command: sh /home/appuser/app/entrypoint.sh
     volumes:
       - ./BACKEND:/home/appuser/app
+      - ./SHARED_SETTINGS:/home/appuser/SHARED_SETTINGS:ro
     env_file:
       - ./BACKEND/.env
     depends_on:
@@ -67,6 +68,7 @@ services:
     command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
     volumes:
       - ./BACKEND:/home/appuser/app
+      - ./SHARED_SETTINGS:/home/appuser/SHARED_SETTINGS:ro
     ports:
       - "${BACKEND_PORT_LOCAL:-8000}:8000"
     env_file:
@@ -85,6 +87,7 @@ services:
     command: celery -A site_project worker --loglevel=info
     volumes:
       - ./BACKEND:/home/appuser/app
+      - ./SHARED_SETTINGS:/home/appuser/SHARED_SETTINGS:ro
     env_file:
       - ./BACKEND/.env
     depends_on:
@@ -103,6 +106,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./FRONTEND:/app
+      - ./SHARED_SETTINGS:/app/SHARED_SETTINGS:ro
       - /app/node_modules
     ports:
       - "${FRONTEND_PORT_LOCAL:-3000}:3000"
@@ -113,6 +117,7 @@ services:
       - FAST_REFRESH=true
       - VITE_APP_ROUTING_MODE=subdomain
       - VITE_BUILD_TARGET=STUDIO
+      - VITE_SHARED_PATH=./SHARED_SETTINGS
     depends_on:
       - backend
 
