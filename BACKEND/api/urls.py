@@ -96,6 +96,8 @@ from .views import (
     google_calendar_disconnect,
     google_calendar_toggle_sync,
     google_calendar_manual_sync,
+    google_calendar_connect_all,
+    google_calendar_status_all,
 )
 
 
@@ -206,4 +208,7 @@ urlpatterns = [
     path('sites/<int:site_id>/google-calendar/disconnect/', google_calendar_disconnect, name='google-calendar-disconnect'),
     path('sites/<int:site_id>/google-calendar/toggle-sync/', google_calendar_toggle_sync, name='google-calendar-toggle-sync'),
     path('sites/<int:site_id>/google-calendar/manual-sync/', google_calendar_manual_sync, name='google-calendar-manual-sync'),
+    # Bulk Google Calendar operations
+    path('google-calendar/connect-all/', google_calendar_connect_all, name='google-calendar-connect-all'),
+    path('google-calendar/status-all/', google_calendar_status_all, name='google-calendar-status-all'),
 ]

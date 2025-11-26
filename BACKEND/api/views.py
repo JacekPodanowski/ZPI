@@ -6988,6 +6988,30 @@ def list_event_checkpoints(request, event_id):
 # Google Calendar Integration Views
 # ========================================
 
+def broadcast_calendar_status_update(site_id, status_data):
+    """
+    Broadcast Google Calendar status update to all connected WebSocket clients for a site.
+    This ensures all users with access to the site see real-time changes.
+    """
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        try:
+            async_to_sync(channel_layer.group_send)(
+                f'google_calendar_{site_id}',
+                {
+                    'type': 'calendar_status_update',
+                    'site_id': site_id,
+                    'status_data': status_data
+                }
+            )
+            logger.info(f"Broadcasted calendar status update for site {site_id}")
+        except Exception as e:
+            logger.error(f"Failed to broadcast calendar status for site {site_id}: {e}")
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def google_calendar_connect(request, site_id):
@@ -7029,6 +7053,7 @@ def google_calendar_callback(request):
     """
     Handle Google OAuth callback.
     Exchange authorization code for tokens and create integration.
+    Supports both single site and bulk connection (all sites).
     """
     code = request.data.get('code')
     state = request.data.get('state')
@@ -7039,7 +7064,95 @@ def google_calendar_callback(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Extract site_id from state
+    # Check if this is a bulk connection (all sites)
+    if state.startswith('all_sites_'):
+        try:
+            user_id = int(state.split('_')[2])
+            if user_id != request.user.id:
+                return Response(
+                    {'error': 'Invalid user in state parameter'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except (ValueError, IndexError):
+            return Response(
+                {'error': 'Invalid state parameter for bulk connection'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all sites the user has access to
+        user_sites = Site.objects.filter(owner=request.user)
+        team_member_sites = Site.objects.filter(
+            team_members__linked_user=request.user,
+            team_members__invitation_status='linked'
+        ).distinct()
+        
+        all_accessible_sites = (user_sites | team_member_sites).distinct()
+        
+        if not all_accessible_sites.exists():
+            return Response(
+                {'error': 'No sites available to connect'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Exchange code for tokens
+        try:
+            token_data = google_calendar_service.exchange_code_for_tokens(code)
+        except Exception as e:
+            logger.error(f"Failed to exchange code for tokens: {e}")
+            return Response(
+                {'error': 'Failed to connect to Google Calendar'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        # Create or update integration for all sites
+        connected_sites = []
+        failed_sites = []
+        
+        for site in all_accessible_sites:
+            try:
+                integration, created = GoogleCalendarIntegration.objects.update_or_create(
+                    site=site,
+                    defaults={
+                        'connected_by': request.user,
+                        'google_email': token_data['google_email'],
+                        'access_token': token_data['access_token'],
+                        'refresh_token': token_data['refresh_token'],
+                        'token_expires_at': token_data['token_expires_at'],
+                        'calendar_id': token_data['google_email'],
+                        'calendar_name': token_data['calendar_name'],
+                        'is_active': True,
+                        'sync_enabled': True,
+                    }
+                )
+                
+                # Sync all existing events
+                try:
+                    stats = google_calendar_service.sync_all_events(integration)
+                    logger.info(f"Initial sync completed for site {site.id}: {stats}")
+                except Exception as e:
+                    logger.error(f"Failed to sync events for site {site.id}: {e}")
+                
+                connected_sites.append({
+                    'id': site.id,
+                    'name': site.name,
+                    'action': 'created' if created else 'updated'
+                })
+            except Exception as e:
+                logger.error(f"Failed to connect site {site.id}: {e}")
+                failed_sites.append({
+                    'id': site.id,
+                    'name': site.name,
+                    'error': str(e)
+                })
+        
+        return Response({
+            'message': f'Connected {len(connected_sites)} sites to Google Calendar',
+            'connected_sites': connected_sites,
+            'failed_sites': failed_sites,
+            'total_sites': all_accessible_sites.count()
+        }, status=status.HTTP_200_OK)
+    
+    # Single site connection (original behavior)
     if not state.startswith('site_'):
         return Response(
             {'error': 'Invalid state parameter'},
@@ -7167,6 +7280,12 @@ def google_calendar_disconnect(request, site_id):
         integration = GoogleCalendarIntegration.objects.get(site=site)
         integration.delete()
         
+        # Broadcast status change to all connected users
+        broadcast_calendar_status_update(site_id, {
+            'connected': False,
+            'integration': None
+        })
+        
         return Response({
             'message': 'Google Calendar disconnected successfully'
         }, status=status.HTTP_200_OK)
@@ -7203,6 +7322,12 @@ def google_calendar_toggle_sync(request, site_id):
         integration = GoogleCalendarIntegration.objects.get(site=site)
         integration.sync_enabled = not integration.sync_enabled
         integration.save(update_fields=['sync_enabled', 'updated_at'])
+        
+        # Broadcast status change to all connected users
+        broadcast_calendar_status_update(site_id, {
+            'connected': True,
+            'integration': GoogleCalendarIntegrationSerializer(integration).data
+        })
         
         return Response({
             'message': f"Sync {'enabled' if integration.sync_enabled else 'disabled'}",
@@ -7255,4 +7380,85 @@ def google_calendar_manual_sync(request, site_id):
         return Response({
             'error': 'No Google Calendar integration found'
         }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_connect_all(request):
+    """
+    Initiate Google Calendar OAuth flow for connecting all user's sites at once.
+    Returns the authorization URL for the user to visit.
+    This will later be processed in the callback to connect all sites.
+    """
+    # Get all sites the user has access to
+    from .permissions import get_user_role_for_site
+    
+    user_sites = Site.objects.filter(owner=request.user)
+    team_member_sites = Site.objects.filter(
+        team_members__linked_user=request.user,
+        team_members__invitation_status='linked'
+    ).distinct()
+    
+    all_accessible_sites = (user_sites | team_member_sites).distinct()
+    
+    if not all_accessible_sites.exists():
+        return Response(
+            {'error': 'No sites available to connect'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create state parameter with "all" flag and user ID
+    state = f"all_sites_{request.user.id}"
+    
+    # Get authorization URL
+    auth_url = google_calendar_service.get_authorization_url(state)
+    
+    return Response({
+        'authorization_url': auth_url,
+        'site_count': all_accessible_sites.count()
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_status_all(request):
+    """
+    Get the Google Calendar integration status for all user's sites.
+    Returns a summary of connected/disconnected sites.
+    """
+    from .permissions import get_user_role_for_site
+    
+    user_sites = Site.objects.filter(owner=request.user)
+    team_member_sites = Site.objects.filter(
+        team_members__linked_user=request.user,
+        team_members__invitation_status='linked'
+    ).distinct()
+    
+    all_accessible_sites = (user_sites | team_member_sites).distinct()
+    
+    statuses = []
+    for site in all_accessible_sites:
+        try:
+            integration = GoogleCalendarIntegration.objects.get(site=site)
+            statuses.append({
+                'site_id': site.id,
+                'site_name': site.name,
+                'connected': True,
+                'integration': GoogleCalendarIntegrationSerializer(integration).data
+            })
+        except GoogleCalendarIntegration.DoesNotExist:
+            statuses.append({
+                'site_id': site.id,
+                'site_name': site.name,
+                'connected': False,
+                'integration': None
+            })
+    
+    connected_count = sum(1 for s in statuses if s['connected'])
+    
+    return Response({
+        'total_sites': len(statuses),
+        'connected_sites': connected_count,
+        'statuses': statuses
+    }, status=status.HTTP_200_OK)
 
