@@ -90,6 +90,12 @@ from .views import (
     create_event_checkpoint,
     restore_event_checkpoint,
     list_event_checkpoints,
+    google_calendar_connect,
+    google_calendar_callback,
+    google_calendar_status,
+    google_calendar_disconnect,
+    google_calendar_toggle_sync,
+    google_calendar_manual_sync,
 )
 
 
@@ -193,4 +199,11 @@ urlpatterns = [
     # Pexels image search endpoints
     path('sites/<int:site_id>/images/search/', pexels_search_images, name='pexels-search'),
     path('sites/<int:site_id>/images/quota/', pexels_quota, name='pexels-quota'),
+    # Google Calendar integration endpoints
+    path('sites/<int:site_id>/google-calendar/connect/', google_calendar_connect, name='google-calendar-connect'),
+    path('sites/<int:site_id>/google-calendar/callback/', google_calendar_callback, name='google-calendar-callback'),
+    path('sites/<int:site_id>/google-calendar/status/', google_calendar_status, name='google-calendar-status'),
+    path('sites/<int:site_id>/google-calendar/disconnect/', google_calendar_disconnect, name='google-calendar-disconnect'),
+    path('sites/<int:site_id>/google-calendar/toggle-sync/', google_calendar_toggle_sync, name='google-calendar-toggle-sync'),
+    path('sites/<int:site_id>/google-calendar/manual-sync/', google_calendar_manual_sync, name='google-calendar-manual-sync'),
 ]

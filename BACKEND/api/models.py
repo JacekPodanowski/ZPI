@@ -1366,3 +1366,84 @@ class BigEvent(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.site.identifier}) - {self.get_status_display()}"
+
+
+class GoogleCalendarIntegration(models.Model):
+    """
+    Stores Google Calendar OAuth credentials and sync settings for a Site.
+    Each Site can have ONE active Google Calendar integration.
+    """
+    site = models.OneToOneField(
+        Site,
+        on_delete=models.CASCADE,
+        related_name='google_calendar_integration',
+        help_text='Site connected to Google Calendar'
+    )
+    connected_by = models.ForeignKey(
+        PlatformUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='connected_google_calendars',
+        help_text='User who connected this Google Calendar'
+    )
+    
+    # OAuth credentials
+    google_email = models.EmailField(help_text='Google account email')
+    access_token = models.TextField(help_text='OAuth access token (encrypted)')
+    refresh_token = models.TextField(help_text='OAuth refresh token (encrypted)')
+    token_expires_at = models.DateTimeField(help_text='When the access token expires')
+    
+    # Google Calendar details
+    calendar_id = models.CharField(max_length=255, help_text='Google Calendar ID (usually the email)')
+    calendar_name = models.CharField(max_length=255, blank=True, help_text='Display name of the calendar')
+    
+    # Sync settings
+    is_active = models.BooleanField(default=True, help_text='Whether sync is currently active')
+    sync_enabled = models.BooleanField(default=True, help_text='Whether to sync events to Google Calendar')
+    last_sync_at = models.DateTimeField(blank=True, null=True, help_text='Last successful sync timestamp')
+    
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Google Calendar Integration'
+        verbose_name_plural = 'Google Calendar Integrations'
+        indexes = [
+            models.Index(fields=['site', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.site.name} → {self.google_email}"
+
+
+class GoogleCalendarEvent(models.Model):
+    """
+    Maps local Events to Google Calendar events for tracking and synchronization.
+    """
+    event = models.OneToOneField(
+        Event,
+        on_delete=models.CASCADE,
+        related_name='google_calendar_event',
+        help_text='Local event'
+    )
+    integration = models.ForeignKey(
+        GoogleCalendarIntegration,
+        on_delete=models.CASCADE,
+        related_name='synced_events',
+        help_text='Google Calendar integration'
+    )
+    google_event_id = models.CharField(max_length=255, help_text='Google Calendar event ID')
+    last_synced_at = models.DateTimeField(auto_now=True, help_text='Last sync timestamp')
+    
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Google Calendar Event'
+        verbose_name_plural = 'Google Calendar Events'
+        indexes = [
+            models.Index(fields=['integration', 'google_event_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.event.title} → {self.google_event_id}"

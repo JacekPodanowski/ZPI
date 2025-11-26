@@ -2,9 +2,12 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.conf import settings
 import os
+import logging
 
 from .media_helpers import cleanup_asset_if_unused
-from .models import Booking, MediaUsage, TermsOfService
+from .models import Booking, MediaUsage, TermsOfService, Event, GoogleCalendarIntegration
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=Booking)
@@ -56,3 +59,61 @@ def ensure_initial_terms_exist():
         version='1.0',
         content_md=content
     )
+
+
+@receiver(post_save, sender=Event)
+def sync_event_to_google_calendar_on_save(sender, instance: Event, created: bool, **kwargs):
+    """
+    Automatically sync Event to Google Calendar when created or updated.
+    Only syncs if the site has an active Google Calendar integration.
+    """
+    try:
+        integration = GoogleCalendarIntegration.objects.filter(
+            site=instance.site,
+            is_active=True,
+            sync_enabled=True
+        ).first()
+        
+        if not integration:
+            return  # No active integration
+        
+        # Import here to avoid circular import
+        from .google_calendar_service import google_calendar_service
+        
+        if created:
+            # Create new event in Google Calendar
+            google_calendar_service.create_event(integration, instance)
+            logger.info(f"Created Google Calendar event for new Event {instance.id}")
+        else:
+            # Update existing event in Google Calendar
+            google_calendar_service.update_event(integration, instance)
+            logger.info(f"Updated Google Calendar event for Event {instance.id}")
+            
+    except Exception as e:
+        logger.error(f"Failed to sync Event {instance.id} to Google Calendar: {e}")
+
+
+@receiver(post_delete, sender=Event)
+def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
+    """
+    Automatically delete Event from Google Calendar when deleted locally.
+    Only syncs if the site has an active Google Calendar integration.
+    """
+    try:
+        integration = GoogleCalendarIntegration.objects.filter(
+            site=instance.site,
+            is_active=True,
+            sync_enabled=True
+        ).first()
+        
+        if not integration:
+            return  # No active integration
+        
+        # Import here to avoid circular import
+        from .google_calendar_service import google_calendar_service
+        
+        google_calendar_service.delete_event(integration, instance)
+        logger.info(f"Deleted Google Calendar event for Event {instance.id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to delete Event {instance.id} from Google Calendar: {e}")

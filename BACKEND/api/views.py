@@ -63,6 +63,8 @@ from .models import (
     Testimonial,
     TestimonialSummary,
     BigEvent,
+    GoogleCalendarIntegration,
+    GoogleCalendarEvent,
 )
 from .media_helpers import (
     cleanup_asset_if_unused,
@@ -73,6 +75,7 @@ from .media_processing import ImageProcessingError, convert_to_webp
 from .media_storage import StorageError, StorageSaveResult, get_media_storage
 from .permissions import IsOwnerOrTeamMember
 from .signals import ensure_initial_terms_exist
+from .google_calendar_service import google_calendar_service
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -106,6 +109,7 @@ from .serializers import (
     TestimonialSerializer,
     TestimonialSummarySerializer,
     BigEventSerializer,
+    GoogleCalendarIntegrationSerializer,
 )
 from .tasks import send_custom_email_task_async
 
@@ -6978,4 +6982,277 @@ def list_event_checkpoints(request, event_id):
     return Response({
         'checkpoints': checkpoint_list
     }, status=status.HTTP_200_OK)
+
+
+# ========================================
+# Google Calendar Integration Views
+# ========================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_connect(request, site_id):
+    """
+    Initiate Google Calendar OAuth flow.
+    Returns the authorization URL for the user to visit.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Create state parameter with site_id for callback
+    state = f"site_{site_id}"
+    
+    # Get authorization URL
+    auth_url = google_calendar_service.get_authorization_url(state)
+    
+    return Response({
+        'authorization_url': auth_url
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_callback(request):
+    """
+    Handle Google OAuth callback.
+    Exchange authorization code for tokens and create integration.
+    """
+    code = request.data.get('code')
+    state = request.data.get('state')
+    
+    if not code or not state:
+        return Response(
+            {'error': 'Missing code or state parameter'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Extract site_id from state
+    if not state.startswith('site_'):
+        return Response(
+            {'error': 'Invalid state parameter'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    try:
+        site_id = int(state.split('_')[1])
+        site = Site.objects.get(id=site_id)
+    except (ValueError, IndexError, Site.DoesNotExist):
+        return Response(
+            {'error': 'Invalid site ID in state'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Exchange code for tokens
+    try:
+        token_data = google_calendar_service.exchange_code_for_tokens(code)
+    except Exception as e:
+        logger.error(f"Failed to exchange code for tokens: {e}")
+        return Response(
+            {'error': 'Failed to connect to Google Calendar'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # Create or update integration
+    integration, created = GoogleCalendarIntegration.objects.update_or_create(
+        site=site,
+        defaults={
+            'connected_by': request.user,
+            'google_email': token_data['google_email'],
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data['refresh_token'],
+            'token_expires_at': token_data['token_expires_at'],
+            'calendar_id': token_data['google_email'],
+            'calendar_name': token_data['calendar_name'],
+            'is_active': True,
+            'sync_enabled': True,
+        }
+    )
+    
+    # Sync all existing events
+    try:
+        stats = google_calendar_service.sync_all_events(integration)
+        logger.info(f"Initial sync completed for site {site_id}: {stats}")
+    except Exception as e:
+        logger.error(f"Failed to sync events after connection: {e}")
+    
+    return Response({
+        'message': 'Google Calendar connected successfully',
+        'integration': GoogleCalendarIntegrationSerializer(integration).data,
+        'action': 'created' if created else 'updated'
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def google_calendar_status(request, site_id):
+    """
+    Get the current Google Calendar integration status for a site.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to view this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        return Response({
+            'connected': True,
+            'integration': GoogleCalendarIntegrationSerializer(integration).data
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'connected': False,
+            'integration': None
+        }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_disconnect(request, site_id):
+    """
+    Disconnect Google Calendar integration for a site.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        integration.delete()
+        
+        return Response({
+            'message': 'Google Calendar disconnected successfully'
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'error': 'No Google Calendar integration found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_toggle_sync(request, site_id):
+    """
+    Toggle sync_enabled for Google Calendar integration.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        integration.sync_enabled = not integration.sync_enabled
+        integration.save(update_fields=['sync_enabled', 'updated_at'])
+        
+        return Response({
+            'message': f"Sync {'enabled' if integration.sync_enabled else 'disabled'}",
+            'integration': GoogleCalendarIntegrationSerializer(integration).data
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'error': 'No Google Calendar integration found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def google_calendar_manual_sync(request, site_id):
+    """
+    Manually trigger a full sync of all events to Google Calendar.
+    """
+    try:
+        site = Site.objects.get(id=site_id)
+    except Site.DoesNotExist:
+        return Response(
+            {'error': 'Site not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check permissions - must be owner or team member
+    from .permissions import get_user_role_for_site
+    user_role = get_user_role_for_site(request.user, site)
+    if not user_role:
+        return Response(
+            {'error': 'You do not have permission to manage this site'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    try:
+        integration = GoogleCalendarIntegration.objects.get(site=site)
+        
+        if not integration.sync_enabled or not integration.is_active:
+            return Response({
+                'error': 'Sync is not enabled for this integration'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        stats = google_calendar_service.sync_all_events(integration)
+        
+        return Response({
+            'message': 'Manual sync completed',
+            'stats': stats
+        }, status=status.HTTP_200_OK)
+    except GoogleCalendarIntegration.DoesNotExist:
+        return Response({
+            'error': 'No Google Calendar integration found'
+        }, status=status.HTTP_404_NOT_FOUND)
 
