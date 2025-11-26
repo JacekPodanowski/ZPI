@@ -13,7 +13,7 @@ import {
 import { CheckCircle, Cancel } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { useToast } from '../../../../contexts/ToastContext';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -36,6 +36,7 @@ const GoogleCalendarIcon = ({ sx, ...props }) => (
 );
 
 const GoogleCalendarPopup = ({ sites }) => {
+    const addToast = useToast();
     const [anchorEl, setAnchorEl] = useState(null);
     const [statusMap, setStatusMap] = useState({}); // Map of siteId -> status
     const [loading, setLoading] = useState(false);
@@ -111,7 +112,7 @@ const GoogleCalendarPopup = ({ sites }) => {
             window.location.href = response.data.authorization_url;
         } catch (error) {
             console.error('Failed to connect Google Calendar:', error);
-            toast.error('Nie udało się połączyć z Google Calendar');
+            addToast('Nie udało się połączyć z Google Calendar', { variant: 'error' });
         }
     };
 
@@ -134,10 +135,10 @@ const GoogleCalendarPopup = ({ sites }) => {
             );
             
             await loadAllStatuses();
-            toast.success('Google Calendar został odłączony');
+            addToast('Google Calendar został odłączony', { variant: 'success' });
         } catch (error) {
             console.error('Failed to disconnect:', error);
-            toast.error('Nie udało się odłączyć');
+            addToast('Nie udało się odłączyć', { variant: 'error' });
         } finally {
             setLoading(false);
         }
@@ -164,10 +165,13 @@ const GoogleCalendarPopup = ({ sites }) => {
                     integration: response.data.integration
                 }
             }));
-            toast.success(response.data.message || 'Ustawienia synchronizacji zostały zmienione');
+            const message = response.data.integration.sync_enabled 
+                ? 'Synchronizacja włączona' 
+                : 'Synchronizacja wyłączona';
+            addToast(message, { variant: 'success' });
         } catch (error) {
             console.error('Failed to toggle sync:', error);
-            toast.error('Nie udało się zmienić ustawień synchronizacji');
+            addToast('Nie udało się zmienić ustawień synchronizacji', { variant: 'error' });
         } finally {
             setLoading(false);
         }
@@ -212,7 +216,6 @@ const GoogleCalendarPopup = ({ sites }) => {
                             mt: 1,
                             borderRadius: 2,
                             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-                            overflow: 'visible',
                             minWidth: 380,
                             maxWidth: 500,
                             maxHeight: '80vh',
