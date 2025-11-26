@@ -10,9 +10,10 @@ import {
     Stack,
     Chip
 } from '@mui/material';
-import { CheckCircle, Cancel, Sync } from '@mui/icons-material';
+import { CheckCircle, Cancel } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -38,7 +39,6 @@ const GoogleCalendarPopup = ({ sites }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [statusMap, setStatusMap] = useState({}); // Map of siteId -> status
     const [loading, setLoading] = useState(false);
-    const [syncing, setSyncing] = useState(false);
 
     const open = Boolean(anchorEl);
 
@@ -111,7 +111,7 @@ const GoogleCalendarPopup = ({ sites }) => {
             window.location.href = response.data.authorization_url;
         } catch (error) {
             console.error('Failed to connect Google Calendar:', error);
-            alert('Nie udało się połączyć z Google Calendar. Spróbuj ponownie.');
+            toast.error('Nie udało się połączyć z Google Calendar');
         }
     };
 
@@ -134,10 +134,10 @@ const GoogleCalendarPopup = ({ sites }) => {
             );
             
             await loadAllStatuses();
-            alert('Google Calendar został odłączony.');
+            toast.success('Google Calendar został odłączony');
         } catch (error) {
             console.error('Failed to disconnect:', error);
-            alert('Nie udało się odłączyć. Spróbuj ponownie.');
+            toast.error('Nie udało się odłączyć');
         } finally {
             setLoading(false);
         }
@@ -164,70 +164,16 @@ const GoogleCalendarPopup = ({ sites }) => {
                     integration: response.data.integration
                 }
             }));
+            toast.success(response.data.message || 'Ustawienia synchronizacji zostały zmienione');
         } catch (error) {
             console.error('Failed to toggle sync:', error);
-            alert('Nie udało się zmienić ustawień synchronizacji.');
+            toast.error('Nie udało się zmienić ustawień synchronizacji');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleManualSync = async (siteId) => {
-        setSyncing(true);
-        try {
-            const token = localStorage.getItem('accessToken');
-            await axios.post(
-                `${API_URL}/sites/${siteId}/google-calendar/manual-sync/`,
-                {},
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
-            
-            await loadAllStatuses();
-            alert('Synchronizacja zakończona pomyślnie!');
-        } catch (error) {
-            console.error('Failed to sync:', error);
-            alert('Nie udało się zsynchronizować. Spróbuj ponownie.');
-        } finally {
-            setSyncing(false);
-        }
-    };
 
-    const handleSyncAll = async () => {
-        const connectedSiteIds = Object.entries(statusMap)
-            .filter(([_, status]) => status?.connected && status?.integration?.sync_enabled)
-            .map(([siteId, _]) => parseInt(siteId));
-
-        if (connectedSiteIds.length === 0) {
-            alert('Brak połączonych kalendarzy do synchronizacji.');
-            return;
-        }
-
-        setSyncing(true);
-        try {
-            const token = localStorage.getItem('accessToken');
-            await Promise.all(
-                connectedSiteIds.map(siteId =>
-                    axios.post(
-                        `${API_URL}/sites/${siteId}/google-calendar/manual-sync/`,
-                        {},
-                        { headers: { 'Authorization': `Bearer ${token}` } }
-                    )
-                )
-            );
-            
-            await loadAllStatuses();
-            alert(`Synchronizacja zakończona dla ${connectedSiteIds.length} kalendarzy!`);
-        } catch (error) {
-            console.error('Failed to sync all:', error);
-            alert('Nie udało się zsynchronizować wszystkich kalendarzy.');
-        } finally {
-            setSyncing(false);
-        }
-    };
 
     return (
         <>
@@ -301,25 +247,6 @@ const GoogleCalendarPopup = ({ sites }) => {
                                         </Box>
                                     </Box>
 
-                                    {/* Sync All Button - visible when there are connected sites */}
-                                    {connectedSites.length > 0 && (
-                                        <Button
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={handleSyncAll}
-                                            disabled={syncing}
-                                            startIcon={syncing ? <CircularProgress size={16} /> : <Sync />}
-                                            fullWidth
-                                            sx={{
-                                                textTransform: 'none',
-                                                fontWeight: 600,
-                                                py: 1.2
-                                            }}
-                                        >
-                                            {syncing ? 'Synchronizuję wszystkie...' : 'Synchronizuj wszystkie kalendarze'}
-                                        </Button>
-                                    )}
-
                                     {/* Sites List */}
                                     {sites && sites.map(site => {
                                         const siteStatus = statusMap[site.id];
@@ -389,16 +316,7 @@ const GoogleCalendarPopup = ({ sites }) => {
                                                                     disabled={loading}
                                                                     sx={{ textTransform: 'none', flex: 1 }}
                                                                 >
-                                                                    {siteStatus.integration?.sync_enabled ? 'Wstrzymaj' : 'Wznów'}
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outlined"
-                                                                    size="small"
-                                                                    onClick={() => handleManualSync(site.id)}
-                                                                    disabled={loading || !siteStatus.integration?.sync_enabled}
-                                                                    sx={{ textTransform: 'none', flex: 1 }}
-                                                                >
-                                                                    Sync
+                                                                    {siteStatus.integration?.sync_enabled ? 'Wyłącz sync' : 'Włącz sync'}
                                                                 </Button>
                                                                 <Button
                                                                     variant="text"
@@ -426,7 +344,7 @@ const GoogleCalendarPopup = ({ sites }) => {
                                             align="center"
                                             sx={{ py: 2 }}
                                         >
-                                            Połącz swoje strony z Google Calendar, aby automatycznie synchronizować wszystkie wydarzenia.
+                                            Połącz swoje strony z Google Calendar. Wszystkie zmiany w wydarzeniach będą automatycznie synchronizowane.
                                         </Typography>
                                     )}
                                 </Stack>
