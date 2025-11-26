@@ -14,7 +14,7 @@ import { CheckCircle, Cancel, Sync } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_BASE;
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Google Calendar SVG Icon (official colors)
 const GoogleCalendarIcon = ({ sx, ...props }) => (
