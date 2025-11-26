@@ -259,34 +259,52 @@ class GoogleCalendarService:
                 logger.warning(f"No Google Calendar mapping found for Event {event.id}")
                 return True  # Already doesn't exist
             
+            google_event_id = google_cal_event.google_event_id
+            
+            # Use the new method that doesn't rely on Event instance
+            return self.delete_event_by_id(integration, google_event_id)
+            
+        except Exception as e:
+            logger.error(f"Unexpected error deleting Google Calendar event for Event {event.id}: {e}")
+            return False
+    
+    def delete_event_by_id(self, integration: GoogleCalendarIntegration, google_event_id: str) -> bool:
+        """
+        Delete an event from Google Calendar by its Google event ID.
+        This method is useful when the local Event is being deleted (CASCADE).
+        
+        Args:
+            integration: GoogleCalendarIntegration instance
+            google_event_id: Google Calendar event ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
             credentials = self.get_credentials(integration)
             service = build('calendar', 'v3', credentials=credentials)
             
             # Delete event with sendUpdates to force immediate sync
             service.events().delete(
                 calendarId=integration.calendar_id,
-                eventId=google_cal_event.google_event_id,
+                eventId=google_event_id,
                 sendUpdates='all'  # Force immediate notification and cache refresh
             ).execute()
-            
-            # Delete mapping
-            google_cal_event.delete()
             
             integration.last_sync_at = timezone.now()
             integration.save(update_fields=['last_sync_at', 'updated_at'])
             
-            logger.info(f"Deleted Google Calendar event {google_cal_event.google_event_id} for Event {event.id}")
+            logger.info(f"Deleted Google Calendar event {google_event_id}")
             return True
             
         except HttpError as e:
             if e.resp.status == 410:  # Already deleted
-                logger.info(f"Google Calendar event already deleted for Event {event.id}")
-                google_cal_event.delete()
+                logger.info(f"Google Calendar event {google_event_id} already deleted")
                 return True
-            logger.error(f"Failed to delete Google Calendar event for Event {event.id}: {e}")
+            logger.error(f"Failed to delete Google Calendar event {google_event_id}: {e}")
             return False
         except Exception as e:
-            logger.error(f"Unexpected error deleting Google Calendar event for Event {event.id}: {e}")
+            logger.error(f"Unexpected error deleting Google Calendar event {google_event_id}: {e}")
             return False
     
     def _build_event_body(self, event: Event) -> Dict[str, Any]:
