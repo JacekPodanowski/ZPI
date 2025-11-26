@@ -45,7 +45,7 @@ const GoogleCalendarCallback = () => {
             const token = localStorage.getItem('accessToken');
             
             await axios.post(
-                `${API_URL}/sites/${siteId}/google-calendar/callback/`,
+                `${API_URL}/google-calendar/callback/`,
                 { code, state },
                 {
                     headers: {
