@@ -7084,7 +7084,7 @@ def google_calendar_callback(request):
         team_member_sites = Site.objects.filter(
             team_members__linked_user=request.user,
             team_members__invitation_status='linked'
-        ).distinct()
+        )
         
         all_accessible_sites = (user_sites | team_member_sites).distinct()
         
@@ -7137,6 +7137,13 @@ def google_calendar_callback(request):
                     'name': site.name,
                     'action': 'created' if created else 'updated'
                 })
+                
+                # Broadcast status change to all connected users for this site
+                broadcast_calendar_status_update(site.id, {
+                    'connected': True,
+                    'integration': GoogleCalendarIntegrationSerializer(integration).data
+                })
+                
             except Exception as e:
                 logger.error(f"Failed to connect site {site.id}: {e}")
                 failed_sites.append({
@@ -7209,6 +7216,12 @@ def google_calendar_callback(request):
         logger.info(f"Initial sync completed for site {site_id}: {stats}")
     except Exception as e:
         logger.error(f"Failed to sync events after connection: {e}")
+    
+    # Broadcast status change to all connected users
+    broadcast_calendar_status_update(site_id, {
+        'connected': True,
+        'integration': GoogleCalendarIntegrationSerializer(integration).data
+    })
     
     return Response({
         'message': 'Google Calendar connected successfully',
@@ -7397,7 +7410,7 @@ def google_calendar_connect_all(request):
     team_member_sites = Site.objects.filter(
         team_members__linked_user=request.user,
         team_members__invitation_status='linked'
-    ).distinct()
+    )
     
     all_accessible_sites = (user_sites | team_member_sites).distinct()
     
@@ -7432,7 +7445,7 @@ def google_calendar_status_all(request):
     team_member_sites = Site.objects.filter(
         team_members__linked_user=request.user,
         team_members__invitation_status='linked'
-    ).distinct()
+    )
     
     all_accessible_sites = (user_sites | team_member_sites).distinct()
     

@@ -77,25 +77,32 @@ class GoogleCalendarConsumer(AsyncWebsocketConsumer):
     
     async def connect(self):
         """Accept WebSocket connection and add to site-specific group."""
-        self.site_id = self.scope['url_route']['kwargs']['site_id']
-        self.room_group_name = f'google_calendar_{self.site_id}'
-        
-        # Join site-specific group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        
-        await self.accept()
-        logger.info(f"Google Calendar WebSocket connected for site {self.site_id}")
+        try:
+            self.site_id = self.scope['url_route']['kwargs']['site_id']
+            self.room_group_name = f'google_calendar_{self.site_id}'
+            
+            # Join site-specific group
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+            
+            await self.accept()
+            logger.info(f"Google Calendar WebSocket connected for site {self.site_id}")
+        except Exception as e:
+            logger.error(f"Error connecting Google Calendar WebSocket: {e}", exc_info=True)
+            await self.close()
     
     async def disconnect(self, close_code):
         """Remove from group on disconnect."""
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-        logger.info(f"Google Calendar WebSocket disconnected for site {self.site_id} (code: {close_code})")
+        try:
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+            logger.info(f"Google Calendar WebSocket disconnected for site {self.site_id} (code: {close_code})")
+        except Exception as e:
+            logger.error(f"Error disconnecting Google Calendar WebSocket: {e}", exc_info=True)
     
     async def receive(self, text_data):
         """Handle messages from WebSocket (optional)."""
