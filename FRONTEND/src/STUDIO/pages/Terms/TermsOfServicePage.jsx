@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Logo from '../../../components/Logo/Logo';
 import apiClient from '../../../services/apiClient';
+import Navigation from '../../../components/Navigation/Navigation';
 
 const TermsOfServicePage = () => {
     const [terms, setTerms] = useState(null);
@@ -51,7 +52,9 @@ const TermsOfServicePage = () => {
         : '';
 
     return (
-        <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 8 } }}>
+        <>
+            <Navigation />
+            <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 8 } }}>
             <Container maxWidth="md">
                 <Paper
                     elevation={0}
@@ -91,6 +94,7 @@ const TermsOfServicePage = () => {
                 </Paper>
             </Container>
         </Box>
+        </>
     );
 };
 

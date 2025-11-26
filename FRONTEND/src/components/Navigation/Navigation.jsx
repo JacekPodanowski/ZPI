@@ -17,6 +17,7 @@ import {
     ListSubheader,
     Stack,
     Toolbar,
+    Tooltip,
     Typography
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -30,7 +31,8 @@ import UserAvatarMenu from './UserAvatarMenu';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import LanguageIcon from '@mui/icons-material/Language';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 import AdminLink from '../AdminLink/AdminLink';
@@ -75,9 +77,14 @@ const Navigation = () => {
                 path: '/studio/account/billing'
             },
             {
-                label: 'Wygląd',
-                icon: <PaletteOutlinedIcon fontSize="small" />,
-                path: '/studio/account/appearance'
+                label: 'Domena',
+                icon: <LanguageIcon fontSize="small" />,
+                path: '/studio/account/domain'
+            },
+            {
+                label: 'Informacje',
+                icon: <InfoOutlinedIcon fontSize="small" />,
+                path: '/info'
             },
             {
                 label: 'Ustawienia',
@@ -377,9 +384,26 @@ const Navigation = () => {
                                 menuItems={userMenuItems}
                             />
                         ) : (
-                            <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
-                                Zaloguj
-                            </Button>
+                            <>
+                                <Tooltip title="Regulamin i informacje" arrow>
+                                    <IconButton
+                                        onClick={() => navigate('/info')}
+                                        sx={{
+                                            color: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.6)',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                color: (theme) => theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.8)',
+                                                backgroundColor: 'action.hover'
+                                            }
+                                        }}
+                                    >
+                                        <InfoOutlinedIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Button variant="contained" color="primary" onClick={() => navigate('/login')}>
+                                    Zaloguj
+                                </Button>
+                            </>
                         )}
                     </Box>
                 </Toolbar>

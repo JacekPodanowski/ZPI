@@ -21,20 +21,8 @@ const useNavigationBlocker = (shouldBlock) => {
     });
 
     useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            if (!shouldBlock) {
-                return;
-            }
-            event.preventDefault();
-            // For legacy browsers
-            event.returnValue = '';
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [shouldBlock]);
+        return () => {};
+    }, []);
 
     useEffect(() => {
         const releaseBlocker = () => {
