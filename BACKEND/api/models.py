@@ -982,7 +982,7 @@ class DomainOrder(models.Model):
         CONFIGURING_DNS = 'configuring_dns', 'Configuring DNS'
         ACTIVE = 'active', 'Active'
         DNS_ERROR = 'dns_error', 'DNS Configuration Error'
-        EXPIRED = 'expired', 'Expired'
+        EXPIRED = 'expired', 'Expired (Not Configured in Time)'
         CANCELLED = 'cancelled', 'Cancelled'
         ERROR = 'error', 'Configuration Error'
     
@@ -1065,6 +1065,11 @@ class DomainOrder(models.Model):
         blank=True,
         help_text='Cloudflare nameservers assigned to this domain'
     )
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Expiration time for domain reservation (48h from creation if not configured)'
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -1075,6 +1080,17 @@ class DomainOrder(models.Model):
             models.Index(fields=['site']),
             models.Index(fields=['ovh_order_id']),
             models.Index(fields=['domain_name']),
+            models.Index(fields=['expires_at']),
+        ]
+        constraints = [
+            # Prevent duplicate active/pending domains across all users
+            models.UniqueConstraint(
+                fields=['domain_name'],
+                condition=models.Q(
+                    status__in=['free', 'pending', 'configuring_dns', 'active']
+                ),
+                name='unique_active_domain_per_system'
+            ),
         ]
     
     def __str__(self):

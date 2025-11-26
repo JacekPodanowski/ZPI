@@ -12,7 +12,7 @@ import ovh
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction, models
+from django.db import transaction, models, IntegrityError
 from django.db.models import Sum, Q, F
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -4768,7 +4768,7 @@ def retry_dns_configuration(request):
 @extend_schema(
     tags=['Domains'],
     summary='Add domain and create Cloudflare zone',
-    description='Creates a new Cloudflare zone for the domain and stores nameservers in database.',
+    description='Creates a new Cloudflare zone for the domain and stores nameservers in database. Prevents duplicate domains across users with atomic transaction.',
     request=inline_serializer(
         name='AddDomainRequest',
         fields={
@@ -4789,6 +4789,7 @@ def retry_dns_configuration(request):
             }
         ),
         400: OpenApiResponse(description='Invalid request'),
+        409: OpenApiResponse(description='Domain already in use by another user'),
         500: OpenApiResponse(description='Cloudflare API error'),
     }
 )
@@ -4796,11 +4797,18 @@ def add_domain_with_cloudflare(request):
     """
     Add a domain by creating a Cloudflare zone and storing nameservers.
     
+    Security features:
+    - Atomic transaction with pessimistic locking (select_for_update)
+    - Database unique constraint on active domains
+    - Race condition protection
+    - 48-hour reservation timeout for unconfigured domains
+    
     Steps:
-    1. Create zone in Cloudflare
-    2. Get zone_id and nameservers from response
-    3. Save domain order in database with status 'pending' or 'free'
-    4. Return nameservers to display to user
+    1. Pre-check if domain is already in use
+    2. Atomic transaction with row lock
+    3. Create zone in Cloudflare
+    4. Save domain order in database with 48h expiration
+    5. Return nameservers to display to user
     """
     domain_name = request.data.get('domain_name')
     site_id = request.data.get('site_id')
@@ -4814,16 +4822,37 @@ def add_domain_with_cloudflare(request):
     # Validate domain name format
     domain_name = domain_name.lower().strip()
     
-    # Check if domain already exists for this user
-    existing_order = DomainOrder.objects.filter(
-        user=request.user,
-        domain_name=domain_name
-    ).first()
+    # SECURITY: Block our platform domains from being added by users
+    PROTECTED_DOMAINS = [
+        'youreasysite.pl',
+        'www.youreasysite.pl',
+        'youreasysite.com',
+        'www.youreasysite.com',
+    ]
     
-    if existing_order:
+    if domain_name in PROTECTED_DOMAINS:
+        logger.warning(f"[add_domain] Attempt to add protected domain: {domain_name} by user {request.user.id}")
         return Response(
-            {'error': f'Domain {domain_name} already exists in your account'},
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                'error': f'Domena {domain_name} jest domeną platformy i nie może być dodana.',
+                'message': 'Ta domena jest zarezerwowana dla platformy YourEasySite.'
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # STEP 1: Quick pre-check (without lock) - fail fast for obvious duplicates
+    active_statuses = ['free', 'pending', 'configuring_dns', 'active']
+    if DomainOrder.objects.filter(
+        domain_name=domain_name,
+        status__in=active_statuses
+    ).exists():
+        return Response(
+            {
+                'error': f'Domena {domain_name} jest już w użyciu.',
+                'message': 'Jeśli uważasz, że ta domena należy do Ciebie, ale nie możesz jej dodać, skontaktuj się z naszym wsparciem technicznym.',
+                'support_email': 'support@youreasysite.com'
+            },
+            status=status.HTTP_409_CONFLICT
         )
     
     # Get site if provided
@@ -4837,59 +4866,49 @@ def add_domain_with_cloudflare(request):
                 status=status.HTTP_404_NOT_FOUND
             )
     
+    # STEP 2: Atomic transaction with pessimistic lock - prevents race conditions
     try:
-        # Create Cloudflare zone
-        cf_headers = {
-            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
-            'Content-Type': 'application/json',
-        }
-        
-        cf_create_zone = requests.post(
-            'https://api.cloudflare.com/client/v4/zones',
-            headers=cf_headers,
-            json={
-                'name': domain_name,
-                'account': {'id': settings.CLOUDFLARE_ACCOUNT_ID},
-                'jump_start': True,
+        with transaction.atomic():
+            # Pessimistic lock - other concurrent requests WAIT here
+            # This is the critical section that prevents duplicate domains
+            locked_domain = DomainOrder.objects.select_for_update().filter(
+                domain_name=domain_name,
+                status__in=active_statuses
+            ).first()
+            
+            if locked_domain:
+                # Someone else reserved this domain while we waited for the lock
+                logger.warning(f"[add_domain] Domain {domain_name} already reserved by user {locked_domain.user_id} during lock wait")
+                raise DomainOrder.DoesNotExist  # Will be caught below
+            
+            # STEP 3: Create Cloudflare zone
+            cf_headers = {
+                'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+                'Content-Type': 'application/json',
             }
-        )
-        
-        zone_created = False
-        zone_id = None
-        nameservers = []
-        zone_status = 'free'
-        
-        if cf_create_zone.status_code == 200:
-            cf_zone_data = cf_create_zone.json()['result']
-            zone_id = cf_zone_data['id']
-            nameservers = cf_zone_data.get('name_servers', [])
-            cloudflare_status = cf_zone_data.get('status', 'pending')
             
-            # Map Cloudflare status to our status
-            if cloudflare_status == 'active':
-                zone_status = 'active'
-            elif cloudflare_status == 'pending':
-                zone_status = 'pending'
-            else:
-                zone_status = 'free'
-            
-            zone_created = True
-            logger.info(f"[add_domain] Cloudflare zone created: {zone_id} for {domain_name}")
-            
-        else:
-            # Zone might already exist - try to get it
-            logger.info(f"[add_domain] Zone creation returned {cf_create_zone.status_code}, checking for existing zone")
-            cf_zones = requests.get(
-                f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
-                headers=cf_headers
+            cf_create_zone = requests.post(
+                'https://api.cloudflare.com/client/v4/zones',
+                headers=cf_headers,
+                json={
+                    'name': domain_name,
+                    'account': {'id': settings.CLOUDFLARE_ACCOUNT_ID},
+                    'jump_start': True,
+                }
             )
             
-            if cf_zones.status_code == 200 and cf_zones.json()['result']:
-                cf_zone_data = cf_zones.json()['result'][0]
+            zone_created = False
+            zone_id = None
+            nameservers = []
+            zone_status = 'free'
+            
+            if cf_create_zone.status_code == 200:
+                cf_zone_data = cf_create_zone.json()['result']
                 zone_id = cf_zone_data['id']
                 nameservers = cf_zone_data.get('name_servers', [])
                 cloudflare_status = cf_zone_data.get('status', 'pending')
                 
+                # Map Cloudflare status to our status
                 if cloudflare_status == 'active':
                     zone_status = 'active'
                 elif cloudflare_status == 'pending':
@@ -4898,36 +4917,68 @@ def add_domain_with_cloudflare(request):
                     zone_status = 'free'
                 
                 zone_created = True
-                logger.info(f"[add_domain] Using existing zone: {zone_id} for {domain_name}")
+                logger.info(f"[add_domain] Cloudflare zone created: {zone_id} for {domain_name}")
+                
             else:
-                error_msg = cf_create_zone.json().get('errors', [{}])[0].get('message', 'Unknown error')
-                logger.error(f"[add_domain] Failed to create/find Cloudflare zone: {error_msg}")
-                return Response(
-                    {'error': f'Failed to create Cloudflare zone: {error_msg}'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                # Zone might already exist - try to get it
+                logger.info(f"[add_domain] Zone creation returned {cf_create_zone.status_code}, checking for existing zone")
+                cf_zones = requests.get(
+                    f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
+                    headers=cf_headers
                 )
-        
-        # Create domain order in database
-        domain_order = DomainOrder.objects.create(
-            user=request.user,
-            site=site,
-            domain_name=domain_name,
-            cloudflare_zone_id=zone_id,
-            cloudflare_nameservers=nameservers,
-            status=zone_status,
-            dns_configuration={
-                'cloudflare_zone_created': zone_created,
-                'created_at': timezone.now().isoformat()
-            }
-        )
+                
+                if cf_zones.status_code == 200 and cf_zones.json()['result']:
+                    cf_zone_data = cf_zones.json()['result'][0]
+                    zone_id = cf_zone_data['id']
+                    nameservers = cf_zone_data.get('name_servers', [])
+                    cloudflare_status = cf_zone_data.get('status', 'pending')
+                    
+                    if cloudflare_status == 'active':
+                        zone_status = 'active'
+                    elif cloudflare_status == 'pending':
+                        zone_status = 'pending'
+                    else:
+                        zone_status = 'free'
+                    
+                    zone_created = True
+                    logger.info(f"[add_domain] Using existing zone: {zone_id} for {domain_name}")
+                else:
+                    error_msg = cf_create_zone.json().get('errors', [{}])[0].get('message', 'Unknown error')
+                    logger.error(f"[add_domain] Failed to create/find Cloudflare zone: {error_msg}")
+                    return Response(
+                        {'error': f'Failed to create Cloudflare zone: {error_msg}'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+            
+            # STEP 4: Create domain order in database with 48h expiration
+            # This will fail with IntegrityError if unique constraint is violated
+            expires_at = timezone.now() + timedelta(hours=48)
+            
+            domain_order = DomainOrder.objects.create(
+                user=request.user,
+                site=site,
+                domain_name=domain_name,
+                cloudflare_zone_id=zone_id,
+                cloudflare_nameservers=nameservers,
+                status=zone_status,
+                expires_at=expires_at,
+                dns_configuration={
+                    'cloudflare_zone_created': zone_created,
+                    'created_at': timezone.now().isoformat()
+                }
+            )
+            
+            logger.info(f"[add_domain] Domain order created: {domain_order.id} for {domain_name} by user {request.user.id}")
+            
+        # Transaction committed successfully
         
         message = ''
         if zone_status == 'pending':
-            message = f'Domain added to Cloudflare. Please update your domain nameservers to the provided Cloudflare nameservers.'
+            message = f'Domain added to Cloudflare. Please update your domain nameservers to the provided Cloudflare nameservers. You have 48 hours to complete the configuration.'
         elif zone_status == 'active':
             message = 'Domain is already active in Cloudflare! DNS configuration will start automatically.'
         else:
-            message = 'Domain registered. Waiting for Cloudflare zone activation.'
+            message = 'Domain registered. Waiting for Cloudflare zone activation. You have 48 hours to complete the configuration.'
         
         return Response({
             'order_id': domain_order.id,
@@ -4935,8 +4986,32 @@ def add_domain_with_cloudflare(request):
             'cloudflare_zone_id': zone_id,
             'nameservers': nameservers,
             'status': zone_status,
+            'expires_at': expires_at.isoformat(),
             'message': message,
         }, status=status.HTTP_200_OK)
+    
+    except DomainOrder.DoesNotExist:
+        # Domain was reserved by someone else during our transaction
+        return Response(
+            {
+                'error': f'Domena {domain_name} została właśnie zarezerwowana przez innego użytkownika.',
+                'message': 'Jeśli uważasz, że ta domena należy do Ciebie, ale nie możesz jej dodać, skontaktuj się z naszym wsparciem technicznym.',
+                'support_email': 'support@youreasysite.com'
+            },
+            status=status.HTTP_409_CONFLICT
+        )
+    
+    except IntegrityError as e:
+        # Database unique constraint violation - extremely rare due to locks
+        logger.error(f"[add_domain] IntegrityError for {domain_name}: {e}")
+        return Response(
+            {
+                'error': f'Domena {domain_name} jest już w użyciu.',
+                'message': 'Jeśli uważasz, że ta domena należy do Ciebie, ale nie możesz jej dodać, skontaktuj się z naszym wsparciem technicznym.',
+                'support_email': 'support@youreasysite.com'
+            },
+            status=status.HTTP_409_CONFLICT
+        )
         
     except Exception as e:
         logger.error(f'[add_domain] Error adding domain {domain_name}: {e}')
