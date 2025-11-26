@@ -32,6 +32,7 @@ from .models import (
     BigEvent,
     Agent,
     ChatHistory,
+    GoogleCalendarIntegration,
 )
 from .media_helpers import cleanup_asset_if_unused, get_asset_by_path_or_url
 
@@ -856,3 +857,25 @@ class ChatHistorySerializer(serializers.ModelSerializer):
             'user_message', 'ai_response', 'task_id', 'status', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class GoogleCalendarIntegrationSerializer(serializers.ModelSerializer):
+    """Serializer for Google Calendar integration."""
+    
+    is_connected = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GoogleCalendarIntegration
+        fields = [
+            'id', 'site', 'google_email', 'calendar_name', 
+            'is_active', 'sync_enabled', 'last_sync_at',
+            'created_at', 'updated_at', 'is_connected'
+        ]
+        read_only_fields = [
+            'id', 'google_email', 'calendar_name', 
+            'last_sync_at', 'created_at', 'updated_at'
+        ]
+    
+    def get_is_connected(self, obj):
+        """Check if the integration is properly connected."""
+        return bool(obj.access_token and obj.refresh_token and obj.is_active)

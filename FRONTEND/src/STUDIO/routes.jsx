@@ -39,6 +39,7 @@ import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
 import ForceChangePasswordPage from './pages/Auth/ForceChangePasswordPage';
 import NewsletterConfirmPage from './pages/Newsletter/NewsletterConfirmPage';
 import NewsletterUnsubscribePage from './pages/Newsletter/NewsletterUnsubscribePage';
+import GoogleCalendarCallback from './pages/Auth/GoogleCalendarCallback';
 
 const StudioApp = () => (
   <Routes>
@@ -53,6 +54,9 @@ const StudioApp = () => (
     
     {/* Magic link login - PUBLIC route, no auth required */}
     <Route path="magic-login/:token" element={<MagicLoginPage />} />
+    
+    {/* Google Calendar OAuth callback - PUBLIC route, no auth required */}
+    <Route path="auth/google/callback" element={<GoogleCalendarCallback />} />
     
     {/* Newsletter confirmation - PUBLIC route, no auth required */}
     <Route path="newsletter/confirm/:token" element={<NewsletterConfirmPage />} />

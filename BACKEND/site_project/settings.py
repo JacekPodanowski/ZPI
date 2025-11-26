@@ -43,6 +43,11 @@ GOOGLE_CLOUD_DOMAIN = os.environ.get('GOOGLE_CLOUD_DOMAIN')  # Cloud Run / App E
 # --- AI Models API Keys ---
 FLASH_API_KEY = os.environ.get('FLASH_API_KEY')
 
+# --- Google OAuth for Calendar Integration ---
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID')
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET')
+GOOGLE_OAUTH_REDIRECT_URI = os.environ.get('GOOGLE_OAUTH_REDIRECT_URI', f'{FRONTEND_URL}/studio/auth/google/callback')
+
 # --- Przelewy24 Payment Gateway ---
 PRZELEWY24_MERCHANT_ID = os.environ.get('PRZELEWY24_MERCHANT_ID')
 PRZELEWY24_POS_ID = os.environ.get('PRZELEWY24_POS_ID')
