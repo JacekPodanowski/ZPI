@@ -241,6 +241,13 @@ class PublicSiteSerializer(serializers.ModelSerializer):
         model = Site
         fields = ['id', 'identifier', 'name', 'subdomain', 'is_published', 'template_config', 'updated_at']
         read_only_fields = ['id', 'identifier', 'name', 'subdomain', 'is_published', 'template_config', 'updated_at']
+    
+    def to_representation(self, instance):
+        """Remove template_config if site is not published."""
+        data = super().to_representation(instance)
+        if not instance.is_published:
+            data.pop('template_config', None)
+        return data
 
 
 class ClientSerializer(serializers.ModelSerializer):
