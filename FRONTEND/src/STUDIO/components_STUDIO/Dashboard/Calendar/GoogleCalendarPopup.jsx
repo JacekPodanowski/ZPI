@@ -43,7 +43,7 @@ const GoogleCalendarPopup = ({ sites }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [statusMap, setStatusMap] = useState({}); // Map of siteId -> status
     const [loading, setLoading] = useState(false);
-    const [showBulkSection, setShowBulkSection] = useState(false);
+    const [showSitesList, setShowSitesList] = useState(false);
     const websocketsRef = useRef({});
 
     const open = Boolean(anchorEl);
@@ -329,61 +329,56 @@ const GoogleCalendarPopup = ({ sites }) => {
                                         </Box>
                                     </Box>
 
-                                    {/* Bulk Connect Section - Collapsible */}
+                                    {/* Connect All Button - Always Visible */}
                                     {sites && sites.length > 1 && !allConnected && (
-                                        <>
-                                            <Box>
-                                                <Button
-                                                    fullWidth
-                                                    variant="text"
-                                                    onClick={() => setShowBulkSection(!showBulkSection)}
-                                                    endIcon={showBulkSection ? <ExpandLess /> : <ExpandMore />}
-                                                    sx={{ 
-                                                        textTransform: 'none',
-                                                        justifyContent: 'space-between',
-                                                        color: 'text.secondary',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(66, 133, 244, 0.04)'
-                                                        }
-                                                    }}
-                                                >
-                                                    Opcje zbiorcze
-                                                </Button>
-                                                <Collapse in={showBulkSection}>
-                                                    <Box sx={{ 
-                                                        mt: 1.5, 
-                                                        p: 2, 
-                                                        borderRadius: 2, 
-                                                        backgroundColor: 'rgba(66, 133, 244, 0.04)',
-                                                        border: '1px solid rgba(66, 133, 244, 0.12)'
-                                                    }}>
-                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                                            Połącz wszystkie strony naraz z jednym kontem Google Calendar
-                                                        </Typography>
-                                                        <Button
-                                                            fullWidth
-                                                            variant="contained"
-                                                            onClick={handleConnectAll}
-                                                            disabled={loading}
-                                                            sx={{ 
-                                                                textTransform: 'none',
-                                                                backgroundColor: '#4285f4',
-                                                                '&:hover': {
-                                                                    backgroundColor: '#3367d6'
-                                                                }
-                                                            }}
-                                                        >
-                                                            Połącz wszystkie kalendarze
-                                                        </Button>
-                                                    </Box>
-                                                </Collapse>
-                                            </Box>
-                                            <Divider />
-                                        </>
+                                        <Box sx={{ 
+                                            p: 2, 
+                                            borderRadius: 2, 
+                                            backgroundColor: 'rgba(66, 133, 244, 0.04)',
+                                            border: '1px solid rgba(66, 133, 244, 0.12)'
+                                        }}>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                                Połącz wszystkie strony naraz z jednym kontem Google Calendar
+                                            </Typography>
+                                            <Button
+                                                fullWidth
+                                                variant="contained"
+                                                onClick={handleConnectAll}
+                                                disabled={loading}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    backgroundColor: '#4285f4',
+                                                    '&:hover': {
+                                                        backgroundColor: '#3367d6'
+                                                    }
+                                                }}
+                                            >
+                                                Połącz wszystkie kalendarze
+                                            </Button>
+                                        </Box>
                                     )}
 
-                                    {/* Sites List */}
-                                    {sites && sites.map(site => {
+                                    {/* Sites List - Collapsible */}
+                                    <Box>
+                                        <Button
+                                            fullWidth
+                                            variant="text"
+                                            onClick={() => setShowSitesList(!showSitesList)}
+                                            endIcon={showSitesList ? <ExpandLess /> : <ExpandMore />}
+                                            sx={{ 
+                                                textTransform: 'none',
+                                                justifyContent: 'space-between',
+                                                color: 'text.secondary',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                                }
+                                            }}
+                                        >
+                                            Zarządzaj pojedynczymi stronami
+                                        </Button>
+                                        <Collapse in={showSitesList}>
+                                            <Stack spacing={2} sx={{ mt: 1.5 }}>
+                                                {sites && sites.map(site => {
                                         const siteStatus = statusMap[site.id];
                                         const isConnected = siteStatus?.connected;
 
@@ -470,6 +465,9 @@ const GoogleCalendarPopup = ({ sites }) => {
                                             </Box>
                                         );
                                     })}
+                                            </Stack>
+                                        </Collapse>
+                                    </Box>
 
                                     {/* Info Text */}
                                     {connectedSites.length === 0 && (
