@@ -1,4 +1,4 @@
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import pre_delete, post_delete, post_save
 from django.dispatch import receiver
 from django.conf import settings
 import os
@@ -104,13 +104,14 @@ def sync_event_to_google_calendar_on_save(sender, instance: Event, created: bool
         logger.error(f"Exception syncing Event {instance.id} to Google Calendar: {e}", exc_info=True)
 
 
-@receiver(post_delete, sender=Event)
+@receiver(pre_delete, sender=Event)
 def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
     """
     Automatically delete Event from Google Calendar when deleted locally.
+    Uses pre_delete to access relationships before CASCADE deletion.
     Only syncs if the site has an active Google Calendar integration.
     """
-    logger.info(f"Delete signal triggered for Event {instance.id}")
+    logger.info(f"Pre-delete signal triggered for Event {instance.id}")
     
     try:
         integration = GoogleCalendarIntegration.objects.filter(
@@ -123,16 +124,27 @@ def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
             logger.info(f"No active Google Calendar integration for site {instance.site.id}")
             return  # No active integration
         
-        logger.info(f"Found active integration {integration.id} for deleted Event {instance.id}")
+        # Get the mapping before it's CASCADE deleted
+        google_cal_event = GoogleCalendarEvent.objects.filter(
+            event=instance,
+            integration=integration
+        ).first()
+        
+        if not google_cal_event:
+            logger.info(f"No Google Calendar mapping found for Event {instance.id}")
+            return
+        
+        google_event_id = google_cal_event.google_event_id
+        logger.info(f"Found active integration {integration.id} for deleted Event {instance.id}, Google event ID: {google_event_id}")
         
         # Import here to avoid circular import
         from .google_calendar_service import google_calendar_service
         
-        success = google_calendar_service.delete_event(integration, instance)
+        success = google_calendar_service.delete_event_by_id(integration, google_event_id)
         if success:
-            logger.info(f"✓ Deleted Google Calendar event for Event {instance.id}")
+            logger.info(f"✓ Deleted Google Calendar event {google_event_id} for Event {instance.id}")
         else:
-            logger.error(f"✗ Failed to delete Google Calendar event for Event {instance.id}")
+            logger.error(f"✗ Failed to delete Google Calendar event {google_event_id} for Event {instance.id}")
         
     except Exception as e:
         logger.error(f"Exception deleting Event {instance.id} from Google Calendar: {e}", exc_info=True)
