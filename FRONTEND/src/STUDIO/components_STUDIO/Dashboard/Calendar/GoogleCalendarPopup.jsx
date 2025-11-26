@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     IconButton,
@@ -8,14 +8,17 @@ import {
     CircularProgress,
     Tooltip,
     Stack,
-    Chip
+    Chip,
+    Collapse,
+    Divider
 } from '@mui/material';
-import { CheckCircle, Cancel } from '@mui/icons-material';
+import { CheckCircle, Cancel, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useToast } from '../../../../contexts/ToastContext';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
+const WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
 
 // Google Calendar SVG Icon (official colors)
 const GoogleCalendarIcon = ({ sx, ...props }) => (
@@ -40,6 +43,8 @@ const GoogleCalendarPopup = ({ sites }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const [statusMap, setStatusMap] = useState({}); // Map of siteId -> status
     const [loading, setLoading] = useState(false);
+    const [showBulkSection, setShowBulkSection] = useState(false);
+    const websocketsRef = useRef({});
 
     const open = Boolean(anchorEl);
 
@@ -47,6 +52,57 @@ const GoogleCalendarPopup = ({ sites }) => {
     const connectedSites = Object.values(statusMap).filter(s => s?.connected);
     const hasAnyConnection = connectedSites.length > 0;
     const allConnected = sites?.length > 0 && connectedSites.length === sites.length;
+
+    // Setup WebSocket connections for real-time updates
+    useEffect(() => {
+        if (!sites || sites.length === 0) return;
+
+        // Create WebSocket connection for each site
+        sites.forEach(site => {
+            const wsUrl = `${WS_URL}/ws/google-calendar/${site.id}/`;
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log(`WebSocket connected for site ${site.id}`);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log(`Received WebSocket update for site ${site.id}:`, data);
+                    
+                    if (data.status_data) {
+                        setStatusMap(prev => ({
+                            ...prev,
+                            [site.id]: data.status_data
+                        }));
+                    }
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error(`WebSocket error for site ${site.id}:`, error);
+            };
+
+            ws.onclose = () => {
+                console.log(`WebSocket closed for site ${site.id}`);
+            };
+
+            websocketsRef.current[site.id] = ws;
+        });
+
+        // Cleanup WebSocket connections on unmount
+        return () => {
+            Object.values(websocketsRef.current).forEach(ws => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            });
+            websocketsRef.current = {};
+        };
+    }, [sites]);
 
     const handleClick = async (event) => {
         setAnchorEl(event.currentTarget);
@@ -113,6 +169,29 @@ const GoogleCalendarPopup = ({ sites }) => {
         } catch (error) {
             console.error('Failed to connect Google Calendar:', error);
             addToast('Nie udało się połączyć z Google Calendar', { variant: 'error' });
+        }
+    };
+
+    const handleConnectAll = async () => {
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await axios.get(
+                `${API_URL}/google-calendar/connect-all/`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+            
+            // Store flag in sessionStorage to know we're connecting all sites
+            sessionStorage.setItem('google_calendar_connecting_all', 'true');
+            
+            // Redirect to Google OAuth
+            window.location.href = response.data.authorization_url;
+        } catch (error) {
+            console.error('Failed to connect all calendars:', error);
+            addToast('Nie udało się połączyć kalendarzy', { variant: 'error' });
         }
     };
 
@@ -249,6 +328,59 @@ const GoogleCalendarPopup = ({ sites }) => {
                                             </Typography>
                                         </Box>
                                     </Box>
+
+                                    {/* Bulk Connect Section - Collapsible */}
+                                    {sites && sites.length > 1 && !allConnected && (
+                                        <>
+                                            <Box>
+                                                <Button
+                                                    fullWidth
+                                                    variant="text"
+                                                    onClick={() => setShowBulkSection(!showBulkSection)}
+                                                    endIcon={showBulkSection ? <ExpandLess /> : <ExpandMore />}
+                                                    sx={{ 
+                                                        textTransform: 'none',
+                                                        justifyContent: 'space-between',
+                                                        color: 'text.secondary',
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(66, 133, 244, 0.04)'
+                                                        }
+                                                    }}
+                                                >
+                                                    Opcje zbiorcze
+                                                </Button>
+                                                <Collapse in={showBulkSection}>
+                                                    <Box sx={{ 
+                                                        mt: 1.5, 
+                                                        p: 2, 
+                                                        borderRadius: 2, 
+                                                        backgroundColor: 'rgba(66, 133, 244, 0.04)',
+                                                        border: '1px solid rgba(66, 133, 244, 0.12)'
+                                                    }}>
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                                            Połącz wszystkie strony naraz z jednym kontem Google Calendar
+                                                        </Typography>
+                                                        <Button
+                                                            fullWidth
+                                                            variant="contained"
+                                                            onClick={handleConnectAll}
+                                                            disabled={loading}
+                                                            sx={{ 
+                                                                textTransform: 'none',
+                                                                backgroundColor: '#4285f4',
+                                                                '&:hover': {
+                                                                    backgroundColor: '#3367d6'
+                                                                }
+                                                            }}
+                                                        >
+                                                            Połącz wszystkie kalendarze
+                                                        </Button>
+                                                    </Box>
+                                                </Collapse>
+                                            </Box>
+                                            <Divider />
+                                        </>
+                                    )}
 
                                     {/* Sites List */}
                                     {sites && sites.map(site => {

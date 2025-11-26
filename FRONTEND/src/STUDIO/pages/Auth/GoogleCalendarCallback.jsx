@@ -35,16 +35,12 @@ const GoogleCalendarCallback = () => {
         }
 
         try {
-            // Extract site ID from state (format: "site_123")
-            const siteId = state.split('_')[1];
-            
-            if (!siteId) {
-                throw new Error('Nieprawidłowy stan sesji.');
-            }
-
             const token = localStorage.getItem('accessToken');
             
-            await axios.post(
+            // Check if this is a bulk connection
+            const isBulkConnection = sessionStorage.getItem('google_calendar_connecting_all') === 'true';
+            
+            const response = await axios.post(
                 `${API_URL}/google-calendar/callback/`,
                 { code, state },
                 {
@@ -56,6 +52,10 @@ const GoogleCalendarCallback = () => {
             );
 
             setStatus('success');
+            
+            // Clean up session storage
+            sessionStorage.removeItem('google_calendar_connecting_site');
+            sessionStorage.removeItem('google_calendar_connecting_all');
             
             // Redirect to calendar after 2 seconds
             setTimeout(() => {
@@ -70,6 +70,10 @@ const GoogleCalendarCallback = () => {
                 error.message || 
                 'Nie udało się połączyć z Google Calendar. Spróbuj ponownie.'
             );
+            
+            // Clean up session storage on error
+            sessionStorage.removeItem('google_calendar_connecting_site');
+            sessionStorage.removeItem('google_calendar_connecting_all');
         }
     };
 
