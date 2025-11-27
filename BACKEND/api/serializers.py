@@ -323,7 +323,23 @@ class EventSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        from django.utils import timezone
+        from datetime import timedelta
+        
         site = attrs.get('site') or (self.instance.site if self.instance else None)
+        start_time = attrs.get('start_time')
+        
+        # Validate that events cannot be created in the past (with 60 min buffer)
+        if start_time:
+            now = timezone.now()
+            # Allow events to be set up to 60 minutes in the past (buffer)
+            min_allowed_time = now - timedelta(minutes=60)
+            
+            if start_time < min_allowed_time:
+                raise serializers.ValidationError({
+                    'start_time': 'Nie można tworzyć wydarzeń w przeszłości. Minimalna godzina rozpoczęcia to 1 godzina przed aktualnym czasem.'
+                })
+        
         # creator is now read-only, so it won't be in attrs during creation
         # validation will happen in the ViewSet's perform_create
         return attrs
@@ -433,6 +449,34 @@ class AvailabilityBlockSerializer(serializers.ModelSerializer):
                 name = member.email
             return f"{name} (Zespół)"
         return None
+    
+    def validate(self, attrs):
+        from django.utils import timezone
+        from datetime import datetime, timedelta
+        
+        date = attrs.get('date')
+        start_time = attrs.get('start_time')
+        
+        # Validate that availability blocks cannot be created too far in the past (15 min buffer)
+        if date and start_time:
+            now = timezone.now()
+            today = now.date()
+            
+            # Only validate for today's date
+            if date == today:
+                # Combine date and time to get full datetime
+                block_start = datetime.combine(date, start_time)
+                block_start = timezone.make_aware(block_start)
+                
+                # Allow blocks to start up to 60 minutes in the past
+                min_allowed_time = now - timedelta(minutes=60)
+                
+                if block_start < min_allowed_time:
+                    raise serializers.ValidationError({
+                        'start_time': 'Nie można tworzyć bloków dostępności w przeszłości. Minimalna godzina rozpoczęcia to 1 godzina przed aktualnym czasem.'
+                    })
+        
+        return attrs
     
     def create(self, validated_data):
         # Automatically set creator to the current user

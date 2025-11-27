@@ -19,6 +19,15 @@ const BookingModal = ({ isOpen, onClose, onSuccess, slot, siteId }) => {
       return;
     }
 
+    // Validate that the slot hasn't already ended
+    const slotEndTime = new Date(slot.end);
+    const now = new Date();
+    if (slotEndTime <= now) {
+      setStatus('error');
+      setError('Ten termin już się zakończył. Wybierz inny termin.');
+      return;
+    }
+
     setStatus('loading');
     setError('');
 

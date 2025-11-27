@@ -3267,7 +3267,25 @@ class PublicAvailabilityView(APIView):
                 existing_slot['assignee_id'] = event_assignee_info['id']
                 existing_slot['assignee_name'] = event_assignee_info['name']
 
-        sorted_slots = sorted(slot_map.values(), key=lambda x: x['start'])
+        # Filter out slots that have already ended
+        now = timezone.now()
+        filtered_slots = []
+        for slot in slot_map.values():
+            end_str = slot['end']
+            # Handle both 'Z' suffix and '+00:00' timezone formats
+            if end_str.endswith('Z'):
+                end_str = end_str[:-1] + '+00:00'
+            try:
+                slot_end = datetime.fromisoformat(end_str)
+                if timezone.is_naive(slot_end):
+                    slot_end = timezone.make_aware(slot_end)
+                if slot_end > now:
+                    filtered_slots.append(slot)
+            except (ValueError, TypeError):
+                # If parsing fails, include the slot to be safe
+                filtered_slots.append(slot)
+        
+        sorted_slots = sorted(filtered_slots, key=lambda x: x['start'])
 
         return Response(sorted_slots)
 
@@ -3313,6 +3331,14 @@ class PublicBookingView(APIView):
         if timezone.is_naive(start_time):
             start_time = timezone.make_aware(start_time)
         end_time = start_time + timedelta(minutes=duration)
+        
+        # Validate that booking is not for an event that has already ended
+        now = timezone.now()
+        if end_time <= now:
+            return Response(
+                {'error': 'Nie można zapisać się na wydarzenie, które już się zakończyło.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Znajdź lub stwórz klienta
         client, _ = Client.objects.get_or_create(

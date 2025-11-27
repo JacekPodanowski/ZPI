@@ -934,11 +934,42 @@ const CreatorCalendarApp = () => {
             if (template.availability_blocks && template.availability_blocks.length > 0) {
                 if (templateType === 'day') {
                     // Apply day template - create blocks for the specific date
+                    const today = moment().format('YYYY-MM-DD');
+                    const isToday = targetDate === today;
+                    const now = moment();
+                    
                     for (const templateBlock of template.availability_blocks) {
+                        let startTime = templateBlock.start_time;
+                        const endTime = templateBlock.end_time;
+                        
+                        // For today: skip blocks that have already ended, trim start time if in past
+                        if (isToday) {
+                            const blockEnd = moment(targetDate + ' ' + endTime, 'YYYY-MM-DD HH:mm');
+                            
+                            // Skip if block has already ended
+                            if (blockEnd.isSameOrBefore(now)) {
+                                continue;
+                            }
+                            
+                            const blockStart = moment(targetDate + ' ' + startTime, 'YYYY-MM-DD HH:mm');
+                            
+                            // If block starts in the past, trim start time to now (rounded up to next 5 min)
+                            if (blockStart.isBefore(now)) {
+                                const roundedNow = moment(now).add(5 - (now.minute() % 5), 'minutes').startOf('minute');
+                                // Make sure trimmed start is still before end
+                                if (roundedNow.isBefore(blockEnd)) {
+                                    startTime = roundedNow.format('HH:mm');
+                                } else {
+                                    // Block would be too short, skip it
+                                    continue;
+                                }
+                            }
+                        }
+                        
                         const blockData = {
                             date: targetDate,
-                            startTime: templateBlock.start_time,
-                            endTime: templateBlock.end_time,
+                            startTime: startTime,
+                            endTime: endTime,
                             meeting_length: templateBlock.meeting_length,
                             time_snapping: templateBlock.time_snapping,
                             buffer_time: templateBlock.buffer_time,
@@ -961,10 +992,40 @@ const CreatorCalendarApp = () => {
                             continue;
                         }
                         
+                        let startTime = templateBlock.start_time;
+                        const endTime = templateBlock.end_time;
+                        const blockDateStr = blockDate.format('YYYY-MM-DD');
+                        const isBlockToday = blockDate.isSame(today, 'day');
+                        const now = moment();
+                        
+                        // For today: skip blocks that have already ended, trim start time if in past
+                        if (isBlockToday) {
+                            const blockEnd = moment(blockDateStr + ' ' + endTime, 'YYYY-MM-DD HH:mm');
+                            
+                            // Skip if block has already ended
+                            if (blockEnd.isSameOrBefore(now)) {
+                                continue;
+                            }
+                            
+                            const blockStart = moment(blockDateStr + ' ' + startTime, 'YYYY-MM-DD HH:mm');
+                            
+                            // If block starts in the past, trim start time to now (rounded up to next 5 min)
+                            if (blockStart.isBefore(now)) {
+                                const roundedNow = moment(now).add(5 - (now.minute() % 5), 'minutes').startOf('minute');
+                                // Make sure trimmed start is still before end
+                                if (roundedNow.isBefore(blockEnd)) {
+                                    startTime = roundedNow.format('HH:mm');
+                                } else {
+                                    // Block would be too short, skip it
+                                    continue;
+                                }
+                            }
+                        }
+                        
                         const blockData = {
-                            date: blockDate.format('YYYY-MM-DD'),
-                            startTime: templateBlock.start_time,
-                            endTime: templateBlock.end_time,
+                            date: blockDateStr,
+                            startTime: startTime,
+                            endTime: endTime,
                             meeting_length: templateBlock.meeting_length,
                             time_snapping: templateBlock.time_snapping,
                             buffer_time: templateBlock.buffer_time,
@@ -980,7 +1041,27 @@ const CreatorCalendarApp = () => {
             if (template.events && template.events.length > 0) {
                 if (templateType === 'day') {
                     // Apply day template - create events for the specific date
+                    const today = moment().format('YYYY-MM-DD');
+                    const isToday = targetDate === today;
+                    const now = moment();
+                    
                     for (const templateEvent of template.events) {
+                        // For today: skip events that have already ended or are in progress
+                        if (isToday) {
+                            const eventEnd = moment(targetDate + ' ' + templateEvent.end_time, 'YYYY-MM-DD HH:mm');
+                            const eventStart = moment(targetDate + ' ' + templateEvent.start_time, 'YYYY-MM-DD HH:mm');
+                            
+                            // Skip if event has already ended
+                            if (eventEnd.isSameOrBefore(now)) {
+                                continue;
+                            }
+                            
+                            // Skip if event is in progress (already started but not ended)
+                            if (eventStart.isBefore(now) && eventEnd.isAfter(now)) {
+                                continue;
+                            }
+                        }
+                        
                         const eventData = {
                             title: templateEvent.title,
                             description: templateEvent.description || '',
@@ -1010,10 +1091,30 @@ const CreatorCalendarApp = () => {
                             continue;
                         }
                         
+                        const eventDateStr = eventDate.format('YYYY-MM-DD');
+                        const isEventToday = eventDate.isSame(today, 'day');
+                        const now = moment();
+                        
+                        // For today: skip events that have already ended or are in progress
+                        if (isEventToday) {
+                            const eventEnd = moment(eventDateStr + ' ' + templateEvent.end_time, 'YYYY-MM-DD HH:mm');
+                            const eventStart = moment(eventDateStr + ' ' + templateEvent.start_time, 'YYYY-MM-DD HH:mm');
+                            
+                            // Skip if event has already ended
+                            if (eventEnd.isSameOrBefore(now)) {
+                                continue;
+                            }
+                            
+                            // Skip if event is in progress (already started but not ended)
+                            if (eventStart.isBefore(now) && eventEnd.isAfter(now)) {
+                                continue;
+                            }
+                        }
+                        
                         const eventData = {
                             title: templateEvent.title,
                             description: templateEvent.description || '',
-                            date: eventDate.format('YYYY-MM-DD'),
+                            date: eventDateStr,
                             startTime: templateEvent.start_time,
                             endTime: templateEvent.end_time,
                             meetingType: templateEvent.event_type || 'individual',

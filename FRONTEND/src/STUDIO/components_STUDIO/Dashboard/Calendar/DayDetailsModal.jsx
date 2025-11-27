@@ -1097,6 +1097,48 @@ const DayDetailsModal = ({
                     fieldsToShake.push('endTime');
                 }
             }
+            
+            // Validate that events cannot be created in the past (with 15 min buffer)
+            // Only check for new events, not when editing existing ones
+            if (isEvent && view === 'createEvent' && dateKey) {
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                
+                // Only validate for today's date
+                if (dateKey === todayStr) {
+                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                    // Allow 60 minutes buffer (can set events up to 1 hour in the past)
+                    const minAllowedMinutes = currentMinutes - 60;
+                    
+                    if (startMinutes < minAllowedMinutes) {
+                        errors.startTime = 'Nie można tworzyć wydarzeń w przeszłości. Minimalna godzina to 1 godzina przed teraz.';
+                        if (!fieldsToShake.includes('startTime')) {
+                            fieldsToShake.push('startTime');
+                        }
+                    }
+                }
+            }
+            
+            // Validate that availability blocks cannot be created in the past (with 60 min buffer)
+            // Only check for new blocks, not when editing existing ones
+            if (!isEvent && view === 'createAvailability' && dateKey) {
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                
+                // Only validate for today's date
+                if (dateKey === todayStr) {
+                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                    // Allow 60 minutes buffer (can set blocks up to 1 hour in the past)
+                    const minAllowedMinutes = currentMinutes - 60;
+                    
+                    if (startMinutes < minAllowedMinutes) {
+                        errors.startTime = 'Nie można tworzyć bloków dostępności w przeszłości. Minimalna godzina to 1 godzina przed teraz.';
+                        if (!fieldsToShake.includes('startTime')) {
+                            fieldsToShake.push('startTime');
+                        }
+                    }
+                }
+            }
         }
 
         // For events, validate location if type is local
@@ -1337,39 +1379,58 @@ const DayDetailsModal = ({
                     const topPercent = (relativeMinutes / totalMinutes) * 100;
                     
                     return (
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                left: 45,
-                                right: 0,
-                                top: `${topPercent}%`,
-                                zIndex: 1000,
-                                pointerEvents: 'none'
-                            }}
-                        >
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    position: 'absolute',
-                                    top: '-18px',
-                                    left: 0,
-                                    fontWeight: 700,
-                                    color: theme.palette.primary.main,
-                                    fontSize: '11px',
-                                    letterSpacing: '0.5px'
-                                }}
-                            >
-                                {currentTimeString}
-                            </Typography>
+                        <>
+                            {/* Past time overlay - darker area before current time */}
                             <Box
                                 sx={{
-                                    width: '100%',
-                                    height: '2px',
-                                    backgroundColor: theme.palette.primary.main,
-                                    mr: 1
+                                    position: 'absolute',
+                                    left: 0,
+                                    right: 0,
+                                    top: 0,
+                                    height: `${topPercent}%`,
+                                    backgroundColor: theme.palette.mode === 'dark' 
+                                        ? 'rgba(0, 0, 0, 0.22)' 
+                                        : 'rgba(0, 0, 0, 0.07)',
+                                    pointerEvents: 'none',
+                                    zIndex: 1,
+                                    borderRadius: '8px 8px 0 0'
                                 }}
                             />
-                        </Box>
+                            {/* Current time line */}
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    left: 45,
+                                    right: 0,
+                                    top: `${topPercent}%`,
+                                    zIndex: 1000,
+                                    pointerEvents: 'none'
+                                }}
+                            >
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        position: 'absolute',
+                                        top: '-18px',
+                                        left: 0,
+                                        fontWeight: 700,
+                                        color: theme.palette.primary.main,
+                                        fontSize: '11px',
+                                        letterSpacing: '0.5px'
+                                    }}
+                                >
+                                    {currentTimeString}
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        width: '100%',
+                                        height: '2px',
+                                        backgroundColor: theme.palette.primary.main,
+                                        mr: 1
+                                    }}
+                                />
+                            </Box>
+                        </>
                     );
                 }
                 return null;
