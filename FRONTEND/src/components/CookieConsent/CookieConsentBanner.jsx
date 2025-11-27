@@ -7,12 +7,9 @@ import {
   Stack,
   Switch,
   Collapse,
-  IconButton,
   Link
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import CookieIcon from '@mui/icons-material/Cookie';
 import { useNavigate } from 'react-router-dom';
 import useTheme from '../../theme/useTheme';
@@ -56,8 +53,8 @@ const CookieConsentBanner = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [consent, setConsent] = useState({
     necessary: true, // Always required
-    analytics: false,
-    marketing: false
+    analytics: true,  // Default to true for preferences
+    marketing: true   // Default to true for preferences
   });
 
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
@@ -91,16 +88,6 @@ const CookieConsentBanner = () => {
       necessary: true,
       analytics: true,
       marketing: true
-    };
-    
-    await saveConsent(newConsent);
-  };
-
-  const handleAcceptNecessary = async () => {
-    const newConsent = {
-      necessary: true,
-      analytics: false,
-      marketing: false
     };
     
     await saveConsent(newConsent);
@@ -193,24 +180,8 @@ const CookieConsentBanner = () => {
             </Typography>
 
             {/* Expandable details */}
-            <Box>
-              <Button
-                size="small"
-                onClick={() => setShowDetails(!showDetails)}
-                endIcon={showDetails ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                sx={{ 
-                  color: 'text.secondary',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  p: 0,
-                  '&:hover': { backgroundColor: 'transparent', color: accentColor }
-                }}
-              >
-                {showDetails ? 'Ukryj szczegóły' : 'Zarządzaj preferencjami'}
-              </Button>
-
-              <Collapse in={showDetails}>
-                <Stack spacing={1.5} sx={{ mt: 2, p: 2, backgroundColor: alpha(theme.palette.divider, 0.05), borderRadius: 2 }}>
+            <Collapse in={showDetails}>
+              <Stack spacing={1.5} sx={{ mt: 2, p: 2, backgroundColor: alpha(theme.palette.divider, 0.05), borderRadius: 2 }}>
                   {/* Necessary cookies */}
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
@@ -265,7 +236,6 @@ const CookieConsentBanner = () => {
                   </Box>
                 </Stack>
               </Collapse>
-            </Box>
           </Box>
 
           {/* Buttons */}
@@ -316,7 +286,7 @@ const CookieConsentBanner = () => {
             ) : (
               <Button
                 variant="outlined"
-                onClick={handleAcceptNecessary}
+                onClick={() => setShowDetails(true)}
                 sx={{
                   borderColor: alpha(theme.palette.divider, 0.3),
                   color: 'text.secondary',
@@ -330,7 +300,7 @@ const CookieConsentBanner = () => {
                   }
                 }}
               >
-                Tylko niezbędne
+                Zarządzaj preferencjami
               </Button>
             )}
           </Stack>
