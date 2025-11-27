@@ -50,7 +50,7 @@ import { useThemeContext } from '../../../theme/ThemeProvider';
 import useTheme from '../../../theme/useTheme';
 import getEditorColorTokens from '../../../theme/editorColorTokens';
 import apiClient from '../../../services/apiClient';
-import { retrieveTempImage, isTempBlobUrl } from '../../../services/tempMediaCache';
+import { retrieveTempImageWithThumbnail, isTempBlobUrl } from '../../../services/tempMediaCache';
 import { useToast } from '../../../contexts/ToastContext';
 
 const formatRelativeTime = (timestamp) => {
@@ -729,9 +729,12 @@ const EditorTopBar = () => {
 
       const uploadPromises = Array.from(allBlobUrls).map(async (blobUrl) => {
         let file = null;
+        let thumbnailFile = null;
 
         if (isTempBlobUrl(blobUrl)) {
-          file = await retrieveTempImage(blobUrl);
+          const files = await retrieveTempImageWithThumbnail(blobUrl);
+          file = files.full;
+          thumbnailFile = files.thumbnail;
         }
 
         if (!file) {
@@ -746,11 +749,14 @@ const EditorTopBar = () => {
         }
 
         if (!file) {
-          return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
+          return { tempUrl: blobUrl, finalUrl: blobUrl, thumbnailUrl: null, failed: true };
         }
 
         const formData = new FormData();
         formData.append('file', file);
+        if (thumbnailFile) {
+          formData.append('thumbnail', thumbnailFile);
+        }
         formData.append('usage', 'site_content');
         if (siteId) {
           formData.append('site_id', siteId);
@@ -763,11 +769,12 @@ const EditorTopBar = () => {
         });
 
         const uploadedUrl = response?.data?.url;
+        const thumbnailUrl = response?.data?.thumbnailUrl || null;
         if (!uploadedUrl) {
-          return { tempUrl: blobUrl, finalUrl: blobUrl, failed: true };
+          return { tempUrl: blobUrl, finalUrl: blobUrl, thumbnailUrl: null, failed: true };
         }
 
-        return { tempUrl: blobUrl, finalUrl: uploadedUrl, failed: false };
+        return { tempUrl: blobUrl, finalUrl: uploadedUrl, thumbnailUrl, failed: false };
       });
 
       const results = await Promise.all(uploadPromises);
@@ -779,6 +786,14 @@ const EditorTopBar = () => {
       }
 
       const urlMap = new Map(results.map((r) => [r.tempUrl, r.finalUrl]));
+      
+      // Build thumbnail map: fullUrl -> thumbnailUrl
+      const thumbnailMap = {};
+      results.forEach((r) => {
+        if (r.finalUrl && r.thumbnailUrl) {
+          thumbnailMap[r.finalUrl] = r.thumbnailUrl;
+        }
+      });
 
       if (urlMap.size > 0) {
         let configString = JSON.stringify(finalConfig);
@@ -789,6 +804,10 @@ const EditorTopBar = () => {
         });
         finalConfig = JSON.parse(configString);
       }
+      
+      // Merge new thumbnails with existing ones
+      const existingThumbnails = finalConfig._thumbnails || {};
+      finalConfig._thumbnails = { ...existingThumbnails, ...thumbnailMap };
 
       await updateSiteTemplate(siteId, finalConfig, trimmedName);
 

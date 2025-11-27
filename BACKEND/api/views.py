@@ -29,6 +29,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
@@ -71,7 +73,6 @@ from .media_helpers import (
     get_asset_by_path_or_url,
     normalize_media_path,
 )
-from .media_processing import ImageProcessingError, convert_to_webp
 from .media_storage import StorageError, StorageSaveResult, get_media_storage
 from .permissions import IsOwnerOrTeamMember
 from .signals import ensure_initial_terms_exist
@@ -114,6 +115,21 @@ from .serializers import (
 from .tasks import send_custom_email_task_async
 
 logger = logging.getLogger(__name__)
+
+
+class SafeTokenRefreshView(TokenRefreshView):
+    """
+    Custom token refresh view that handles missing users gracefully.
+    Returns 401 instead of 500 when the user no longer exists.
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except PlatformUser.DoesNotExist:
+            return Response(
+                {'detail': 'User no longer exists. Please log in again.', 'code': 'user_not_found'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
 
 def tag_viewset(*tags, operations=None):
@@ -161,6 +177,7 @@ FILE_UPLOAD_REQUEST_SERIALIZER = inline_serializer(
     name='FileUploadRequest',
     fields={
         'file': serializers.FileField(),
+        'thumbnail': serializers.FileField(required=False),
         'usage': serializers.ChoiceField(choices=list(MediaUsage.UsageType.values)),
         'site_id': serializers.IntegerField(required=False),
     },
@@ -170,8 +187,10 @@ FILE_UPLOAD_RESPONSE_SERIALIZER = inline_serializer(
     name='FileUploadResponse',
     fields={
         'url': serializers.CharField(),
+        'thumbnailUrl': serializers.CharField(required=False, allow_null=True),
         'hash': serializers.CharField(),
         'asset_id': serializers.IntegerField(),
+        'thumbnail_asset_id': serializers.IntegerField(required=False, allow_null=True),
         'bucket': serializers.CharField(allow_null=True, required=False),
         'deduplicated': serializers.BooleanField(),
     },
@@ -233,22 +252,28 @@ def process_media(
     content_type: str | None,
     extension: str | None,
 ) -> tuple[bytes, str, str]:
+    """
+    Process uploaded media files.
+    
+    Images are already converted to WebP by frontend, so we only validate size here.
+    Videos are passed through without modification.
+    """
     if kind == MEDIA_KIND_IMAGE:
-        if len(raw_bytes) > settings.MEDIA_IMAGE_MAX_UPLOAD_BYTES:
-            raise ValueError('Image exceeds allowed upload size')
-        quality = (
-            settings.MEDIA_WEBP_QUALITY_AVATAR
+        # Frontend already converts to WebP and scales - just validate size
+        max_size = (
+            settings.MEDIA_AVATAR_MAX_BYTES
             if usage == MediaUsage.UsageType.AVATAR
-            else settings.MEDIA_WEBP_QUALITY_DEFAULT
+            else settings.MEDIA_IMAGE_MAX_FINAL_BYTES
         )
-        converted, converted_mime = convert_to_webp(
-            raw_bytes,
-            max_dimensions=settings.MEDIA_IMAGE_MAX_DIMENSIONS,
-            quality=quality,
-        )
-        if len(converted) > settings.MEDIA_IMAGE_MAX_FINAL_BYTES:
-            raise ValueError('Optimised image exceeds size limit')
-        return converted, converted_mime, '.webp'
+        if len(raw_bytes) > max_size:
+            raise ValueError('Image exceeds allowed size limit')
+        
+        # Preserve the format from frontend (should be WebP)
+        fallback_ext = (extension or '.webp')
+        if not fallback_ext.startswith('.'):
+            fallback_ext = f'.{fallback_ext}'
+        mime = content_type or 'image/webp'
+        return raw_bytes, mime, fallback_ext.lower()
 
     if kind == MEDIA_KIND_VIDEO:
         if len(raw_bytes) > settings.MEDIA_VIDEO_MAX_UPLOAD_BYTES:
@@ -1892,6 +1917,7 @@ class FileUploadView(APIView):
     @auth_rate_limit_moderate  # 50 requests per minute per user
     def post(self, request, *args, **kwargs):
         file_obj = request.data.get('file')
+        thumbnail_obj = request.data.get('thumbnail')  # Optional thumbnail
         usage = request.data.get('usage') or MediaUsage.UsageType.SITE_CONTENT
         site_id = request.data.get('site_id')
 
@@ -1950,8 +1976,6 @@ class FileUploadView(APIView):
                 extension=extension,
             )
         except ValueError as exc:
-            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except ImageProcessingError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         final_size = len(processed_bytes)
@@ -2041,10 +2065,28 @@ class FileUploadView(APIView):
         if usage == MediaUsage.UsageType.AVATAR:
             MediaUsage.objects.filter(user=request.user, usage_type=MediaUsage.UsageType.AVATAR).exclude(asset=asset).delete()
 
+        # Handle thumbnail upload if provided
+        thumbnail_url = None
+        thumbnail_asset_id = None
+        
+        if thumbnail_obj and media_kind == MEDIA_KIND_IMAGE:
+            try:
+                thumb_result = self._upload_single_file(
+                    thumbnail_obj, request.user, storage, site, usage, is_thumbnail=True
+                )
+                if thumb_result:
+                    thumbnail_url = thumb_result.get('url')
+                    thumbnail_asset_id = thumb_result.get('asset_id')
+            except Exception as e:
+                logger.warning(f"Failed to upload thumbnail: {e}")
+                # Continue without thumbnail - main file is already uploaded
+
         payload = {
             'url': asset_url,
+            'thumbnailUrl': thumbnail_url,
             'hash': asset.file_hash,
             'asset_id': asset.id,
+            'thumbnail_asset_id': thumbnail_asset_id,
             'bucket': asset.storage_bucket,
             'deduplicated': not created,
         }
@@ -2126,6 +2168,107 @@ class FileUploadView(APIView):
         if status_code == status.HTTP_204_NO_CONTENT:
             return Response(status=status_code)
         return Response(payload, status=status_code)
+
+    def _upload_single_file(self, file_obj, user, storage, site, usage, is_thumbnail=False):
+        """Helper to upload a single file (used for thumbnails)."""
+        safe_name = sanitize_filename(getattr(file_obj, 'name', ''))
+        
+        try:
+            file_bytes = file_obj.read()
+        except Exception:
+            return None
+        
+        if not file_bytes:
+            return None
+        
+        file_hash = hashlib.sha256(file_bytes).hexdigest()
+        # Add 'thumb_' prefix for thumbnail hashes to avoid collision
+        if is_thumbnail:
+            file_hash = 'thumb_' + file_hash
+        
+        extension = os.path.splitext(safe_name)[1].lower()
+        media_kind = classify_media(file_obj.content_type, extension)
+        bucket_name = (
+            settings.SUPABASE_STORAGE_BUCKET_MAP.get(media_kind)
+            or settings.SUPABASE_STORAGE_BUCKET_MAP.get('other')
+            or ''
+        )
+        
+        try:
+            processed_bytes, processed_mime, final_extension = process_media(
+                media_kind,
+                file_bytes,
+                usage=usage,
+                content_type=file_obj.content_type,
+                extension=extension,
+            )
+        except ValueError:
+            return None
+        
+        final_size = len(processed_bytes)
+        asset = MediaAsset.objects.filter(file_hash=file_hash).first()
+        created = asset is None
+        storage_result = None
+        
+        if created:
+            try:
+                ensure_storage_capacity(user, final_size)
+            except ValueError:
+                return None
+            
+            # Use 'thumbs' subfolder for thumbnails
+            folder = 'thumbs' if is_thumbnail else FOLDER_BY_KIND[media_kind]
+            storage_key = f"{folder}/{file_hash}{final_extension}"
+            
+            try:
+                storage_result = storage.save(bucket_name, storage_key, processed_bytes, processed_mime)
+                bucket_name = storage_result.bucket or bucket_name
+            except StorageError as exc:
+                exc_str = str(exc).lower()
+                if 'duplicate' in exc_str or 'already exists' in exc_str:
+                    try:
+                        storage_url = storage.build_url(bucket_name, storage_key)
+                        storage_result = StorageSaveResult(bucket=bucket_name, path=storage_key, url=storage_url)
+                    except Exception:
+                        return None
+                else:
+                    return None
+            except Exception:
+                return None
+            
+            asset = MediaAsset.objects.create(
+                file_name=safe_name,
+                storage_path=storage_result.path,
+                file_url=storage_result.url,
+                file_hash=file_hash,
+                media_type=MEDIA_TYPE_BY_KIND[media_kind],
+                file_size=final_size,
+                storage_bucket=bucket_name,
+                uploaded_by=user,
+            )
+        
+        asset_url = asset.file_url or (storage_result.url if storage_result else None)
+        if not asset_url and bucket_name:
+            public_map = getattr(settings, 'SUPABASE_STORAGE_PUBLIC_URLS', {})
+            public_base = public_map.get(bucket_name)
+            if public_base:
+                asset_url = f"{public_base.rstrip('/')}/{asset.storage_path.lstrip('/')}"
+        
+        if not asset_url:
+            try:
+                asset_url = storage.build_url(bucket_name, asset.storage_path)
+            except Exception:
+                asset_url = asset.file_url
+        
+        # Create usage record
+        usage_filters = {'asset': asset, 'usage_type': usage}
+        if usage == MediaUsage.UsageType.AVATAR:
+            usage_filters['user'] = user
+        else:
+            usage_filters['site'] = site
+        MediaUsage.objects.get_or_create(**usage_filters)
+        
+        return {'url': asset_url, 'asset_id': asset.id}
 
 
 @extend_schema(
@@ -3352,7 +3495,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[team_member.email],
                     html_message=html_message,
-                    fail_silently=False,
+                    fail_silently=True,  # Changed to True to prevent email errors from blocking the invitation
                 )
                 
                 return Response({
@@ -3412,7 +3555,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[team_member.email],
                     html_message=html_message,
-                    fail_silently=False,
+                    fail_silently=True,  # Changed to True to prevent email errors from blocking the invitation
                 )
                 
                 return Response({
@@ -3455,7 +3598,7 @@ class TeamMemberViewSet(viewsets.ModelViewSet):
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[team_member.email],
                 html_message=html_message,
-                fail_silently=False,
+                fail_silently=True,  # Changed to True to prevent email errors from blocking the invitation
             )
             
             return Response({
@@ -3666,10 +3809,11 @@ class AttendanceReportView(APIView):
         raise PermissionDenied('You can only view your own attendance report.')
 
     def _format_host_label(self, host_user, host_member):
+        """Format the display label for a host (either a PlatformUser or TeamMember)."""
         if host_user:
             return host_user.get_full_name() or host_user.email
         if host_member:
-            return f"{host_member.first_name} {host_member.last_name}".strip()
+            return host_member.name or host_member.email or '---'
         return '---'
 
 

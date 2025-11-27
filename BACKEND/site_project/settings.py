@@ -185,7 +185,21 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # --- Szablony, Język, Czas ---
-TEMPLATES = [ { 'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [BASE_DIR / 'templates', BASE_DIR / 'emails'], 'APP_DIRS': True, 'OPTIONS': { 'context_processors': [ 'django.template.context_processors.debug', 'django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages', ], }, }, ]
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR],  # Changed from [BASE_DIR / 'templates', BASE_DIR / 'emails'] to just [BASE_DIR]
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 LANGUAGE_CODE = 'pl-pl'
 TIME_ZONE = 'Europe/Warsaw'
 USE_I18N = True
@@ -193,7 +207,7 @@ USE_TZ = True
 AUTH_PASSWORD_VALIDATORS = [ {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'}, {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'}, {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'}, {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'}, ]
 
 # --- Logowanie ---
-LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "verbose": { "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(process)d %(thread)d %(message)s" }, "simple": {"format": "%(levelname)s %(name)s %(message)s"}, "json": { "()": "pythonjsonlogger.jsonlogger.JsonFormatter", "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(message)s", }, }, "handlers": { "console": { "class": "logging.StreamHandler", "formatter": "json" if not DEBUG else "simple", }, }, "root": { "handlers": ["console"], "level": "INFO", }, "loggers": { "django": { "handlers": ["console"], "level": "INFO", "propagate": False, }, "django.db.backends": { "handlers": ["console"], "level": "WARNING", "propagate": False, }, "api": { "handlers": ["console"], "level": "INFO", "propagate": False, }, }, }
+LOGGING = { "version": 1, "disable_existing_loggers": False, "formatters": { "verbose": { "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(process)d %(thread)d %(message)s" }, "simple": {"format": "%(levelname)s %(name)s %(message)s"}, "json": { "()": "pythonjsonlogger.jsonlogger.JsonFormatter", "format": "%(levelname)s %(asctime)s %(name)s %(module)s %(message)s", }, }, "handlers": { "console": { "class": "logging.StreamHandler", "formatter": "json" if not DEBUG else "simple", }, }, "root": { "handlers": ["console"], "level": "INFO", }, "loggers": { "django": { "handlers": ["console"], "level": "INFO", "propagate": False, }, "django.db.backends": { "handlers": ["console"], "level": "WARNING", "propagate": False, }, "api": { "handlers": ["console"], "level": "INFO", "propagate": False, }, "axes": { "handlers": ["console"], "level": "WARNING", "propagate": False, }, "axes.apps": { "handlers": ["console"], "level": "WARNING", "propagate": False, }, }, }
 
 # --- CORS ---
 cors_origins = set()
@@ -350,30 +364,50 @@ VERCEL_BUILD_HOOK_URL = os.environ.get('VERCEL_BUILD_HOOK_URL')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-MEDIA_TOTAL_STORAGE_PER_USER = int(os.environ.get('MEDIA_MAX_TOTAL_STORAGE_PER_USER', 1024 * 1024 * 1024))
-MEDIA_IMAGE_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_UPLOAD_BYTES', 10 * 1024 * 1024))
-MEDIA_IMAGE_MAX_FINAL_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_FINAL_BYTES', 5 * 1024 * 1024))
-MEDIA_IMAGE_MAX_DIMENSIONS = (
-    int(os.environ.get('MEDIA_IMAGE_MAX_WIDTH', 1920)),
-    int(os.environ.get('MEDIA_IMAGE_MAX_HEIGHT', 1080)),
-)
-MEDIA_VIDEO_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_VIDEO_MAX_UPLOAD_BYTES', 100 * 1024 * 1024))
-MEDIA_WEBP_QUALITY_DEFAULT = int(os.environ.get('MEDIA_WEBP_QUALITY', 90))
-MEDIA_WEBP_QUALITY_AVATAR = int(os.environ.get('MEDIA_WEBP_QUALITY_AVATAR', 90))
-MEDIA_TEMP_STORAGE_MAX_PER_USER = int(os.environ.get('MEDIA_MAX_TEMP_STORAGE_PER_USER', 100 * 1024 * 1024))
-MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = int(os.environ.get('MEDIA_TEMP_STORAGE_EXPIRE', 24 * 60 * 60))
+# Import shared constants to ensure backend/frontend alignment
+try:
+    from api.shared_constants import (
+        MAX_TOTAL_STORAGE_PER_USER,
+        BACKEND_MAX_IMAGE_SIZE,
+        BACKEND_MAX_AVATAR_SIZE,
+        MAX_VIDEO_UPLOAD_SIZE,
+        MAX_TEMP_STORAGE_PER_USER,
+        TEMP_STORAGE_EXPIRE,
+        ALLOWED_IMAGE_MIMETYPES,
+        ALLOWED_VIDEO_MIMETYPES,
+    )
+    
+    # Use shared constants - NO conversion on backend, frontend handles it
+    MEDIA_TOTAL_STORAGE_PER_USER = MAX_TOTAL_STORAGE_PER_USER
+    MEDIA_IMAGE_MAX_FINAL_BYTES = BACKEND_MAX_IMAGE_SIZE  # Max size from frontend (already WebP)
+    MEDIA_AVATAR_MAX_BYTES = BACKEND_MAX_AVATAR_SIZE  # Max avatar size from frontend
+    MEDIA_VIDEO_MAX_UPLOAD_BYTES = MAX_VIDEO_UPLOAD_SIZE
+    MEDIA_TEMP_STORAGE_MAX_PER_USER = MAX_TEMP_STORAGE_PER_USER
+    MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = TEMP_STORAGE_EXPIRE
+    MEDIA_ALLOWED_IMAGE_MIME_TYPES = ALLOWED_IMAGE_MIMETYPES
+    MEDIA_ALLOWED_VIDEO_MIME_TYPES = ALLOWED_VIDEO_MIMETYPES
+except ImportError:
+    # Fallback to environment variables if shared_constants not available
+    MEDIA_TOTAL_STORAGE_PER_USER = int(os.environ.get('MEDIA_MAX_TOTAL_STORAGE_PER_USER', 1024 * 1024 * 1024))
+    MEDIA_IMAGE_MAX_FINAL_BYTES = int(os.environ.get('MEDIA_IMAGE_MAX_FINAL_BYTES', 25 * 1024 * 1024))
+    MEDIA_AVATAR_MAX_BYTES = int(os.environ.get('MEDIA_AVATAR_MAX_BYTES', 5 * 1024 * 1024))
+    MEDIA_VIDEO_MAX_UPLOAD_BYTES = int(os.environ.get('MEDIA_VIDEO_MAX_UPLOAD_BYTES', 100 * 1024 * 1024))
+    MEDIA_TEMP_STORAGE_MAX_PER_USER = int(os.environ.get('MEDIA_MAX_TEMP_STORAGE_PER_USER', 100 * 1024 * 1024))
+    MEDIA_TEMP_STORAGE_EXPIRE_SECONDS = int(os.environ.get('MEDIA_TEMP_STORAGE_EXPIRE', 24 * 60 * 60))
+    MEDIA_ALLOWED_IMAGE_MIME_TYPES = (
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml',
+    )
+    MEDIA_ALLOWED_VIDEO_MIME_TYPES = (
+        'video/mp4',
+        'video/webm',
+        'video/quicktime',
+    )
+
 MEDIA_STORAGE_TIMEOUT = int(os.environ.get('MEDIA_STORAGE_TIMEOUT', 15))
-MEDIA_ALLOWED_IMAGE_MIME_TYPES = (
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-)
-MEDIA_ALLOWED_VIDEO_MIME_TYPES = (
-    'video/mp4',
-    'video/webm',
-    'video/quicktime',
-)
 
 # --- Konfiguracja Celery ---
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
@@ -412,18 +446,21 @@ CHANNEL_LAYERS = {
 }
 
 # --- DDoS Protection Settings ---
-DDOS_REQUESTS_PER_MINUTE = int(os.environ.get('DDOS_REQUESTS_PER_MINUTE', 60))
-DDOS_REQUESTS_PER_HOUR = int(os.environ.get('DDOS_REQUESTS_PER_HOUR', 1000))
-DDOS_BLOCK_DURATION = int(os.environ.get('DDOS_BLOCK_DURATION', 3600))  # 1 hour in seconds
+# Production-optimized values balancing security and user experience
+DDOS_REQUESTS_PER_MINUTE = int(os.environ.get('DDOS_REQUESTS_PER_MINUTE', 120))  # Increased for normal browsing
+DDOS_REQUESTS_PER_HOUR = int(os.environ.get('DDOS_REQUESTS_PER_HOUR', 2000))
+DDOS_BLOCK_DURATION = int(os.environ.get('DDOS_BLOCK_DURATION', 1800))  # 30 min instead of 1 hour
 DDOS_SUSPICIOUS_THRESHOLD = int(os.environ.get('DDOS_SUSPICIOUS_THRESHOLD', 100))
+DDOS_BURST_ALLOWANCE = int(os.environ.get('DDOS_BURST_ALLOWANCE', 30))  # Allow short bursts up to 30 extra req
+DDOS_BURST_WINDOW = int(os.environ.get('DDOS_BURST_WINDOW', 10))  # Within 10 seconds
 DDOS_WHITELIST = [
     '127.0.0.1',
     'localhost',
 ]
 
 # --- Django Axes (Brute-force protection) Settings ---
-AXES_FAILURE_LIMIT = int(os.environ.get('AXES_FAILURE_LIMIT', 5))  # Lock after 5 failed attempts
-AXES_COOLOFF_TIME = int(os.environ.get('AXES_COOLOFF_TIME', 1))  # Lock for 1 hour
+AXES_FAILURE_LIMIT = int(os.environ.get('AXES_FAILURE_LIMIT', 7))  # Lock after 7 failed attempts
+AXES_COOLOFF_TIME = float(os.environ.get('AXES_COOLOFF_TIME', 0.5))  # Lock for 30 min (0.5 hours)
 AXES_LOCKOUT_PARAMETERS = ['username', 'ip_address']
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_TEMPLATE = None  # Use default lockout response
@@ -431,3 +468,9 @@ AXES_LOCKOUT_URL = None  # No redirect, return 403
 AXES_VERBOSE = True  # Enable detailed logging
 AXES_ENABLE_ADMIN = True  # Enable admin interface for axes
 AXES_HANDLER = 'axes.handlers.database.AxesDatabaseHandler'  # Store attempts in database
+
+# --- CAPTCHA Settings ---
+# Show CAPTCHA after N failed login attempts (before full lockout)
+CAPTCHA_FAILURE_THRESHOLD = int(os.environ.get('CAPTCHA_FAILURE_THRESHOLD', 3))
+RECAPTCHA_SITE_KEY = os.environ.get('RECAPTCHA_SITE_KEY', '')
+RECAPTCHA_SECRET_KEY = os.environ.get('RECAPTCHA_SECRET_KEY', '')

@@ -837,10 +837,13 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
                     </Box>
                 </MenuItem>
                 <Divider sx={{ my: 1 }} />
-                <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-                    <DeleteIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
-                    Delete Site
-                </MenuItem>
+                {/* Hide delete for showcase site (ID=1) */}
+                {site.id !== 1 && (
+                    <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+                        <DeleteIcon sx={{ mr: 1.5, fontSize: '1.25rem' }} />
+                        Delete Site
+                    </MenuItem>
+                )}
             </Menu>
 
             {/* Status Menu */}

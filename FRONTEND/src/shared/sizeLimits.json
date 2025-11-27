@@ -1,0 +1,44 @@
+{
+  "_docs": "All sizes in MB unless noted. Backend converts to bytes.",
+  
+  "MAX_TOTAL_STORAGE_PER_USER_MB": 1024,
+  "MAX_PAGES_PER_USER": 10,
+  "MAX_SITE_SIZE_MB": 500,
+  
+  "MAX_PHOTO_UPLOAD_SIZE_MB": 100,
+  "MAX_PHOTO_STORED_SIZE_MB": 25,
+  "MAX_PHOTO_DIMENSION_PX": 1920,
+  
+  "MAX_AVATAR_UPLOAD_SIZE_MB": 25,
+  "MAX_AVATAR_STORED_SIZE_MB": 2,
+  "TARGET_AVATAR_SIZE_PX": 256,
+  
+  "BACKEND_MAX_IMAGE_SIZE_MB": 25,
+  "BACKEND_MAX_AVATAR_SIZE_MB": 5,
+  
+  "ALLOWED_IMAGE_FORMATS": ["jpg", "jpeg", "png", "gif", "webp", "svg"],
+  "ALLOWED_IMAGE_MIMETYPES": [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml"
+  ],
+  "MAX_SVG_SIZE_KB": 500,
+  
+  "MAX_VIDEO_UPLOAD_SIZE_MB": 100,
+  "MAX_VIDEO_DURATION_SECONDS": 600,
+  "ALLOWED_VIDEO_FORMATS": ["mp4", "webm", "mov"],
+  "ALLOWED_VIDEO_MIMETYPES": [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime"
+  ],
+  
+  "WEBP_QUALITY": 90,
+  "WEBP_QUALITY_THUMBNAIL": 80,
+  
+  "THUMBNAIL_SIZE_PX": 400,
+  "FULL_SIZE_PX": 1920,
+  "AVATAR_SIZE_PX": 256
+}

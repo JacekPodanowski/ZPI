@@ -63,6 +63,11 @@ export const uploadMedia = async (file, options = {}) => {
     const formData = new FormData()
     formData.append('file', file)
     
+    // If thumbnail file is provided, append it
+    if (options.thumbnail) {
+      formData.append('thumbnail', options.thumbnail)
+    }
+    
     if (options.usage) {
       formData.append('usage', options.usage)
     }

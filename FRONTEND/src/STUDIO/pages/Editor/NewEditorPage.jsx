@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import useNewEditorStore from '../../store/newEditorStore';
 import StructureMode from './StructureMode';
@@ -49,6 +49,7 @@ const convertModuleNameToObject = (moduleName, index) => {
 
 const NewEditorPage = () => {
   const { siteId } = useParams();
+  const navigate = useNavigate();
   const { editorMode, loadSite, setSiteId, setSiteName, setSiteIdentifier, replaceSiteStateWithHistory } = useNewEditorStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -108,6 +109,17 @@ const NewEditorPage = () => {
         try {
           setLoading(true);
           const data = await fetchSiteById(siteId);
+          
+          // ============================================
+          // OWNER CHECK: Only site owner can access editor
+          // Team members should use calendar instead
+          // ============================================
+          if (data.owner && user && data.owner.id !== user.id) {
+            console.warn('[NewEditorPage] User is not owner - redirecting to calendar');
+            navigate(`/studio/events/${siteId}`, { replace: true });
+            return;
+          }
+          
           const latestVersionConfig = data.latest_version?.template_config;
           const templateSource = latestVersionConfig && Object.keys(latestVersionConfig).length
             ? latestVersionConfig
@@ -231,7 +243,7 @@ const NewEditorPage = () => {
     };
 
     loadSiteData();
-  }, [siteId, loadSite, setSiteId, setSiteName]);
+  }, [siteId, loadSite, setSiteId, setSiteName, user, navigate]);
 
   // Unified AI update handler - defined before useEffect hooks that use it
   const handleAIUpdate = useCallback((data) => {

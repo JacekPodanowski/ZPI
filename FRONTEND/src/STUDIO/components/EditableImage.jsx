@@ -5,12 +5,22 @@ import useTheme from '../../theme/useTheme';
 import getEditorColorTokens from '../../theme/editorColorTokens';
 import { resolveMediaUrl } from '../../config/api';
 import useNewEditorStore from '../store/newEditorStore';
+import { SIZE_LIMITS } from '../../shared/sizeLimits';
 
 /**
- * EditableImage - Simple image component with selection support
+ * EditableImage - Image component with selection support for the Editor
  * 
- * Clicking on the image selects it and stores it in localStorage
- * The selection can be used by the ImageLibraryPanel or AI Assistant
+ * === THUMBNAIL SYSTEM ===
+ * When an image is uploaded, two versions are created:
+ * - Full size (1920px) - for high-res displays
+ * - Thumbnail (400px) - for faster loading on smaller screens
+ * 
+ * The `thumbnails` prop is a map: { fullUrl: thumbnailUrl }
+ * Stored in site config as `_thumbnails` and passed from SiteApp.
+ * 
+ * Uses srcset for SEO optimization - browser picks optimal size.
+ * 
+ * Clicking on the image selects it for the ImageLibraryPanel or AI Assistant.
  */
 const EditableImage = ({ 
   value,
@@ -20,6 +30,8 @@ const EditableImage = ({
   style = {},
   alt = '',
   isModuleSelected = false,
+  thumbnails = {}, // Map of fullUrl -> thumbnailUrl from config._thumbnails
+  sizes = '100vw', // Responsive sizes hint for browser
   ...otherProps 
 }) => {
   const [isSelected, setIsSelected] = useState(false);
@@ -76,15 +88,25 @@ const EditableImage = ({
   };
 
   const resolvedImageUrl = resolveMediaUrl(value);
+  const thumbnailUrl = thumbnails[value] ? resolveMediaUrl(thumbnails[value]) : null;
+  
+  // Build srcset for responsive images if thumbnail available
+  const srcSetProps = thumbnailUrl ? {
+    srcSet: `${thumbnailUrl} ${SIZE_LIMITS.THUMBNAIL_SIZE}w, ${resolvedImageUrl} ${SIZE_LIMITS.FULL_SIZE}w`,
+    sizes: sizes
+  } : {};
 
   return (
     <Box
       component="img"
       src={resolvedImageUrl || 'https://via.placeholder.com/400x300?text=Click+to+select'}
+      {...srcSetProps}
       alt={alt}
       className={className}
       data-editable-image="true"
       data-element-id={elementId}
+      loading="lazy"
+      decoding="async"
       style={{
         ...style,
         cursor: 'pointer',

@@ -2,8 +2,9 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { resolveMediaUrl } from '../../config/api'
 import { isVideoUrl } from '../../utils/mediaUtils'
+import ResponsiveImage from './ResponsiveImage'
 
-const HeroSection = ({ config }) => {
+const HeroSection = ({ config, thumbnails = {} }) => {
   const { title, subtitle, bgColor, textColor, backgroundImage } = config
   const resolvedBackground = resolveMediaUrl(backgroundImage)
   const isVideo = isVideoUrl(backgroundImage)
@@ -28,10 +29,16 @@ const HeroSection = ({ config }) => {
             <source src={resolvedBackground} />
           </video>
         ) : (
-          <div 
-            className="absolute inset-0 bg-cover bg-center opacity-30"
-            style={{ backgroundImage: `url(${resolvedBackground})` }}
-          />
+          <div className="absolute inset-0 opacity-30">
+            <ResponsiveImage
+              src={backgroundImage}
+              thumbnails={thumbnails}
+              alt=""
+              className="w-full h-full object-cover"
+              sizes="100vw"
+              loading="eager"
+            />
+          </div>
         )
       )}
       

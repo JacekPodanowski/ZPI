@@ -3,17 +3,100 @@ Rate limiting decorators for API views.
 
 This module provides decorators to apply rate limiting to specific API endpoints,
 particularly those that are computationally expensive or security-sensitive.
+
+Also includes CAPTCHA requirement helpers for progressive security.
 """
 
 from functools import wraps
 from django.core.cache import cache
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework import status
 import time
 import logging
+import requests as http_requests
 
 logger = logging.getLogger(__name__)
 
+
+# ============================================
+# CAPTCHA Helpers
+# ============================================
+
+def get_failed_attempts(identifier, action='login'):
+    """Get the number of failed attempts for an identifier (email or IP)."""
+    key = f'failed_attempts:{action}:{identifier}'
+    return cache.get(key, 0)
+
+
+def increment_failed_attempts(identifier, action='login'):
+    """Increment failed attempts counter. Returns new count."""
+    key = f'failed_attempts:{action}:{identifier}'
+    count = cache.get(key, 0) + 1
+    cache.set(key, count, 1800)  # Track for 30 minutes
+    return count
+
+
+def reset_failed_attempts(identifier, action='login'):
+    """Reset failed attempts after successful login."""
+    key = f'failed_attempts:{action}:{identifier}'
+    cache.delete(key)
+
+
+def requires_captcha(identifier, action='login'):
+    """
+    Check if CAPTCHA is required based on failed attempts.
+    Returns True if failed attempts >= CAPTCHA_FAILURE_THRESHOLD (default: 3)
+    """
+    threshold = getattr(settings, 'CAPTCHA_FAILURE_THRESHOLD', 3)
+    failed = get_failed_attempts(identifier, action)
+    return failed >= threshold
+
+
+def verify_recaptcha(token):
+    """
+    Verify reCAPTCHA token with Google.
+    Returns True if valid, False otherwise.
+    """
+    secret_key = getattr(settings, 'RECAPTCHA_SECRET_KEY', '')
+    if not secret_key:
+        logger.warning("RECAPTCHA_SECRET_KEY not configured - skipping verification")
+        return True  # Skip verification if not configured
+    
+    try:
+        response = http_requests.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data={
+                'secret': secret_key,
+                'response': token
+            },
+            timeout=5
+        )
+        result = response.json()
+        return result.get('success', False)
+    except Exception as e:
+        logger.error(f"reCAPTCHA verification failed: {e}")
+        return False
+
+
+def get_captcha_status(identifier, action='login'):
+    """
+    Get CAPTCHA requirement status for an identifier.
+    Returns dict with 'required' and 'attempts' fields.
+    """
+    attempts = get_failed_attempts(identifier, action)
+    threshold = getattr(settings, 'CAPTCHA_FAILURE_THRESHOLD', 3)
+    return {
+        'captcha_required': attempts >= threshold,
+        'failed_attempts': attempts,
+        'attempts_until_captcha': max(0, threshold - attempts),
+        'recaptcha_site_key': getattr(settings, 'RECAPTCHA_SITE_KEY', '') if attempts >= threshold else None
+    }
+
+
+# ============================================
+# Rate Limiting Decorators
+# ============================================
 
 def rate_limit(requests=10, window=60, key_prefix='api'):
     """
@@ -161,11 +244,12 @@ def get_client_ip(request):
 
 
 # Preset decorators for common use cases
-rate_limit_strict = rate_limit(requests=5, window=60)  # 5 requests per minute
-rate_limit_moderate = rate_limit(requests=20, window=60)  # 20 requests per minute
-rate_limit_relaxed = rate_limit(requests=100, window=60)  # 100 requests per minute
+# Public endpoints - stricter limits
+rate_limit_strict = rate_limit(requests=10, window=60)  # 10 requests per minute (increased from 5)
+rate_limit_moderate = rate_limit(requests=30, window=60)  # 30 requests per minute
+rate_limit_relaxed = rate_limit(requests=120, window=60)  # 120 requests per minute
 
-# For authenticated endpoints
-auth_rate_limit_strict = authenticated_rate_limit(requests=10, window=60)
-auth_rate_limit_moderate = authenticated_rate_limit(requests=50, window=60)
-auth_rate_limit_relaxed = authenticated_rate_limit(requests=200, window=60)
+# For authenticated endpoints - higher limits
+auth_rate_limit_strict = authenticated_rate_limit(requests=20, window=60)  # 2x for auth users
+auth_rate_limit_moderate = authenticated_rate_limit(requests=60, window=60)
+auth_rate_limit_relaxed = authenticated_rate_limit(requests=240, window=60)
