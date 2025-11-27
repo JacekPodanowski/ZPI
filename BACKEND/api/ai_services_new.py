@@ -395,7 +395,6 @@ Odpowiedź: {"status": "clarification", "question": "Co dokładnie chcesz zmieni
         chat_history: Optional[list] = None
     ) -> Dict[str, Any]:
         """Process site editing task."""
-        import re
         
         try:
             logger.info(f"[SiteEditor] Processing: {user_prompt[:50]}...")
@@ -406,36 +405,16 @@ Odpowiedź: {"status": "clarification", "question": "Co dokładnie chcesz zmieni
                 context_info += f"\n\n📄 Aktualna strona: {context.get('currentPageName', 'nieznana')} (ID: {context['currentPageId']})"
                 context_info += "\nZmień TYLKO tę stronę, chyba że użytkownik wyraźnie prosi o zmianę innej."
             
-            # Check if user is asking for images and search Pexels
+            # Always search Pexels with user's original prompt - let AI decide if it needs images
             pexels_context = ""
-            image_keywords = ['zdjęci', 'obraz', 'foto', 'image', 'photo', 'galeri', 'obrazk']
-            prompt_lower = user_prompt.lower()
+            pexels_images = self._search_pexels_images(user_prompt, count=5)
             
-            if any(keyword in prompt_lower for keyword in image_keywords):
-                # Let the LLM-friendly prompt be the search query - Pexels handles it well
-                # Just clean up Polish command words
-                search_query = prompt_lower
-                for word in ['dodaj', 'wstaw', 'zmień', 'zamień', 'ustaw', 'zdjęcia', 'zdjęcie', 'obrazy', 'obraz', 'foto', 'do', 'na', 'w', 'galerii']:
-                    search_query = search_query.replace(word, '')
-                search_query = ' '.join(search_query.split()).strip()
-                
-                if not search_query:
-                    logger.info("[SiteEditor] Empty search query after cleanup, skipping Pexels search")
-                else:
-                    # Determine how many images to fetch
-                    count_match = re.search(r'(\d+)\s*(?:zdjęci|obraz|foto)', prompt_lower)
-                    image_count = int(count_match.group(1)) if count_match else 5
-                    image_count = min(max(image_count, 3), 10)  # Between 3-10 images
-                    
-                    logger.info(f"[SiteEditor] Searching Pexels for: '{search_query}' (count: {image_count})")
-                    pexels_images = self._search_pexels_images(search_query, image_count)
-                    
-                    if pexels_images:
-                        pexels_context = f"\n\n📸 DOSTĘPNE OBRAZKI PEXELS (query: \"{search_query}\"):\n"
-                        for i, img in enumerate(pexels_images, 1):
-                            pexels_context += f"{i}. {img['url']} - \"{img['caption']}\"\n"
-                        pexels_context += "\n⚠️ UŻYJ DOKŁADNIE TYCH URL-i W KONFIGURACJI! NIE WYMYŚLAJ INNYCH!\n"
-                        logger.info(f"[SiteEditor] Found {len(pexels_images)} Pexels images")
+            if pexels_images:
+                pexels_context = f"\n\n📸 DOSTĘPNE OBRAZKI PEXELS (na podstawie Twojego zapytania):\n"
+                for i, img in enumerate(pexels_images, 1):
+                    pexels_context += f"{i}. {img['url']} - \"{img['caption']}\"\n"
+                pexels_context += "\nJeśli użytkownik prosi o obrazy/zdjęcia, UŻYJ DOKŁADNIE TYCH URL-i! NIE WYMYŚLAJ INNYCH!\n"
+                logger.info(f"[SiteEditor] Found {len(pexels_images)} Pexels images for prompt")
             
             history_context = self._build_history_context(chat_history)
             

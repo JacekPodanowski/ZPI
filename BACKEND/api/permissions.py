@@ -16,18 +16,18 @@ class IsOwnerOrTeamMember(permissions.BasePermission):
         # Add debug logging
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"[IsOwnerOrTeamMember.has_object_permission] User: {request.user.id}, Method: {request.method}, Object: {obj}")
+        logger.debug(f"[IsOwnerOrTeamMember.has_object_permission] User: {request.user.id}, Method: {request.method}, Object: {obj}")
         
         # Staff always have access
         if request.user.is_staff:
-            logger.info(f"[IsOwnerOrTeamMember] User is staff - allowing")
+            logger.debug(f"[IsOwnerOrTeamMember] User is staff - allowing")
             return True
         
         # For Site objects
         if hasattr(obj, 'owner'):
             # Check if user is owner
             if obj.owner == request.user:
-                logger.info(f"[IsOwnerOrTeamMember] User is owner - allowing")
+                logger.debug(f"[IsOwnerOrTeamMember] User is owner - allowing")
                 return True
             
             # Check if user is a linked team member (any role)
@@ -37,14 +37,14 @@ class IsOwnerOrTeamMember(permissions.BasePermission):
                 invitation_status='linked'
             ).exists()
             
-            logger.info(f"[IsOwnerOrTeamMember] Is team member: {is_team_member}")
+            logger.debug(f"[IsOwnerOrTeamMember] Is team member: {is_team_member}")
             return is_team_member
         
         # For Event objects
         if hasattr(obj, 'site'):
             # Check if user is site owner
             if obj.site.owner == request.user:
-                logger.info(f"[IsOwnerOrTeamMember] User is site owner - allowing")
+                logger.debug(f"[IsOwnerOrTeamMember] User is site owner - allowing")
                 return True
             
             # Check if user is a linked team member (any role)
@@ -54,7 +54,7 @@ class IsOwnerOrTeamMember(permissions.BasePermission):
                 invitation_status='linked'
             ).exists()
             
-            logger.info(f"[IsOwnerOrTeamMember] Is team member: {is_team_member}")
+            logger.debug(f"[IsOwnerOrTeamMember] Is team member: {is_team_member}")
             return is_team_member
         
         logger.warning(f"[IsOwnerOrTeamMember] No matching condition - denying")

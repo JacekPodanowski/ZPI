@@ -1,19 +1,18 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, FormControl, Chip, Alert } from '@mui/material';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, Chip, Alert } from '@mui/material';
 import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Undo as UndoIcon, Replay as ReplayIcon, History as HistoryIcon } from '@mui/icons-material';
 import apiClient from '../../../services/apiClient';
 import useNewEditorStore from '../../store/newEditorStore';
-import { buildContextMessage, extractModuleTypes, estimateTokens, formatErrorMessage } from './aiHelpers';
+import { buildContextMessage, formatErrorMessage } from './aiHelpers';
 import { getChatHistory, resetChatHistory, processAITaskWithContext, markChatMessagesDeleted } from '../../../services/chatService';
 import { getOrCreateAgent, createNewAgent, getAgents, switchAgent } from '../../../services/agentService';
 import { listCheckpoints, restoreCheckpoint } from '../../../services/checkpointService';
-import { savePendingMessage, getPendingMessagesByAgent, removePendingMessage, markMessageAsSent } from '../../../services/messagePersistence';
+import { savePendingMessage, getPendingMessagesByAgent, removePendingMessage } from '../../../services/messagePersistence';
 import { useToast } from '../../../contexts/ToastContext';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const AIChatPanel = ({ 
   onClose, 
-  isProcessing: externalIsProcessing, 
   onProcessingChange, 
   mode = 'detail', 
   contextType = 'studio_editor', 
@@ -39,11 +38,14 @@ const AIChatPanel = ({
   const wsReconnectTimeoutRef = useRef(null);
   const pendingTasksRef = useRef(new Map()); // Map<taskId, {loadingMsgId, userMsgId}>
   const isRevertingRef = useRef(false);  // Prevent reload during revert
+  const handleAIResultRef = useRef(null); // For WebSocket callback
+  const isInitializingRef = useRef(false); // Prevent duplicate initialization
+  const lastInitializedSiteRef = useRef(null); // Track which site was initialized
   
   const showToast = useToast();
   const { user } = useAuth();
   
-  const { site, siteId, currentPageId, selectedModuleId } = useNewEditorStore();
+  const { site, siteId, currentPageId } = useNewEditorStore();
 
   // Determine which site to use: selectedSiteId (Events) or site from editor
   const activeSite = selectedSiteId 
@@ -52,8 +54,6 @@ const AIChatPanel = ({
   
   const activeSiteId = selectedSiteId || siteId;
 
-  console.log('[AI] Active site ID:', activeSiteId, 'selectedSiteId:', selectedSiteId, 'siteId:', siteId);
-
   // Load or create agent on mount
   useEffect(() => {
     const initializeAgent = async () => {
@@ -61,16 +61,20 @@ const AIChatPanel = ({
       // For other contexts, require site
       const canInitialize = contextType === 'studio_editor' || activeSiteId;
       
+      // Skip if: can't initialize, already loaded, reverting, or already initializing
       if (!canInitialize || historyLoaded || isRevertingRef.current) return;
-
-      console.log('[AI] Initializing agent for site:', activeSiteId || 'global', 'context:', contextType);
+      
+      // Prevent duplicate calls (React StrictMode)
+      const initKey = `${activeSiteId || 'global'}-${contextType}`;
+      if (isInitializingRef.current || lastInitializedSiteRef.current === initKey) return;
+      
+      isInitializingRef.current = true;
 
       try {
         // Use site ID if available, regardless of context type
         // Only fall back to null for studio_editor when no site is selected
         const siteIdToUse = activeSiteId || null;
         const agentId = await getOrCreateAgent(siteIdToUse, contextType);
-        console.log('[AI] Agent ID:', agentId);
         setCurrentAgentId(agentId);
 
         // Load history for this agent
@@ -80,10 +84,12 @@ const AIChatPanel = ({
         await loadAvailableAgents();
 
         setHistoryLoaded(true);
-        console.log('[AI] Agent initialization complete');
+        lastInitializedSiteRef.current = initKey;
       } catch (error) {
         console.error('[AI] Failed to initialize agent:', error);
         setHistoryLoaded(true);
+      } finally {
+        isInitializingRef.current = false;
       }
     };
 
@@ -139,9 +145,14 @@ const AIChatPanel = ({
   };
 
   // Load checkpoints when site changes
+  const lastLoadedCheckpointsSiteRef = useRef(null);
   useEffect(() => {
     const loadCheckpoints = async () => {
       if (!activeSiteId) return;
+      
+      // Prevent duplicate calls
+      if (lastLoadedCheckpointsSiteRef.current === activeSiteId) return;
+      lastLoadedCheckpointsSiteRef.current = activeSiteId;
       
       try {
         const data = await listCheckpoints(activeSiteId);
@@ -160,10 +171,6 @@ const AIChatPanel = ({
     
     const pending = getPendingMessagesByAgent(currentAgentId);
     setPendingMessages(pending);
-    
-    if (pending.length > 0) {
-      console.log(`[AI] Found ${pending.length} pending messages for agent ${currentAgentId}`);
-    }
   }, [currentAgentId]);
 
   const handleRestoreCheckpoint = async (checkpointId) => {
@@ -214,8 +221,6 @@ const AIChatPanel = ({
   };
 
   const handleRevertToMessage = async (messageId) => {
-    console.log('[AI] ========== REVERT TO MESSAGE ==========');
-    
     // Set reverting flag to prevent history reload
     isRevertingRef.current = true;
     
@@ -228,59 +233,39 @@ const AIChatPanel = ({
       return;
     }
     
-    console.log('[AI] Clicked message:', clickedMessage);
-    console.log('[AI] Message index:', messageIndex);
-    
     // Set the message text back to input field
     if (clickedMessage.sender === 'user') {
       setInput(clickedMessage.text);
-      console.log('[AI] ✓ Set input to:', clickedMessage.text);
     }
     
     // Remove all messages from this point forward (including this one)
     const messagesBeforeClick = messages.slice(0, messageIndex);
-    console.log('[AI] Keeping', messagesBeforeClick.length, 'messages before clicked message');
     
     // Find the DB message ID to mark as deleted
     const dbMessageId = clickedMessage.db_message_id;
     
     if (!dbMessageId) {
-      console.log('[AI] No DB message ID - this is a local-only message, just updating UI');
       setMessages(messagesBeforeClick);
       return;
     }
     
-    console.log('[AI] DB message ID:', dbMessageId);
-    
     // Mark messages as deleted in database (for all contexts)
     try {
-      console.log('[AI] Step 1: Marking messages as deleted...');
-      
       await markChatMessagesDeleted({
         agent_id: currentAgentId,
         message_id: dbMessageId
       });
-      console.log('[AI] ✓ Messages marked as deleted in database');
     } catch (error) {
-      console.error('[AI] ✗ Failed to mark messages as deleted:', error);
+      console.error('[AI] Failed to mark messages as deleted:', error);
       // Continue anyway - at least update UI
     }
     
     // For editor context, also restore checkpoint
     if (activeSiteId && contextType === 'studio_editor') {
       try {
-        
-        // Step 2: Get checkpoints
-        console.log('[AI] Step 2: Getting checkpoints...');
+        // Get checkpoints
         const data = await listCheckpoints(activeSiteId);
         const allCheckpoints = data.checkpoints || [];
-        
-        console.log(`[AI] Found ${allCheckpoints.length} checkpoints`);
-        console.log('[AI] Checkpoints:', allCheckpoints.map((cp, i) => ({ 
-          index: i, 
-          message: cp.message?.substring(0, 50), 
-          timestamp: cp.timestamp 
-        })));
         
         if (allCheckpoints.length > 0) {
           // Count how many user messages with db_message_id are from this point forward (inclusive)
@@ -289,31 +274,20 @@ const AIChatPanel = ({
             .filter(m => m.sender === 'user' && m.db_message_id)
             .length;
           
-          console.log(`[AI] User messages from clicked point forward: ${userMessagesFromHere}`);
-          
           // Checkpoints are sorted newest first (index 0 = latest)
           // We want checkpoint that was BEFORE this user message
           // If we're reverting 1 user message, we want checkpoint at index 0 (the one created before it)
           const checkpointIndex = userMessagesFromHere - 1;
           
-          console.log(`[AI] Calculated checkpoint index: ${checkpointIndex}`);
-          
           if (checkpointIndex >= 0 && checkpointIndex < allCheckpoints.length) {
             const checkpointToRestore = allCheckpoints[checkpointIndex];
             
-            console.log(`[AI] Step 3: Restoring checkpoint [${checkpointIndex}]: ${checkpointToRestore.message?.substring(0, 50)}...`);
-            
             // Restore checkpoint
             const restoreResponse = await restoreCheckpoint(activeSiteId, checkpointToRestore.id);
-            console.log('[AI] ✓ Checkpoint restored:', restoreResponse);
             
-            // Step 4: Force reload site data from server
-            console.log('[AI] Step 4: Reloading site data from server...');
+            // Force reload site data from server
             const siteResponse = await apiClient.get(`/sites/${activeSiteId}/`);
             const updatedSite = siteResponse.data;
-            
-            console.log('[AI] ✓ Site data reloaded');
-            console.log('[AI] Step 5: Dispatching ai-site-updated event...');
             
             // Dispatch event to update editor with fresh data
             window.dispatchEvent(new CustomEvent('ai-site-updated', {
@@ -324,20 +298,15 @@ const AIChatPanel = ({
               }
             }));
             
-            console.log('[AI] ✓ Event dispatched successfully');
-            
-            // Step 6: Update UI - remove messages from clicked point forward
+            // Update UI - remove messages from clicked point forward
             setMessages(messagesBeforeClick);
             
             // Show success toast
             showToast('Cofnięto zmiany. Możesz teraz napisać nową wiadomość.', { variant: 'success' });
             
-            console.log('[AI] ✓ UI updated');
-            
-            // Step 7: Reload checkpoints list
+            // Reload checkpoints list
             const updatedData = await listCheckpoints(activeSiteId);
             setCheckpoints(updatedData.checkpoints || []);
-            console.log('[AI] ✓ Checkpoints reloaded');
             
             // Clear any processing state
             setIsProcessing(false);
@@ -348,17 +317,11 @@ const AIChatPanel = ({
               isRevertingRef.current = false;
             }, 100);
             
-            console.log('[AI] ========== REVERT COMPLETE ==========');
             return;
-          } else {
-            console.error(`[AI] ✗ No checkpoint available at index ${checkpointIndex}`);
           }
-        } else {
-          console.error('[AI] ✗ No checkpoints available');
         }
       } catch (error) {
-        console.error('[AI] ✗ Failed during revert:', error);
-        console.error('[AI] Error details:', error.response?.data || error.message);
+        console.error('[AI] Failed during revert:', error.response?.data || error.message);
         
         // Clear reverting flag on error
         isRevertingRef.current = false;
@@ -376,51 +339,28 @@ const AIChatPanel = ({
     }
     
     // Fallback: Just remove messages locally (for non-editor contexts or if restore failed)
-    console.log('[AI] Fallback: updating UI only (no checkpoints for this context)');
-    console.log('[AI] Context type:', contextType);
-    console.log('[AI] Messages to check:', messages.length);
-    console.log('[AI] Message index:', messageIndex);
     
     // For studio_events, delete any events that were created in the reverted messages
     if (contextType === 'studio_events') {
-      console.log('[AI] This is studio_events context - checking for events to delete');
       const revertedMessages = messages.slice(messageIndex);
-      console.log('[AI] Reverted messages:', revertedMessages.length);
-      console.log('[AI] Reverted messages details:', revertedMessages.map(m => ({
-        id: m.id,
-        sender: m.sender,
-        eventId: m.eventId,
-        text: m.text?.substring(0, 50)
-      })));
       
       const eventIdsToDelete = revertedMessages
         .filter(msg => msg.sender === 'ai' && msg.eventId)
         .map(msg => msg.eventId);
       
-      console.log('[AI] Event IDs to delete:', eventIdsToDelete);
-      
       if (eventIdsToDelete.length > 0) {
-        console.log('[AI] Deleting events created in reverted messages:', eventIdsToDelete);
-        
         // Delete each event
         for (const eventId of eventIdsToDelete) {
           try {
-            console.log(`[AI] Attempting to delete event ${eventId}...`);
             await apiClient.delete(`/big-events/${eventId}/`);
-            console.log(`[AI] ✓ Deleted event ${eventId}`);
           } catch (error) {
-            console.error(`[AI] ✗ Failed to delete event ${eventId}:`, error);
+            console.error(`[AI] Failed to delete event ${eventId}:`, error);
           }
         }
         
         // Dispatch event to refresh Events page
-        console.log('[AI] Dispatching big-event-deleted event');
         window.dispatchEvent(new CustomEvent('big-event-deleted'));
-      } else {
-        console.log('[AI] No events to delete');
       }
-    } else {
-      console.log('[AI] Not studio_events context, skipping event deletion');
     }
     
     setMessages(messagesBeforeClick);
@@ -438,8 +378,6 @@ const AIChatPanel = ({
     setTimeout(() => {
       isRevertingRef.current = false;
     }, 100);
-    
-    console.log('[AI] ========== REVERT COMPLETE (fallback) ==========');
   };
 
   // Sync internal processing state with parent
@@ -450,12 +388,6 @@ const AIChatPanel = ({
   }, [isProcessing, onProcessingChange]);
 
   const handleRefresh = async () => {
-    // Cancel any ongoing polling
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-
     try {
       // Use site ID if available, null for global agents
       const siteIdToUse = activeSite?.id || null;
@@ -518,12 +450,10 @@ const AIChatPanel = ({
     // If no agent yet, create one now
     if (!currentAgentId) {
       try {
-        console.log('[AI] No agent ID, creating one...');
         // Use site ID if available, regardless of context
         const siteIdToUse = activeSite?.id || null;
         
         if (!siteIdToUse && contextType !== 'studio_editor') {
-          console.error('[AI] No site ID for context:', contextType);
           setMessages((prev) => [
             ...prev,
             { 
@@ -537,7 +467,6 @@ const AIChatPanel = ({
         
         const agentId = await getOrCreateAgent(siteIdToUse, contextType);
         setCurrentAgentId(agentId);
-        console.log('[AI] Agent created:', agentId);
         
         // Now proceed with the message
         await sendMessage(trimmed, agentId);
@@ -580,28 +509,17 @@ const AIChatPanel = ({
 
     // Save as pending immediately (will be removed when we get response)
     savePendingMessage(pendingMsg);
-    console.log('[AI] Saved message as pending:', userMsgId);
 
     try {
-      // Extract mentioned module types for logging
-      const mentionedModules = extractModuleTypes(messageText);
-      
       // Build context with full site structure + context_type, site_id, and agent_id
       const contextData = buildContextMessage(mode, activeSite, currentPageId);
       contextData.context_type = contextType;
       contextData.site_id = activeSiteId;
-      contextData.agent_id = agentId; // Add agent ID
+      contextData.agent_id = agentId;
       
-      // Log for debugging
-      const tokenEstimate = estimateTokens(JSON.stringify(contextData));
-      console.log(`[AI] Sending context: ~${tokenEstimate} tokens, mentioned modules:`, mentionedModules);
-      console.log(`[AI] Context type: ${contextType}, Site ID: ${activeSiteId}, Agent ID: ${agentId}`);
-
       // Send to AI and get task_id
       const response = await processAITaskWithContext(messageText, activeSite, contextData);
       const taskId = response.task_id;
-
-      console.log('[AI] Message sent, task ID:', taskId);
 
       // Add loading message with animation
       setMessages((prev) => [
@@ -616,9 +534,11 @@ const AIChatPanel = ({
         }
       ]);
 
+      // Ensure WebSocket is connected before registering task
+      ensureWebSocketConnected();
+      
       // Register task for WebSocket response
       pendingTasksRef.current.set(taskId, { loadingMsgId, userMsgId });
-      console.log('[AI] Task registered for WebSocket:', taskId);
 
     } catch (error) {
       console.error('AI task failed:', error);
@@ -641,27 +561,27 @@ const AIChatPanel = ({
     }
   };
 
-  // WebSocket connection for real-time AI updates
-  const connectWebSocket = useCallback(() => {
-    if (!user?.id || wsRef.current?.readyState === WebSocket.OPEN) return;
+  // WebSocket connection for real-time AI updates (on-demand)
+  const ensureWebSocketConnected = useCallback(() => {
+    // Already connected or connecting
+    if (wsRef.current?.readyState === WebSocket.OPEN || 
+        wsRef.current?.readyState === WebSocket.CONNECTING) {
+      return;
+    }
+    
+    if (!user?.id) return;
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
     const backendHost = API_BASE.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '');
     const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
     const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
 
-    console.log('[AI WebSocket] Connecting to:', wsUrl);
     const socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-      console.log('[AI WebSocket] Connected');
-    };
 
     socket.onmessage = (event) => {
       try {
         const result = JSON.parse(event.data);
-        console.log('[AI WebSocket] Received:', result.status, result.task_id);
-        handleAIResult(result);
+        handleAIResultRef.current?.(result);
       } catch (error) {
         console.error('[AI WebSocket] Parse error:', error);
       }
@@ -671,33 +591,31 @@ const AIChatPanel = ({
       console.error('[AI WebSocket] Error:', error);
     };
 
-    socket.onclose = (event) => {
-      console.log('[AI WebSocket] Closed, code:', event.code);
+    socket.onclose = () => {
       wsRef.current = null;
-      // Reconnect after 3 seconds if not intentionally closed
-      if (event.code !== 1000) {
+      // Reconnect if there are still pending tasks
+      if (pendingTasksRef.current.size > 0) {
         wsReconnectTimeoutRef.current = setTimeout(() => {
-          connectWebSocket();
-        }, 3000);
+          ensureWebSocketConnected();
+        }, 2000);
       }
     };
 
     wsRef.current = socket;
   }, [user?.id]);
 
-  // Connect WebSocket on mount
+  // Cleanup WebSocket on unmount only
   useEffect(() => {
-    connectWebSocket();
-
     return () => {
       if (wsReconnectTimeoutRef.current) {
         clearTimeout(wsReconnectTimeoutRef.current);
       }
       if (wsRef.current) {
-        wsRef.current.close(1000); // Normal closure
+        wsRef.current.close(1000);
+        wsRef.current = null;
       }
     };
-  }, [connectWebSocket]);
+  }, []);
 
   // Handle AI result from WebSocket
   const handleAIResult = useCallback(async (result) => {
@@ -705,18 +623,22 @@ const AIChatPanel = ({
     const pendingTask = pendingTasksRef.current.get(taskId);
     
     if (!pendingTask) {
-      console.log('[AI WebSocket] No pending task for:', taskId);
       return;
     }
 
     const { loadingMsgId, userMsgId } = pendingTask;
     pendingTasksRef.current.delete(taskId);
+    
+    // Close WebSocket if no more pending tasks
+    if (pendingTasksRef.current.size === 0 && wsRef.current) {
+      wsRef.current.close(1000);
+      wsRef.current = null;
+    }
 
     // Remove message from pending list (got response)
     if (userMsgId) {
       removePendingMessage(userMsgId);
       setPendingMessages(prev => prev.filter(m => m.id !== userMsgId));
-      console.log('[AI] Removed message from pending:', userMsgId);
     }
 
     // Handle clarification - AI asks for more details
@@ -751,7 +673,6 @@ const AIChatPanel = ({
 
     // Handle API call - AI provides instructions for API operation
     if (result.status === 'api_call') {
-      console.log('[AI] Executing API call:', result.endpoint, result.method);
       
       // Update user message with DB ID if available
       if (result.chat_history_id && userMsgId) {
@@ -772,15 +693,12 @@ const AIChatPanel = ({
           data: result.body
         });
         
-        console.log('[AI] API call successful:', apiResponse.data);
-        
         // If event was created/updated, save event_id to ChatHistory
         if (result.chat_history_id && apiResponse.data.id) {
           try {
             await apiClient.patch(`/chat/history/${result.chat_history_id}/`, {
               related_event_id: apiResponse.data.id
             });
-            console.log(`[AI] ✓ Saved event ID ${apiResponse.data.id} to chat history`);
           } catch (error) {
             console.error('[AI] Failed to save event ID to chat history:', error);
           }
@@ -812,7 +730,7 @@ const AIChatPanel = ({
         }));
         
       } catch (apiError) {
-        console.error('[AI] API call failed:', apiError);
+  
         
         const errorMessage = `✗ Nie udało się utworzyć wydarzenia.\n\n**Błąd:** ${apiError.response?.data?.detail || apiError.message}\n\n**Instrukcje do ręcznego dodania:**\n\`\`\`json\n${JSON.stringify(result.body, null, 2)}\n\`\`\`\n\nEndpoint: ${result.method} ${result.endpoint}`;
         
@@ -844,7 +762,6 @@ const AIChatPanel = ({
             : msg
         )
       );
-      console.log('[AI] Updated user message with DB ID:', result.chat_history_id);
     }
 
     // Handle error status
@@ -894,6 +811,11 @@ const AIChatPanel = ({
     setIsProcessing(false);
   }, []);
 
+  // Keep ref in sync with callback
+  useEffect(() => {
+    handleAIResultRef.current = handleAIResult;
+  }, [handleAIResult]);
+
   // Listen for AI updates via custom event (fallback for WebSocket)
   useEffect(() => {
     const handleAIUpdate = (event) => {
@@ -935,8 +857,6 @@ const AIChatPanel = ({
       });
     }
   }, [messages]);
-
-  const groupedMessages = useMemo(() => messages, [messages]);
 
   return (
     <Box
@@ -1265,7 +1185,7 @@ const AIChatPanel = ({
           </Stack>
         ))}
         
-        {groupedMessages.map((message, index) => (
+        {messages.map((message, index) => (
           <Stack
             key={message.id}
             alignItems={message.sender === 'user' ? 'flex-end' : 'flex-start'}
