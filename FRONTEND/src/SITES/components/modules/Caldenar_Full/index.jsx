@@ -1,4 +1,3 @@
-import React from 'react';
 import { mergeWithDefaults } from '../../../../utils/contentMerge';
 import FullWidthCalendar from './layouts/FullWidthCalendar';
 import { PUBLIC_CALENDAR_BIG_DEFAULTS } from './defaults';

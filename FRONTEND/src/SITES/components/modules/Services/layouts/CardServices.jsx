@@ -1,5 +1,4 @@
 // layouts/CardServices.jsx - Card grid layout with elegant styling and flip option
-import React from 'react';
 import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import FlipCard from '../../../../../components/FlipCard';

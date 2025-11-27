@@ -1,4 +1,4 @@
-import React from 'react';
+import { useMemo } from 'react';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 
@@ -15,7 +15,7 @@ const HELPFUL_TIPS = [
 
 const SitePropertiesPanel = ({ placement = 'right' }) => {
   // Select a random tip each time the component renders
-  const randomTip = React.useMemo(
+  const randomTip = useMemo(
     () => HELPFUL_TIPS[Math.floor(Math.random() * HELPFUL_TIPS.length)],
     []
   );

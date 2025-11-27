@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Box, Button, Chip, CircularProgress, Divider, Typography, Tabs, Tab } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { fetchSiteById } from '../../../services/siteService';
-import TestimonialsManager from '../../components_STUDIO/Lab/TestimonialsManager';
 import NewsletterStats from '../../components_STUDIO/Lab/NewsletterStats';
+
+const TestimonialsManager = lazy(() => import('../../components_STUDIO/Lab/TestimonialsManager'));
 
 const generateSampleSeries = (seed) => {
     const base = Number(String(seed ?? 17).replace(/\D/g, '')) || 17;
@@ -397,7 +398,9 @@ const SiteLabPage = () => {
             )}
 
             {currentTab === 1 && (
-                <TestimonialsManager siteId={siteId} />
+                <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>}>
+                    <TestimonialsManager siteId={siteId} />
+                </Suspense>
             )}
 
             {currentTab === 2 && (

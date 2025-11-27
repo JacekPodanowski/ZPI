@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardActionArea, CardContent, Box, Typography, Button } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';

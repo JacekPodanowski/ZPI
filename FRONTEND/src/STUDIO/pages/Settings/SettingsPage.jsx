@@ -152,13 +152,12 @@ const SettingsPage = () => {
 
   const handleSave = () => {
     // TODO: Save settings to backend
-    console.log('Saving settings:', settings);
   };
 
   const handleDeleteAccount = () => {
     // TODO: Implement account deletion
     if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      console.log('Account deletion requested');
+      // Account deletion logic here
     }
   };
 

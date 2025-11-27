@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Typography, Tooltip } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PropTypes from 'prop-types';

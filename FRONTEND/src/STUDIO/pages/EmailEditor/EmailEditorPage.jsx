@@ -138,15 +138,12 @@ const EmailEditorPage = () => {
   const fetchTemplates = async () => {
     try {
       const response = await apiClient.get('/user-emails/');
-      console.log('[EmailEditor] raw templates response', response.data);
       const payload = Array.isArray(response.data)
         ? response.data
         : response.data?.results || [];
-      console.log('[EmailEditor] normalized templates', payload);
       setTemplates(payload);
     } catch (err) {
       addToast?.('Nie udało się pobrać szablonów email', {variant: 'error'});
-      console.error('Error fetching templates:', err);
     } finally {
       setLoading(false);
     }

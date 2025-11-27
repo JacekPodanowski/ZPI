@@ -28,7 +28,6 @@
  *       → EditorTopBar saves _thumbnails map → SiteApp passes to modules
  */
 
-import React from 'react';
 import { SIZE_LIMITS } from '../../shared/sizeLimits';
 import { resolveMediaUrl } from '../../config/api';
 

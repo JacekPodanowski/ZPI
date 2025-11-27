@@ -1,48 +1,58 @@
-import React from 'react';
+import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import SitesPage from './pages/Sites/SitesPage';
-import CategorySelectionPage from './pages/NewSite/CategorySelectionPage';
-import NewProjectPage from './pages/NewSite/NewProjectPage';
-import ManageModulesPage from './pages/NewSite/ManageModulesPage';
-import StyleSelectionPage from './pages/NewSite/StyleSelectionPage';
-import NewEditorPage from './pages/Editor/NewEditorPage';
-import CreatorCalendarApp from './pages/Creator/CreatorCalendarApp';
-import EventsPage from './pages/Events/EventsPage';
-import AdminDashboardPage from './pages/Admin/AdminDashboardPage';
 import NavigationLayout from './layouts/NavigationLayout';
 import SettingsLayout from './layouts/SettingsLayout';
-import ProfilePage from './pages/Settings/ProfilePage';
-import OrdersPage from './pages/Settings/OrdersPage';
-import BillingPage from './pages/Settings/BillingPage';
-import AppearancePage from './pages/Settings/AppearancePage';
-import SettingsPage from './pages/Settings/SettingsPage';
-import NotificationsPage from './pages/Settings/NotificationsPage';
-import MailsPage from './pages/Settings/MailsPage';
-import EmailEditorPage from './pages/EmailEditor/EmailEditorPage';
-import ToastTestPage from './pages/Settings/ToastTestPage';
-import PaymentSuccessPage from './pages/Settings/PaymentSuccessPage';
-import PaymentFailedPage from './pages/Settings/PaymentFailedPage';
-import SiteLabPage from './pages/Lab/SiteLabPage';
-import TeamPage from './pages/Team/TeamPage';
-import DomainPage from './pages/Domain/DomainPage';
-import BuyDomainPage from './pages/Domain/BuyDomainPage';
-import DomainPurchaseSuccessPage from './pages/Domain/DomainPurchaseSuccessPage';
-import AcceptTermsPage from './pages/Auth/AcceptTermsPage';
-import ConfirmEmailPage from './pages/Auth/ConfirmEmailPage';
-import MagicLoginPage from './pages/Auth/MagicLoginPage';
-import AcceptInvitationPage from './pages/Auth/AcceptInvitationPage';
-import SetupAccountPage from './pages/Auth/SetupAccountPage';
-import BuildingLoginPage from './pages/Auth/BuildingLoginPage';
-import LegalDocumentsAdminPage from './pages/Admin/LegalDocumentsAdminPage';
-import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
-import ForceChangePasswordPage from './pages/Auth/ForceChangePasswordPage';
-import NewsletterConfirmPage from './pages/Newsletter/NewsletterConfirmPage';
-import NewsletterUnsubscribePage from './pages/Newsletter/NewsletterUnsubscribePage';
-import GoogleCalendarCallback from './pages/Auth/GoogleCalendarCallback';
+
+// Lazy loaded pages
+const SitesPage = lazy(() => import('./pages/Sites/SitesPage'));
+const CategorySelectionPage = lazy(() => import('./pages/NewSite/CategorySelectionPage'));
+const NewProjectPage = lazy(() => import('./pages/NewSite/NewProjectPage'));
+const ManageModulesPage = lazy(() => import('./pages/NewSite/ManageModulesPage'));
+const StyleSelectionPage = lazy(() => import('./pages/NewSite/StyleSelectionPage'));
+const NewEditorPage = lazy(() => import('./pages/Editor/NewEditorPage'));
+const CreatorCalendarApp = lazy(() => import('./pages/Creator/CreatorCalendarApp'));
+const EventsPage = lazy(() => import('./pages/Events/EventsPage'));
+const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage'));
+const ProfilePage = lazy(() => import('./pages/Settings/ProfilePage'));
+const OrdersPage = lazy(() => import('./pages/Settings/OrdersPage'));
+const BillingPage = lazy(() => import('./pages/Settings/BillingPage'));
+const AppearancePage = lazy(() => import('./pages/Settings/AppearancePage'));
+const SettingsPage = lazy(() => import('./pages/Settings/SettingsPage'));
+const NotificationsPage = lazy(() => import('./pages/Settings/NotificationsPage'));
+const MailsPage = lazy(() => import('./pages/Settings/MailsPage'));
+const EmailEditorPage = lazy(() => import('./pages/EmailEditor/EmailEditorPage'));
+const ToastTestPage = lazy(() => import('./pages/Settings/ToastTestPage'));
+const PaymentSuccessPage = lazy(() => import('./pages/Settings/PaymentSuccessPage'));
+const PaymentFailedPage = lazy(() => import('./pages/Settings/PaymentFailedPage'));
+const SiteLabPage = lazy(() => import('./pages/Lab/SiteLabPage'));
+const TeamPage = lazy(() => import('./pages/Team/TeamPage'));
+const DomainPage = lazy(() => import('./pages/Domain/DomainPage'));
+const BuyDomainPage = lazy(() => import('./pages/Domain/BuyDomainPage'));
+const DomainPurchaseSuccessPage = lazy(() => import('./pages/Domain/DomainPurchaseSuccessPage'));
+const AcceptTermsPage = lazy(() => import('./pages/Auth/AcceptTermsPage'));
+const ConfirmEmailPage = lazy(() => import('./pages/Auth/ConfirmEmailPage'));
+const MagicLoginPage = lazy(() => import('./pages/Auth/MagicLoginPage'));
+const AcceptInvitationPage = lazy(() => import('./pages/Auth/AcceptInvitationPage'));
+const SetupAccountPage = lazy(() => import('./pages/Auth/SetupAccountPage'));
+const BuildingLoginPage = lazy(() => import('./pages/Auth/BuildingLoginPage'));
+const LegalDocumentsAdminPage = lazy(() => import('./pages/Admin/LegalDocumentsAdminPage'));
+const ChangePasswordPage = lazy(() => import('./pages/Auth/ChangePasswordPage'));
+const ForceChangePasswordPage = lazy(() => import('./pages/Auth/ForceChangePasswordPage'));
+const NewsletterConfirmPage = lazy(() => import('./pages/Newsletter/NewsletterConfirmPage'));
+const NewsletterUnsubscribePage = lazy(() => import('./pages/Newsletter/NewsletterUnsubscribePage'));
+const GoogleCalendarCallback = lazy(() => import('./pages/Auth/GoogleCalendarCallback'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+  </div>
+);
 
 const StudioApp = () => (
-  <Routes>
+  <Suspense fallback={<PageLoader />}>
+    <Routes>
     {/* Default redirect when visiting /studio */}
     <Route index element={<Navigate to="sites" replace />} />
 
@@ -126,6 +136,7 @@ const StudioApp = () => (
     {/* Catch-all */}
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
+  </Suspense>
 );
 
 export default StudioApp;

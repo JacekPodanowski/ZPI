@@ -470,7 +470,6 @@ const Toolbar2 = ({
   }, [onWidthChange]);
 
   const handleDragStart = (e, moduleType) => {
-    console.log('[Toolbar2] Drag started:', moduleType);
     e.dataTransfer.setData('moduleType', moduleType);
     e.dataTransfer.effectAllowed = 'copy';
     setDragging(true, {
@@ -537,7 +536,6 @@ const Toolbar2 = ({
     const sourcePageId = e.dataTransfer.getData('sourcePageId');
     
     if (moduleId && sourcePageId) {
-      console.log('[Toolbar2] Deleting module:', moduleId, 'from page:', sourcePageId);
       setIsOverTrash(false);
       removeModule(sourcePageId, moduleId);
       const raf = typeof window !== 'undefined' ? window.requestAnimationFrame : null;

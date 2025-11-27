@@ -142,12 +142,6 @@ const StructureMode = () => {
     return pages.filter((page) => page.id !== focusedId);
   }, [pages, focusedId]);
 
-  console.log('[StructureMode] Render - site:', site);
-  console.log('[StructureMode] Render - pages:', pages);
-  console.log('[StructureMode] Render - selectedPageId:', selectedPageId);
-  console.log('[StructureMode] Render - focusedPageId:', focusedPageId);
-  console.log('[StructureMode] Render - focusedPage:', focusedPage);
-
   useEffect(() => {
     if (!pages.length) {
       if (focusedPageId !== null) {
@@ -329,7 +323,6 @@ const StructureMode = () => {
 
   // Safety check
   if (!site || !pages.length) {
-    console.log('[StructureMode] No pages available');
     return (
       <Box
         sx={{
@@ -389,7 +382,6 @@ const StructureMode = () => {
           
           // Only create new page if dropping a NEW module from toolbar (not moving existing)
           if (moduleType && !draggedModuleId) {
-            console.log('[StructureMode] Drop on Editor Canvas - creating new page with module');
             const moduleTypeName = moduleType.charAt(0).toUpperCase() + moduleType.slice(1);
             const newPageId = `page-${Date.now()}`;
             const defaultContent = getDefaultModuleContent(moduleType);

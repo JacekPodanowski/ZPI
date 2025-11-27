@@ -1,7 +1,7 @@
-import React from 'react'
+import { memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const Modal = ({ isOpen, onClose, children, title }) => {
+const Modal = memo(({ isOpen, onClose, children, title }) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -30,6 +30,8 @@ const Modal = ({ isOpen, onClose, children, title }) => {
       )}
     </AnimatePresence>
   )
-}
+})
+
+Modal.displayName = 'Modal'
 
 export default Modal

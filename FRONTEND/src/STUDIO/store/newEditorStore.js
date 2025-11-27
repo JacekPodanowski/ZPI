@@ -202,12 +202,6 @@ const normalizeModule = (module, index, pageId) => {
   const enabled = module.enabled !== undefined ? module.enabled : module.visible !== false;
   const baseContent = deepClone(module.content || module.config || {});
 
-  console.log(`[normalizeModule] Processing ${moduleType}:`, {
-    hasModuleLayout: !!module.layout,
-    hasContentLayout: !!baseContent?.layout,
-    contentKeys: Object.keys(baseContent)
-  });
-
   const { __legacyKey, modules: _childModules, ...rest } = module;
 
   const normalized = {
@@ -224,11 +218,6 @@ const normalizeModule = (module, index, pageId) => {
   if (!normalized.config && module.config) {
     normalized.config = deepClone(module.config);
   }
-
-  console.log(`[normalizeModule] Result for ${moduleType}:`, {
-    layout: normalized.layout,
-    contentKeys: Object.keys(normalized.content)
-  });
 
   return normalized;
 };
@@ -1402,10 +1391,6 @@ const useNewEditorStore = create((set, get) => ({
       ? requestedEntryPoint
       : defaultEntryPoint;
 
-    console.log('[EditorStore] loadSite - pages:', nextSite.pages?.map(p => ({ id: p.id, name: p.name })));
-    console.log('[EditorStore] loadSite - entryPoint:', entryPoint);
-    console.log('[EditorStore] loadSite - selectedPageId will be:', entryPoint);
-
     set((state) => ({
       siteId: siteData.id || siteData.siteId || null,
       siteIdentifier: siteData.identifier || siteData.siteIdentifier || state.siteIdentifier || null,
@@ -1478,16 +1463,6 @@ const useNewEditorStore = create((set, get) => ({
       // Normalize and validate new site config - CRITICAL: ensures module.layout is set correctly
       const rawSite = newSiteConfig.site || newSiteConfig;
       const normalizedSite = normalizeSiteConfig(rawSite);
-      
-      console.log('[EditorStore] replaceSiteStateWithHistory - normalized site:', {
-        pagesCount: normalizedSite.pages?.length,
-        firstPageModules: normalizedSite.pages?.[0]?.modules?.map(m => ({
-          id: m.id,
-          type: m.type,
-          layout: m.layout,
-          contentKeys: Object.keys(m.content || {})
-        }))
-      });
       
       const updates = {
         site: normalizedSite,

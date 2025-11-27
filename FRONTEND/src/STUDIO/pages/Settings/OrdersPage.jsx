@@ -69,22 +69,14 @@ const OrdersPage = () => {
       
       if (isAdmin) {
         // Admin: get ALL orders at once (no site_id filter)
-        console.log('[OrdersPage] Loading all orders for admin...');
         const ordersResponse = await apiClient.get('/domains/orders/');
         allOrders = ordersResponse.data;
-        
-        // Backend already includes site info via serializer
-        console.log('[OrdersPage] Admin orders loaded:', allOrders.length);
       } else {
         // Regular user: get orders per site
-        console.log('[OrdersPage] Loading orders for regular user...');
-        
         const sitesResponse = await apiClient.get('/sites/');
         const sites = Array.isArray(sitesResponse.data) 
           ? sitesResponse.data 
           : sitesResponse.data.results || [];
-        
-        console.log('[OrdersPage] User sites:', sites.length);
         
         for (const site of sites) {
           try {
@@ -101,19 +93,16 @@ const OrdersPage = () => {
             
             allOrders.push(...ordersWithSite);
           } catch (err) {
-            console.error(`Failed to load orders for site ${site.id}:`, err);
+            // Silently skip failed site order loads
           }
         }
       }
-      
-      console.log('[OrdersPage] Total orders:', allOrders.length);
       
       // Sort by creation date (newest first)
       allOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       
       setOrders(allOrders);
     } catch (err) {
-      console.error('Failed to load orders:', err);
       setError('Nie udało się załadować zamówień. Spróbuj ponownie.');
     } finally {
       setLoading(false);

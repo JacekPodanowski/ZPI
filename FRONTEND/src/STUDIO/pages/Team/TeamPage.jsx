@@ -3,7 +3,6 @@ import { Box, Typography, CircularProgress, Chip, Select, MenuItem, IconButton, 
 import { useParams } from 'react-router-dom';
 import { Add as AddIcon, Email as EmailIcon, Send as SendIcon, Delete as DeleteIcon, Edit as EditIcon, FileDownload as FileDownloadIcon, Groups as GroupsIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import * as XLSX from 'xlsx';
 import { fetchSiteById, addTeamMember, updateTeamMember, deleteTeamMember, sendTeamInvitation, fetchTeamMembers, fetchAttendanceReport } from '../../../services/siteService';
 import { useAuth } from '../../../contexts/AuthContext';
 import Avatar from '../../../components/Avatar/Avatar';
@@ -146,7 +145,8 @@ const TeamPage = () => {
         URL.revokeObjectURL(link.href);
     };
 
-    const exportRowsToXlsx = (rows, hostLabel) => {
+    const exportRowsToXlsx = async (rows, hostLabel) => {
+        const XLSX = await import('xlsx');
         const worksheetData = rows.map((row) => ({
             'Zajęcie': row.title,
             'Czas trwania (min)': row.duration_minutes,

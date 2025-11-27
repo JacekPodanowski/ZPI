@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';

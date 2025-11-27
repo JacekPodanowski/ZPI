@@ -65,14 +65,12 @@ const EventsPage = () => {
         
         // Listen for big event created by AI
         const handleBigEventCreated = (event) => {
-            console.log('[Events] Big event created by AI:', event.detail);
             loadEvents(); // Reload events list
             showToast('Wydarzenie zostało dodane!', 'success');
         };
         
         // Listen for big event deleted by AI revert
         const handleBigEventDeleted = () => {
-            console.log('[Events] Big event deleted by AI revert');
             loadEvents(); // Reload events list
             showToast('Wydarzenie zostało usunięte', 'info');
         };
