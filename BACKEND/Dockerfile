@@ -53,4 +53,4 @@ USER appuser
 EXPOSE 8000
 
 # --- DEFAULT CMD (można nadpisać w docker-compose) ---
-CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8000", "site_project.wsgi:application"]
+CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8000", "django_config.wsgi:application"]

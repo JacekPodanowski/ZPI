@@ -25,7 +25,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Task scheduled: {result.id}'))
             
         elif task_name == 'debug':
-            from site_project.celery import debug_task
+            from django_config.celery import debug_task
             self.stdout.write('Scheduling debug task...')
             result = debug_task.delay()
             self.stdout.write(self.style.SUCCESS(f'Task scheduled: {result.id}'))

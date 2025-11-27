@@ -1,4 +1,4 @@
-# site_project/urls.py
+# django_config/urls.py
 
 from django.conf import settings
 from django.conf.urls.static import static

@@ -1,4 +1,4 @@
-# site_project/settings.py
+# django_config/settings.py
 
 import os
 import warnings
@@ -122,9 +122,9 @@ else:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # --- Konfiguracja aplikacji Django ---
-ROOT_URLCONF = 'site_project.urls'
-WSGI_APPLICATION = 'site_project.wsgi.application'
-ASGI_APPLICATION = 'site_project.asgi.application'
+ROOT_URLCONF = 'django_config.urls'
+WSGI_APPLICATION = 'django_config.wsgi.application'
+ASGI_APPLICATION = 'django_config.asgi.application'
 AUTH_USER_MODEL = 'api.PlatformUser'
 SITE_ID = 1
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

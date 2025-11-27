@@ -1,8 +1,9 @@
-# Włącz lokalnie
-docker-compose -f docker-compose.dev.yml up
-
 # Włącz deployment
 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+
+
+# Włącz lokalnie
+docker-compose up --build
 
 # Wyłącz
 docker-compose down 

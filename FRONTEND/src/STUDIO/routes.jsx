@@ -34,7 +34,7 @@ import MagicLoginPage from './pages/Auth/MagicLoginPage';
 import AcceptInvitationPage from './pages/Auth/AcceptInvitationPage';
 import SetupAccountPage from './pages/Auth/SetupAccountPage';
 import BuildingLoginPage from './pages/Auth/BuildingLoginPage';
-import TermsAdminPage from './pages/Admin/TermsAdminPage';
+import LegalDocumentsAdminPage from './pages/Admin/LegalDocumentsAdminPage';
 import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
 import ForceChangePasswordPage from './pages/Auth/ForceChangePasswordPage';
 import NewsletterConfirmPage from './pages/Newsletter/NewsletterConfirmPage';
@@ -96,7 +96,7 @@ const StudioApp = () => (
       <Route path="sites/modules/:siteId" element={<ManageModulesPage />} />
       <Route path="lab/:siteId" element={<ProtectedRoute><SiteLabPage /></ProtectedRoute>} />
       <Route path="admin" element={<ProtectedRoute requireStaff><AdminDashboardPage /></ProtectedRoute>} />
-      <Route path="admin/terms" element={<ProtectedRoute requireStaff><TermsAdminPage /></ProtectedRoute>} />
+      <Route path="admin/terms" element={<ProtectedRoute requireStaff><LegalDocumentsAdminPage /></ProtectedRoute>} />
     </Route>
 
     {/* Email Editor - Standalone page with own navigation */}

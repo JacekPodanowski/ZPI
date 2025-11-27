@@ -4,7 +4,7 @@ import django
 import os
 import json
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'site_project.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_config.settings')
 django.setup()
 
 from api.models import DomainOrder

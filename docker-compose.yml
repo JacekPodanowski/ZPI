@@ -64,7 +64,7 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
+    command: daphne -b 0.0.0.0 -p 8000 django_config.asgi:application
     volumes:
       - ./BACKEND:/home/appuser/app
     ports:
@@ -82,7 +82,7 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
     restart: unless-stopped
-    command: celery -A site_project worker --loglevel=info
+    command: celery -A django_config worker --loglevel=info
     volumes:
       - ./BACKEND:/home/appuser/app
     env_file:

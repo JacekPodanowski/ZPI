@@ -7,7 +7,7 @@ import threading
 from contextlib import contextmanager
 
 from .media_helpers import cleanup_asset_if_unused
-from .models import Booking, MediaUsage, TermsOfService, Event, GoogleCalendarIntegration, GoogleCalendarEvent
+from .models import Booking, MediaUsage, LegalDocument, Event, GoogleCalendarIntegration, GoogleCalendarEvent
 
 logger = logging.getLogger(__name__)
 
@@ -54,29 +54,51 @@ def cleanup_media_on_usage_delete(sender, instance: MediaUsage, **kwargs):
     cleanup_asset_if_unused(instance.asset)
 
 
+# Document type to file mapping
+DOCUMENT_FILES = {
+    LegalDocument.DocumentType.TERMS: 'REGULAMIN.md',
+    LegalDocument.DocumentType.POLICY: 'POLITYKA_PRYWATNOSCI.md',
+    LegalDocument.DocumentType.GUIDE: 'PORADNIK.md',
+}
+
+DOCUMENT_DEFAULTS = {
+    LegalDocument.DocumentType.TERMS: "# Regulamin\n\nRegulamin serwisu będzie dostępny wkrótce.",
+    LegalDocument.DocumentType.POLICY: "# Polityka Prywatności\n\nPolityka prywatności będzie dostępna wkrótce.",
+    LegalDocument.DocumentType.GUIDE: "# Poradnik\n\nPoradnik użytkownika będzie dostępny wkrótce.",
+}
+
+
+def ensure_initial_documents_exist():
+    """Ensure at least one version of each legal document exists by loading from markdown files."""
+    for doc_type in LegalDocument.DocumentType.values:
+        if LegalDocument.objects.filter(document_type=doc_type).exists():
+            continue
+        
+        filename = DOCUMENT_FILES.get(doc_type)
+        terms_file_path = os.path.join(settings.BASE_DIR, 'legal', filename) if filename else None
+        
+        if not terms_file_path or not os.path.exists(terms_file_path):
+            content = DOCUMENT_DEFAULTS.get(doc_type, "# Dokument\n\nTreść dokumentu będzie dostępna wkrótce.")
+        else:
+            try:
+                with open(terms_file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                if not content.strip():
+                    content = DOCUMENT_DEFAULTS.get(doc_type, "# Dokument\n\nTreść dokumentu będzie dostępna wkrótce.")
+            except Exception:
+                content = DOCUMENT_DEFAULTS.get(doc_type, "# Dokument\n\nTreść dokumentu będzie dostępna wkrótce.")
+        
+        LegalDocument.objects.create(
+            document_type=doc_type,
+            version='1.0',
+            content_md=content
+        )
+
+
+# Backwards compatibility alias
 def ensure_initial_terms_exist():
-    """Ensure at least one Terms of Service version exists by loading from REGULAMIN.md"""
-    if TermsOfService.objects.exists():
-        return
-    
-    terms_file_path = os.path.join(settings.BASE_DIR, 'media', 'terms', 'REGULAMIN.md')
-    
-    if not os.path.exists(terms_file_path):
-        # Create with placeholder content if file doesn't exist
-        content = "# Regulamin\n\nRegulamin serwisu będzie dostępny wkrótce."
-    else:
-        try:
-            with open(terms_file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            if not content.strip():
-                content = "# Regulamin\n\nRegulamin serwisu będzie dostępny wkrótce."
-        except Exception:
-            content = "# Regulamin\n\nRegulamin serwisu będzie dostępny wkrótce."
-    
-    TermsOfService.objects.create(
-        version='1.0',
-        content_md=content
-    )
+    """Backwards compatibility - now loads all document types."""
+    ensure_initial_documents_exist()
 
 
 @receiver(post_save, sender=Event)

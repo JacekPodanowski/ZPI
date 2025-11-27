@@ -8,18 +8,35 @@ from datetime import timedelta
 from .utils import generate_site_identifier
 
 
-class TermsOfService(models.Model):
-    """Stores different versions of Terms of Service with markdown content."""
-    version = models.CharField(max_length=20, unique=True, default='0.0', help_text="Version number, e.g., '1.0' or '2025-11-01'")
-    content_md = models.TextField(default='', blank=True, help_text="Markdown content of the terms")
+class LegalDocument(models.Model):
+    """Stores different versions of legal documents (Terms, Privacy Policy, Guide) with markdown content."""
+    
+    class DocumentType(models.TextChoices):
+        TERMS = 'terms', 'Regulamin'
+        POLICY = 'policy', 'Polityka Prywatności'
+        GUIDE = 'guide', 'Poradnik'
+    
+    document_type = models.CharField(
+        max_length=20, 
+        choices=DocumentType.choices, 
+        default=DocumentType.TERMS,
+        help_text="Type of legal document"
+    )
+    version = models.CharField(max_length=20, default='0.0', help_text="Version number, e.g., '1.0' or '2025-11-01'")
+    content_md = models.TextField(default='', blank=True, help_text="Markdown content of the document")
     published_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-published_at']
+        unique_together = ['document_type', 'version']
 
     def __str__(self):
-        return f"Terms of Service v{self.version}"
+        return f"{self.get_document_type_display()} v{self.version}"
+
+
+# Backwards compatibility alias
+TermsOfService = LegalDocument
 
 
 class PlatformUserManager(BaseUserManager):
