@@ -81,7 +81,7 @@ const UserAvatarMenu = ({ user, onLogout, menuItems: menuConfig }) => {
         {
           label: 'Domeny',
           icon: <LanguageIcon fontSize="small" />,
-          path: '/studio/account/domain'
+          path: '/studio/account/orders'
         },
         {
           label: 'Ustawienia',

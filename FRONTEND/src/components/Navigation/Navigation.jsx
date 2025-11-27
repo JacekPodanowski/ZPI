@@ -77,9 +77,9 @@ const Navigation = () => {
                 path: '/studio/account/billing'
             },
             {
-                label: 'Domena',
+                label: 'Domeny',
                 icon: <LanguageIcon fontSize="small" />,
-                path: '/studio/account/domain'
+                path: '/studio/account/orders'
             },
             {
                 label: 'Informacje',
