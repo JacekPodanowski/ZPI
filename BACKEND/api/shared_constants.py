@@ -1,6 +1,9 @@
 """
-Shared constants loaded from SHARED_SETTINGS folder.
+Shared constants loaded from local api/shared folder.
 This ensures backend and frontend use the same configuration.
+
+⚠️  The files in api/shared/ are auto-generated!
+Edit the source files in SHARED_SETTINGS/ and run: SHARED_SETTINGS\\sync.bat
 """
 
 import json
@@ -8,12 +11,12 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 
-# Path to shared settings folder
-SHARED_SETTINGS_PATH = Path(__file__).resolve().parent.parent.parent / "SHARED_SETTINGS"
+# Path to local shared folder (inside api/)
+SHARED_SETTINGS_PATH = Path(__file__).resolve().parent / "shared"
 
 
 def load_json_file(filename: str) -> Dict[str, Any]:
-    """Load and parse a JSON/JS file from SHARED_SETTINGS."""
+    """Load and parse a JSON file from the shared folder."""
     file_path = SHARED_SETTINGS_PATH / filename
     
     if not file_path.exists():
@@ -21,22 +24,6 @@ def load_json_file(filename: str) -> Dict[str, Any]:
     
     content = file_path.read_text(encoding='utf-8')
     
-    # Remove JavaScript comments (// and /* */)
-    import re
-    # Remove single-line comments
-    content = re.sub(r'//.*?$', '', content, flags=re.MULTILINE)
-    # Remove multi-line comments
-    content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
-    
-    # Remove JS export syntax
-    content = re.sub(r'export\s+const\s+\w+\s*=\s*', '', content)
-    
-    # Remove trailing semicolon and whitespace
-    content = content.strip()
-    if content.endswith(';'):
-        content = content[:-1]
-    
-    # Parse as JSON
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
@@ -47,65 +34,64 @@ def load_json_file(filename: str) -> Dict[str, Any]:
 # SIZE LIMITS
 # ============================================
 try:
-    _size_limits = load_json_file("sizeLimits.js")
+    _size_limits = load_json_file("sizeLimits.json")
 except Exception as e:
-    print(f"Warning: Could not load sizeLimits.js: {e}")
+    print(f"Warning: Could not load sizeLimits.json: {e}")
     _size_limits = {}
 
+# Helper to convert MB/KB to bytes
+def _mb(key: str, default_mb: int) -> int:
+    return _size_limits.get(key, default_mb) * 1024 * 1024
+
+def _kb(key: str, default_kb: int) -> int:
+    return _size_limits.get(key, default_kb) * 1024
+
+def _px(key: str, default_px: int) -> int:
+    return _size_limits.get(key, default_px)
+
 # Global limits
-MAX_TOTAL_STORAGE_PER_USER = _size_limits.get('MAX_TOTAL_STORAGE_PER_USER', 1024 * 1024 * 1024)
+MAX_TOTAL_STORAGE_PER_USER = _mb('MAX_TOTAL_STORAGE_PER_USER_MB', 1024)
 MAX_PAGES_PER_USER = _size_limits.get('MAX_PAGES_PER_USER', 10)
-MAX_SITE_SIZE = _size_limits.get('MAX_SITE_SIZE', 500 * 1024 * 1024)
+MAX_SITE_SIZE = _mb('MAX_SITE_SIZE_MB', 500)
 
 # Photo limits (general images)
-MAX_PHOTO_UPLOAD_SIZE = _size_limits.get('MAX_PHOTO_UPLOAD_SIZE', 100 * 1024 * 1024)
-MAX_PHOTO_STORED_SIZE = _size_limits.get('MAX_PHOTO_STORED_SIZE', 25 * 1024 * 1024)
-TARGET_PHOTO_WIDTH = _size_limits.get('TARGET_PHOTO_WIDTH', 1920)
-TARGET_PHOTO_HEIGHT = _size_limits.get('TARGET_PHOTO_HEIGHT', 1080)
+MAX_PHOTO_UPLOAD_SIZE = _mb('MAX_PHOTO_UPLOAD_SIZE_MB', 100)
+MAX_PHOTO_STORED_SIZE = _mb('MAX_PHOTO_STORED_SIZE_MB', 25)
+MAX_PHOTO_DIMENSION = _px('MAX_PHOTO_DIMENSION_PX', 1920)
 
 # Avatar limits
-MAX_AVATAR_UPLOAD_SIZE = _size_limits.get('MAX_AVATAR_UPLOAD_SIZE', 25 * 1024 * 1024)
-MAX_AVATAR_STORED_SIZE = _size_limits.get('MAX_AVATAR_STORED_SIZE', 5 * 1024 * 1024)
-TARGET_AVATAR_SIZE = _size_limits.get('TARGET_AVATAR_SIZE', 512)
+MAX_AVATAR_UPLOAD_SIZE = _mb('MAX_AVATAR_UPLOAD_SIZE_MB', 25)
+MAX_AVATAR_STORED_SIZE = _mb('MAX_AVATAR_STORED_SIZE_MB', 2)
+TARGET_AVATAR_SIZE = _px('TARGET_AVATAR_SIZE_PX', 256)
 
 # Backend validation (safety limits)
-BACKEND_MAX_IMAGE_SIZE = _size_limits.get('BACKEND_MAX_IMAGE_SIZE', 25 * 1024 * 1024)
-BACKEND_MAX_AVATAR_SIZE = _size_limits.get('BACKEND_MAX_AVATAR_SIZE', 5 * 1024 * 1024)
+BACKEND_MAX_IMAGE_SIZE = _mb('BACKEND_MAX_IMAGE_SIZE_MB', 25)
+BACKEND_MAX_AVATAR_SIZE = _mb('BACKEND_MAX_AVATAR_SIZE_MB', 5)
 
 # Video limits
-MAX_VIDEO_UPLOAD_SIZE = _size_limits.get('MAX_VIDEO_UPLOAD_SIZE', 100 * 1024 * 1024)
-MAX_VIDEO_DURATION = _size_limits.get('MAX_VIDEO_DURATION', 600)
+MAX_VIDEO_UPLOAD_SIZE = _mb('MAX_VIDEO_UPLOAD_SIZE_MB', 100)
+MAX_VIDEO_DURATION = _size_limits.get('MAX_VIDEO_DURATION_SECONDS', 600)
 
 # WebP conversion
 WEBP_QUALITY = _size_limits.get('WEBP_QUALITY', 90)
-WEBP_QUALITY_THUMBNAIL = _size_limits.get('WEBP_QUALITY_THUMBNAIL', 75)
-WEBP_QUALITY_AVATAR = _size_limits.get('WEBP_QUALITY_AVATAR', 90)
+WEBP_QUALITY_THUMBNAIL = _size_limits.get('WEBP_QUALITY_THUMBNAIL', 80)
 
-# Responsive sizes
-THUMBNAIL_SIZE = _size_limits.get('THUMBNAIL_SIZE', 300)
-MEDIUM_SIZE = _size_limits.get('MEDIUM_SIZE', 800)
-LARGE_SIZE = _size_limits.get('LARGE_SIZE', 1920)
-AVATAR_SIZE = _size_limits.get('AVATAR_SIZE', 512)
+# Image sizes (for srcset responsive images)
+THUMBNAIL_SIZE = _px('THUMBNAIL_SIZE_PX', 400)
+FULL_SIZE = _px('FULL_SIZE_PX', 1920)
+AVATAR_SIZE = _px('AVATAR_SIZE_PX', 256)
 
-# Temp storage
-TEMP_STORAGE_EXPIRE = _size_limits.get('TEMP_STORAGE_EXPIRE', 24 * 60 * 60)
-TEMP_STORAGE_CLEANUP_INTERVAL = _size_limits.get('TEMP_STORAGE_CLEANUP_INTERVAL', 6 * 60 * 60)
-MAX_TEMP_STORAGE_PER_USER = _size_limits.get('MAX_TEMP_STORAGE_PER_USER', 100 * 1024 * 1024)
-
-# Processing
-BATCH_PROCESSING_LIMIT = _size_limits.get('BATCH_PROCESSING_LIMIT', 5)
-PROCESSING_TIMEOUT = _size_limits.get('PROCESSING_TIMEOUT', 30000)
-
-# Bandwidth
-MAX_MONTHLY_BANDWIDTH_PER_USER = _size_limits.get('MAX_MONTHLY_BANDWIDTH_PER_USER', 10 * 1024 * 1024 * 1024)
+# SVG limits
+MAX_SVG_SIZE = _kb('MAX_SVG_SIZE_KB', 500)
 
 # Allowed formats
-ALLOWED_IMAGE_FORMATS = _size_limits.get('ALLOWED_IMAGE_FORMATS', ['jpg', 'jpeg', 'png', 'gif', 'webp'])
+ALLOWED_IMAGE_FORMATS = _size_limits.get('ALLOWED_IMAGE_FORMATS', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'])
 ALLOWED_IMAGE_MIMETYPES = tuple(_size_limits.get('ALLOWED_IMAGE_MIMETYPES', [
     'image/jpeg',
     'image/png',
     'image/gif',
-    'image/webp'
+    'image/webp',
+    'image/svg+xml'
 ]))
 ALLOWED_VIDEO_FORMATS = _size_limits.get('ALLOWED_VIDEO_FORMATS', ['mp4', 'webm', 'mov'])
 ALLOWED_VIDEO_MIMETYPES = tuple(_size_limits.get('ALLOWED_VIDEO_MIMETYPES', [
@@ -119,9 +105,9 @@ ALLOWED_VIDEO_MIMETYPES = tuple(_size_limits.get('ALLOWED_VIDEO_MIMETYPES', [
 # TEAM ROLES & PERMISSIONS
 # ============================================
 try:
-    _team_roles = load_json_file("teamRoles.js")
+    _team_roles = load_json_file("teamRoles.json")
 except Exception as e:
-    print(f"Warning: Could not load teamRoles.js: {e}")
+    print(f"Warning: Could not load teamRoles.json: {e}")
     _team_roles = {}
 
 TEAM_ROLES = _team_roles

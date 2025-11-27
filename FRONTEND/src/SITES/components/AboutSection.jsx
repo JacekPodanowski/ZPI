@@ -2,8 +2,9 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { resolveMediaUrl } from '../../config/api'
 import { isVideoUrl } from '../../utils/mediaUtils'
+import ResponsiveImage from './ResponsiveImage'
 
-const AboutSection = ({ config }) => {
+const AboutSection = ({ config, thumbnails = {} }) => {
   const { title, description, imageUrl, avatar, bgColor, email, phone } = config
   const primaryMedia = imageUrl || avatar
   const fallbackImage = imageUrl && avatar && imageUrl !== avatar ? avatar : ''
@@ -89,10 +90,12 @@ const AboutSection = ({ config }) => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <img 
-                  src={resolvedMedia} 
-                  alt={title} 
+                <ResponsiveImage
+                  src={primaryMedia}
+                  thumbnails={thumbnails}
+                  alt={title}
                   className="w-full h-full object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
               )
             })() : (

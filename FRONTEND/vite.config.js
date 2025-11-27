@@ -115,11 +115,6 @@ export default defineConfig({
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
-    alias: {
-      // In Docker: SHARED_SETTINGS is mounted at /app/SHARED_SETTINGS
-      // Locally: SHARED_SETTINGS is at ../SHARED_SETTINGS
-      '@shared': path.resolve(__dirname, process.env.VITE_SHARED_PATH || '../SHARED_SETTINGS'),
-    },
   },
   preview: {
     host: '0.0.0.0',

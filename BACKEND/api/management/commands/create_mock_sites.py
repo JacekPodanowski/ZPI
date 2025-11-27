@@ -10,6 +10,7 @@ from pathlib import Path
 import uuid
 
 from api.models import Site, Template, Event, AvailabilityBlock, TeamMember
+from api.signals import suppress_signal_logging
 
 User = get_user_model()
 
@@ -96,7 +97,7 @@ class Command(BaseCommand):
             except json.JSONDecodeError as e:
                 self.stdout.write(self.style.ERROR(f'Invalid JSON in {json_path}: {e}'))
 
-        with transaction.atomic():
+        with transaction.atomic(), suppress_signal_logging():
             # ====================================================================================
             # STEP 1: Clear all mock sites (including showcase) and reset sequence to 1
             # ====================================================================================
@@ -213,156 +214,157 @@ class Command(BaseCommand):
 
         # Create mock events and availability blocks
         # Include the showcase site (ID=1) and all mock sites
-        try:
-            showcase_site = Site.objects.get(id=1)
-            sites = [showcase_site] + list(Site.objects.filter(owner__in=[admin_user, random_user]).exclude(id=1))
-        except Site.DoesNotExist:
-            # If showcase site doesn't exist yet, just use mock sites
-            sites = Site.objects.filter(owner__in=[admin_user, random_user])
-        
-        for site in sites:
-            # Clear existing events and availability blocks for this site
-            Event.objects.filter(site=site).delete()
-            AvailabilityBlock.objects.filter(site=site).delete()
+        with suppress_signal_logging():
+            try:
+                showcase_site = Site.objects.get(id=1)
+                sites = [showcase_site] + list(Site.objects.filter(owner__in=[admin_user, random_user]).exclude(id=1))
+            except Site.DoesNotExist:
+                # If showcase site doesn't exist yet, just use mock sites
+                sites = Site.objects.filter(owner__in=[admin_user, random_user])
             
-            # Determine who is the owner for this site
-            site_owner = site.owner
-            
-            # For third site (Gabinet Psychoterapii), create some events assigned to team member (admin)
-            is_third_site = (site.name == 'Gabinet Psychoterapii')
-            
-            # Get team member if exists
-            team_member = None
-            if is_third_site:
-                try:
-                    team_member = TeamMember.objects.get(site=site, email=admin_user.email)
-                except TeamMember.DoesNotExist:
-                    pass
-            
-            # Create availability blocks for the next 30 days
-            today = timezone.now().date()
-            for day_offset in range(0, 30, 4):  # Every 4th day
-                target_date = today + timedelta(days=day_offset)
+            for site in sites:
+                # Clear existing events and availability blocks for this site
+                Event.objects.filter(site=site).delete()
+                AvailabilityBlock.objects.filter(site=site).delete()
                 
-                # Skip weekends for some variety
-                if target_date.weekday() >= 5:  # Saturday = 5, Sunday = 6
-                    continue
+                # Determine who is the owner for this site
+                site_owner = site.owner
                 
-                # Different meeting length patterns for each site
-                if site.id == 1:  # Pokazowa (showcase site - YourEasySite Demo)
-                    morning_length = 60
-                    afternoon_length = 60
-                elif site.name == 'Pracownia Jogi':
-                    # Site: Single duration (60 min)
-                    morning_length = 60
-                    afternoon_length = 90
-                elif site.name == 'Studio Oddechu':
-                    # Site: Different duration
-                    morning_length = 45
-                    afternoon_length = 60
-                else:
-                    # Gabinet Psychoterapii: Different duration
-                    morning_length = 30
-                    afternoon_length = 45
+                # For third site (Gabinet Psychoterapii), create some events assigned to team member (admin)
+                is_third_site = (site.name == 'Gabinet Psychoterapii')
                 
-                # Morning availability block
-                morning_block = AvailabilityBlock.objects.create(
-                    site=site,
-                    creator=site_owner,
-                    title='Dostępny rano',
-                    date=target_date,
-                    start_time='09:00',
-                    end_time='12:00',
-                    meeting_length=morning_length,
-                    time_snapping=30,
-                    buffer_time=15
-                )
+                # Get team member if exists
+                team_member = None
+                if is_third_site:
+                    try:
+                        team_member = TeamMember.objects.get(site=site, email=admin_user.email)
+                    except TeamMember.DoesNotExist:
+                        pass
                 
-                # Afternoon availability block
-                afternoon_block = AvailabilityBlock.objects.create(
-                    site=site,
-                    creator=site_owner,
-                    title='Dostępny po południu',
-                    date=target_date,
-                    start_time='14:00',
-                    end_time='17:00',
-                    meeting_length=afternoon_length,
-                    time_snapping=30,
-                    buffer_time=10
-                )
-            
-            # Create some scheduled events
-            event_titles = [
-                'Sesja indywidualna jogi',
-                'Warsztat oddechowy',
-                'Konsultacja wellness',
-                'Zajęcia grupowe',
-                'Sesja relaksacyjna'
-            ]
-            
-            if site.id == 1:  # Pokazowa (showcase site - YourEasySite Demo)
-                event_titles = [
-                    'Demo platformy',
-                    'Prezentacja funkcji',
-                    'Konsultacja wdrożeniowa',
-                    'Sesja Q&A',
-                    'Workshop YourEasySite'
-                ]
-            elif is_third_site:  # Gabinet Psychoterapii
-                event_titles = [
-                    'Sesja terapeutyczna',
-                    'Terapia par',
-                    'Konsultacja psychologiczna',
-                    'Interwencja kryzysowa',
-                    'Sesja indywidualna'
-                ]
-            
-            for day_offset in range(1, 15, 3):  # Every 3rd day for next 2 weeks
-                target_date = today + timedelta(days=day_offset)
-                
-                # Skip weekends
-                if target_date.weekday() >= 5:
-                    continue
-                
-                # Create 1-2 events per day
-                import random
-                num_events = random.randint(1, 2)
-                
-                for i in range(num_events):
-                    hour = 10 + i * 3  # 10:00, 13:00, etc.
-                    if hour >= 18:  # Don't schedule after 6 PM
-                        break
-                        
-                    start_datetime = timezone.make_aware(
-                        datetime.combine(target_date, datetime.min.time().replace(hour=hour))
-                    )
-                    end_datetime = start_datetime + timedelta(hours=1)
+                # Create availability blocks for the next 30 days
+                today = timezone.now().date()
+                for day_offset in range(0, 30, 4):  # Every 4th day
+                    target_date = today + timedelta(days=day_offset)
                     
-                    # For third site, alternate between owner and team member
-                    # 60% owner, 40% team member
-                    assign_to_team_member = is_third_site and team_member and random.random() < 0.4
+                    # Skip weekends for some variety
+                    if target_date.weekday() >= 5:  # Saturday = 5, Sunday = 6
+                        continue
                     
-                    event = Event.objects.create(
+                    # Different meeting length patterns for each site
+                    if site.id == 1:  # Pokazowa (showcase site - YourEasySite Demo)
+                        morning_length = 60
+                        afternoon_length = 60
+                    elif site.name == 'Pracownia Jogi':
+                        # Site: Single duration (60 min)
+                        morning_length = 60
+                        afternoon_length = 90
+                    elif site.name == 'Studio Oddechu':
+                        # Site: Different duration
+                        morning_length = 45
+                        afternoon_length = 60
+                    else:
+                        # Gabinet Psychoterapii: Different duration
+                        morning_length = 30
+                        afternoon_length = 45
+                    
+                    # Morning availability block
+                    morning_block = AvailabilityBlock.objects.create(
                         site=site,
                         creator=site_owner,
-                        title=random.choice(event_titles),
-                        description=f'Sesja {random.choice(["online", "stacjonarna"])} dla {site.name}',
-                        start_time=start_datetime,
-                        end_time=end_datetime,
-                        capacity=random.choice([1, 1, 1, 8, 12]),  # Mostly individual sessions
-                        event_type=random.choice(['individual', 'individual', 'individual', 'group']),
-                        assigned_to_owner=None if assign_to_team_member else site_owner,
-                        assigned_to_team_member=team_member if assign_to_team_member else None
+                        title='Dostępny rano',
+                        date=target_date,
+                        start_time='09:00',
+                        end_time='12:00',
+                        meeting_length=morning_length,
+                        time_snapping=30,
+                        buffer_time=15
                     )
-            
-            # Log summary for this site
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f'Added mock data for "{site.name}": '
-                    f'{AvailabilityBlock.objects.filter(site=site).count()} availability blocks, '
-                    f'{Event.objects.filter(site=site).count()} events'
+                    
+                    # Afternoon availability block
+                    afternoon_block = AvailabilityBlock.objects.create(
+                        site=site,
+                        creator=site_owner,
+                        title='Dostępny po południu',
+                        date=target_date,
+                        start_time='14:00',
+                        end_time='17:00',
+                        meeting_length=afternoon_length,
+                        time_snapping=30,
+                        buffer_time=10
+                    )
+                
+                # Create some scheduled events
+                event_titles = [
+                    'Sesja indywidualna jogi',
+                    'Warsztat oddechowy',
+                    'Konsultacja wellness',
+                    'Zajęcia grupowe',
+                    'Sesja relaksacyjna'
+                ]
+                
+                if site.id == 1:  # Pokazowa (showcase site - YourEasySite Demo)
+                    event_titles = [
+                        'Demo platformy',
+                        'Prezentacja funkcji',
+                        'Konsultacja wdrożeniowa',
+                        'Sesja Q&A',
+                        'Workshop YourEasySite'
+                    ]
+                elif is_third_site:  # Gabinet Psychoterapii
+                    event_titles = [
+                        'Sesja terapeutyczna',
+                        'Terapia par',
+                        'Konsultacja psychologiczna',
+                        'Interwencja kryzysowa',
+                        'Sesja indywidualna'
+                    ]
+                
+                for day_offset in range(1, 15, 3):  # Every 3rd day for next 2 weeks
+                    target_date = today + timedelta(days=day_offset)
+                    
+                    # Skip weekends
+                    if target_date.weekday() >= 5:
+                        continue
+                    
+                    # Create 1-2 events per day
+                    import random
+                    num_events = random.randint(1, 2)
+                    
+                    for i in range(num_events):
+                        hour = 10 + i * 3  # 10:00, 13:00, etc.
+                        if hour >= 18:  # Don't schedule after 6 PM
+                            break
+                            
+                        start_datetime = timezone.make_aware(
+                            datetime.combine(target_date, datetime.min.time().replace(hour=hour))
+                        )
+                        end_datetime = start_datetime + timedelta(hours=1)
+                        
+                        # For third site, alternate between owner and team member
+                        # 60% owner, 40% team member
+                        assign_to_team_member = is_third_site and team_member and random.random() < 0.4
+                        
+                        event = Event.objects.create(
+                            site=site,
+                            creator=site_owner,
+                            title=random.choice(event_titles),
+                            description=f'Sesja {random.choice(["online", "stacjonarna"])} dla {site.name}',
+                            start_time=start_datetime,
+                            end_time=end_datetime,
+                            capacity=random.choice([1, 1, 1, 8, 12]),  # Mostly individual sessions
+                            event_type=random.choice(['individual', 'individual', 'individual', 'group']),
+                            assigned_to_owner=None if assign_to_team_member else site_owner,
+                            assigned_to_team_member=team_member if assign_to_team_member else None
+                        )
+                
+                # Log summary for this site
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Added mock data for "{site.name}": '
+                        f'{AvailabilityBlock.objects.filter(site=site).count()} availability blocks, '
+                        f'{Event.objects.filter(site=site).count()} events'
+                    )
                 )
-            )
         
         # ====================================================================================
         # STEP 4: Fix sequence to continue after last user site (or start at 100)

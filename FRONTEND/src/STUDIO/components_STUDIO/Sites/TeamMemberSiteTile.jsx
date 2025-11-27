@@ -16,7 +16,7 @@ import {
 import { getSiteColorHex } from '../../../theme/siteColors';
 import SiteColorPicker from './SiteColorPicker';
 import { updateSiteColor, acceptTeamInvitation, rejectTeamInvitation } from '../../../services/siteService';
-import { getRoleInfo } from '@shared/teamRoles';
+import { getRoleInfo } from '../../../shared/teamRoles';
 import { getSiteUrl, getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
 
 const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate }) => {
@@ -146,9 +146,10 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
         }
     };
 
+    // Team members cannot access editor - redirect to calendar instead
     const handleTileClick = () => {
         if (invitationStatus === 'linked') {
-            navigate(`/studio/editor/${site.id}`);
+            navigate(`/studio/events/${site.id}`);
         }
     };
 
@@ -250,7 +251,7 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
                                     letterSpacing: '0.05em'
                                 }}
                             >
-                                Open Editor
+                                Otwórz kalendarz
                             </Typography>
                         </Box>
                     )}

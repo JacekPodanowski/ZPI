@@ -9,7 +9,7 @@ python manage.py migrate --no-input
 echo "--- Entrypoint: Migrations complete."
 
 echo "--- Entrypoint: Collecting static files..."
-python manage.py collectstatic --no-input --clear
+python manage.py collectstatic --no-input --clear --verbosity 0
 echo "--- Entrypoint: Static files collected."
 
 echo "--- Entrypoint: Ensuring initial admin user exists..."

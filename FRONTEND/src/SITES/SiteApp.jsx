@@ -16,7 +16,7 @@ const fetchPublicSiteConfig = async (identifier) => {
 };
 
 // NOWA, UPROSZCZONA FUNKCJA RENDERUJĄCA
-const renderModule = (module, style, typography, siteId, siteIdentifier, activePageKey) => {
+const renderModule = (module, style, typography, siteId, siteIdentifier, activePageKey, thumbnails = {}) => {
   if (module?.enabled === false) return null;
   
   const moduleType = (module.type || module.id || '').toLowerCase();
@@ -41,6 +41,7 @@ const renderModule = (module, style, typography, siteId, siteIdentifier, activeP
         typography={typography}
         siteId={siteId}
         siteIdentifier={siteIdentifier}
+        thumbnails={thumbnails}
       />
     );
   } else {
@@ -338,6 +339,9 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
     }
   } : null;
 
+  // Pobierz mapę miniaturek z configu
+  const thumbnails = config._thumbnails || {};
+
   // Renderuj moduły specyficzne dla aktywnej strony
   const modulesToRender = activePage.modules
     ?.filter((module) => module?.enabled !== false)
@@ -347,13 +351,13 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
     <main data-site-app-root="true" style={{ fontFamily: typography.textFont }}>
       <style>{fontCss}</style>
       {/* Renderuj automatyczną nawigację jeśli nie ma zdefiniowanej */}
-      {autoNavigation && renderModule(autoNavigation, style, typography, siteId, siteIdentifier, activePageKey)}
+      {autoNavigation && renderModule(autoNavigation, style, typography, siteId, siteIdentifier, activePageKey, thumbnails)}
       
       {/* Renderuj globalne moduły (nawigacja, stopka) */}
-      {globalModules.map((module) => renderModule(module, style, typography, siteId, siteIdentifier, activePageKey))}
+      {globalModules.map((module) => renderModule(module, style, typography, siteId, siteIdentifier, activePageKey, thumbnails))}
       
       {/* Następnie renderuj moduły specyficzne dla strony */}
-      {modulesToRender.map((module) => renderModule(module, style, typography, siteId, siteIdentifier, activePageKey))}
+      {modulesToRender.map((module) => renderModule(module, style, typography, siteId, siteIdentifier, activePageKey, thumbnails))}
     </main>
   );
 };

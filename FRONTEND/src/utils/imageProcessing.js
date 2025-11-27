@@ -4,20 +4,24 @@
  * Automatically scales and optimizes images before upload to reduce backend load.
  * Users can upload large files, but they're automatically scaled down to acceptable sizes.
  * 
+ * For photos: generates both FULL (1920px) and THUMBNAIL (400px) versions
+ * For avatars: generates single version (256px square)
+ * 
  * Usage:
- *   const processedFile = await processImageForUpload(file, 'photo');
- *   const processedAvatar = await processImageForUpload(file, 'avatar');
+ *   const { full, thumbnail } = await processImageForUpload(file, 'photo');
+ *   const { full } = await processImageForUpload(file, 'avatar');
  */
 
-import { SIZE_LIMITS } from '@shared/sizeLimits';
+import { SIZE_LIMITS } from '../shared/sizeLimits';
 
 /**
  * Process an image file for upload
- * Automatically scales down to target dimensions and quality
+ * For photos: generates FULL (1920px) + THUMBNAIL (400px) versions
+ * For avatars: generates single version (256px square)
  * 
  * @param {File} file - The original image file
  * @param {string} type - Type of image: 'photo' or 'avatar'
- * @returns {Promise<File>} Processed image file ready for upload
+ * @returns {Promise<{full: File, thumbnail?: File}>} Processed image files ready for upload
  */
 export async function processImageForUpload(file, type = 'photo') {
     // Validate input
@@ -35,61 +39,70 @@ export async function processImageForUpload(file, type = 'photo') {
         throw new Error(`File too large. Maximum size is ${maxMB}MB.`);
     }
     
-    // Get target dimensions
-    const targetSize = type === 'avatar' 
-        ? SIZE_LIMITS.TARGET_AVATAR_SIZE 
-        : null; // Photos use width/height separately
-    
-    const targetWidth = type === 'avatar' 
-        ? targetSize 
-        : SIZE_LIMITS.TARGET_PHOTO_WIDTH;
-    
-    const targetHeight = type === 'avatar' 
-        ? targetSize 
-        : SIZE_LIMITS.TARGET_PHOTO_HEIGHT;
-    
-    // Get target storage size
-    const maxStoredSize = type === 'avatar'
-        ? SIZE_LIMITS.MAX_AVATAR_STORED_SIZE
-        : SIZE_LIMITS.MAX_PHOTO_STORED_SIZE;
-    
     // Load image
     const img = await loadImage(file);
+    const baseName = file.name.replace(/\.[^/.]+$/, ''); // Remove old extension
     
-    // Calculate new dimensions
-    const { width, height } = calculateDimensions(
-        img.width, 
-        img.height, 
-        targetWidth, 
-        targetHeight,
-        type === 'avatar' // isSquare
-    );
-    
-    // Scale and compress image
-    const processedBlob = await scaleImage(img, width, height, file.type);
-    
-    // Check if we need to compress more
-    let finalBlob = processedBlob;
-    if (processedBlob.size > maxStoredSize) {
-        // Try with lower quality
-        finalBlob = await scaleImage(img, width, height, file.type, 0.7);
+    // For avatars - single square version
+    if (type === 'avatar') {
+        const size = Math.min(SIZE_LIMITS.AVATAR_SIZE, img.width, img.height);
+        const result = await scaleImage(img, size, size, file.type, SIZE_LIMITS.WEBP_QUALITY / 100);
         
-        // If still too large, scale down dimensions more
-        if (finalBlob.size > maxStoredSize) {
-            const reducedWidth = Math.floor(width * 0.8);
-            const reducedHeight = Math.floor(height * 0.8);
-            finalBlob = await scaleImage(img, reducedWidth, reducedHeight, file.type, 0.7);
+        const fullFile = new File(
+            [result.blob],
+            baseName + result.extension,
+            { type: result.mimeType }
+        );
+        
+        return { full: fullFile };
+    }
+    
+    // For photos - generate FULL + THUMBNAIL
+    const fullSize = SIZE_LIMITS.FULL_SIZE;
+    const thumbSize = SIZE_LIMITS.THUMBNAIL_SIZE;
+    const fullQuality = SIZE_LIMITS.WEBP_QUALITY / 100;
+    const thumbQuality = SIZE_LIMITS.WEBP_QUALITY_THUMBNAIL / 100;
+    
+    // Calculate dimensions for full size
+    const fullDims = calculateDimensions(img.width, img.height, fullSize, false);
+    
+    // Calculate dimensions for thumbnail
+    const thumbDims = calculateDimensions(img.width, img.height, thumbSize, false);
+    
+    // Generate both versions in parallel
+    const [fullResult, thumbResult] = await Promise.all([
+        scaleImage(img, fullDims.width, fullDims.height, file.type, fullQuality),
+        scaleImage(img, thumbDims.width, thumbDims.height, file.type, thumbQuality)
+    ]);
+    
+    // Check if full version needs more compression
+    const maxStoredSize = SIZE_LIMITS.MAX_PHOTO_STORED_SIZE;
+    let finalFullResult = fullResult;
+    
+    if (fullResult.blob.size > maxStoredSize) {
+        finalFullResult = await scaleImage(img, fullDims.width, fullDims.height, file.type, 0.7);
+        
+        if (finalFullResult.blob.size > maxStoredSize) {
+            const reducedWidth = Math.floor(fullDims.width * 0.8);
+            const reducedHeight = Math.floor(fullDims.height * 0.8);
+            finalFullResult = await scaleImage(img, reducedWidth, reducedHeight, file.type, 0.7);
         }
     }
     
-    // Create new File object with processed image
-    const processedFile = new File(
-        [finalBlob],
-        file.name,
-        { type: file.type }
+    // Create File objects
+    const fullFile = new File(
+        [finalFullResult.blob],
+        baseName + finalFullResult.extension,
+        { type: finalFullResult.mimeType }
     );
     
-    return processedFile;
+    const thumbnailFile = new File(
+        [thumbResult.blob],
+        baseName + '_thumb' + thumbResult.extension,
+        { type: thumbResult.mimeType }
+    );
+    
+    return { full: fullFile, thumbnail: thumbnailFile };
 }
 
 /**
@@ -120,15 +133,14 @@ function loadImage(file) {
  * Calculate target dimensions maintaining aspect ratio
  * @param {number} originalWidth - Original image width
  * @param {number} originalHeight - Original image height
- * @param {number} maxWidth - Maximum target width
- * @param {number} maxHeight - Maximum target height
+ * @param {number} maxDimension - Maximum size for width OR height
  * @param {boolean} isSquare - If true, crop to square
  * @returns {{ width: number, height: number }}
  */
-function calculateDimensions(originalWidth, originalHeight, maxWidth, maxHeight, isSquare = false) {
+function calculateDimensions(originalWidth, originalHeight, maxDimension, isSquare = false) {
     if (isSquare) {
         // For avatars, use the smaller dimension to ensure it fits
-        const size = Math.min(maxWidth, originalWidth, originalHeight);
+        const size = Math.min(maxDimension, originalWidth, originalHeight);
         return { width: size, height: size };
     }
     
@@ -136,12 +148,9 @@ function calculateDimensions(originalWidth, originalHeight, maxWidth, maxHeight,
     let width = originalWidth;
     let height = originalHeight;
     
-    // Scale down if larger than max dimensions
-    if (width > maxWidth || height > maxHeight) {
-        const widthRatio = maxWidth / width;
-        const heightRatio = maxHeight / height;
-        const ratio = Math.min(widthRatio, heightRatio);
-        
+    // Scale down if larger than max dimension
+    if (width > maxDimension || height > maxDimension) {
+        const ratio = maxDimension / Math.max(width, height);
         width = Math.floor(width * ratio);
         height = Math.floor(height * ratio);
     }
@@ -151,14 +160,15 @@ function calculateDimensions(originalWidth, originalHeight, maxWidth, maxHeight,
 
 /**
  * Scale an image to specified dimensions using canvas
+ * Converts to WebP format for smaller file size
  * @param {HTMLImageElement} img - Source image
  * @param {number} width - Target width
  * @param {number} height - Target height
- * @param {string} mimeType - Output MIME type
- * @param {number} quality - JPEG/WebP quality (0-1)
- * @returns {Promise<Blob>}
+ * @param {string} originalMimeType - Original MIME type (used as fallback)
+ * @param {number} quality - WebP quality (0-1)
+ * @returns {Promise<{blob: Blob, mimeType: string, extension: string}>}
  */
-function scaleImage(img, width, height, mimeType, quality = 0.9) {
+function scaleImage(img, width, height, originalMimeType, quality = 0.9) {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -177,16 +187,27 @@ function scaleImage(img, width, height, mimeType, quality = 0.9) {
         // Draw scaled image
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert to blob
+        // Try WebP first (smaller files, better quality)
         canvas.toBlob(
-            (blob) => {
-                if (blob) {
-                    resolve(blob);
+            (webpBlob) => {
+                if (webpBlob) {
+                    resolve({ blob: webpBlob, mimeType: 'image/webp', extension: '.webp' });
                 } else {
-                    reject(new Error('Failed to create blob'));
+                    // Fallback to JPEG if WebP not supported
+                    canvas.toBlob(
+                        (jpegBlob) => {
+                            if (jpegBlob) {
+                                resolve({ blob: jpegBlob, mimeType: 'image/jpeg', extension: '.jpg' });
+                            } else {
+                                reject(new Error('Failed to create blob'));
+                            }
+                        },
+                        'image/jpeg',
+                        quality
+                    );
                 }
             },
-            mimeType,
+            'image/webp',
             quality
         );
     });
@@ -248,15 +269,15 @@ export function validateImageFile(file, type = 'photo') {
  * @param {File[]} files - Array of image files
  * @param {string} type - Type: 'photo' or 'avatar'
  * @param {function} onProgress - Progress callback (current, total)
- * @returns {Promise<File[]>} Array of processed files
+ * @returns {Promise<Array<{full: File, thumbnail?: File}>>} Array of processed file objects
  */
 export async function batchProcessImages(files, type = 'photo', onProgress = null) {
     const processed = [];
     
     for (let i = 0; i < files.length; i++) {
         try {
-            const processedFile = await processImageForUpload(files[i], type);
-            processed.push(processedFile);
+            const result = await processImageForUpload(files[i], type);
+            processed.push(result);
             
             if (onProgress) {
                 onProgress(i + 1, files.length);

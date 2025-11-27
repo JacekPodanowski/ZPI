@@ -2,15 +2,32 @@
 
 ## Overview
 
-Created a unified system where both backend and frontend share the same configuration for team roles, permissions, and media size limits. This eliminates configuration drift and ensures consistency.
+A unified system where both backend and frontend share the same configuration for team roles, permissions, and media size limits. The source files live in `SHARED_SETTINGS/` and are synced to local folders in each project.
 
 ## Structure
 
 ```
 SHARED_SETTINGS/
-├── teamRoles.js      # Role definitions and permissions
-└── sizeLimits.js     # Media size limits and constraints
+├── sizeLimits.js     # Source - Size limits and constraints
+├── teamRoles.js      # Source - Role definitions and permissions
+├── sync.bat          # Script to sync files (double-click to run)
+└── README.md         # Short instructions
+
+FRONTEND/src/shared/  # Local copy for frontend
+├── sizeLimits.js
+└── teamRoles.js
+
+BACKEND/api/shared/   # Local copy for backend
+├── sizeLimits.js
+└── teamRoles.js
 ```
+
+## Syncing Files
+
+After editing files in `SHARED_SETTINGS/`, run the sync script:
+
+- **Double-click** `SHARED_SETTINGS\sync.bat`, or
+- **Terminal:** `.\SHARED_SETTINGS\sync.bat`
 
 ## Usage
 
@@ -44,8 +61,8 @@ if file.size > BACKEND_MAX_IMAGE_SIZE:
 ### Frontend (JavaScript)
 
 ```javascript
-import { TEAM_ROLES, getRoleInfo } from '@shared/teamRoles';
-import { SIZE_LIMITS } from '@shared/sizeLimits';
+import { TEAM_ROLES, getRoleInfo } from '../shared/teamRoles';
+import { SIZE_LIMITS } from '../shared/sizeLimits';
 import { processImageForUpload } from '../utils/imageProcessing';
 
 // Check permissions
@@ -63,11 +80,6 @@ if (file.size > SIZE_LIMITS.MAX_PHOTO_UPLOAD_SIZE) {
     // Show error
 }
 ```
-
-**Note:** Frontend uses the `@shared` alias configured in `vite.config.js`:
-- **Locally:** Points to `../SHARED_SETTINGS` (outside FRONTEND folder)
-- **Docker:** SHARED_SETTINGS is mounted at `/app/SHARED_SETTINGS` in the container
-- The path is automatically resolved based on `VITE_SHARED_PATH` environment variable
 
 ## Team Roles & Permissions
 
@@ -100,25 +112,32 @@ if (file.size > SIZE_LIMITS.MAX_PHOTO_UPLOAD_SIZE) {
 
 ## Image Processing
 
-### Frontend Auto-Scaling
+### Frontend-Only Processing
 
-Users can upload large files, but the frontend automatically scales them down:
+All image processing happens on the **frontend only**. Backend just validates size and saves.
 
 **Photos:**
 - User can select up to **100MB**
-- Frontend scales to max **1920x1080px**
+- Frontend scales to max **1920px** (longest side)
+- Frontend converts to **WebP** format
 - Result sent to backend: max **25MB**
 
 **Avatars:**
 - User can select up to **25MB**
 - Frontend scales to **512x512px** (square)
+- Frontend converts to **WebP** format
 - Result sent to backend: max **5MB**
+
+**Videos:**
+- No processing - direct upload up to **100MB**
+- Larger videos → suggest YouTube/Vimeo embed
 
 ### Backend Validation
 
-Backend validates as a safety measure:
-- Photos: max **25MB**
-- Avatars: max **5MB**
+Backend only validates size (no conversion):
+- Images: max **25MB** (already WebP from frontend)
+- Avatars: max **5MB** (already WebP from frontend)
+- Videos: max **100MB** (pass-through)
 
 ### Usage Example
 
@@ -144,56 +163,27 @@ try {
 
 ## Migration Notes
 
-1. **Old files removed:**
-   - `FRONTEND/src/constants/teamRoles.js` (moved to SHARED_SETTINGS)
+1. **Source files location:**
+   - `SHARED_SETTINGS/sizeLimits.js` - Edit this for size limit changes
+   - `SHARED_SETTINGS/teamRoles.js` - Edit this for role/permission changes
+   - `SHARED_SETTINGS/sync.bat` - Run this after changes
 
-2. **New files created:**
-   - `BACKEND/api/shared_constants.py` - Backend constants loader
-   - `FRONTEND/src/utils/imageProcessing.js` - Image auto-scaling utility
+2. **Auto-synced files (don't edit directly):**
+   - `FRONTEND/src/shared/sizeLimits.js`
+   - `FRONTEND/src/shared/teamRoles.js`
+   - `BACKEND/api/shared/sizeLimits.js`
+   - `BACKEND/api/shared/teamRoles.js`
 
-3. **Updated files:**
-   - `BACKEND/api/permissions.py` - Now uses shared constants
-   - `BACKEND/site_project/settings.py` - Loads from shared constants
-   - `SHARED_SETTINGS/sizeLimits.js` - Enhanced with avatar/photo separation
-   - `SHARED_SETTINGS/teamRoles.js` - Already correct, no changes needed
+3. **Backend constants loader:**
+   - `BACKEND/api/shared_constants.py` - Parses JS files from `api/shared/`
 
-4. **Frontend imports updated:**
-   - Changed from `../constants/teamRoles` to `@shared/teamRoles`
-   - Added Vite alias `@shared` with dynamic path resolution
-   - Added `SHARED_SETTINGS` volume mount in `docker-compose.yml`
-   - Added `VITE_SHARED_PATH` environment variable for Docker
+4. **Frontend imports use relative paths:**
+   - `import { SIZE_LIMITS } from '../shared/sizeLimits';`
+   - `import { getRoleInfo } from '../../../shared/teamRoles';`
 
 ## Benefits
 
-✅ **Single source of truth** - No configuration drift  
-✅ **Frontend/Backend alignment** - Same permissions everywhere  
-✅ **Better UX** - Users can upload large files, frontend handles scaling  
-✅ **Reduced backend load** - Images pre-processed on client side  
-✅ **Type safety** - Shared constants with validation  
-✅ **Easy maintenance** - Change once, applies everywhere
-
-## Docker Configuration
-
-The `SHARED_SETTINGS` folder needs to be accessible to both backend and frontend containers:
-
-**Frontend (docker-compose.yml):**
-```yaml
-studio-frontend:
-  volumes:
-    - ./FRONTEND:/app
-    - ./SHARED_SETTINGS:/app/SHARED_SETTINGS:ro  # Read-only mount
-    - /app/node_modules
-  environment:
-    - VITE_SHARED_PATH=./SHARED_SETTINGS  # Tells Vite where to find shared settings
-```
-
-**Backend:**
-The backend accesses SHARED_SETTINGS directly from the mounted volume at `/home/appuser/app` which includes the parent directory structure.
-
-**Important:** After changing `docker-compose.yml` volumes, you must recreate the containers:
-```bash
-docker-compose down
-docker-compose up -d
-```
-
-A simple restart (`docker-compose restart`) will NOT pick up volume changes.
+✅ **Single source of truth** - Edit in SHARED_SETTINGS, sync to both projects  
+✅ **Independent deployments** - Frontend and backend can be hosted separately  
+✅ **No runtime dependencies** - Each project has its own copy  
+✅ **Frontend/Backend alignment** - Same permissions everywhere

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from api.models import Site, AvailabilityBlock, Event
+from api.signals import suppress_signal_logging
 
 User = get_user_model()
 
@@ -43,7 +44,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Invalid JSON in YourEasySite_Demo.json: {e}'))
             return
 
-        with transaction.atomic():
+        with transaction.atomic(), suppress_signal_logging():
             # Force delete existing showcase site if it exists (bypass API protection)
             # This is allowed for management commands but protected at API level
             Site.objects.filter(id=1).delete()

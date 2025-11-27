@@ -3,11 +3,29 @@ from django.dispatch import receiver
 from django.conf import settings
 import os
 import logging
+import threading
+from contextlib import contextmanager
 
 from .media_helpers import cleanup_asset_if_unused
 from .models import Booking, MediaUsage, TermsOfService, Event, GoogleCalendarIntegration, GoogleCalendarEvent
 
 logger = logging.getLogger(__name__)
+
+# Thread-local storage to suppress signal logging during bulk operations
+_signal_state = threading.local()
+
+@contextmanager
+def suppress_signal_logging():
+    """Context manager to suppress signal logging during bulk operations like mock site creation."""
+    _signal_state.suppress_logging = True
+    try:
+        yield
+    finally:
+        _signal_state.suppress_logging = False
+
+def _should_log():
+    """Check if signal logging should be performed."""
+    return not getattr(_signal_state, 'suppress_logging', False)
 
 
 @receiver(post_save, sender=Booking)
@@ -67,7 +85,8 @@ def sync_event_to_google_calendar_on_save(sender, instance: Event, created: bool
     Automatically sync Event to Google Calendar when created or updated.
     Only syncs if the site has an active Google Calendar integration.
     """
-    logger.info(f"Signal triggered for Event {instance.id} (created={created})")
+    if _should_log():
+        logger.info(f"Signal triggered for Event {instance.id} (created={created})")
     
     try:
         integration = GoogleCalendarIntegration.objects.filter(
@@ -77,10 +96,12 @@ def sync_event_to_google_calendar_on_save(sender, instance: Event, created: bool
         ).first()
         
         if not integration:
-            logger.info(f"No active Google Calendar integration for site {instance.site.id}")
+            if _should_log():
+                logger.info(f"No active Google Calendar integration for site {instance.site.id}")
             return  # No active integration
         
-        logger.info(f"Found active integration {integration.id} for Event {instance.id}")
+        if _should_log():
+            logger.info(f"Found active integration {integration.id} for Event {instance.id}")
         
         # Import here to avoid circular import
         from .google_calendar_service import google_calendar_service
@@ -111,7 +132,8 @@ def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
     Uses pre_delete to access relationships before CASCADE deletion.
     Only syncs if the site has an active Google Calendar integration.
     """
-    logger.info(f"Pre-delete signal triggered for Event {instance.id}")
+    if _should_log():
+        logger.info(f"Pre-delete signal triggered for Event {instance.id}")
     
     try:
         integration = GoogleCalendarIntegration.objects.filter(
@@ -121,7 +143,8 @@ def sync_event_to_google_calendar_on_delete(sender, instance: Event, **kwargs):
         ).first()
         
         if not integration:
-            logger.info(f"No active Google Calendar integration for site {instance.site.id}")
+            if _should_log():
+                logger.info(f"No active Google Calendar integration for site {instance.site.id}")
             return  # No active integration
         
         # Get the mapping before it's CASCADE deleted
