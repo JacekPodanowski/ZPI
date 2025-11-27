@@ -112,6 +112,48 @@ class BaseAIAgent:
                 logger.error(f"Original response: {response_text[:500]}")
                 raise AIServiceException(f"Failed to parse AI response as JSON: {e}")
 
+    def _search_pexels_images(self, query: str, count: int = 3) -> list:
+        """
+        Search for images on Pexels API.
+        Returns list of image URLs that can be used in site config.
+        """
+        import os
+        import requests
+        
+        pexels_api_key = os.environ.get('PEXELS_API_KEY')
+        if not pexels_api_key:
+            logger.warning("[AI] Pexels API key not configured")
+            return []
+        
+        try:
+            response = requests.get(
+                'https://api.pexels.com/v1/search',
+                headers={'Authorization': pexels_api_key},
+                params={
+                    'query': query,
+                    'per_page': count,
+                    'locale': 'pl-PL'
+                },
+                timeout=10
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            photos = data.get('photos', [])
+            
+            # Return medium-sized URLs for optimal loading
+            return [
+                {
+                    'url': photo['src']['large'],
+                    'caption': photo.get('alt', query),
+                    'photographer': photo.get('photographer', 'Pexels')
+                }
+                for photo in photos
+            ]
+        except Exception as e:
+            logger.error(f"[AI] Pexels search failed: {e}")
+            return []
+
 
 class SiteEditorAgent(BaseAIAgent):
     """
@@ -276,19 +318,43 @@ LUB dla pytań:
 4. NIGDY nie zostawiaj pustych tablic dla timeline[] ani keyHighlights[] w module "about"
 5. Dla modułu "servicesAndPricing" używaj "services", NIE "offers"
 
-🖼️ PRACA Z OBRAZKAMI - INTEGRACJA PEXELS:
-Gdy użytkownik prosi o zmianę obrazów, możesz SUGEROWAĆ wyszukiwanie w Pexels:
-- Dla pojedynczego obrazu: "Otwórz wyszukiwarkę obrazów (tryb precyzyjny) i wyszukaj [opis]"
-- Dla wielu obrazów: "Otwórz bibliotekę obrazów (tryb masowy) i wyszukaj [opis]"
-- System automatycznie otworzy odpowiedni interfejs (modal lub panel boczny)
-- Możesz też bezpośrednio wpisać URL obrazu jeśli użytkownik go podał
+🖼️ PRACA Z OBRAZKAMI - INTEGRACJA PEXELS API:
+Gdy użytkownik prosi o dodanie/zmianę obrazów, MUSISZ użyć prawdziwych URL-i z Pexels.
 
-PRZYKŁADY:
-"zmień obraz w hero na góry" → Sugeruj: "Otwórz wyszukiwarkę i wyszukaj 'mountain landscape'"
-"odśwież wszystkie zdjęcia, temat spa" → Sugeruj: "Otwórz bibliotekę obrazów (tryb masowy) i wyszukaj 'spa wellness'"
-"wstaw ten link: https://..." → Bezpośrednio użyj URL w konfiguracji
+🚨 KRYTYCZNE ZASADY DLA OBRAZKÓW:
+1. NIGDY nie używaj placeholderów typu "/images/placeholder.jpg" lub "https://example.com/image.jpg"
+2. NIGDY nie wymyślaj URL-i - używaj TYLKO prawdziwych URL-i z Pexels
+3. Gdy user mówi "dodaj zdjęcia X" - otrzymasz je w sekcji "📸 DOSTĘPNE OBRAZKI PEXELS"
+4. Użyj DOKŁADNIE tych URL-i które dostajesz - nie modyfikuj ich!
 
-WAŻNE: Nie próbuj generować URL-i Pexels sam - zawsze sugeruj użycie wyszukiwarki!
+FORMAT OBRAZKA W GALERII (GalleryModule.items):
+✅ POPRAWNY:
+{
+  "url": "https://images.pexels.com/photos/XXXXX/pexels-photo-XXXXX.jpeg?auto=compress&cs=tinysrgb&w=1260",
+  "caption": "Opis z Pexels"
+}
+
+❌ BŁĘDNY (NIE UŻYWAJ):
+{
+  "url": "/placeholder.jpg",  ← NIE UŻYWAJ PLACEHOLDERÓW!
+  "alt": "..."  ← Użyj "caption", nie "alt"!
+}
+
+PRZYKŁAD - użytkownik mówi "dodaj 3 zdjęcia psa":
+Dostaniesz w kontekście:
+📸 DOSTĘPNE OBRAZKI PEXELS (query: "dog"):
+1. https://images.pexels.com/photos/123/dog.jpeg - "Golden retriever"
+2. https://images.pexels.com/photos/456/puppy.jpeg - "Cute puppy"
+3. https://images.pexels.com/photos/789/dogs.jpeg - "Dogs playing"
+
+Twoja odpowiedź MUSI zawierać te DOKŁADNE URL-i:
+{
+  "items": [
+    {"url": "https://images.pexels.com/photos/123/dog.jpeg", "caption": "Golden retriever"},
+    {"url": "https://images.pexels.com/photos/456/puppy.jpeg", "caption": "Cute puppy"},
+    {"url": "https://images.pexels.com/photos/789/dogs.jpeg", "caption": "Dogs playing"}
+  ]
+}
 
 🎨 TEKST NA OBRAZACH - AUTOMATYCZNA KOLORYSTYKA:
 Gdy zmieniasz obrazek, ZAWSZE sprawdź czy na nim jest tekst i dostosuj kolory:
@@ -329,6 +395,8 @@ Odpowiedź: {"status": "clarification", "question": "Co dokładnie chcesz zmieni
         chat_history: Optional[list] = None
     ) -> Dict[str, Any]:
         """Process site editing task."""
+        import re
+        
         try:
             logger.info(f"[SiteEditor] Processing: {user_prompt[:50]}...")
             
@@ -338,11 +406,42 @@ Odpowiedź: {"status": "clarification", "question": "Co dokładnie chcesz zmieni
                 context_info += f"\n\n📄 Aktualna strona: {context.get('currentPageName', 'nieznana')} (ID: {context['currentPageId']})"
                 context_info += "\nZmień TYLKO tę stronę, chyba że użytkownik wyraźnie prosi o zmianę innej."
             
+            # Check if user is asking for images and search Pexels
+            pexels_context = ""
+            image_keywords = ['zdjęci', 'obraz', 'foto', 'image', 'photo', 'galeri', 'obrazk']
+            prompt_lower = user_prompt.lower()
+            
+            if any(keyword in prompt_lower for keyword in image_keywords):
+                # Let the LLM-friendly prompt be the search query - Pexels handles it well
+                # Just clean up Polish command words
+                search_query = prompt_lower
+                for word in ['dodaj', 'wstaw', 'zmień', 'zamień', 'ustaw', 'zdjęcia', 'zdjęcie', 'obrazy', 'obraz', 'foto', 'do', 'na', 'w', 'galerii']:
+                    search_query = search_query.replace(word, '')
+                search_query = ' '.join(search_query.split()).strip()
+                
+                if not search_query:
+                    logger.info("[SiteEditor] Empty search query after cleanup, skipping Pexels search")
+                else:
+                    # Determine how many images to fetch
+                    count_match = re.search(r'(\d+)\s*(?:zdjęci|obraz|foto)', prompt_lower)
+                    image_count = int(count_match.group(1)) if count_match else 5
+                    image_count = min(max(image_count, 3), 10)  # Between 3-10 images
+                    
+                    logger.info(f"[SiteEditor] Searching Pexels for: '{search_query}' (count: {image_count})")
+                    pexels_images = self._search_pexels_images(search_query, image_count)
+                    
+                    if pexels_images:
+                        pexels_context = f"\n\n📸 DOSTĘPNE OBRAZKI PEXELS (query: \"{search_query}\"):\n"
+                        for i, img in enumerate(pexels_images, 1):
+                            pexels_context += f"{i}. {img['url']} - \"{img['caption']}\"\n"
+                        pexels_context += "\n⚠️ UŻYJ DOKŁADNIE TYCH URL-i W KONFIGURACJI! NIE WYMYŚLAJ INNYCH!\n"
+                        logger.info(f"[SiteEditor] Found {len(pexels_images)} Pexels images")
+            
             history_context = self._build_history_context(chat_history)
             
             # Put history FIRST so AI reads it before anything else
             user_message = f"{history_context}"
-            user_message += f"\n\nPolecenie użytkownika: '{user_prompt}'{context_info}\n\n"
+            user_message += f"\n\nPolecenie użytkownika: '{user_prompt}'{context_info}{pexels_context}\n\n"
             user_message += f"Aktualna konfiguracja strony:\n{json.dumps(site_config, ensure_ascii=False, indent=2)}"
             
             result = self._call_ai(self.SYSTEM_PROMPT, user_message)

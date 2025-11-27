@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, FormControl, Chip, Alert } from '@mui/material';
 import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Undo as UndoIcon, Replay as ReplayIcon, History as HistoryIcon } from '@mui/icons-material';
 import apiClient from '../../../services/apiClient';
@@ -9,6 +9,7 @@ import { getOrCreateAgent, createNewAgent, getAgents, switchAgent } from '../../
 import { listCheckpoints, restoreCheckpoint } from '../../../services/checkpointService';
 import { savePendingMessage, getPendingMessagesByAgent, removePendingMessage, markMessageAsSent } from '../../../services/messagePersistence';
 import { useToast } from '../../../contexts/ToastContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const AIChatPanel = ({ 
   onClose, 
@@ -34,10 +35,13 @@ const AIChatPanel = ({
   const [checkpointMenuAnchor, setCheckpointMenuAnchor] = useState(null);
   const [pendingMessages, setPendingMessages] = useState([]);
   const listRef = useRef(null);
-  const pollIntervalRef = useRef(null);
+  const wsRef = useRef(null);
+  const wsReconnectTimeoutRef = useRef(null);
+  const pendingTasksRef = useRef(new Map()); // Map<taskId, {loadingMsgId, userMsgId}>
   const isRevertingRef = useRef(false);  // Prevent reload during revert
   
   const showToast = useToast();
+  const { user } = useAuth();
   
   const { site, siteId, currentPageId, selectedModuleId } = useNewEditorStore();
 
@@ -336,10 +340,6 @@ const AIChatPanel = ({
             console.log('[AI] ✓ Checkpoints reloaded');
             
             // Clear any processing state
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
             setIsProcessing(false);
             setProcessingMessageId(null);
             
@@ -431,10 +431,6 @@ const AIChatPanel = ({
     }
     
     // Clear any processing state
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
     setIsProcessing(false);
     setProcessingMessageId(null);
     
@@ -620,8 +616,9 @@ const AIChatPanel = ({
         }
       ]);
 
-      // Start polling for result
-      pollForResult(taskId, loadingMsgId, userMsgId);
+      // Register task for WebSocket response
+      pendingTasksRef.current.set(taskId, { loadingMsgId, userMsgId });
+      console.log('[AI] Task registered for WebSocket:', taskId);
 
     } catch (error) {
       console.error('AI task failed:', error);
@@ -644,213 +641,260 @@ const AIChatPanel = ({
     }
   };
 
-  const pollForResult = async (taskId, loadingMsgId, userMsgId) => {
-    // Clear any existing interval
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-    }
-    
-    pollIntervalRef.current = setInterval(async () => {
+  // WebSocket connection for real-time AI updates
+  const connectWebSocket = useCallback(() => {
+    if (!user?.id || wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+    const backendHost = API_BASE.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '');
+    const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
+
+    console.log('[AI WebSocket] Connecting to:', wsUrl);
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log('[AI WebSocket] Connected');
+    };
+
+    socket.onmessage = (event) => {
       try {
-        // Use apiClient which handles auth automatically
-        const response = await apiClient.get(`/ai-task/${taskId}/poll/`);
-        const result = response.data;
-
-        if (result.status === 'pending') {
-          return; // Keep polling
-        }
-
-        // Got result - stop polling
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-
-        // Remove message from pending list (got response)
-        if (userMsgId) {
-          removePendingMessage(userMsgId);
-          setPendingMessages(prev => prev.filter(m => m.id !== userMsgId));
-          console.log('[AI] Removed message from pending:', userMsgId);
-        }
-
-        // Handle clarification - AI asks for more details
-        if (result.status === 'clarification') {
-          // Update user message with DB ID if available
-          if (result.chat_history_id && userMsgId) {
-            setMessages((prev) =>
-              prev.map(msg =>
-                msg.id === userMsgId
-                  ? { ...msg, db_message_id: result.chat_history_id }
-                  : msg
-              )
-            );
-          }
-
-          setMessages((prev) => 
-            prev.map(msg => 
-              msg.id === loadingMsgId
-                ? { 
-                    ...msg, 
-                    text: result.question,
-                    isLoading: false,
-                    sender: 'ai'
-                  }
-                : msg
-            )
-          );
-          setProcessingMessageId(null);
-          setIsProcessing(false);
-          return;
-        }
-
-        // Handle API call - AI provides instructions for API operation
-        if (result.status === 'api_call') {
-          console.log('[AI] Executing API call:', result.endpoint, result.method);
-          
-          // Update user message with DB ID if available
-          if (result.chat_history_id && userMsgId) {
-            setMessages((prev) =>
-              prev.map(msg =>
-                msg.id === userMsgId
-                  ? { ...msg, db_message_id: result.chat_history_id }
-                  : msg
-              )
-            );
-          }
-          
-          // Automatically execute the API call
-          try {
-            const apiResponse = await apiClient({
-              method: result.method.toLowerCase(),
-              url: result.endpoint,
-              data: result.body
-            });
-            
-            console.log('[AI] API call successful:', apiResponse.data);
-            
-            // If event was created/updated, save event_id to ChatHistory
-            if (result.chat_history_id && apiResponse.data.id) {
-              try {
-                await apiClient.patch(`/chat/history/${result.chat_history_id}/`, {
-                  related_event_id: apiResponse.data.id
-                });
-                console.log(`[AI] ✓ Saved event ID ${apiResponse.data.id} to chat history`);
-              } catch (error) {
-                console.error('[AI] Failed to save event ID to chat history:', error);
-              }
-            }
-            
-            // Determine operation type from method
-            const operationType = result.method.toUpperCase() === 'POST' ? 'Utworzono' : 'Zaktualizowano';
-            const operationVerb = result.method.toUpperCase() === 'POST' ? 'dodane' : 'zaktualizowane';
-            
-            const successMessage = `✓ ${result.explanation}\n\n**${operationType} wydarzenie:**\n- ID: ${apiResponse.data.id}\n- Tytuł: ${apiResponse.data.title}\n- Data: ${apiResponse.data.start_date}${apiResponse.data.end_date ? ` - ${apiResponse.data.end_date}` : ''}\n\nWydarzenie zostało ${operationVerb} w Twoim kalendarzu!`;
-            
-            setMessages((prev) => 
-              prev.map(msg => 
-                msg.id === loadingMsgId
-                  ? { 
-                      ...msg, 
-                      text: successMessage,
-                      isLoading: false,
-                      sender: 'ai',
-                      eventId: apiResponse.data.id  // Store event ID for history context
-                    }
-                  : msg
-              )
-            );
-            
-            // Dispatch event to refresh Events page
-            window.dispatchEvent(new CustomEvent('big-event-created', {
-              detail: apiResponse.data
-            }));
-            
-          } catch (apiError) {
-            console.error('[AI] API call failed:', apiError);
-            
-            const errorMessage = `✗ Nie udało się utworzyć wydarzenia.\n\n**Błąd:** ${apiError.response?.data?.detail || apiError.message}\n\n**Instrukcje do ręcznego dodania:**\n\`\`\`json\n${JSON.stringify(result.body, null, 2)}\n\`\`\`\n\nEndpoint: ${result.method} ${result.endpoint}`;
-            
-            setMessages((prev) => 
-              prev.map(msg => 
-                msg.id === loadingMsgId
-                  ? { 
-                      ...msg, 
-                      text: errorMessage,
-                      isLoading: false,
-                      sender: 'ai'
-                    }
-                  : msg
-              )
-            );
-          }
-          
-          setProcessingMessageId(null);
-          setIsProcessing(false);
-          return;
-        }
-        
-        // Update user message with DB ID if available (for success status)
-        if (result.status === 'success' && result.chat_history_id && userMsgId) {
-          setMessages((prev) =>
-            prev.map(msg =>
-              msg.id === userMsgId
-                ? { ...msg, db_message_id: result.chat_history_id }
-                : msg
-            )
-          );
-          console.log('[AI] Updated user message with DB ID:', result.chat_history_id);
-        }
-
-        // Dispatch custom event (same as WebSocket did)
-        window.dispatchEvent(new CustomEvent('ai-update-received', {
-          detail: { 
-            status: result.status, 
-            explanation: result.explanation || result.error,
-            site: result.site
-          }
-        }));
-
-        // If success, also update the site in editor
-        if (result.status === 'success' && result.site) {
-          // This will be handled by NewEditorPage's event listener
-          window.dispatchEvent(new CustomEvent('ai-site-updated', {
-            detail: result
-          }));
-        }
-
+        const result = JSON.parse(event.data);
+        console.log('[AI WebSocket] Received:', result.status, result.task_id);
+        handleAIResult(result);
       } catch (error) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-        console.error('Polling error:', error);
+        console.error('[AI WebSocket] Parse error:', error);
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error('[AI WebSocket] Error:', error);
+    };
+
+    socket.onclose = (event) => {
+      console.log('[AI WebSocket] Closed, code:', event.code);
+      wsRef.current = null;
+      // Reconnect after 3 seconds if not intentionally closed
+      if (event.code !== 1000) {
+        wsReconnectTimeoutRef.current = setTimeout(() => {
+          connectWebSocket();
+        }, 3000);
+      }
+    };
+
+    wsRef.current = socket;
+  }, [user?.id]);
+
+  // Connect WebSocket on mount
+  useEffect(() => {
+    connectWebSocket();
+
+    return () => {
+      if (wsReconnectTimeoutRef.current) {
+        clearTimeout(wsReconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close(1000); // Normal closure
+      }
+    };
+  }, [connectWebSocket]);
+
+  // Handle AI result from WebSocket
+  const handleAIResult = useCallback(async (result) => {
+    const taskId = result.task_id;
+    const pendingTask = pendingTasksRef.current.get(taskId);
+    
+    if (!pendingTask) {
+      console.log('[AI WebSocket] No pending task for:', taskId);
+      return;
+    }
+
+    const { loadingMsgId, userMsgId } = pendingTask;
+    pendingTasksRef.current.delete(taskId);
+
+    // Remove message from pending list (got response)
+    if (userMsgId) {
+      removePendingMessage(userMsgId);
+      setPendingMessages(prev => prev.filter(m => m.id !== userMsgId));
+      console.log('[AI] Removed message from pending:', userMsgId);
+    }
+
+    // Handle clarification - AI asks for more details
+    if (result.status === 'clarification') {
+      // Update user message with DB ID if available
+      if (result.chat_history_id && userMsgId) {
+        setMessages((prev) =>
+          prev.map(msg =>
+            msg.id === userMsgId
+              ? { ...msg, db_message_id: result.chat_history_id }
+              : msg
+          )
+        );
+      }
+
+      setMessages((prev) => 
+        prev.map(msg => 
+          msg.id === loadingMsgId
+            ? { 
+                ...msg, 
+                text: result.question,
+                isLoading: false,
+                sender: 'ai'
+              }
+            : msg
+        )
+      );
+      setProcessingMessageId(null);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Handle API call - AI provides instructions for API operation
+    if (result.status === 'api_call') {
+      console.log('[AI] Executing API call:', result.endpoint, result.method);
+      
+      // Update user message with DB ID if available
+      if (result.chat_history_id && userMsgId) {
+        setMessages((prev) =>
+          prev.map(msg =>
+            msg.id === userMsgId
+              ? { ...msg, db_message_id: result.chat_history_id }
+              : msg
+          )
+        );
+      }
+      
+      // Automatically execute the API call
+      try {
+        const apiResponse = await apiClient({
+          method: result.method.toLowerCase(),
+          url: result.endpoint,
+          data: result.body
+        });
         
-        // Check if it's a network error - keep message in pending
-        const isNetworkError = error.message?.includes('network') || 
-                              error.message?.includes('timeout') ||
-                              error.code === 'ECONNABORTED' ||
-                              !navigator.onLine;
+        console.log('[AI] API call successful:', apiResponse.data);
         
-        if (!isNetworkError && userMsgId) {
-          // Not a network error - probably server error, remove from pending
-          removePendingMessage(userMsgId);
-          setPendingMessages(prev => prev.filter(m => m.id !== userMsgId));
+        // If event was created/updated, save event_id to ChatHistory
+        if (result.chat_history_id && apiResponse.data.id) {
+          try {
+            await apiClient.patch(`/chat/history/${result.chat_history_id}/`, {
+              related_event_id: apiResponse.data.id
+            });
+            console.log(`[AI] ✓ Saved event ID ${apiResponse.data.id} to chat history`);
+          } catch (error) {
+            console.error('[AI] Failed to save event ID to chat history:', error);
+          }
         }
-        // If network error, keep in pending list for retry
+        
+        // Determine operation type from method
+        const operationType = result.method.toUpperCase() === 'POST' ? 'Utworzono' : 'Zaktualizowano';
+        const operationVerb = result.method.toUpperCase() === 'POST' ? 'dodane' : 'zaktualizowane';
+        
+        const successMessage = `✓ ${result.explanation}\n\n**${operationType} wydarzenie:**\n- ID: ${apiResponse.data.id}\n- Tytuł: ${apiResponse.data.title}\n- Data: ${apiResponse.data.start_date}${apiResponse.data.end_date ? ` - ${apiResponse.data.end_date}` : ''}\n\nWydarzenie zostało ${operationVerb} w Twoim kalendarzu!`;
         
         setMessages((prev) => 
           prev.map(msg => 
             msg.id === loadingMsgId
-              ? { ...msg, text: isNetworkError ? '✗ Brak połączenia' : '✗ Błąd serwera', isLoading: false }
+              ? { 
+                  ...msg, 
+                  text: successMessage,
+                  isLoading: false,
+                  sender: 'ai',
+                  eventId: apiResponse.data.id
+                }
               : msg
           )
         );
-        setProcessingMessageId(null);
-        setIsProcessing(false);
+        
+        // Dispatch event to refresh Events page
+        window.dispatchEvent(new CustomEvent('big-event-created', {
+          detail: apiResponse.data
+        }));
+        
+      } catch (apiError) {
+        console.error('[AI] API call failed:', apiError);
+        
+        const errorMessage = `✗ Nie udało się utworzyć wydarzenia.\n\n**Błąd:** ${apiError.response?.data?.detail || apiError.message}\n\n**Instrukcje do ręcznego dodania:**\n\`\`\`json\n${JSON.stringify(result.body, null, 2)}\n\`\`\`\n\nEndpoint: ${result.method} ${result.endpoint}`;
+        
+        setMessages((prev) => 
+          prev.map(msg => 
+            msg.id === loadingMsgId
+              ? { 
+                  ...msg, 
+                  text: errorMessage,
+                  isLoading: false,
+                  sender: 'ai'
+                }
+              : msg
+          )
+        );
       }
-    }, 2000); // Poll every 2 seconds
-  };
+      
+      setProcessingMessageId(null);
+      setIsProcessing(false);
+      return;
+    }
+    
+    // Update user message with DB ID if available (for success status)
+    if (result.status === 'success' && result.chat_history_id && userMsgId) {
+      setMessages((prev) =>
+        prev.map(msg =>
+          msg.id === userMsgId
+            ? { ...msg, db_message_id: result.chat_history_id }
+            : msg
+        )
+      );
+      console.log('[AI] Updated user message with DB ID:', result.chat_history_id);
+    }
 
-  // Note: We intentionally DON'T clean up pollIntervalRef on unmount
-  // This allows AI to continue processing in background when panel is closed
+    // Handle error status
+    if (result.status === 'error') {
+      setMessages((prev) => 
+        prev.map(msg => 
+          msg.id === loadingMsgId
+            ? { ...msg, text: `✗ ${result.error || 'Błąd przetwarzania'}`, isLoading: false }
+            : msg
+        )
+      );
+      setProcessingMessageId(null);
+      setIsProcessing(false);
+      return;
+    }
 
-  // Listen for AI updates via custom event
+    // Dispatch custom event for editor update
+    window.dispatchEvent(new CustomEvent('ai-update-received', {
+      detail: { 
+        status: result.status, 
+        explanation: result.explanation || result.error,
+        site: result.site
+      }
+    }));
+
+    // If success, also update the site in editor
+    if (result.status === 'success' && result.site) {
+      // This will be handled by NewEditorPage's event listener
+      window.dispatchEvent(new CustomEvent('ai-site-updated', {
+        detail: result
+      }));
+    }
+
+    // Update loading message with success
+    setMessages((prev) => 
+      prev.map(msg => 
+        msg.id === loadingMsgId
+          ? { 
+              ...msg, 
+              text: `✓ ${result.explanation || 'Zmiany wprowadzone pomyślnie'}`,
+              isLoading: false
+            }
+          : msg
+      )
+    );
+    setProcessingMessageId(null);
+    setIsProcessing(false);
+  }, []);
+
+  // Listen for AI updates via custom event (fallback for WebSocket)
   useEffect(() => {
     const handleAIUpdate = (event) => {
       const { status, explanation } = event.detail;

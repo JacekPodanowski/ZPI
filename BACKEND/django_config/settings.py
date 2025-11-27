@@ -467,7 +467,7 @@ AXES_LOCKOUT_TEMPLATE = None  # Use default lockout response
 AXES_LOCKOUT_URL = None  # No redirect, return 403
 AXES_VERBOSE = True  # Enable detailed logging
 AXES_ENABLE_ADMIN = True  # Enable admin interface for axes
-AXES_HANDLER = 'axes.handlers.database.AxesDatabaseHandler'  # Store attempts in database
+AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'  # Use Redis cache for better performance
 
 # --- CAPTCHA Settings ---
 # Show CAPTCHA after N failed login attempts (before full lockout)

@@ -555,6 +555,27 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
         )
         logger.info(f"[Celery] Saved chat history entry {chat_entry.id} for agent {agent.id}")
         
+        # Helper function to send result via WebSocket
+        def send_via_websocket(result_data):
+            """Send result to frontend via WebSocket channel."""
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    group_name = f'ai_updates_{user_id}'
+                    async_to_sync(channel_layer.group_send)(
+                        group_name,
+                        {
+                            'type': 'send_ai_update',
+                            **result_data
+                        }
+                    )
+                    logger.info(f"[Celery] Sent result via WebSocket to {group_name}")
+            except Exception as ws_error:
+                logger.warning(f"[Celery] WebSocket send failed: {ws_error}")
+        
         # CLARIFICATION NEEDED - ask user for more details
         if status == 'clarification':
             question = result.get('question', 'Proszę doprecyzuj co chcesz zmienić')
@@ -569,6 +590,7 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 'chat_history_id': chat_entry.id
             }
             cache.set(cache_key, json.dumps(result_data), timeout=300)
+            send_via_websocket(result_data)
             
             return {
                 "status": "clarification",
@@ -596,6 +618,7 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
                 'chat_history_id': chat_entry.id
             }
             cache.set(cache_key, json.dumps(result_data), timeout=300)
+            send_via_websocket(result_data)
             
             return {
                 "status": "api_call",
@@ -627,6 +650,9 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
         cache.set(cache_key, json.dumps(result_data), timeout=300)
         logger.info(f"[Celery] Result stored in cache with key: {cache_key}")
         
+        # Send via WebSocket for instant delivery
+        send_via_websocket(result_data)
+        
         return {
             "status": "success",
             "prompt": user_prompt,
@@ -645,6 +671,18 @@ def execute_complex_ai_task(self, user_prompt: str, site_config: dict, user_id: 
             'task_id': self.request.id
         }
         cache.set(cache_key, json.dumps(error_data), timeout=300)
+        # Try to send error via WebSocket
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f'ai_updates_{user_id}',
+                    {'type': 'send_ai_update', **error_data}
+                )
+        except Exception:
+            pass
         return {"status": "error", "message": "User not found"}
         
     except Site.DoesNotExist:
