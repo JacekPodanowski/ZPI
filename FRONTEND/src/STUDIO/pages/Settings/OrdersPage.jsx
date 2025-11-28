@@ -48,6 +48,9 @@ const OrdersPage = () => {
   const [trackingStatus, setTrackingStatus] = useState(null); // order ID being tracked
   const [domainStatusData, setDomainStatusData] = useState({});
   const [expandedOrders, setExpandedOrders] = useState({}); // {orderId: statusData}
+  const [editingExpiration, setEditingExpiration] = useState(null); // order ID being edited
+  const [expirationValue, setExpirationValue] = useState('');
+  const [savingExpiration, setSavingExpiration] = useState(false);
 
   const accentColor = theme.colors?.interactive?.default || theme.palette.primary.main;
   const surfaceColor = theme.colors?.bg?.surface || theme.palette.background.paper;
@@ -422,11 +425,11 @@ const OrdersPage = () => {
                       {formatDate(order.created_at)}
                     </Typography>
                   </Box>
-                  {order.domain_expiration_date && (
-                    <Box>
-                      <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block' }}>
-                        Wygasa
-                      </Typography>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block' }}>
+                      Wygasa
+                    </Typography>
+                    {order.domain_expiration_date ? (
                       <Typography 
                         variant="body2" 
                         sx={{ 
@@ -460,8 +463,76 @@ const OrdersPage = () => {
                           </Typography>
                         )}
                       </Typography>
-                    </Box>
-                  )}
+                    ) : editingExpiration === order.id ? (
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <TextField
+                          type="date"
+                          size="small"
+                          value={expirationValue}
+                          onChange={(e) => setExpirationValue(e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                          sx={{ 
+                            width: 160,
+                            '& .MuiOutlinedInput-root': { borderRadius: '8px' }
+                          }}
+                        />
+                        <IconButton 
+                          size="small"
+                          color="primary"
+                          onClick={async () => {
+                            if (!expirationValue) return;
+                            try {
+                              setSavingExpiration(true);
+                              await apiClient.patch(`/domains/orders/${order.id}/`, {
+                                domain_expiration_date: expirationValue
+                              });
+                              setOrders(orders.map(o => 
+                                o.id === order.id 
+                                  ? { ...o, domain_expiration_date: expirationValue } 
+                                  : o
+                              ));
+                              setEditingExpiration(null);
+                              setExpirationValue('');
+                            } catch (err) {
+                              setError('Nie udało się zapisać daty wygaśnięcia.');
+                            } finally {
+                              setSavingExpiration(false);
+                            }
+                          }}
+                          disabled={savingExpiration || !expirationValue}
+                          sx={{ 
+                            bgcolor: alpha(accentColor, 0.1),
+                            '&:hover': { bgcolor: alpha(accentColor, 0.2) }
+                          }}
+                        >
+                          {savingExpiration ? <CircularProgress size={16} /> : <SaveIcon fontSize="small" />}
+                        </IconButton>
+                        <IconButton 
+                          size="small"
+                          onClick={() => { setEditingExpiration(null); setExpirationValue(''); }}
+                          disabled={savingExpiration}
+                        >
+                          <CancelIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ) : (
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => setEditingExpiration(order.id)}
+                        sx={{ 
+                          p: 0, 
+                          minWidth: 'auto',
+                          color: 'warning.main',
+                          textTransform: 'none',
+                          fontWeight: 500,
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        + Ustaw datę
+                      </Button>
+                    )}
+                  </Box>
                 </Box>
 
                 {order.status === 'pending_payment' && (

@@ -799,9 +799,15 @@ class DomainOrderSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'user', 'ovh_order_id', 'ovh_cart_id', 'payment_url',
             'dns_configuration', 'error_message', 'cloudflare_zone_id', 'cloudflare_nameservers',
-            'domain_expiration_date', 'days_until_expiration',
+            'days_until_expiration',
             'created_at', 'updated_at'
         ]
+    
+    def validate_domain_expiration_date(self, value):
+        """Allow setting expiration date only once (when it's currently None)."""
+        if self.instance and self.instance.domain_expiration_date is not None:
+            raise serializers.ValidationError("Data wygaśnięcia może być ustawiona tylko raz.")
+        return value
     
     def get_days_until_expiration(self, obj):
         """Calculate days until domain expiration."""
