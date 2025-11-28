@@ -5314,6 +5314,12 @@ def add_domain_with_cloudflare(request):
             # This will fail with IntegrityError if unique constraint is violated
             expires_at = timezone.now() + timedelta(hours=48)
             
+            # STEP 4.5: Check domain expiration date via Cloudflare (if zone is active)
+            domain_expiration_date = None
+            if zone_status == 'active' and zone_id:
+                from .tasks import fetch_domain_expiration_date
+                domain_expiration_date = fetch_domain_expiration_date(domain_name, zone_id)
+            
             domain_order = DomainOrder.objects.create(
                 user=request.user,
                 site=site,
@@ -5322,6 +5328,7 @@ def add_domain_with_cloudflare(request):
                 cloudflare_nameservers=nameservers,
                 status=zone_status,
                 expires_at=expires_at,
+                domain_expiration_date=domain_expiration_date,
                 dns_configuration={
                     'cloudflare_zone_created': zone_created,
                     'created_at': timezone.now().isoformat()

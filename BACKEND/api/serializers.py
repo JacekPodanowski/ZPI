@@ -784,6 +784,7 @@ class DomainOrderSerializer(serializers.ModelSerializer):
     site_name = serializers.CharField(source='site.name', read_only=True)
     site_identifier = serializers.CharField(source='site.identifier', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    days_until_expiration = serializers.SerializerMethodField()
     
     class Meta:
         model = DomainOrder
@@ -792,13 +793,23 @@ class DomainOrderSerializer(serializers.ModelSerializer):
             'domain_name', 'ovh_order_id', 'ovh_cart_id', 'price', 'status',
             'status_display', 'payment_url', 'dns_configuration', 'target', 'proxy_mode', 'error_message',
             'cloudflare_zone_id', 'cloudflare_nameservers',
+            'domain_expiration_date', 'days_until_expiration',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'user', 'ovh_order_id', 'ovh_cart_id', 'payment_url',
             'dns_configuration', 'error_message', 'cloudflare_zone_id', 'cloudflare_nameservers',
+            'domain_expiration_date', 'days_until_expiration',
             'created_at', 'updated_at'
         ]
+    
+    def get_days_until_expiration(self, obj):
+        """Calculate days until domain expiration."""
+        if not obj.domain_expiration_date:
+            return None
+        today = timezone.now().date()
+        delta = obj.domain_expiration_date - today
+        return delta.days
 
 
 class TestimonialSerializer(serializers.ModelSerializer):

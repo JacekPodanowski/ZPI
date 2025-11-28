@@ -422,6 +422,46 @@ const OrdersPage = () => {
                       {formatDate(order.created_at)}
                     </Typography>
                   </Box>
+                  {order.domain_expiration_date && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block' }}>
+                        Wygasa
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: 500,
+                          color: order.days_until_expiration !== null && order.days_until_expiration <= 30 
+                            ? order.days_until_expiration <= 7 
+                              ? 'error.main' 
+                              : 'warning.main'
+                            : 'inherit'
+                        }}
+                      >
+                        {new Date(order.domain_expiration_date).toLocaleDateString('pl-PL', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                        {order.days_until_expiration !== null && (
+                          <Typography 
+                            component="span" 
+                            variant="caption" 
+                            sx={{ 
+                              ml: 1,
+                              color: order.days_until_expiration <= 7 
+                                ? 'error.main' 
+                                : order.days_until_expiration <= 30 
+                                  ? 'warning.main' 
+                                  : 'text.secondary'
+                            }}
+                          >
+                            ({order.days_until_expiration} dni)
+                          </Typography>
+                        )}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
 
                 {order.status === 'pending_payment' && (

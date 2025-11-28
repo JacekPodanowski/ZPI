@@ -27,6 +27,10 @@ app.conf.beat_schedule = {
         'task': 'api.tasks.cleanup_expired_domain_reservations',
         'schedule': 1800.0,  # 30 minutes in seconds
     },
+    'check-domain-expirations-daily': {
+        'task': 'api.tasks.check_domain_expirations',
+        'schedule': 86400.0,  # 24 hours in seconds (runs daily)
+    },
 }
 app.conf.timezone = 'UTC'
 
