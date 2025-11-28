@@ -14,7 +14,11 @@ import {
   IconButton,
   FormControlLabel,
   Switch,
-  Tooltip
+  Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -34,6 +38,10 @@ import { checkOrderStatus, getOrderHistory, retryDnsConfiguration, trackDomainSt
 const OrdersPage = () => {
   const theme = useTheme();
   const [orders, setOrders] = useState([]);
+  const [allOrders, setAllOrders] = useState([]); // All orders before filtering
+  const [sites, setSites] = useState([]);
+  const [selectedSiteId, setSelectedSiteId] = useState('all');
+  const [loadingSites, setLoadingSites] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(null);
@@ -59,29 +67,42 @@ const OrdersPage = () => {
     loadAllOrders();
   }, []);
 
+  // Filter orders when selectedSiteId changes
+  useEffect(() => {
+    if (selectedSiteId === 'all') {
+      setOrders(allOrders);
+    } else {
+      setOrders(allOrders.filter(order => order.site_id?.toString() === selectedSiteId || order.site?.toString() === selectedSiteId));
+    }
+  }, [selectedSiteId, allOrders]);
+
   const loadAllOrders = async () => {
     try {
       setLoading(true);
+      setLoadingSites(true);
       setError(null);
       
       // Check if user is admin
       const userResponse = await apiClient.get('/users/me/');
       const isAdmin = userResponse.data.is_staff;
       
-      let allOrders = [];
+      let fetchedOrders = [];
+      let fetchedSites = [];
       
       if (isAdmin) {
         // Admin: get ALL orders at once (no site_id filter)
         const ordersResponse = await apiClient.get('/domains/orders/');
-        allOrders = ordersResponse.data;
+        fetchedOrders = ordersResponse.data;
       } else {
         // Regular user: get orders per site
         const sitesResponse = await apiClient.get('/sites/');
-        const sites = Array.isArray(sitesResponse.data) 
+        fetchedSites = Array.isArray(sitesResponse.data) 
           ? sitesResponse.data 
           : sitesResponse.data.results || [];
         
-        for (const site of sites) {
+        setSites(fetchedSites);
+        
+        for (const site of fetchedSites) {
           try {
             const ordersResponse = await apiClient.get('/domains/orders/', {
               params: { site_id: site.id }
@@ -90,11 +111,12 @@ const OrdersPage = () => {
             // Add site info to each order
             const ordersWithSite = ordersResponse.data.map(order => ({
               ...order,
+              site_id: site.id,
               site_name: site.name,
               site_identifier: site.identifier
             }));
             
-            allOrders.push(...ordersWithSite);
+            fetchedOrders.push(...ordersWithSite);
           } catch (err) {
             // Silently skip failed site order loads
           }
@@ -102,13 +124,15 @@ const OrdersPage = () => {
       }
       
       // Sort by creation date (newest first)
-      allOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      fetchedOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       
-      setOrders(allOrders);
+      setAllOrders(fetchedOrders);
+      setOrders(fetchedOrders);
     } catch (err) {
       setError('Nie udało się załadować zamówień. Spróbuj ponownie.');
     } finally {
       setLoading(false);
+      setLoadingSites(false);
     }
   };
 
@@ -338,9 +362,31 @@ const OrdersPage = () => {
         </Box>
       </Box>
       
-      <Typography variant="body2" sx={{ mb: 4, color: theme.colors?.text?.secondary }}>
+      <Typography variant="body2" sx={{ mb: 2, color: theme.colors?.text?.secondary }}>
         Zarządzaj swoimi domenami i ich konfiguracją
       </Typography>
+
+      {/* Site Filter Dropdown */}
+      {sites.length > 0 && (
+        <FormControl sx={{ mb: 3, minWidth: 200 }}>
+          <InputLabel id="site-filter-label">Filtruj po stronie</InputLabel>
+          <Select
+            labelId="site-filter-label"
+            value={selectedSiteId}
+            onChange={(e) => setSelectedSiteId(e.target.value)}
+            label="Filtruj po stronie"
+            disabled={loadingSites}
+            sx={{ borderRadius: '8px' }}
+          >
+            <MenuItem value="all">Wszystkie strony</MenuItem>
+            {sites.map((site) => (
+              <MenuItem key={site.id} value={site.id.toString()}>
+                {site.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }} onClose={() => setError(null)}>

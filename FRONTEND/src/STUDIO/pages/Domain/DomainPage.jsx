@@ -69,7 +69,9 @@ const DomainPage = () => {
             try {
                 setLoadingSites(true);
                 const data = await fetchSites();
-                setSites(data);
+                // Handle both array and {results: []} response formats
+                const sitesArray = Array.isArray(data) ? data : (data.results || []);
+                setSites(sitesArray);
                 if (siteId) {
                     setSelectedSiteId(siteId);
                 }
