@@ -1,9 +1,8 @@
 # Polityka Prywatności
 
 **YourEasySite**  
-NIP: 8993042136  
-E-mail: kontakt@youreasysite.pl  
-Strona internetowa: [YourEasySite.pl](https://youreasysite.pl)
+E-mail: kontakt@YourEasySite.com  
+Strona internetowa: [YourEasySite.com](https://YourEasySite.com)
 
 **Data ostatniej aktualizacji:** 27 listopada 2025 r.
 
@@ -11,7 +10,7 @@ Strona internetowa: [YourEasySite.pl](https://youreasysite.pl)
 
 ## § 1. INFORMACJE OGÓLNE
 
-1. Niniejsza Polityka Prywatności określa zasady przetwarzania i ochrony danych osobowych Użytkowników korzystających z serwisu YourEasySite.pl oraz powiązanych usług.
+1. Niniejsza Polityka Prywatności określa zasady przetwarzania i ochrony danych osobowych Użytkowników korzystających z serwisu YourEasySite.com oraz powiązanych usług.
 
 2. Dokument został przygotowany zgodnie z wymogami:
    - Rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 z dnia 27 kwietnia 2016 r. w sprawie ochrony osób fizycznych w związku z przetwarzaniem danych osobowych (RODO)
@@ -25,11 +24,11 @@ Strona internetowa: [YourEasySite.pl](https://youreasysite.pl)
 
 ## § 2. ADMINISTRATOR DANYCH OSOBOWYCH
 
-1. **Administratorem danych osobowych** jest YourEasySite.com, NIP: 8993042136, z siedzibą w Polsce.
+1. **Administratorem danych osobowych** jest YourEasySite.com z siedzibą w Polsce.
 
 2. **Kontakt z Administratorem:**
-   - E-mail: kontakt@youreasysite.pl
-   - Formularz kontaktowy na stronie: [YourEasySite.pl/kontakt](https://youreasysite.pl/kontakt)
+   - E-mail: kontakt@YourEasySite.com
+   - Formularz kontaktowy na stronie: [YourEasySite.com/kontakt](https://YourEasySite.com/kontakt)
 
 3. Administrator dokłada szczególnej staranności w celu ochrony interesów osób, których dane dotyczą, a w szczególności zapewnia, że zbierane przez niego dane są przetwarzane zgodnie z prawem, zbierane dla oznaczonych i zgodnych z prawem celów oraz przechowywane w bezpieczny sposób.
 
@@ -155,7 +154,7 @@ Masz prawo wnieść skargę do Prezesa Urzędu Ochrony Danych Osobowych (UODO):
 - Infolinia: 606 950 000
 
 ### Jak skorzystać z praw?
-Aby skorzystać z powyższych praw, skontaktuj się z nami: **kontakt@youreasysite.pl**
+Aby skorzystać z powyższych praw, skontaktuj się z nami: **kontakt@YourEasySite.com**
 
 Na Twoje żądanie odpowiemy bez zbędnej zwłoki, nie później niż w ciągu **30 dni** od otrzymania żądania. W przypadku skomplikowanych żądań termin może zostać przedłużony o kolejne 60 dni, o czym zostaniesz poinformowany.
 
@@ -261,7 +260,7 @@ Możemy wysyłać informacje o naszych usługach, promocjach i aktualnościach n
 ### 10.2. Rezygnacja z marketingu
 Możesz w każdej chwili zrezygnować z otrzymywania komunikatów marketingowych:
 - Klikając link „Wypisz się" w stopce każdego maila
-- Kontaktując się z nami: kontakt@youreasysite.pl
+- Kontaktując się z nami: kontakt@YourEasySite.com
 - W ustawieniach swojego konta
 
 ---
@@ -296,7 +295,7 @@ Nie podejmujemy w pełni zautomatyzowanych decyzji, które miałyby istotny wpł
 
 ## § 13. LINKI DO STRON ZEWNĘTRZNYCH
 
-Nasza strona może zawierać linki do innych witryn. Niniejsza Polityka Prywatności dotyczy wyłącznie serwisu YourEasySite.pl. Zachęcamy do zapoznania się z politykami prywatności odwiedzanych stron zewnętrznych.
+Nasza strona może zawierać linki do innych witryn. Niniejsza Polityka Prywatności dotyczy wyłącznie serwisu YourEasySite.com. Zachęcamy do zapoznania się z politykami prywatności odwiedzanych stron zewnętrznych.
 
 ---
 
@@ -319,8 +318,8 @@ Nasza strona może zawierać linki do innych witryn. Niniejsza Polityka Prywatno
 W sprawach związanych z ochroną danych osobowych prosimy o kontakt:
 
 **YourEasySite**  
-E-mail: kontakt@youreasysite.pl  
-Strona: [YourEasySite.pl](https://youreasysite.pl)
+E-mail: kontakt@YourEasySite.com  
+Strona: [YourEasySite.com](https://YourEasySite.com)
 
 Odpowiadamy na wszystkie zapytania w ciągu 30 dni roboczych.
 
