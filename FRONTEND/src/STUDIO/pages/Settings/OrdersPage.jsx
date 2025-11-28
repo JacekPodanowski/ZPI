@@ -483,12 +483,13 @@ const OrdersPage = () => {
                             if (!expirationValue) return;
                             try {
                               setSavingExpiration(true);
-                              await apiClient.patch(`/domains/orders/${order.id}/`, {
+                              const response = await apiClient.patch(`/domains/orders/${order.id}/`, {
                                 domain_expiration_date: expirationValue
                               });
+                              // Use response data to get updated order with days_until_expiration
                               setOrders(orders.map(o => 
                                 o.id === order.id 
-                                  ? { ...o, domain_expiration_date: expirationValue } 
+                                  ? { ...o, ...response.data } 
                                   : o
                               ));
                               setEditingExpiration(null);
