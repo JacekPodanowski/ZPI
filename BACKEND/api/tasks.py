@@ -2172,3 +2172,213 @@ def cleanup_expired_domain_reservations(self):
             raise self.retry(exc=exc, countdown=600)  # Retry after 10 minutes
         return {"status": "error", "message": str(exc)}
 
+
+def fetch_domain_expiration_date(domain_name: str, zone_id: str = None) -> 'date | None':
+    """
+    Fetch domain expiration date from Cloudflare zone details.
+    This is a synchronous helper function (not a Celery task) called during domain addition.
+    
+    Cloudflare provides registrar expiration info for domains registered through them
+    or shows WHOIS expiration data in the zone details.
+    
+    Args:
+        domain_name: Domain name to check (e.g., 'example.com')
+        zone_id: Optional Cloudflare Zone ID
+        
+    Returns:
+        date: Domain expiration date or None if not available
+    """
+    import requests
+    from datetime import datetime, date
+    
+    logger.info(f"[Domain] Fetching expiration date for {domain_name}")
+    
+    try:
+        cf_headers = {
+            'Authorization': f'Bearer {settings.CLOUDFLARE_API_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        
+        # If zone_id is not provided, try to get it
+        if not zone_id:
+            cf_zones = requests.get(
+                f'https://api.cloudflare.com/client/v4/zones?name={domain_name}',
+                headers=cf_headers,
+                timeout=10
+            )
+            if cf_zones.status_code == 200 and cf_zones.json().get('result'):
+                zone_id = cf_zones.json()['result'][0]['id']
+            else:
+                logger.warning(f"[Domain] Could not find zone for {domain_name}")
+                return None
+        
+        # Get zone details - includes registrar_expiry_date if available
+        cf_zone_resp = requests.get(
+            f'https://api.cloudflare.com/client/v4/zones/{zone_id}',
+            headers=cf_headers,
+            timeout=10
+        )
+        
+        if cf_zone_resp.status_code != 200:
+            logger.warning(f"[Domain] Failed to get zone details for {domain_name}")
+            return None
+        
+        zone_data = cf_zone_resp.json().get('result', {})
+        
+        # Try registrar expiry date first (for domains registered via Cloudflare)
+        expiry_date_str = zone_data.get('registrar_expiry_date')
+        
+        if not expiry_date_str:
+            # Try checking domain registration endpoint
+            try:
+                reg_resp = requests.get(
+                    f'https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/registrar/domains/{domain_name}',
+                    headers=cf_headers,
+                    timeout=10
+                )
+                if reg_resp.status_code == 200:
+                    reg_data = reg_resp.json().get('result', {})
+                    expiry_date_str = reg_data.get('expires_at')
+            except Exception as reg_error:
+                logger.debug(f"[Domain] Registrar endpoint not available for {domain_name}: {reg_error}")
+        
+        if expiry_date_str:
+            # Parse ISO 8601 date format
+            try:
+                if 'T' in expiry_date_str:
+                    expiry_dt = datetime.fromisoformat(expiry_date_str.replace('Z', '+00:00'))
+                    expiry_date = expiry_dt.date()
+                else:
+                    expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+                
+                logger.info(f"[Domain] Found expiration date for {domain_name}: {expiry_date}")
+                return expiry_date
+            except ValueError as parse_error:
+                logger.warning(f"[Domain] Could not parse expiration date '{expiry_date_str}': {parse_error}")
+                return None
+        
+        logger.info(f"[Domain] No expiration date available for {domain_name} from Cloudflare")
+        return None
+        
+    except Exception as e:
+        logger.error(f"[Domain] Error fetching expiration date for {domain_name}: {e}")
+        return None
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=3600)
+def check_domain_expirations(self):
+    """
+    Daily task to check domain expiration dates and send notifications.
+    
+    This task:
+    1. Checks all active domains for expiration within 30 days
+    2. Sends in-app notification for domains expiring within 1 month
+    3. Sends email for domains expiring within 1 week
+    4. Updates domain_expiration_date if not set (fetches from Cloudflare)
+    
+    Runs daily at midnight.
+    
+    Returns:
+        dict: Status with counts of notifications and emails sent
+    """
+    from .models import DomainOrder, Notification
+    from django.template.loader import render_to_string
+    from django.utils.html import strip_tags
+    from datetime import timedelta, date
+    
+    logger.info("[Celery] Starting daily domain expiration check")
+    
+    try:
+        today = timezone.now().date()
+        one_week_from_now = today + timedelta(days=7)
+        one_month_from_now = today + timedelta(days=30)
+        
+        notifications_sent = 0
+        emails_sent = 0
+        expirations_updated = 0
+        
+        # Get all active domains
+        active_domains = DomainOrder.objects.filter(
+            status='active'
+        ).select_related('user', 'site')
+        
+        logger.info(f"[Celery] Checking {active_domains.count()} active domains")
+        
+        for order in active_domains:
+            try:
+                # If expiration date is not set, try to fetch it
+                if not order.domain_expiration_date:
+                    expiry_date = fetch_domain_expiration_date(order.domain_name, order.cloudflare_zone_id)
+                    if expiry_date:
+                        order.domain_expiration_date = expiry_date
+                        order.save(update_fields=['domain_expiration_date'])
+                        expirations_updated += 1
+                        logger.info(f"[Celery] Updated expiration date for {order.domain_name}: {expiry_date}")
+                
+                expiry_date = order.domain_expiration_date
+                if not expiry_date:
+                    continue
+                
+                # Check if domain expires within 1 week - send email
+                if expiry_date <= one_week_from_now and not order.expiration_email_sent:
+                    days_left = (expiry_date - today).days
+                    
+                    # Send email
+                    email_context = {
+                        'user_name': order.user.first_name,
+                        'domain_name': order.domain_name,
+                        'expiry_date': expiry_date.strftime('%d.%m.%Y'),
+                        'days_left': days_left,
+                        'site_name': order.site.name if order.site else 'Twoja strona',
+                    }
+                    
+                    email_html = render_to_string('emails/newsletter/domain_expiration_warning.html', email_context)
+                    email_text = strip_tags(email_html)
+                    
+                    send_custom_email_task_async.delay(
+                        recipient_list=[order.user.email],
+                        subject=f'⚠️ Twoja domena {order.domain_name} wygasa za {days_left} dni!',
+                        message=email_text,
+                        html_content=email_html
+                    )
+                    
+                    order.expiration_email_sent = True
+                    order.save(update_fields=['expiration_email_sent'])
+                    emails_sent += 1
+                    logger.info(f"[Celery] Sent expiration email for {order.domain_name} (expires in {days_left} days)")
+                
+                # Check if domain expires within 1 month - send notification
+                elif expiry_date <= one_month_from_now and not order.expiration_notification_sent:
+                    days_left = (expiry_date - today).days
+                    
+                    # Create in-app notification
+                    Notification.objects.create(
+                        user=order.user,
+                        message=f'Twoja domena {order.domain_name} wygasa za {days_left} dni ({expiry_date.strftime("%d.%m.%Y")}). Pamiętaj o jej odnowieniu!',
+                        notification_type='other'
+                    )
+                    
+                    order.expiration_notification_sent = True
+                    order.save(update_fields=['expiration_notification_sent'])
+                    notifications_sent += 1
+                    logger.info(f"[Celery] Sent expiration notification for {order.domain_name} (expires in {days_left} days)")
+                
+            except Exception as e:
+                logger.error(f"[Celery] Error checking expiration for {order.domain_name}: {e}")
+                continue
+        
+        logger.info(f"[Celery] Domain expiration check complete: {notifications_sent} notifications, {emails_sent} emails, {expirations_updated} dates updated")
+        
+        return {
+            "status": "success",
+            "notifications_sent": notifications_sent,
+            "emails_sent": emails_sent,
+            "expirations_updated": expirations_updated
+        }
+        
+    except Exception as exc:
+        logger.exception(f"[Celery] Domain expiration check failed: {exc}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+        return {"status": "error", "message": str(exc)}
+

@@ -1087,6 +1087,19 @@ class DomainOrder(models.Model):
         blank=True,
         help_text='Expiration time for domain reservation (48h from creation if not configured)'
     )
+    domain_expiration_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Domain expiration date from registrar (e.g., from WHOIS lookup)'
+    )
+    expiration_notification_sent = models.BooleanField(
+        default=False,
+        help_text='Whether the 1-month expiration notification was sent'
+    )
+    expiration_email_sent = models.BooleanField(
+        default=False,
+        help_text='Whether the 1-week expiration email was sent'
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
