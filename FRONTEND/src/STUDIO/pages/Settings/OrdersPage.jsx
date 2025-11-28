@@ -96,9 +96,14 @@ const OrdersPage = () => {
       } else {
         // Regular user: get orders per site
         const sitesResponse = await apiClient.get('/sites/');
-        fetchedSites = Array.isArray(sitesResponse.data) 
-          ? sitesResponse.data 
-          : sitesResponse.data.results || [];
+        // Handle different response formats - use only owned_sites
+        if (Array.isArray(sitesResponse.data)) {
+          fetchedSites = sitesResponse.data;
+        } else if (Array.isArray(sitesResponse.data?.results)) {
+          fetchedSites = sitesResponse.data.results;
+        } else if (Array.isArray(sitesResponse.data?.owned_sites)) {
+          fetchedSites = sitesResponse.data.owned_sites;
+        }
         
         setSites(fetchedSites);
         
@@ -810,18 +815,21 @@ const OrdersPage = () => {
                       {editingTarget === order.id ? (
                         <Stack spacing={2}>
                           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                            <TextField
-                              fullWidth
-                              size="small"
-                              value={targetValue}
-                              onChange={(e) => setTargetValue(e.target.value)}
-                              placeholder="np. youtube.com lub twoja-strona.youreasysite.pl"
-                              sx={{ 
-                                '& .MuiOutlinedInput-root': {
-                                  borderRadius: '8px',
-                                }
-                              }}
-                            />
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Wybierz stronę docelową</InputLabel>
+                              <Select
+                                value={targetValue}
+                                onChange={(e) => setTargetValue(e.target.value)}
+                                label="Wybierz stronę docelową"
+                                sx={{ borderRadius: '8px' }}
+                              >
+                                {sites.map((site) => (
+                                  <MenuItem key={site.id} value={`${site.identifier}.youreasysite.pl`}>
+                                    {site.name} ({site.identifier}.youreasysite.pl)
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
                             <IconButton 
                               color="primary"
                               onClick={() => handleSaveTarget(order.id)}

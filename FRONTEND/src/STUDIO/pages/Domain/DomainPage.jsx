@@ -69,8 +69,15 @@ const DomainPage = () => {
             try {
                 setLoadingSites(true);
                 const data = await fetchSites();
-                // Handle both array and {results: []} response formats
-                const sitesArray = Array.isArray(data) ? data : (data.results || []);
+                // Handle different response formats - use only owned_sites
+                let sitesArray = [];
+                if (Array.isArray(data)) {
+                    sitesArray = data;
+                } else if (Array.isArray(data?.results)) {
+                    sitesArray = data.results;
+                } else if (Array.isArray(data?.owned_sites)) {
+                    sitesArray = data.owned_sites;
+                }
                 setSites(sitesArray);
                 if (siteId) {
                     setSelectedSiteId(siteId);
