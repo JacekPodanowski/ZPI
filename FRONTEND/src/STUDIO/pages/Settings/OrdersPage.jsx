@@ -89,24 +89,23 @@ const OrdersPage = () => {
       let fetchedOrders = [];
       let fetchedSites = [];
       
+      // Always fetch sites for the dropdown
+      const sitesResponse = await apiClient.get('/sites/');
+      if (Array.isArray(sitesResponse.data)) {
+        fetchedSites = sitesResponse.data;
+      } else if (Array.isArray(sitesResponse.data?.owned_sites)) {
+        fetchedSites = sitesResponse.data.owned_sites;
+      } else if (Array.isArray(sitesResponse.data?.results)) {
+        fetchedSites = sitesResponse.data.results;
+      }
+      setSites(fetchedSites);
+      
       if (isAdmin) {
         // Admin: get ALL orders at once (no site_id filter)
         const ordersResponse = await apiClient.get('/domains/orders/');
         fetchedOrders = ordersResponse.data;
       } else {
         // Regular user: get orders per site
-        const sitesResponse = await apiClient.get('/sites/');
-        // Handle different response formats - use only owned_sites
-        if (Array.isArray(sitesResponse.data)) {
-          fetchedSites = sitesResponse.data;
-        } else if (Array.isArray(sitesResponse.data?.results)) {
-          fetchedSites = sitesResponse.data.results;
-        } else if (Array.isArray(sitesResponse.data?.owned_sites)) {
-          fetchedSites = sitesResponse.data.owned_sites;
-        }
-        
-        setSites(fetchedSites);
-        
         for (const site of fetchedSites) {
           try {
             const ordersResponse = await apiClient.get('/domains/orders/', {
