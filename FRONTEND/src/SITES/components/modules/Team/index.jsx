@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { TEAM_DEFAULTS, TEAM_DESCRIPTOR } from '../_descriptors';
 import GridTeam from './layouts/GridTeam';
 import { mergeWithDefaults } from '../../../../utils/contentMerge';
@@ -8,7 +9,7 @@ const LAYOUTS = {
   list: GridTeam
 };
 
-const TeamSection = ({ layout = 'grid', content = {}, style, siteId, isEditing, moduleId, pageId, typography }) => {
+const TeamSection = memo(({ layout = 'grid', content = {}, style, siteId, isEditing, moduleId, pageId, typography }) => {
   const defaultOptions = TEAM_DEFAULTS[layout] || TEAM_DEFAULTS.grid;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = mergeWithDefaults(defaults, content);
@@ -25,7 +26,8 @@ const TeamSection = ({ layout = 'grid', content = {}, style, siteId, isEditing, 
       typography={typography}
     />
   );
-};
+});
 
+TeamSection.displayName = 'TeamSection';
 TeamSection.descriptor = TEAM_DESCRIPTOR;
 export default TeamSection;

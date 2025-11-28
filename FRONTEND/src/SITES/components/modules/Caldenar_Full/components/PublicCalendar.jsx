@@ -1,19 +1,31 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import moment from 'moment';
-import 'moment/locale/pl';
+import {
+    format,
+    startOfMonth,
+    endOfMonth,
+    addMonths,
+    subMonths,
+    addDays,
+    getISODay,
+    startOfDay,
+    isSameDay,
+    getDate
+} from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { Box, Fade, IconButton, Paper, Typography } from '@mui/material';
 import { ChevronLeft, ChevronRight } from '@mui/icons-material';
 import { applyOpacity } from '../../../../../utils/color';
 import styles from './PublicCalendar.module.css';
 
-moment.locale('pl');
-
 const DAY_NAMES = ['pn', 'wt', 'śr', 'cz', 'pt', 'so', 'nd'];
 
+// Helper for isSameOrBefore comparison
+const dateSameOrBefore = (date, dateToCompare) => isSameDay(date, dateToCompare) || date < dateToCompare;
+
 const PublicCalendar = ({ eventsByDate, onDayClick, style }) => {
-    const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'));
-    const today = useMemo(() => moment().startOf('day'), []);
+    const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+    const today = useMemo(() => startOfDay(new Date()), []);
 
     const surface = style?.surface || '#ffffff';
     const textColor = style?.text || '#1f2937';
@@ -23,23 +35,25 @@ const PublicCalendar = ({ eventsByDate, onDayClick, style }) => {
     const subtleBorder = style?.colors?.borderSubtle || applyOpacity(borderColor, 0.5);
 
     const { days, monthLabel } = useMemo(() => {
-        const startOfMonth = currentMonth.clone();
-        const endOfMonth = currentMonth.clone().endOf('month');
+        const monthStart = startOfMonth(currentMonth);
+        const monthEnd = endOfMonth(currentMonth);
         const daysInGrid = [];
-        const leadingEmptyDays = (startOfMonth.isoWeekday() + 6) % 7; // convert ISO 1-7 into 0-6 offset
+        const leadingEmptyDays = (getISODay(monthStart) + 6) % 7; // convert ISO 1-7 into 0-6 offset
 
         for (let i = 0; i < leadingEmptyDays; i += 1) {
             daysInGrid.push(null);
         }
 
-        for (let date = startOfMonth.clone(); date.isSameOrBefore(endOfMonth); date.add(1, 'day')) {
-            const key = date.format('YYYY-MM-DD');
+        let date = new Date(monthStart);
+        while (dateSameOrBefore(date, monthEnd)) {
+            const key = format(date, 'yyyy-MM-dd');
             const events = eventsByDate.get(key) || [];
             daysInGrid.push({
-                moment: date.clone(),
-                isToday: date.isSame(today, 'day'),
+                date: new Date(date),
+                isToday: isSameDay(date, today),
                 events
             });
+            date = addDays(date, 1);
         }
 
         const trailingSpaces = (7 - (daysInGrid.length % 7)) % 7;
@@ -47,21 +61,21 @@ const PublicCalendar = ({ eventsByDate, onDayClick, style }) => {
             daysInGrid.push(null);
         }
 
-        const monthTitle = `${startOfMonth.format('MMMM YYYY')}`;
+        const monthTitle = format(monthStart, 'LLLL yyyy', { locale: pl });
 
         return { days: daysInGrid, monthLabel: monthTitle };
     }, [currentMonth, eventsByDate, today]);
 
-    const handlePrevMonth = () => setCurrentMonth((prev) => prev.clone().subtract(1, 'month'));
-    const handleNextMonth = () => setCurrentMonth((prev) => prev.clone().add(1, 'month'));
+    const handlePrevMonth = () => setCurrentMonth((prev) => subMonths(prev, 1));
+    const handleNextMonth = () => setCurrentMonth((prev) => addMonths(prev, 1));
 
     const renderDayCell = (day, index) => {
         if (!day) {
             return <Box key={`empty-${index}`} />;
         }
 
-        const { moment: dayMoment, events, isToday } = day;
-        const formatted = dayMoment.format('YYYY-MM-DD');
+        const { date: dayDate, events, isToday } = day;
+        const formatted = format(dayDate, 'yyyy-MM-dd');
         const hasEvents = events.length > 0;
 
     const background = hasEvents ? applyOpacity(accent, 0.12) : surface;
@@ -71,7 +85,7 @@ const PublicCalendar = ({ eventsByDate, onDayClick, style }) => {
             <Fade in key={formatted} timeout={220}>
                 <Paper
                     elevation={0}
-                    onClick={() => onDayClick?.(dayMoment.clone())}
+                    onClick={() => onDayClick?.(new Date(dayDate))}
                     className={[
                         styles.dayCell,
                         hasEvents ? styles.dayCellAvailable : '',
@@ -91,7 +105,7 @@ const PublicCalendar = ({ eventsByDate, onDayClick, style }) => {
                         className={styles.dayNumber}
                         sx={{ fontWeight: 600, color: color === '#fff' ? '#fff' : color }}
                     >
-                        {dayMoment.date()}
+                        {getDate(dayDate)}
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         {events.slice(0, 2).map((event) => (

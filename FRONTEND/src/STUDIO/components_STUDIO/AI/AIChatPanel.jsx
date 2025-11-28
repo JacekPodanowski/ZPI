@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Box, Typography, Stack, TextField, Button, IconButton, Tooltip, Menu, MenuItem, ListItemText, Divider, Select, Chip, Alert } from '@mui/material';
 import { ChevronRight as ChevronRightIcon, RestartAlt as RestartAltIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Undo as UndoIcon, Replay as ReplayIcon, History as HistoryIcon } from '@mui/icons-material';
 import apiClient from '../../../services/apiClient';
@@ -1333,4 +1333,4 @@ const AIChatPanel = ({
   );
 };
 
-export default AIChatPanel;
+export default memo(AIChatPanel);

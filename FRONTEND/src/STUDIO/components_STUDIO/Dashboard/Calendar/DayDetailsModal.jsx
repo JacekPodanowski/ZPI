@@ -41,7 +41,8 @@ import {
 } from '@mui/icons-material';
 import { BiSolidEraser  } from 'react-icons/bi';
 import { motion, AnimatePresence } from 'framer-motion';
-import moment from 'moment';
+import { format, parseISO } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import PropTypes from 'prop-types';
 import useTheme from '../../../../theme/useTheme';
 import BookingDetailsModal from './BookingDetailsModal';
@@ -560,8 +561,12 @@ const DayDetailsModal = ({
         });
     }, [fieldRefs]);
 
-    const dateFormatted = useMemo(() => moment(date).format('dddd, D MMMM YYYY'), [date]);
-    const dateKey = useMemo(() => moment(date).format('YYYY-MM-DD'), [date]);
+    const parsedDate = useMemo(() => {
+        if (!date) return new Date();
+        return date instanceof Date ? date : parseISO(date);
+    }, [date]);
+    const dateFormatted = useMemo(() => format(parsedDate, 'EEEE, d MMMM yyyy', { locale: pl }), [parsedDate]);
+    const dateKey = useMemo(() => format(parsedDate, 'yyyy-MM-dd'), [parsedDate]);
     const hasSingleSite = useMemo(() => Array.isArray(sites) && sites.length === 1, [sites]);
     const activeSiteId = formData.siteId || selectedSiteId || (Array.isArray(sites) && sites.length ? sites[0].id : null);
     const activeSite = useMemo(() => {
@@ -645,11 +650,17 @@ const DayDetailsModal = ({
     }, [assignmentOptions, formData.assigneeType, formData.assigneeId]);
 
     const dayEvents = useMemo(() => {
-        return events.filter(e => moment(e.date).format('YYYY-MM-DD') === dateKey);
+        return events.filter(e => {
+            const eventDate = e.date instanceof Date ? e.date : parseISO(e.date);
+            return format(eventDate, 'yyyy-MM-dd') === dateKey;
+        });
     }, [events, dateKey]);
 
     const dayAvailability = useMemo(() => {
-        return availabilityBlocks.filter(b => moment(b.date).format('YYYY-MM-DD') === dateKey);
+        return availabilityBlocks.filter(b => {
+            const blockDate = b.date instanceof Date ? b.date : parseISO(b.date);
+            return format(blockDate, 'yyyy-MM-dd') === dateKey;
+        });
     }, [availabilityBlocks, dateKey]);
 
     useEffect(() => {
@@ -1360,8 +1371,8 @@ const DayDetailsModal = ({
             {/* Current time indicator */}
             {(() => {
                 // Check if the displayed date is today
-                const today = moment().format('YYYY-MM-DD');
-                const displayedDate = moment(date).format('YYYY-MM-DD');
+                const today = format(new Date(), 'yyyy-MM-dd');
+                const displayedDate = format(parsedDate, 'yyyy-MM-dd');
                 const isToday = today === displayedDate;
                 
                 if (!isToday) return null;
@@ -2234,7 +2245,7 @@ const DayDetailsModal = ({
                                 <Tooltip title="Usuń wszystkie wydarzenia z tego dnia">
                                     <IconButton
                                         onClick={async () => {
-                                            if (window.confirm(`Czy na pewno chcesz usunąć wszystkie wydarzenia i bloki dostępności z dnia ${moment(date).format('DD MMMM YYYY')}?`)) {
+                                            if (window.confirm(`Czy na pewno chcesz usunąć wszystkie wydarzenia i bloki dostępności z dnia ${format(parsedDate, 'dd MMMM yyyy', { locale: pl })}?`)) {
                                                 try {
                                                     // Delete all events from this day
                                                     for (const event of dayEvents) {

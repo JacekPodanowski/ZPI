@@ -15,7 +15,8 @@ import {
     EventNote as EventIcon
 } from '@mui/icons-material';
 import PropTypes from 'prop-types';
-import moment from 'moment';
+import { format, parseISO, isBefore, isSameDay, startOfWeek, endOfWeek, addDays, startOfDay } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 const TemplateConfirmationModal = ({
     open,
@@ -28,26 +29,29 @@ const TemplateConfirmationModal = ({
     // Don't render anything if modal is not open or data is missing
     if (!open || !template || !targetDate) return null;
 
+    // Helper functions
+    const isSameOrAfter = (date, dateToCompare) => isSameDay(date, dateToCompare) || !isBefore(date, dateToCompare);
+
     const templateType = template.day_abbreviation ? 'day' : 'week';
     const willOverwrite = affectedEvents.length > 0;
     
     // Check if target date is in the past
-    const targetMoment = moment(targetDate);
-    const isTargetPast = targetMoment.isBefore(moment(), 'day');
-    const isToday = targetMoment.isSame(moment(), 'day');
+    const targetDateObj = typeof targetDate === 'string' ? parseISO(targetDate) : targetDate;
+    const today = startOfDay(new Date());
+    const isTargetPast = isBefore(targetDateObj, today);
+    const isToday = isSameDay(targetDateObj, today);
     
     // Calculate available (non-past) days for week templates
     let availableDayCount = 0;
     let allDaysInPast = false;
     
     if (templateType === 'week') {
-        const startOfWeek = targetMoment.clone().startOf('isoWeek');
-        const today = moment().startOf('day');
+        const weekStart = startOfWeek(targetDateObj, { weekStartsOn: 1 });
         
         // Count how many days in the week are today or in the future
         for (let i = 0; i < 7; i++) {
-            const day = startOfWeek.clone().add(i, 'days');
-            if (day.isSameOrAfter(today, 'day')) {
+            const day = addDays(weekStart, i);
+            if (isSameOrAfter(day, today)) {
                 availableDayCount++;
             }
         }
@@ -61,12 +65,12 @@ const TemplateConfirmationModal = ({
     // Format date based on template type
     let formattedDate;
     if (templateType === 'day') {
-        formattedDate = moment(targetDate).format('DD MMMM YYYY');
+        formattedDate = format(targetDateObj, 'dd MMMM yyyy', { locale: pl });
     } else {
         // For week template, show date range
-        const startOfWeek = moment(targetDate).startOf('isoWeek');
-        const endOfWeek = moment(targetDate).endOf('isoWeek');
-        formattedDate = `${startOfWeek.format('DD MMMM')} - ${endOfWeek.format('DD MMMM YYYY')}`;
+        const weekStart = startOfWeek(targetDateObj, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(targetDateObj, { weekStartsOn: 1 });
+        formattedDate = `${format(weekStart, 'dd MMMM', { locale: pl })} - ${format(weekEnd, 'dd MMMM yyyy', { locale: pl })}`;
     }
 
     return (

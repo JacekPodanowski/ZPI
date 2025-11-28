@@ -421,6 +421,20 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
 
+# Optymalizacja wydajności workera
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 500  # Restart workera co 500 tasków (zapobiega memory leaks)
+CELERY_TASK_ACKS_LATE = True  # Bezpieczniejsze - task jest "ack" dopiero po wykonaniu
+CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Ponów task jeśli worker umarł
+
+# Kolejki priorytetowe - separacja tasków według typu
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_ROUTES = {
+    'api.tasks.send_*': {'queue': 'emails'},
+    'api.tasks.sync_cloudflare_domain_status': {'queue': 'low_priority'},
+    'api.tasks.cleanup_*': {'queue': 'low_priority'},
+    'api.tasks.process_image_*': {'queue': 'high_priority'},
+}
+
 # Celery Beat Schedule (periodic tasks)
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
