@@ -1856,10 +1856,61 @@ class PublicSiteListView(generics.ListAPIView):
 
 @extend_schema(tags=['Public Sites'])
 class PublicSiteView(generics.RetrieveAPIView):
+    """
+    Public endpoint to fetch site configuration by identifier.
+    
+    Supports two lookup modes:
+    1. Standard lookup by site identifier (e.g., "1-pokazowa")
+    2. Fallback lookup by custom domain name (e.g., "bohdanpage.eu")
+       - Used when a custom domain proxies to a site via Cloudflare Worker
+       - Checks DomainOrder for active domain with matching domain_name
+    """
     queryset = Site.objects.select_related('owner')
     serializer_class = PublicSiteSerializer
     permission_classes = [AllowAny]
     lookup_field = 'identifier'
+
+    def get_object(self):
+        identifier = self.kwargs.get('identifier')
+        
+        # First, try standard lookup by identifier
+        site = Site.objects.filter(identifier=identifier).select_related('owner').first()
+        if site:
+            return site
+        
+        # Fallback: Check if identifier is a custom domain name
+        # This happens when a custom domain (e.g., bohdanpage.eu) proxies to a site
+        # and the frontend extracts the hostname as identifier
+        domain_order = DomainOrder.objects.filter(
+            domain_name=identifier,
+            status=DomainOrder.OrderStatus.ACTIVE
+        ).select_related('site').first()
+        
+        if domain_order:
+            # Case 1: Domain has a linked site
+            if domain_order.site:
+                logger.info(f"[PublicSiteView] Fallback: Found site via domain '{identifier}' -> site '{domain_order.site.identifier}'")
+                return domain_order.site
+            
+            # Case 2: Domain has no linked site but has a target URL
+            # Extract site identifier from target (e.g., "1-pokazowa.youreasysite.pl" -> "1-pokazowa")
+            if domain_order.target:
+                target = domain_order.target
+                # Normalize target: remove protocol and trailing slash
+                # e.g., "https://1-pokazowa.youreasysite.pl/" -> "1-pokazowa.youreasysite.pl"
+                target = target.replace('https://', '').replace('http://', '').rstrip('/')
+                
+                # Check if target is a youreasysite.pl subdomain
+                if target.endswith('.youreasysite.pl'):
+                    target_identifier = target.replace('.youreasysite.pl', '')
+                    site = Site.objects.filter(identifier=target_identifier).select_related('owner').first()
+                    if site:
+                        logger.info(f"[PublicSiteView] Fallback: Found site via domain target '{identifier}' -> '{target}' -> site '{site.identifier}'")
+                        return site
+        
+        # If still not found, raise 404 using DRF's Http404
+        from rest_framework.exceptions import NotFound
+        raise NotFound(detail=f"Site with identifier '{identifier}' not found")
 
 
 @extend_schema(tags=['Public Sites'])
@@ -4684,8 +4735,9 @@ def get_domain_orders(request):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def update_domain_order(request, order_id):
-    """Update domain order configuration (e.g., target URL, proxy mode)."""
+    """Update domain order configuration (e.g., target URL, proxy mode, expiration date)."""
     from .tasks import purge_cloudflare_cache, reconfigure_domain_target
+    from datetime import datetime
     
     try:
         # Get the order
@@ -4704,6 +4756,26 @@ def update_domain_order(request, order_id):
     # Allow updating target and proxy_mode fields
     updated = False
     needs_dns_reconfig = False
+    
+    # Handle domain_expiration_date - can only be set once
+    domain_expiration_date = request.data.get('domain_expiration_date')
+    if domain_expiration_date is not None:
+        if order.domain_expiration_date is not None:
+            return Response(
+                {'error': 'Data wygaśnięcia może być ustawiona tylko raz.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            # Parse date string (YYYY-MM-DD format from date input)
+            parsed_date = datetime.strptime(domain_expiration_date, '%Y-%m-%d').date()
+            order.domain_expiration_date = parsed_date
+            updated = True
+            logger.info(f"[Domain Order] Set expiration date for {order.domain_name}: {parsed_date}")
+        except (ValueError, TypeError) as e:
+            return Response(
+                {'error': f'Nieprawidłowy format daty: {e}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     target = request.data.get('target')
     if target is not None and target != order.target:

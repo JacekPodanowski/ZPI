@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path, include, re_path
 from rest_framework.routers import DefaultRouter
 from .payment_views import (
     create_payment,
@@ -133,7 +133,8 @@ urlpatterns = [
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
     path('public-sites/', PublicSiteListView.as_view(), name='public_sites_list'),
     path('public-sites/by-id/<int:site_id>/', PublicSiteByIdView.as_view(), name='public_site_detail_by_id'),
-    path('public-sites/<slug:identifier>/', PublicSiteView.as_view(), name='public_site_detail'),
+    # Use path converter that allows dots for domain names (e.g., bohdanpage.eu)
+    re_path(r'^public-sites/(?P<identifier>[\w.-]+)/$', PublicSiteView.as_view(), name='public_site_detail'),
     path('demo-config/', demo_config_view, name='demo_config'),
     path('sites/<int:site_id>/publish/', publish_site, name='publish-site'),
     path('upload/', FileUploadView.as_view(), name='file-upload'),
