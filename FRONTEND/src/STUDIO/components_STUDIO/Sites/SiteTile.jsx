@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Box, Typography, IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button, Divider, ListSubheader, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -986,4 +986,4 @@ const SiteTile = ({ site, index, onSiteDeleted }) => {
     );
 };
 
-export default SiteTile;
+export default memo(SiteTile);

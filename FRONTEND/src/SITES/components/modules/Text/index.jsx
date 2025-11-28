@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { TEXT_DEFAULTS } from './defaults';
 import { TEXT_DESCRIPTOR } from './descriptor';
 import BlockText from './layouts/BlockText';
@@ -10,7 +11,7 @@ const LAYOUTS = {
   centered: CenteredText
 };
 
-const TextModule = ({ layout = 'basic', content = {}, style, isEditing, moduleId, pageId, typography }) => {
+const TextModule = memo(({ layout = 'basic', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   const defaultOptions = TEXT_DEFAULTS[layout] || TEXT_DEFAULTS.basic;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = { ...defaults, ...content };
@@ -26,7 +27,8 @@ const TextModule = ({ layout = 'basic', content = {}, style, isEditing, moduleId
       typography={typography}
     />
   );
-};
+});
 
+TextModule.displayName = 'TextModule';
 TextModule.descriptor = TEXT_DESCRIPTOR;
 export default TextModule;

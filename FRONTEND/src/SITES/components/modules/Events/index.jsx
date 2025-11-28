@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import { EVENTS_DEFAULTS, EVENTS_DESCRIPTOR } from './descriptor';
 import ListEvents from './layouts/ListEvents';
 import GridEvents from './layouts/GridEvents';
@@ -36,7 +36,7 @@ const normalizeBigEvent = (event = {}) => {
   };
 };
 
-const EventsSection = ({ layout = 'list', content = {}, style, siteIdentifier, siteId, isEditing = false, moduleId, pageId }) => {
+const EventsSection = memo(({ layout = 'list', content = {}, style, siteIdentifier, siteId, isEditing = false, moduleId, pageId }) => {
   const defaultOptions = EVENTS_DEFAULTS[layout] || EVENTS_DEFAULTS.list;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = useMemo(() => ({ ...defaults, ...content }), [defaults, content]);
@@ -140,7 +140,8 @@ const EventsSection = ({ layout = 'list', content = {}, style, siteIdentifier, s
       pageId={pageId}
     />
   );
-};
+});
 
+EventsSection.displayName = 'EventsSection';
 EventsSection.descriptor = EVENTS_DESCRIPTOR;
 export default EventsSection;

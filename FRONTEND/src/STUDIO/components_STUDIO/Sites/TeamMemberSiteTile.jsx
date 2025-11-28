@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Box, Typography, IconButton, Menu, MenuItem, CircularProgress, Tooltip } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -706,4 +706,4 @@ const TeamMemberSiteTile = ({ site, teamMemberInfo, index, onInvitationUpdate })
     );
 };
 
-export default TeamMemberSiteTile;
+export default memo(TeamMemberSiteTile);

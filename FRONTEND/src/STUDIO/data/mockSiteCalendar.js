@@ -1,14 +1,14 @@
-import moment from 'moment';
+import { format, addDays } from 'date-fns';
 
 export const MOCK_SITE_IDENTIFIER = 'mock-site-001';
 
-const today = moment();
+const today = new Date();
 
 export const MOCK_CREATOR_CALENDAR = {
     events: [
         {
             id: 'event-1',
-            date: today.format('YYYY-MM-DD'),
+            date: format(today, 'yyyy-MM-dd'),
             start: '09:30',
             end: '10:45',
             title: 'Sesja oddechowa',
@@ -20,7 +20,7 @@ export const MOCK_CREATOR_CALENDAR = {
         },
         {
             id: 'event-2',
-            date: today.clone().add(1, 'day').format('YYYY-MM-DD'),
+            date: format(addDays(today, 1), 'yyyy-MM-dd'),
             start: '18:00',
             end: '19:30',
             title: 'Wieczorna joga',
@@ -33,7 +33,7 @@ export const MOCK_CREATOR_CALENDAR = {
     availabilityBlocks: [
         {
             id: 'avail-1',
-            date: today.format('YYYY-MM-DD'),
+            date: format(today, 'yyyy-MM-dd'),
             start: '12:00',
             end: '15:00',
             durations: ['30m', '45m', '60m'],
@@ -44,7 +44,7 @@ export const MOCK_CREATOR_CALENDAR = {
         {
             id: 'ext-1',
             siteName: 'Mindful Studio',
-            date: today.format('YYYY-MM-DD'),
+            date: format(today, 'yyyy-MM-dd'),
             start: '16:00',
             end: '17:00',
             title: 'Warsztat zespołu',
@@ -55,7 +55,7 @@ export const MOCK_CREATOR_CALENDAR = {
         {
             id: 'weekday',
             name: 'Szablon tygodniowy',
-            days: [today.format('YYYY-MM-DD')]
+            days: [format(today, 'yyyy-MM-dd')]
         }
     ]
 };
@@ -63,22 +63,22 @@ export const MOCK_CREATOR_CALENDAR = {
 export const MOCK_PUBLIC_CALENDAR = [
     {
         id: 'public-1',
-        date: today.format('YYYY-MM-DD'),
+        date: format(today, 'yyyy-MM-dd'),
         title: 'Sesja oddechowa 1:1'
     },
     {
         id: 'public-2',
-        date: today.format('YYYY-MM-DD'),
+        date: format(today, 'yyyy-MM-dd'),
         title: 'Zajęcia grupowe Yin Joga'
     },
     {
         id: 'public-3',
-        date: today.clone().add(2, 'day').format('YYYY-MM-DD'),
+        date: format(addDays(today, 2), 'yyyy-MM-dd'),
         title: 'Warsztat Mindfulness'
     },
     {
         id: 'public-4',
-        date: today.clone().add(4, 'day').format('YYYY-MM-DD'),
+        date: format(addDays(today, 4), 'yyyy-MM-dd'),
         title: 'Weekend regeneracyjny'
     }
 ];

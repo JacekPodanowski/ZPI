@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { GALLERY_DEFAULTS } from './defaults';
 import { GALLERY_DESCRIPTOR } from './descriptor';
 import GridGallery from './layouts/GridGallery';
@@ -15,14 +16,15 @@ const LAYOUTS = {
   fade: FadeGallery
 };
 
-const GallerySection = ({ layout = 'grid', content = {}, style, isEditing, moduleId, pageId }) => {
+const GallerySection = memo(({ layout = 'grid', content = {}, style, isEditing, moduleId, pageId }) => {
   const defaultOptions = GALLERY_DEFAULTS[layout] || GALLERY_DEFAULTS.grid;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
   const mergedContent = mergeWithDefaults(defaults, content);
   
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.grid;
   return <LayoutComponent content={mergedContent} style={style} isEditing={isEditing} moduleId={moduleId} pageId={pageId} />;
-};
+});
 
+GallerySection.displayName = 'GallerySection';
 GallerySection.descriptor = GALLERY_DESCRIPTOR;
 export default GallerySection;

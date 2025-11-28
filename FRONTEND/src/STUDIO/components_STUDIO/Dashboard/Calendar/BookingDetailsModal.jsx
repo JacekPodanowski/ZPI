@@ -23,7 +23,7 @@ import {
     Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import moment from 'moment';
+import { format, parseISO } from 'date-fns';
 import PropTypes from 'prop-types';
 import { useToast } from '../../../../contexts/ToastContext';
 import { cancelBooking, contactClient } from '../../../../services/eventService';
@@ -127,7 +127,7 @@ const BookingDetailsModal = ({ open, onClose, booking, onBookingUpdated }) => {
                         Termin
                     </Typography>
                     <Typography variant="body2">
-                        {moment(booking.event_details?.start_time).format('DD.MM.YYYY, HH:mm')} - {moment(booking.event_details?.end_time).format('HH:mm')}
+                        {format(parseISO(booking.event_details?.start_time), 'dd.MM.yyyy, HH:mm')} - {format(parseISO(booking.event_details?.end_time), 'HH:mm')}
                     </Typography>
                 </Box>
 

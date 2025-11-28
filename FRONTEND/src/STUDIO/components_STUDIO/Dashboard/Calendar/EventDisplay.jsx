@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { Box, Typography, Tooltip } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PropTypes from 'prop-types';
@@ -9,7 +10,7 @@ import { getSiteColorHex } from '../../../../theme/siteColors';
 export const COLLAPSE_THRESHOLD = 4;
 
 // Dot view for Site Management mode
-export const EventDot = ({ event, siteColor }) => (
+export const EventDot = memo(({ event, siteColor }) => (
     <Tooltip title={`${event.title} - ${event.start_time || event.time}`} arrow>
         <Box
             sx={{
@@ -26,7 +27,9 @@ export const EventDot = ({ event, siteColor }) => (
             }}
         />
     </Tooltip>
-);
+));
+
+EventDot.displayName = 'EventDot';
 
 EventDot.propTypes = {
     event: PropTypes.shape({
@@ -38,7 +41,7 @@ EventDot.propTypes = {
 };
 
 // Simplified Event Block - max 3 events shown, rest collapsed
-export const EventBlock = ({ 
+export const EventBlock = memo(({ 
     event, 
     isSelectedSite, 
     onClick, 
@@ -112,7 +115,9 @@ export const EventBlock = ({
             </Typography>
         </Box>
     );
-};
+});
+
+EventBlock.displayName = 'EventBlock';
 
 EventBlock.propTypes = {
     event: PropTypes.shape({
@@ -138,7 +143,7 @@ EventBlock.defaultProps = {
 };
 
 // Collapsed events display (4+ events)
-export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, siteColors = [] }) => {
+export const CollapsedEventsBlock = memo(({ eventCount, visibleCount = 3, onClick, siteColors = [] }) => {
     // Deduplicate site colors - only show unique colors
     const uniqueColors = [...new Set(siteColors.filter(Boolean))];
     const additionalCount = eventCount - visibleCount;
@@ -227,7 +232,9 @@ export const CollapsedEventsBlock = ({ eventCount, visibleCount = 3, onClick, si
             </Box>
         </Box>
     );
-};
+});
+
+CollapsedEventsBlock.displayName = 'CollapsedEventsBlock';
 
 CollapsedEventsBlock.propTypes = {
     eventCount: PropTypes.number.isRequired,

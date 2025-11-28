@@ -855,7 +855,6 @@ const TeamPage = () => {
                 loading={reportDialog.loading}
                 rows={reportDialog.rows}
                 total={reportDialog.total}
-                limit={reportDialog.limit}
                 hostLabel={reportDialog.hostLabel}
                 error={reportDialog.error}
                 onDownload={handleReportDownload}

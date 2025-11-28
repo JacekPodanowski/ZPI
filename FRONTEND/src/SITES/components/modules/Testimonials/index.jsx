@@ -1,10 +1,11 @@
+import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import { TESTIMONIALS_DEFAULTS } from './defaults';
 import { TESTIMONIALS_DESCRIPTOR } from './descriptor';
 import CardsLayout from './layouts/CardsLayout';
 import CarouselLayout from './layouts/CarouselLayout';
 
-const Testimonials = ({ content = {}, layout = 'cards', siteId, siteConfig, isEditing, moduleId, pageId, typography }) => {
+const Testimonials = memo(({ content = {}, layout = 'cards', siteId, siteConfig, isEditing, moduleId, pageId, typography }) => {
     // Merge defaults with provided content
     const defaults = TESTIMONIALS_DEFAULTS[layout] || TESTIMONIALS_DEFAULTS.cards;
     const mergedContent = { ...defaults, ...content };
@@ -27,7 +28,9 @@ const Testimonials = ({ content = {}, layout = 'cards', siteId, siteConfig, isEd
             typography={typography}
         />
     );
-};
+});
+
+Testimonials.displayName = 'Testimonials';
 
 Testimonials.propTypes = {
     content: PropTypes.object,

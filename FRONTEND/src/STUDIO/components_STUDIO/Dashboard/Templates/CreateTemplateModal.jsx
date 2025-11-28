@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -11,11 +11,13 @@ import {
     Alert
 } from '@mui/material';
 import PropTypes from 'prop-types';
-import moment from 'moment';
-import 'moment/locale/pl';
+import { format, parseISO, isSameDay, startOfWeek, endOfWeek, isBefore, isAfter } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { getSiteColorHex } from '../../../../theme/siteColors';
 
-moment.locale('pl');
+// Helper functions
+const isSameOrAfter = (date, dateToCompare) => isSameDay(date, dateToCompare) || isAfter(date, dateToCompare);
+const isSameOrBefore = (date, dateToCompare) => isSameDay(date, dateToCompare) || isBefore(date, dateToCompare);
 
 const CreateTemplateModal = ({
     open,
@@ -31,6 +33,8 @@ const CreateTemplateModal = ({
 
     if (!open || !selectedDate) return null;
 
+    const selectedDateObj = typeof selectedDate === 'string' ? parseISO(selectedDate) : selectedDate;
+
     const handleConfirm = () => {
         if (!templateName.trim()) return;
         onConfirm(templateName.trim());
@@ -44,31 +48,40 @@ const CreateTemplateModal = ({
 
     // Format date display
     const formattedDate = templateType === 'day' 
-        ? moment(selectedDate).format('DD MMMM YYYY')
-        : `Tydzień ${moment(selectedDate).format('DD MMMM')} - ${moment(selectedDate).endOf('isoWeek').format('DD MMMM YYYY')}`;
+        ? format(selectedDateObj, 'dd MMMM yyyy', { locale: pl })
+        : `Tydzień ${format(selectedDateObj, 'dd MMMM', { locale: pl })} - ${format(endOfWeek(selectedDateObj, { weekStartsOn: 1 }), 'dd MMMM yyyy', { locale: pl })}`;
 
     // Get events for display
     const displayEvents = templateType === 'day'
-        ? events.filter(e => moment(e.date).isSame(selectedDate, 'day'))
+        ? events.filter(e => {
+            const eventDate = typeof e.date === 'string' ? parseISO(e.date) : e.date;
+            return isSameDay(eventDate, selectedDateObj);
+        })
         : events.filter(e => {
-            const eventMoment = moment(e.date);
-            return eventMoment.isSameOrAfter(moment(selectedDate).startOf('isoWeek')) &&
-                   eventMoment.isSameOrBefore(moment(selectedDate).endOf('isoWeek'));
+            const eventDate = typeof e.date === 'string' ? parseISO(e.date) : e.date;
+            const weekStart = startOfWeek(selectedDateObj, { weekStartsOn: 1 });
+            const weekEnd = endOfWeek(selectedDateObj, { weekStartsOn: 1 });
+            return isSameOrAfter(eventDate, weekStart) && isSameOrBefore(eventDate, weekEnd);
         });
 
     // Get availability blocks for display
     const displayAvailability = templateType === 'day'
-        ? availabilityBlocks.filter(block => moment(block.date).isSame(selectedDate, 'day'))
+        ? availabilityBlocks.filter(block => {
+            const blockDate = typeof block.date === 'string' ? parseISO(block.date) : block.date;
+            return isSameDay(blockDate, selectedDateObj);
+        })
         : availabilityBlocks.filter(block => {
-            const blockMoment = moment(block.date);
-            return blockMoment.isSameOrAfter(moment(selectedDate).startOf('isoWeek')) &&
-                   blockMoment.isSameOrBefore(moment(selectedDate).endOf('isoWeek'));
+            const blockDate = typeof block.date === 'string' ? parseISO(block.date) : block.date;
+            const weekStart = startOfWeek(selectedDateObj, { weekStartsOn: 1 });
+            const weekEnd = endOfWeek(selectedDateObj, { weekStartsOn: 1 });
+            return isSameOrAfter(blockDate, weekStart) && isSameOrBefore(blockDate, weekEnd);
         });
 
     // Group events by day for week templates
     const eventsByDay = templateType === 'week'
         ? displayEvents.reduce((acc, event) => {
-            const dayKey = moment(event.date).format('YYYY-MM-DD');
+            const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
+            const dayKey = format(eventDate, 'yyyy-MM-dd');
             if (!acc[dayKey]) acc[dayKey] = [];
             acc[dayKey].push(event);
             return acc;
@@ -78,7 +91,8 @@ const CreateTemplateModal = ({
     // Group availability blocks by day for week templates
     const availabilityByDay = templateType === 'week'
         ? displayAvailability.reduce((acc, block) => {
-            const dayKey = moment(block.date).format('YYYY-MM-DD');
+            const blockDate = typeof block.date === 'string' ? parseISO(block.date) : block.date;
+            const dayKey = format(blockDate, 'yyyy-MM-dd');
             if (!acc[dayKey]) acc[dayKey] = [];
             acc[dayKey].push(block);
             return acc;
@@ -267,7 +281,7 @@ const CreateTemplateModal = ({
                                                     display: 'block'
                                                 }}
                                             >
-                                                {moment(dayKey).format('dddd, DD MMMM')}
+                                                {format(parseISO(dayKey), 'EEEE, dd MMMM', { locale: pl })}
                                             </Typography>
                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                                                 {/* Events for this day */}

@@ -1,10 +1,11 @@
+import React, { memo } from 'react';
 import { Card, CardActionArea, CardContent, Box, Typography, Button } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import useDashboardStore from '../../store/dashboardStore';
 import { useNavigate } from 'react-router-dom';
 
-const SiteCard = ({ site, index, isSelected }) => {
+const SiteCard = memo(({ site, index, isSelected }) => {
     const navigate = useNavigate();
     const selectSite = useDashboardStore((state) => state.selectSite);
 
@@ -187,6 +188,10 @@ const SiteCard = ({ site, index, isSelected }) => {
         </motion.div>
     );
 };
+
+});
+
+SiteCard.displayName = 'SiteCard';
 
 SiteCard.propTypes = {
     site: PropTypes.shape({

@@ -2,7 +2,26 @@ import React, { useMemo, useState } from 'react';
 import { Box, Typography, IconButton, Button, TextField, Avatar, Tooltip } from '@mui/material';
 import { ChevronLeft, ChevronRight, WbSunny, NightsStay } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import moment from 'moment';
+import {
+    format,
+    parseISO,
+    startOfMonth,
+    endOfMonth,
+    startOfWeek,
+    endOfWeek,
+    addDays,
+    addMonths,
+    getDate,
+    isSameMonth,
+    isSameDay,
+    isBefore,
+    isAfter,
+    startOfDay,
+    getDay,
+    getISODay,
+    isWithinInterval
+} from 'date-fns';
+import { pl } from 'date-fns/locale';
 import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
 import { EventBlock, CollapsedEventsBlock, COLLAPSE_THRESHOLD } from './EventDisplay';
@@ -56,27 +75,33 @@ const CalendarGridControlled = ({
     
     const addToast = useToast();
 
-    const currentMonthMoment = useMemo(() => moment(currentMonth), [currentMonth]);
+    // Helper function for isSameOrAfter comparison
+    const isSameOrAfter = (date, dateToCompare) => isSameDay(date, dateToCompare) || isAfter(date, dateToCompare);
+    
+    // Helper function for isSameOrBefore comparison  
+    const isSameOrBefore = (date, dateToCompare) => isSameDay(date, dateToCompare) || isBefore(date, dateToCompare);
+
+    const currentMonthDate = useMemo(() => new Date(currentMonth), [currentMonth]);
     
     // Check if we're viewing the current month
-    const isCurrentMonth = useMemo(() => {
-        return currentMonthMoment.isSame(moment(), 'month');
-    }, [currentMonthMoment]);
+    const isCurrentMonthView = useMemo(() => {
+        return isSameMonth(currentMonthDate, new Date());
+    }, [currentMonthDate]);
 
     const calendarDays = useMemo(() => {
-        const startOfMonth = currentMonthMoment.clone().startOf('month');
-        const endOfMonth = currentMonthMoment.clone().endOf('month');
-        const startDate = startOfMonth.clone().startOf('isoWeek'); // Use ISO week (Monday)
-        const endDate = endOfMonth.clone().endOf('isoWeek'); // Use ISO week (Sunday)
+        const monthStart = startOfMonth(currentMonthDate);
+        const monthEnd = endOfMonth(currentMonthDate);
+        const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday
+        const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 }); // Sunday
 
         const days = [];
-        const cursor = startDate.clone();
-        while (cursor.isSameOrBefore(endDate)) {
-            days.push(cursor.clone());
-            cursor.add(1, 'day');
+        let cursor = calendarStart;
+        while (isSameOrBefore(cursor, calendarEnd)) {
+            days.push(new Date(cursor));
+            cursor = addDays(cursor, 1);
         }
         return days;
-    }, [currentMonthMoment]);
+    }, [currentMonthDate]);
     
     // Calculate number of rows needed (for 6-row months like November 2025)
     const numberOfRows = useMemo(() => {
@@ -86,7 +111,7 @@ const CalendarGridControlled = ({
     const eventsByDate = useMemo(() => {
         const map = new Map();
         events.forEach((event) => {
-            const dateKey = moment(event.date).format('YYYY-MM-DD');
+            const dateKey = format(typeof event.date === 'string' ? parseISO(event.date) : event.date, 'yyyy-MM-dd');
             if (!map.has(dateKey)) {
                 map.set(dateKey, []);
             }
@@ -98,7 +123,7 @@ const CalendarGridControlled = ({
     const availabilityByDate = useMemo(() => {
         const map = new Map();
         (availabilityBlocks || []).forEach((block) => {
-            const dateKey = moment(block.date).format('YYYY-MM-DD');
+            const dateKey = format(typeof block.date === 'string' ? parseISO(block.date) : block.date, 'yyyy-MM-dd');
             if (!map.has(dateKey)) {
                 map.set(dateKey, []);
             }
@@ -229,7 +254,7 @@ const CalendarGridControlled = ({
     };
 
     const handleMonthChange = (direction) => {
-        const newMonth = currentMonthMoment.clone().add(direction, 'month').toDate();
+        const newMonth = addMonths(currentMonthDate, direction);
         onMonthChange?.(newMonth);
     };
 
@@ -507,13 +532,6 @@ const CalendarGridControlled = ({
                                 const templateId = e.dataTransfer.getData('templateId');
                                 const templateData = JSON.parse(e.dataTransfer.getData('templateData'));
                                 
-                                console.log('Apply template to entire month:', {
-                                    month: currentMonthMoment.format('MMMM YYYY'),
-                                    templateType,
-                                    templateId,
-                                    templateData
-                                });
-                                
                                 // TODO: Show confirmation modal for month-wide application
                             }}
                             sx={{
@@ -561,7 +579,7 @@ const CalendarGridControlled = ({
                                     })
                                 }}
                             >
-                                {currentMonthMoment.format('MMMM YYYY')}
+                                {format(currentMonthDate, 'LLLL yyyy', { locale: pl })}
                             </Typography>
                             
                             {/* Google Calendar Icon - synchronizuje wszystkie strony użytkownika */}
@@ -631,7 +649,7 @@ const CalendarGridControlled = ({
 
                     {/* Now Button - Only visible when not on current month */}
                     <AnimatePresence>
-                        {!isCurrentMonth && (
+                        {!isCurrentMonthView && (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.8, x: -10 }}
                                 animate={{ opacity: 1, scale: 1, x: 0 }}
@@ -767,14 +785,14 @@ const CalendarGridControlled = ({
                     }
                 }}
             >
-                {calendarDays.map((dayMoment) => {
-                    const dateKey = dayMoment.format('YYYY-MM-DD');
+                {calendarDays.map((dayDate) => {
+                    const dateKey = format(dayDate, 'yyyy-MM-dd');
                     const dayEvents = eventsByDate.get(dateKey) || [];
                     const dayAvailability = availabilityByDate.get(dateKey) || [];
                     const hasAvailability = dayAvailability.length > 0;
-                    const isCurrentMonth = dayMoment.month() === currentMonthMoment.month();
-                    const isToday = dayMoment.isSame(moment(), 'day');
-                    const isPast = dayMoment.isBefore(moment(), 'day');
+                    const isInCurrentMonth = isSameMonth(dayDate, currentMonthDate);
+                    const isToday = isSameDay(dayDate, new Date());
+                    const isPast = isBefore(dayDate, startOfDay(new Date())) && !isToday;
                     const isTodayEmpty = dayEvents.length === 0 && dayAvailability.length === 0;
                     // Show today border unless in template creation mode and day is empty
                     const shouldShowTodayBorder = isToday && (!creatingTemplateMode || !isTodayEmpty);
@@ -792,16 +810,18 @@ const CalendarGridControlled = ({
                     const hasContentForTemplate = hasEventsForTemplate || hasAvailabilityForTemplate;
                     
                     // Check if week has events (for week template mode)
-                    const weekStart = dayMoment.clone().startOf('isoWeek');
-                    const weekEnd = dayMoment.clone().endOf('isoWeek');
+                    const weekStart = startOfWeek(dayDate, { weekStartsOn: 1 });
+                    const weekEnd = endOfWeek(dayDate, { weekStartsOn: 1 });
                     const weekHasEvents = creatingTemplateMode === 'week' && (() => {
-                        for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
-                            const key = d.format('YYYY-MM-DD');
+                        let d = new Date(weekStart);
+                        while (isSameOrBefore(d, weekEnd)) {
+                            const key = format(d, 'yyyy-MM-dd');
                             const dayEventsCount = (eventsByDate.get(key) || []).length;
                             const dayAvailabilityCount = (availabilityByDate.get(key) || []).length;
                             if (dayEventsCount > 0 || dayAvailabilityCount > 0) {
                                 return true;
                             }
+                            d = addDays(d, 1);
                         }
                         return false;
                     })();
@@ -810,7 +830,7 @@ const CalendarGridControlled = ({
                     const isInWeekWithEvents = creatingTemplateMode === 'week' && weekHasEvents;
                     
                     // Generate week key for week template mode
-                    const weekKey = weekStart.format('YYYY-[W]WW');
+                    const weekKey = format(weekStart, "yyyy-'W'II");
                     const isWeekHovered = creatingTemplateMode === 'week' && hoveredWeekKey === weekKey;
                     
                     const isSelectableForTemplate = isInTemplateCreationMode && (
@@ -837,16 +857,18 @@ const CalendarGridControlled = ({
                         
                         if (templateType === 'week') {
                             // Check if week has future days
-                            const weekStart = dayMoment.clone().startOf('isoWeek');
-                            const weekEnd = dayMoment.clone().endOf('isoWeek');
-                            const today = moment().startOf('day');
+                            const dayWeekStart = startOfWeek(dayDate, { weekStartsOn: 1 });
+                            const dayWeekEnd = endOfWeek(dayDate, { weekStartsOn: 1 });
+                            const today = startOfDay(new Date());
                             
                             let hasFutureDays = false;
-                            for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
-                                if (d.isSameOrAfter(today, 'day')) {
+                            let d = new Date(dayWeekStart);
+                            while (isSameOrBefore(d, dayWeekEnd)) {
+                                if (isSameOrAfter(d, today)) {
                                     hasFutureDays = true;
                                     break;
                                 }
+                                d = addDays(d, 1);
                             }
                             
                             allowDragInteraction = hasFutureDays;
@@ -869,47 +891,38 @@ const CalendarGridControlled = ({
                     let isUnaffectedDay = false; // Gray overlay - day won't receive events
                     
                     if (isWeekTemplate && draggedOverDay && allowDragInteraction) {
-                        const hoveredDayMoment = moment(draggedOverDay);
+                        const hoveredDayDate = parseISO(draggedOverDay);
                         
                         // Find which row this day is in the calendar grid
                         // Calendar rows are Monday-Sunday (7 days each)
                         // We want to highlight the visual row the hovered day is in
                         
-                        const hoveredDayOfWeek = hoveredDayMoment.isoWeekday(); // 1-7, 1=Monday, 7=Sunday
+                        const hoveredDayOfWeek = getISODay(hoveredDayDate); // 1-7, 1=Monday, 7=Sunday
                         
                         // Calculate the Monday of the week containing the hovered day
                         // If hoveredDayOfWeek is 1 (Monday), subtract 0 days (stay on Monday)
                         // If hoveredDayOfWeek is 2 (Tuesday), subtract 1 day (go back to Monday)
                         // etc.
                         const daysFromMonday = hoveredDayOfWeek - 1;
-                        const hoveredWeekStart = hoveredDayMoment.clone().subtract(daysFromMonday, 'days');
-                        const hoveredWeekEnd = hoveredWeekStart.clone().add(6, 'days'); // Sunday is 6 days after Monday
-                        
-                        console.log('Week calculation:', {
-                            hoveredDay: hoveredDayMoment.format('YYYY-MM-DD (dddd)'),
-                            hoveredDayOfWeek: hoveredDayOfWeek + ' (' + hoveredDayMoment.format('dddd') + ')',
-                            daysFromMonday,
-                            weekStart: hoveredWeekStart.format('YYYY-MM-DD (dddd)'),
-                            weekEnd: hoveredWeekEnd.format('YYYY-MM-DD (dddd)'),
-                            checkingDay: dayMoment.format('YYYY-MM-DD (dddd)')
-                        });
+                        const hoveredWeekStart = addDays(hoveredDayDate, -daysFromMonday);
+                        const hoveredWeekEnd = addDays(hoveredWeekStart, 6); // Sunday is 6 days after Monday
                         
                         // Check if this day is in the same week
-                        isInHoveredWeek = dayMoment.isBetween(hoveredWeekStart, hoveredWeekEnd, 'day', '[]');
+                        isInHoveredWeek = isWithinInterval(dayDate, { start: hoveredWeekStart, end: hoveredWeekEnd });
                         
                         if (isInHoveredWeek) {
                             const template = draggedTemplate || draggingTemplate;
                             const templateActiveDays = template?.active_days || [0, 1, 2, 3, 4, 5, 6]; // Default all days
-                            const dayOfWeek = dayMoment.day(); // 0 = Sunday, 1 = Monday, etc.
+                            const dayOfWeek = getDay(dayDate); // 0 = Sunday, 1 = Monday, etc.
                             const adjustedDayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to 0 = Monday
                             
                             // Determine if this day is affected
                             const isDayInTemplate = templateActiveDays.includes(adjustedDayOfWeek);
-                            const isInCurrentMonth = isCurrentMonth;
+                            const isDayInCurrentMonth = isInCurrentMonth;
                             const isFutureOrToday = !isPast || isToday;
                             
                             // Affected = in template, in current month, and not past
-                            if (isDayInTemplate && isInCurrentMonth && isFutureOrToday) {
+                            if (isDayInTemplate && isDayInCurrentMonth && isFutureOrToday) {
                                 isAffectedDay = true;
                             } else {
                                 // Unaffected = in the week but excluded
@@ -930,16 +943,18 @@ const CalendarGridControlled = ({
                             
                             // If it's a week template, check if week has future days
                             if (templateType === 'week') {
-                                const weekStart = dayMoment.clone().startOf('isoWeek');
-                                const weekEnd = dayMoment.clone().endOf('isoWeek');
-                                const today = moment().startOf('day');
+                                const dragWeekStart = startOfWeek(dayDate, { weekStartsOn: 1 });
+                                const dragWeekEnd = endOfWeek(dayDate, { weekStartsOn: 1 });
+                                const today = startOfDay(new Date());
                                 
                                 let hasFutureDays = false;
-                                for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
-                                    if (d.isSameOrAfter(today, 'day')) {
+                                let d = new Date(dragWeekStart);
+                                while (isSameOrBefore(d, dragWeekEnd)) {
+                                    if (isSameOrAfter(d, today)) {
                                         hasFutureDays = true;
                                         break;
                                     }
+                                    d = addDays(d, 1);
                                 }
                                 
                                 // If week has no future days, block drag
@@ -992,16 +1007,18 @@ const CalendarGridControlled = ({
                         // Block drop on past days, except for week templates with future days
                         if (isPast && !isToday) {
                             if (templateType === 'week') {
-                                const weekStart = dayMoment.clone().startOf('isoWeek');
-                                const weekEnd = dayMoment.clone().endOf('isoWeek');
-                                const today = moment().startOf('day');
+                                const dropWeekStart = startOfWeek(dayDate, { weekStartsOn: 1 });
+                                const dropWeekEnd = endOfWeek(dayDate, { weekStartsOn: 1 });
+                                const today = startOfDay(new Date());
                                 
                                 let hasFutureDays = false;
-                                for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
-                                    if (d.isSameOrAfter(today, 'day')) {
+                                let d = new Date(dropWeekStart);
+                                while (isSameOrBefore(d, dropWeekEnd)) {
+                                    if (isSameOrAfter(d, today)) {
                                         hasFutureDays = true;
                                         break;
                                     }
+                                    d = addDays(d, 1);
                                 }
                                 
                                 // If week has no future days, block drop
@@ -1022,27 +1039,22 @@ const CalendarGridControlled = ({
                         
                         const templateData = JSON.parse(templateDataStr);
                         
-                        console.log('Template dropped on day:', {
-                            date: dateKey,
-                            templateType,
-                            templateId,
-                            templateData
-                        });
-                        
                         // Calculate affected events for week templates
                         let affectedEvents = [];
                         if (templateType === 'week') {
-                            const weekStart = dayMoment.clone().startOf('isoWeek');
-                            const weekEnd = dayMoment.clone().endOf('isoWeek');
-                            const today = moment().startOf('day');
+                            const dropWeekStart = startOfWeek(dayDate, { weekStartsOn: 1 });
+                            const dropWeekEnd = endOfWeek(dayDate, { weekStartsOn: 1 });
+                            const today = startOfDay(new Date());
                             
                             // Collect events from all future days in the week
-                            for (let d = weekStart.clone(); d.isSameOrBefore(weekEnd); d.add(1, 'day')) {
-                                if (d.isSameOrAfter(today, 'day')) {
-                                    const dayKey = d.format('YYYY-MM-DD');
+                            let d = new Date(dropWeekStart);
+                            while (isSameOrBefore(d, dropWeekEnd)) {
+                                if (isSameOrAfter(d, today)) {
+                                    const dayKey = format(d, 'yyyy-MM-dd');
                                     const dayEvents = eventsByDate.get(dayKey) || [];
                                     affectedEvents = [...affectedEvents, ...dayEvents];
                                 }
+                                d = addDays(d, 1);
                             }
                         } else {
                             // For day templates, only events on this day
@@ -1083,7 +1095,7 @@ const CalendarGridControlled = ({
                                     if (isInTemplateCreationMode && isSelectableForTemplate) {
                                         onTemplateSelection?.(dateKey);
                                     } else if (!isInTemplateCreationMode) {
-                                        onDayClick?.(dayMoment.toDate());
+                                        onDayClick?.(dayDate);
                                     }
                                 } : undefined}
                                 onMouseEnter={() => {
@@ -1128,11 +1140,11 @@ const CalendarGridControlled = ({
                                     minHeight: { xs: '70px', sm: '85px' }, // Ensure minimum height on mobile
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    backgroundColor: isPast && !isCurrentMonth 
+                                    backgroundColor: isPast && !isCurrentMonthView 
                                         ? 'rgba(228, 229, 218, 0.25)'
                                         : isPast 
                                             ? 'rgba(228, 229, 218, 0.15)'
-                                            : isCurrentMonth 
+                                            : isCurrentMonthView 
                                                 ? 'background.paper' 
                                                 : 'rgba(228, 229, 218, 0.35)',
                                     cursor: isClickable ? 'pointer' : 'default',
@@ -1209,7 +1221,7 @@ const CalendarGridControlled = ({
                                             })
                                         }}
                                     >
-                                        {dayMoment.date()}
+                                        {getDate(dayDate)}
                                     </Typography>
                                     
                                     {/* Green availability indicator - only show for today and future days */}
@@ -1275,7 +1287,7 @@ const CalendarGridControlled = ({
                                             siteColors={dayEvents.slice(3).map(e => e.site_color || getSiteColorHex(e.site?.color_index ?? 0))}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onDayClick?.(dayMoment.toDate());
+                                                onDayClick?.(dayDate);
                                             }}
                                         />
                                     </Box>
@@ -1292,7 +1304,7 @@ const CalendarGridControlled = ({
                                             <Box
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onDayClick?.(dayMoment.toDate());
+                                                    onDayClick?.(dayDate);
                                                 }}
                                                 sx={{
                                                     px: 1.5,

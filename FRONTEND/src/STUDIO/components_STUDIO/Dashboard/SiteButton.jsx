@@ -1,10 +1,11 @@
+import React, { memo } from 'react';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import useDashboardStore from '../../store/dashboardStore';
 import { EASING_CURVES } from '../../utils/dashboardAnimations';
 
-const SiteButton = ({ site, isSelected }) => {
+const SiteButton = memo(({ site, isSelected }) => {
     const selectSite = useDashboardStore((state) => state.selectSite);
 
     const siteColor = site.color_tag || 'rgb(146, 0, 32)';
@@ -61,6 +62,10 @@ const SiteButton = ({ site, isSelected }) => {
         </motion.div>
     );
 };
+
+});
+
+SiteButton.displayName = 'SiteButton';
 
 SiteButton.propTypes = {
     site: PropTypes.shape({

@@ -1,7 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Alert, CircularProgress } from '@mui/material';
 import { motion } from 'framer-motion';
-import moment from 'moment';
+import {
+    format,
+    parseISO,
+    startOfWeek,
+    endOfWeek,
+    startOfDay,
+    addDays,
+    addMinutes,
+    isBefore,
+    isAfter,
+    isSameDay,
+    getMinutes,
+    parse
+} from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { fetchSites, fetchSiteCalendarRoster, fetchSiteCalendarData } from '../../../services/siteService';
 import { createEvent, createAvailabilityBlock, deleteEvent, updateEvent, updateAvailabilityBlock } from '../../../services/eventService';
 import { fetchTemplates, createTemplate } from '../../../services/templateService';
@@ -15,6 +29,10 @@ import { usePreferences } from '../../../contexts/PreferencesContext';
 import { getCache, setCache, removeCache, CACHE_KEYS } from '../../../utils/cache';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
+
+// Helper functions for date comparisons
+const isSameOrAfter = (date, dateToCompare) => isSameDay(date, dateToCompare) || isAfter(date, dateToCompare);
+const isSameOrBefore = (date, dateToCompare) => isSameDay(date, dateToCompare) || isBefore(date, dateToCompare);
 
 const ROLE_PERMISSIONS = {
     owner: {
@@ -737,14 +755,16 @@ const CreatorCalendarApp = () => {
             
             if (templateType === 'day') {
                 // Get events from the selected day
-                const dayEvents = visibleEvents.filter(e => 
-                    moment(e.date).format('YYYY-MM-DD') === selectedTemplateDate
-                );
+                const dayEvents = visibleEvents.filter(e => {
+                    const eventDate = typeof e.date === 'string' ? parseISO(e.date) : e.date;
+                    return format(eventDate, 'yyyy-MM-dd') === selectedTemplateDate;
+                });
                 
                 // Get availability blocks from the selected day
-                const dayAvailability = visibleAvailability.filter(block => 
-                    moment(block.date).format('YYYY-MM-DD') === selectedTemplateDate
-                );
+                const dayAvailability = visibleAvailability.filter(block => {
+                    const blockDate = typeof block.date === 'string' ? parseISO(block.date) : block.date;
+                    return format(blockDate, 'yyyy-MM-dd') === selectedTemplateDate;
+                });
                 
                 templateEvents = dayEvents.map(event => ({
                     title: event.title,
@@ -774,22 +794,24 @@ const CreatorCalendarApp = () => {
                 }));
             } else if (templateType === 'week') {
                 // Get events from the entire week
-                const weekStart = moment(selectedTemplateDate).startOf('isoWeek');
-                const weekEnd = moment(selectedTemplateDate).endOf('isoWeek');
+                const selectedDateObj = parseISO(selectedTemplateDate);
+                const weekStart = startOfWeek(selectedDateObj, { weekStartsOn: 1 });
+                const weekEnd = endOfWeek(selectedDateObj, { weekStartsOn: 1 });
                 
                 const weekEvents = visibleEvents.filter(e => {
-                    const eventMoment = moment(e.date);
-                    return eventMoment.isSameOrAfter(weekStart) && eventMoment.isSameOrBefore(weekEnd);
+                    const eventDate = typeof e.date === 'string' ? parseISO(e.date) : e.date;
+                    return isSameOrAfter(eventDate, weekStart) && isSameOrBefore(eventDate, weekEnd);
                 });
                 
                 const weekAvailability = visibleAvailability.filter(block => {
-                    const blockMoment = moment(block.date);
-                    return blockMoment.isSameOrAfter(weekStart) && blockMoment.isSameOrBefore(weekEnd);
+                    const blockDate = typeof block.date === 'string' ? parseISO(block.date) : block.date;
+                    return isSameOrAfter(blockDate, weekStart) && isSameOrBefore(blockDate, weekEnd);
                 });
                 
                 templateEvents = weekEvents.map(event => {
-                    const eventMoment = moment(event.date);
-                    const dayOfWeek = eventMoment.isoWeekday(); // 1=Monday, 7=Sunday
+                    const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
+                    // getISODay returns 1=Monday, 7=Sunday (same as moment.isoWeekday)
+                    const dayOfWeek = ((eventDate.getDay() + 6) % 7) + 1; // Convert 0-6 (Sun-Sat) to 1-7 (Mon-Sun)
                     
                     return {
                         title: event.title,
@@ -809,8 +831,8 @@ const CreatorCalendarApp = () => {
                 });
                 
                 templateAvailability = weekAvailability.map(block => {
-                    const blockMoment = moment(block.date);
-                    const dayOfWeek = blockMoment.isoWeekday(); // 1=Monday, 7=Sunday
+                    const blockDate = typeof block.date === 'string' ? parseISO(block.date) : block.date;
+                    const dayOfWeek = ((blockDate.getDay() + 6) % 7) + 1; // 1=Monday, 7=Sunday
                     
                     return {
                         start_time: block.start_time,
@@ -836,6 +858,7 @@ const CreatorCalendarApp = () => {
             }
             
             // Prepare template data (without site field, as templates can work with multiple sites)
+            const selectedDateForAbbrev = parseISO(selectedTemplateDate);
             const templateData = {
                 name: finalTemplateName,
                 template_config: {
@@ -843,7 +866,7 @@ const CreatorCalendarApp = () => {
                     events: templateEvents,
                     availability_blocks: templateAvailability,
                     ...(templateType === 'day' ? {
-                        day_abbreviation: moment(selectedTemplateDate).format('ddd')
+                        day_abbreviation: format(selectedDateForAbbrev, 'EEE', { locale: pl })
                     } : {
                         day_count: [...new Set([...templateEvents, ...templateAvailability].map(item => item.day_of_week))].length,
                         active_days: [...new Set([...templateEvents, ...templateAvailability].map(item => item.day_of_week - 1))], // Convert to 0-based
@@ -934,9 +957,9 @@ const CreatorCalendarApp = () => {
             if (template.availability_blocks && template.availability_blocks.length > 0) {
                 if (templateType === 'day') {
                     // Apply day template - create blocks for the specific date
-                    const today = moment().format('YYYY-MM-DD');
+                    const today = format(new Date(), 'yyyy-MM-dd');
                     const isToday = targetDate === today;
-                    const now = moment();
+                    const now = new Date();
                     
                     for (const templateBlock of template.availability_blocks) {
                         let startTime = templateBlock.start_time;
@@ -944,21 +967,22 @@ const CreatorCalendarApp = () => {
                         
                         // For today: skip blocks that have already ended, trim start time if in past
                         if (isToday) {
-                            const blockEnd = moment(targetDate + ' ' + endTime, 'YYYY-MM-DD HH:mm');
+                            const blockEnd = parse(targetDate + ' ' + endTime, 'yyyy-MM-dd HH:mm', new Date());
                             
                             // Skip if block has already ended
-                            if (blockEnd.isSameOrBefore(now)) {
+                            if (isSameOrBefore(blockEnd, now)) {
                                 continue;
                             }
                             
-                            const blockStart = moment(targetDate + ' ' + startTime, 'YYYY-MM-DD HH:mm');
+                            const blockStart = parse(targetDate + ' ' + startTime, 'yyyy-MM-dd HH:mm', new Date());
                             
                             // If block starts in the past, trim start time to now (rounded up to next 5 min)
-                            if (blockStart.isBefore(now)) {
-                                const roundedNow = moment(now).add(5 - (now.minute() % 5), 'minutes').startOf('minute');
+                            if (isBefore(blockStart, now)) {
+                                const minutesToAdd = 5 - (getMinutes(now) % 5);
+                                const roundedNow = addMinutes(now, minutesToAdd);
                                 // Make sure trimmed start is still before end
-                                if (roundedNow.isBefore(blockEnd)) {
-                                    startTime = roundedNow.format('HH:mm');
+                                if (isBefore(roundedNow, blockEnd)) {
+                                    startTime = format(roundedNow, 'HH:mm');
                                 } else {
                                     // Block would be too short, skip it
                                     continue;
@@ -980,41 +1004,43 @@ const CreatorCalendarApp = () => {
                     }
                 } else {
                     // Apply week template - create blocks for the whole week (skip past days)
-                    const startOfWeek = moment(targetDate).startOf('isoWeek');
-                    const today = moment().startOf('day');
+                    const targetDateObj = parseISO(targetDate);
+                    const weekStartDate = startOfWeek(targetDateObj, { weekStartsOn: 1 });
+                    const today = startOfDay(new Date());
                     
                     for (const templateBlock of template.availability_blocks) {
                         // Calculate the actual date based on day_of_week
-                        const blockDate = startOfWeek.clone().add(templateBlock.day_of_week - 1, 'days');
+                        const blockDate = addDays(weekStartDate, templateBlock.day_of_week - 1);
                         
                         // Skip if the block date is in the past
-                        if (blockDate.isBefore(today)) {
+                        if (isBefore(blockDate, today)) {
                             continue;
                         }
                         
                         let startTime = templateBlock.start_time;
                         const endTime = templateBlock.end_time;
-                        const blockDateStr = blockDate.format('YYYY-MM-DD');
-                        const isBlockToday = blockDate.isSame(today, 'day');
-                        const now = moment();
+                        const blockDateStr = format(blockDate, 'yyyy-MM-dd');
+                        const isBlockToday = isSameDay(blockDate, today);
+                        const now = new Date();
                         
                         // For today: skip blocks that have already ended, trim start time if in past
                         if (isBlockToday) {
-                            const blockEnd = moment(blockDateStr + ' ' + endTime, 'YYYY-MM-DD HH:mm');
+                            const blockEnd = parse(blockDateStr + ' ' + endTime, 'yyyy-MM-dd HH:mm', new Date());
                             
                             // Skip if block has already ended
-                            if (blockEnd.isSameOrBefore(now)) {
+                            if (isSameOrBefore(blockEnd, now)) {
                                 continue;
                             }
                             
-                            const blockStart = moment(blockDateStr + ' ' + startTime, 'YYYY-MM-DD HH:mm');
+                            const blockStart = parse(blockDateStr + ' ' + startTime, 'yyyy-MM-dd HH:mm', new Date());
                             
                             // If block starts in the past, trim start time to now (rounded up to next 5 min)
-                            if (blockStart.isBefore(now)) {
-                                const roundedNow = moment(now).add(5 - (now.minute() % 5), 'minutes').startOf('minute');
+                            if (isBefore(blockStart, now)) {
+                                const minutesToAdd = 5 - (getMinutes(now) % 5);
+                                const roundedNow = addMinutes(now, minutesToAdd);
                                 // Make sure trimmed start is still before end
-                                if (roundedNow.isBefore(blockEnd)) {
-                                    startTime = roundedNow.format('HH:mm');
+                                if (isBefore(roundedNow, blockEnd)) {
+                                    startTime = format(roundedNow, 'HH:mm');
                                 } else {
                                     // Block would be too short, skip it
                                     continue;
@@ -1041,23 +1067,23 @@ const CreatorCalendarApp = () => {
             if (template.events && template.events.length > 0) {
                 if (templateType === 'day') {
                     // Apply day template - create events for the specific date
-                    const today = moment().format('YYYY-MM-DD');
-                    const isToday = targetDate === today;
-                    const now = moment();
+                    const todayStr = format(new Date(), 'yyyy-MM-dd');
+                    const isToday = targetDate === todayStr;
+                    const now = new Date();
                     
                     for (const templateEvent of template.events) {
                         // For today: skip events that have already ended or are in progress
                         if (isToday) {
-                            const eventEnd = moment(targetDate + ' ' + templateEvent.end_time, 'YYYY-MM-DD HH:mm');
-                            const eventStart = moment(targetDate + ' ' + templateEvent.start_time, 'YYYY-MM-DD HH:mm');
+                            const eventEnd = parse(targetDate + ' ' + templateEvent.end_time, 'yyyy-MM-dd HH:mm', new Date());
+                            const eventStart = parse(targetDate + ' ' + templateEvent.start_time, 'yyyy-MM-dd HH:mm', new Date());
                             
                             // Skip if event has already ended
-                            if (eventEnd.isSameOrBefore(now)) {
+                            if (isSameOrBefore(eventEnd, now)) {
                                 continue;
                             }
                             
                             // Skip if event is in progress (already started but not ended)
-                            if (eventStart.isBefore(now) && eventEnd.isAfter(now)) {
+                            if (isBefore(eventStart, now) && isAfter(eventEnd, now)) {
                                 continue;
                             }
                         }
@@ -1079,34 +1105,35 @@ const CreatorCalendarApp = () => {
                     }
                 } else {
                     // Apply week template - create events for the whole week (skip past days)
-                    const startOfWeek = moment(targetDate).startOf('isoWeek');
-                    const today = moment().startOf('day');
+                    const targetDateObjForWeek = parseISO(targetDate);
+                    const weekStartForEvents = startOfWeek(targetDateObjForWeek, { weekStartsOn: 1 });
+                    const todayForEvents = startOfDay(new Date());
                     
                     for (const templateEvent of template.events) {
                         // Calculate the actual date based on day_of_week
-                        const eventDate = startOfWeek.clone().add(templateEvent.day_of_week - 1, 'days');
+                        const eventDate = addDays(weekStartForEvents, templateEvent.day_of_week - 1);
                         
                         // Skip if the event date is in the past
-                        if (eventDate.isBefore(today)) {
+                        if (isBefore(eventDate, todayForEvents)) {
                             continue;
                         }
                         
-                        const eventDateStr = eventDate.format('YYYY-MM-DD');
-                        const isEventToday = eventDate.isSame(today, 'day');
-                        const now = moment();
+                        const eventDateStr = format(eventDate, 'yyyy-MM-dd');
+                        const isEventToday = isSameDay(eventDate, todayForEvents);
+                        const now = new Date();
                         
                         // For today: skip events that have already ended or are in progress
                         if (isEventToday) {
-                            const eventEnd = moment(eventDateStr + ' ' + templateEvent.end_time, 'YYYY-MM-DD HH:mm');
-                            const eventStart = moment(eventDateStr + ' ' + templateEvent.start_time, 'YYYY-MM-DD HH:mm');
+                            const eventEnd = parse(eventDateStr + ' ' + templateEvent.end_time, 'yyyy-MM-dd HH:mm', new Date());
+                            const eventStart = parse(eventDateStr + ' ' + templateEvent.start_time, 'yyyy-MM-dd HH:mm', new Date());
                             
                             // Skip if event has already ended
-                            if (eventEnd.isSameOrBefore(now)) {
+                            if (isSameOrBefore(eventEnd, now)) {
                                 continue;
                             }
                             
                             // Skip if event is in progress (already started but not ended)
-                            if (eventStart.isBefore(now) && eventEnd.isAfter(now)) {
+                            if (isBefore(eventStart, now) && isAfter(eventEnd, now)) {
                                 continue;
                             }
                         }
