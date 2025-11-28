@@ -91,11 +91,22 @@ const SiteApp = ({ siteIdentifierFromPath, previewConfig, isPreview = false }) =
     else {
       const hostname = window.location.hostname;
       const parts = hostname.split('.');
-      // Ignoruj "www" i "studio"
-      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'studio') {
-        identifier = parts[0];
+      
+      // Check if this is a youreasysite.pl subdomain
+      const isYourEasySiteSubdomain = hostname.endsWith('.youreasysite.pl');
+      
+      if (isYourEasySiteSubdomain) {
+        // For youreasysite.pl subdomains, extract the first part as identifier
+        // e.g., "1-pokazowa.youreasysite.pl" -> "1-pokazowa"
+        if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'studio') {
+          identifier = parts[0];
+        }
+      } else if (hostname !== 'localhost' && !hostname.includes('localhost')) {
+        // For external domains (e.g., bohdanpage.eu), use the full hostname
+        // This allows the backend to look up the site via DomainOrder.domain_name
+        identifier = hostname;
       } else if (parts[0] !== 'localhost' && parts[0] !== 'studio') {
-        // Dla prostych domen (bez subdomen)
+        // Legacy fallback for other cases
         identifier = parts[0];
       }
     }

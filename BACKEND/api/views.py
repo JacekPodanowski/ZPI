@@ -1856,10 +1856,44 @@ class PublicSiteListView(generics.ListAPIView):
 
 @extend_schema(tags=['Public Sites'])
 class PublicSiteView(generics.RetrieveAPIView):
+    """
+    Public endpoint to fetch site configuration by identifier.
+    
+    Supports two lookup modes:
+    1. Standard lookup by site identifier (e.g., "1-pokazowa")
+    2. Fallback lookup by custom domain name (e.g., "bohdanpage.eu")
+       - Used when a custom domain proxies to a site via Cloudflare Worker
+       - Checks DomainOrder for active domain with matching domain_name
+    """
     queryset = Site.objects.select_related('owner')
     serializer_class = PublicSiteSerializer
     permission_classes = [AllowAny]
     lookup_field = 'identifier'
+
+    def get_object(self):
+        identifier = self.kwargs.get('identifier')
+        
+        # First, try standard lookup by identifier
+        try:
+            return super().get_object()
+        except Exception:
+            pass
+        
+        # Fallback: Check if identifier is a custom domain name
+        # This happens when a custom domain (e.g., bohdanpage.eu) proxies to a site
+        # and the frontend extracts the hostname as identifier
+        domain_order = DomainOrder.objects.filter(
+            domain_name=identifier,
+            status=DomainOrder.OrderStatus.ACTIVE
+        ).select_related('site').first()
+        
+        if domain_order and domain_order.site:
+            logger.info(f"[PublicSiteView] Fallback: Found site via domain '{identifier}' -> site '{domain_order.site.identifier}'")
+            return domain_order.site
+        
+        # If still not found, raise 404
+        from django.http import Http404
+        raise Http404(f"Site with identifier '{identifier}' not found")
 
 
 @extend_schema(tags=['Public Sites'])
