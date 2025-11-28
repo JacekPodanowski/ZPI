@@ -58,7 +58,9 @@ const BuyDomainPage = () => {
             try {
                 setLoadingSites(true);
                 const data = await fetchSites();
-                setSites(data);
+                // Handle both array and {results: []} response formats
+                const sitesArray = Array.isArray(data) ? data : (data.results || []);
+                setSites(sitesArray);
                 // If siteId from URL, set it as selected
                 if (siteId) {
                     setSelectedSiteId(siteId);
