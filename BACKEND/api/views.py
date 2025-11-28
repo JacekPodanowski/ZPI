@@ -4684,8 +4684,9 @@ def get_domain_orders(request):
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def update_domain_order(request, order_id):
-    """Update domain order configuration (e.g., target URL, proxy mode)."""
+    """Update domain order configuration (e.g., target URL, proxy mode, expiration date)."""
     from .tasks import purge_cloudflare_cache, reconfigure_domain_target
+    from datetime import datetime
     
     try:
         # Get the order
@@ -4704,6 +4705,26 @@ def update_domain_order(request, order_id):
     # Allow updating target and proxy_mode fields
     updated = False
     needs_dns_reconfig = False
+    
+    # Handle domain_expiration_date - can only be set once
+    domain_expiration_date = request.data.get('domain_expiration_date')
+    if domain_expiration_date is not None:
+        if order.domain_expiration_date is not None:
+            return Response(
+                {'error': 'Data wygaśnięcia może być ustawiona tylko raz.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            # Parse date string (YYYY-MM-DD format from date input)
+            parsed_date = datetime.strptime(domain_expiration_date, '%Y-%m-%d').date()
+            order.domain_expiration_date = parsed_date
+            updated = True
+            logger.info(f"[Domain Order] Set expiration date for {order.domain_name}: {parsed_date}")
+        except (ValueError, TypeError) as e:
+            return Response(
+                {'error': f'Nieprawidłowy format daty: {e}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     target = request.data.get('target')
     if target is not None and target != order.target:
