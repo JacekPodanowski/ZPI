@@ -18,7 +18,11 @@ import {
     DialogActions,
     Link,
     Collapse,
-    IconButton
+    IconButton,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import { 
     Add as AddIcon,
@@ -26,7 +30,7 @@ import {
     ExpandMore as ExpandMoreIcon,
     ShoppingCart as ShoppingCartIcon
 } from '@mui/icons-material';
-import { fetchSiteById } from '../../../services/siteService';
+import { fetchSiteById, fetchSites } from '../../../services/siteService';
 import { getDomainOrders, checkOrderStatus, addDomainWithCloudflare } from '../../../services/domainService';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 import { getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
@@ -37,6 +41,11 @@ const DomainPage = () => {
     const [site, setSite] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    
+    // Sites list state
+    const [sites, setSites] = useState([]);
+    const [loadingSites, setLoadingSites] = useState(true);
+    const [selectedSiteId, setSelectedSiteId] = useState(siteId || '');
     
     // Domain orders state
     const [domainOrders, setDomainOrders] = useState([]);
@@ -54,17 +63,37 @@ const DomainPage = () => {
     // Collapse state for nameserver instructions
     const [expandedOrders, setExpandedOrders] = useState({});
 
+    // Load all user's sites
+    useEffect(() => {
+        const loadSites = async () => {
+            try {
+                setLoadingSites(true);
+                const data = await fetchSites();
+                setSites(data);
+                if (siteId) {
+                    setSelectedSiteId(siteId);
+                }
+            } catch (err) {
+                console.error('Failed to load sites:', err);
+            } finally {
+                setLoadingSites(false);
+            }
+        };
+        loadSites();
+    }, [siteId]);
+
+    // Load selected site details
     useEffect(() => {
         const loadSite = async () => {
-            if (!siteId) {
-                // No siteId provided, skip loading site
+            if (!selectedSiteId) {
+                setSite(null);
                 setLoading(false);
                 return;
             }
             
             try {
                 setLoading(true);
-                const data = await fetchSiteById(siteId);
+                const data = await fetchSiteById(selectedSiteId);
                 setSite(data);
             } catch (err) {
                 console.error('Failed to load site:', err);
@@ -75,13 +104,17 @@ const DomainPage = () => {
         };
 
         loadSite();
-    }, [siteId]);
+    }, [selectedSiteId]);
     
     useEffect(() => {
         const loadDomainOrders = async () => {
+            if (!selectedSiteId) {
+                setDomainOrders([]);
+                return [];
+            }
             try {
                 setLoadingOrders(true);
-                const orders = await getDomainOrders(siteId ? parseInt(siteId) : null);
+                const orders = await getDomainOrders(parseInt(selectedSiteId));
                 setDomainOrders(orders);
                 return orders || [];
             } catch (err) {
@@ -110,14 +143,14 @@ const DomainPage = () => {
         }, 10000); // 10 seconds
         
         return () => clearInterval(interval);
-    }, [siteId]); // Remove domainOrders from dependencies
+    }, [selectedSiteId]);
     
     // Check if user just returned from OVH payment
     useEffect(() => {
         const storedSiteId = localStorage.getItem('domain_purchase_site_id');
         const storedOrderId = localStorage.getItem('domain_purchase_order_id');
         
-        if (storedSiteId && storedOrderId && storedSiteId === siteId) {
+        if (storedSiteId && storedOrderId && storedSiteId === selectedSiteId) {
             setReturnedFromPayment(true);
             
             // Clear localStorage
@@ -129,21 +162,25 @@ const DomainPage = () => {
                 setReturnedFromPayment(false);
             }, 10000);
         }
-    }, [siteId]);
+    }, [selectedSiteId]);
 
     const handleAddDomain = async () => {
+        if (!selectedSiteId) {
+            setSearchError('Wybierz stronę przed dodaniem domeny.');
+            return;
+        }
         if (!newDomainName.trim()) {
-            setSearchError('Please enter a domain name');
+            setSearchError('Wprowadź nazwę domeny');
             return;
         }
         
         try {
             setAddingDomain(true);
             setSearchError(null);
-            const response = await addDomainWithCloudflare(newDomainName.trim(), siteId ? parseInt(siteId) : null);
+            const response = await addDomainWithCloudflare(newDomainName.trim(), parseInt(selectedSiteId));
             
             // Reload orders to show the new domain
-            const orders = await getDomainOrders(parseInt(siteId));
+            const orders = await getDomainOrders(parseInt(selectedSiteId));
             setDomainOrders(orders);
             
             // Clear the input
@@ -163,7 +200,7 @@ const DomainPage = () => {
             const result = await checkOrderStatus(orderId);
             
             // Reload orders to get updated status
-            const orders = await getDomainOrders(parseInt(siteId));
+            const orders = await getDomainOrders(parseInt(selectedSiteId));
             setDomainOrders(orders);
             
             // Show success message if DNS configuration was triggered
@@ -215,6 +252,51 @@ const DomainPage = () => {
             title="Mam domenę"
             subtitle={site ? `Dodaj własną domenę do ${site.name}` : "Dodaj i skonfiguruj własną domenę"}
         >
+            {/* Site Selection Dropdown */}
+            <Paper
+                sx={{
+                    p: 3,
+                    mb: 3,
+                    bgcolor: 'background.paper',
+                    borderRadius: 3,
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
+                }}
+            >
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Wybierz stronę
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Wybierz stronę, do której chcesz przypisać domenę.
+                </Typography>
+                <FormControl fullWidth>
+                    <InputLabel id="site-select-label">Strona</InputLabel>
+                    <Select
+                        labelId="site-select-label"
+                        value={selectedSiteId}
+                        onChange={(e) => setSelectedSiteId(e.target.value)}
+                        label="Strona"
+                        disabled={loadingSites}
+                        sx={{ borderRadius: 2 }}
+                    >
+                        {loadingSites ? (
+                            <MenuItem value="" disabled>
+                                <CircularProgress size={20} sx={{ mr: 1 }} /> Ładowanie...
+                            </MenuItem>
+                        ) : sites.length === 0 ? (
+                            <MenuItem value="" disabled>
+                                Brak stron - utwórz najpierw stronę
+                            </MenuItem>
+                        ) : (
+                            sites.map((s) => (
+                                <MenuItem key={s.id} value={s.id.toString()}>
+                                    {s.name}
+                                </MenuItem>
+                            ))
+                        )}
+                    </Select>
+                </FormControl>
+            </Paper>
+
             {/* Site URL and Add Domain Button - Only show if site is loaded */}
             {site && (
                 <Paper
@@ -260,8 +342,8 @@ const DomainPage = () => {
                         variant="contained"
                         startIcon={<ShoppingCartIcon />}
                         onClick={() => {
-                            if (siteId) {
-                                navigate(`/studio/${siteId}/domain/buy`);
+                            if (selectedSiteId) {
+                                navigate(`/studio/${selectedSiteId}/domain/buy`);
                             } else {
                                 navigate('/studio/domain/buy');
                             }

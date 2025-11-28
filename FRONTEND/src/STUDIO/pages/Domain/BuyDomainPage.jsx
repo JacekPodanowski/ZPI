@@ -16,6 +16,10 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
 } from '@mui/material';
 import { 
     Search as SearchIcon, 
@@ -25,11 +29,17 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkDomainAvailability, purchaseDomain } from '../../../services/domainService';
+import { fetchSites } from '../../../services/siteService';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 
 const BuyDomainPage = () => {
     const { siteId } = useParams();
     const navigate = useNavigate();
+    
+    // Sites state
+    const [sites, setSites] = useState([]);
+    const [loadingSites, setLoadingSites] = useState(true);
+    const [selectedSiteId, setSelectedSiteId] = useState(siteId || '');
     
     // Domain search state
     const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +51,27 @@ const BuyDomainPage = () => {
     const [purchasing, setPurchasing] = useState(false);
     const [selectedDomain, setSelectedDomain] = useState(null);
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+    // Load user's sites
+    useEffect(() => {
+        const loadSites = async () => {
+            try {
+                setLoadingSites(true);
+                const data = await fetchSites();
+                setSites(data);
+                // If siteId from URL, set it as selected
+                if (siteId) {
+                    setSelectedSiteId(siteId);
+                }
+            } catch (err) {
+                console.error('Failed to load sites:', err);
+                setSearchError('Nie udało się załadować listy stron.');
+            } finally {
+                setLoadingSites(false);
+            }
+        };
+        loadSites();
+    }, [siteId]);
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) {
@@ -101,21 +132,23 @@ const BuyDomainPage = () => {
     };
     
     const handlePurchaseClick = (domain) => {
+        if (!selectedSiteId) {
+            setSearchError('Wybierz stronę przed zakupem domeny.');
+            return;
+        }
         setSelectedDomain(domain);
         setConfirmDialogOpen(true);
     };
     
     const handleConfirmPurchase = async () => {
-        if (!selectedDomain) return;
+        if (!selectedDomain || !selectedSiteId) return;
         
         try {
             setPurchasing(true);
-            const response = await purchaseDomain(selectedDomain.domain, siteId ? parseInt(siteId) : null);
+            const response = await purchaseDomain(selectedDomain.domain, parseInt(selectedSiteId));
             
             // Store site_id in localStorage so we can navigate back after payment
-            if (siteId) {
-                localStorage.setItem('domain_purchase_site_id', siteId);
-            }
+            localStorage.setItem('domain_purchase_site_id', selectedSiteId);
             localStorage.setItem('domain_purchase_order_id', response.order_id);
             
             // Redirect to payment URL (mock or real)
@@ -139,8 +172,8 @@ const BuyDomainPage = () => {
     };
 
     const handleBackToDomain = () => {
-        if (siteId) {
-            navigate(`/studio/${siteId}/domain`);
+        if (selectedSiteId) {
+            navigate(`/studio/${selectedSiteId}/domain`);
         } else {
             navigate('/studio/domain');
         }
@@ -185,6 +218,37 @@ const BuyDomainPage = () => {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Wprowadź pożądaną nazwę domeny (bez rozszerzenia). Sprawdzimy dostępność dla różnych rozszerzeń.
                 </Typography>
+
+                {/* Site Selection Dropdown */}
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                    <InputLabel id="site-select-label">Wybierz stronę</InputLabel>
+                    <Select
+                        labelId="site-select-label"
+                        value={selectedSiteId}
+                        onChange={(e) => setSelectedSiteId(e.target.value)}
+                        label="Wybierz stronę"
+                        disabled={loadingSites}
+                        sx={{
+                            borderRadius: 2,
+                        }}
+                    >
+                        {loadingSites ? (
+                            <MenuItem value="" disabled>
+                                <CircularProgress size={20} sx={{ mr: 1 }} /> Ładowanie...
+                            </MenuItem>
+                        ) : sites.length === 0 ? (
+                            <MenuItem value="" disabled>
+                                Brak stron - utwórz najpierw stronę
+                            </MenuItem>
+                        ) : (
+                            sites.map((site) => (
+                                <MenuItem key={site.id} value={site.id.toString()}>
+                                    {site.name}
+                                </MenuItem>
+                            ))
+                        )}
+                    </Select>
+                </FormControl>
 
                 <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                     <TextField
