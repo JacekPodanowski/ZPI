@@ -248,6 +248,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.youreasysite\.pl$",     # Allow all subdomains (user sites)
     r"^http://.*\.youreasysite\.pl$",      # Allow all subdomains (HTTP for dev)
     r"^null$",  # Allow local HTML files for testing
+    r"^https?://[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}$",  # Allow custom user domains (e.g., bohdanpage.eu)
+    r"^https?://[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}$",  # Allow subdomains of custom domains
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -422,9 +424,13 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
 
 # Optymalizacja wydajności workera
-CELERY_WORKER_MAX_TASKS_PER_CHILD = 500  # Restart workera co 500 tasków (zapobiega memory leaks)
-CELERY_TASK_ACKS_LATE = True  # Bezpieczniejsze - task jest "ack" dopiero po wykonaniu
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 300  # Restart workera co 300 tasków (zapobiega memory leaks)
+CELERY_TASK_ACKS_LATE = True  # Task jest ACK dopiero po wykonaniu (bezpieczniejsze)
 CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Ponów task jeśli worker umarł
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Worker pobiera 1 task na raz (lepsza responsywność)
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 3600,  # Po 1h niewykończony task wraca do kolejki
+}
 
 # Kolejki priorytetowe - separacja tasków według typu
 CELERY_TASK_DEFAULT_QUEUE = 'default'

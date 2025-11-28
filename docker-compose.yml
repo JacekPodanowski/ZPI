@@ -39,9 +39,17 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
 
-  # --- NOWY Serwis Setup (Uruchamia migracje, etc.) ---
-  # Ten serwis uruchomi się, wykona skrypt entrypoint.sh i zakończy działanie.
+
+  # --- Serwis Setup (Wykona entrypoint.sh i zakończy działanie.) ---
   backend-setup:
     build:
       context: ./BACKEND
@@ -84,7 +92,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
     restart: unless-stopped
     # Optymalizacja: concurrency=2, nasłuchuje na wszystkich kolejkach priorytetowych
-    command: celery -A django_config worker --loglevel=info --concurrency=2 --max-tasks-per-child=500 -Q default,emails,high_priority,low_priority
+    command: celery -A django_config worker --loglevel=info --concurrency=2 -Q default,emails,high_priority,low_priority
     volumes:
       - ./BACKEND:/home/appuser/app
     env_file:
@@ -94,6 +102,15 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
 
   # --- Serwis Celery Beat (Scheduler - bardzo lekki) ---
   celery-beat:
@@ -103,7 +120,7 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_beat
     restart: unless-stopped
     # Beat zużywa ~20-50MB RAM - tylko sprawdza harmonogram i wrzuca taski do kolejki
-    command: celery -A django_config beat --loglevel=info
+    command: celery -A django_config beat --loglevel=info --max-interval=10
     volumes:
       - ./BACKEND:/home/appuser/app
     env_file:
@@ -113,6 +130,14 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   # --- Serwis Studio Frontendu (React) ---
   studio-frontend:
