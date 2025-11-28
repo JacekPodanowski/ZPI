@@ -1897,6 +1897,10 @@ class PublicSiteView(generics.RetrieveAPIView):
             # Extract site identifier from target (e.g., "1-pokazowa.youreasysite.pl" -> "1-pokazowa")
             if domain_order.target:
                 target = domain_order.target
+                # Normalize target: remove protocol and trailing slash
+                # e.g., "https://1-pokazowa.youreasysite.pl/" -> "1-pokazowa.youreasysite.pl"
+                target = target.replace('https://', '').replace('http://', '').rstrip('/')
+                
                 # Check if target is a youreasysite.pl subdomain
                 if target.endswith('.youreasysite.pl'):
                     target_identifier = target.replace('.youreasysite.pl', '')
