@@ -2257,7 +2257,30 @@ def fetch_domain_expiration_date(domain_name: str, zone_id: str = None) -> 'date
                 logger.warning(f"[Domain] Could not parse expiration date '{expiry_date_str}': {parse_error}")
                 return None
         
-        logger.info(f"[Domain] No expiration date available for {domain_name} from Cloudflare")
+        # Fallback to WHOIS lookup
+        logger.info(f"[Domain] No expiration date from Cloudflare, trying WHOIS for {domain_name}")
+        try:
+            import whois
+            w = whois.whois(domain_name)
+            
+            if w and w.expiration_date:
+                # expiration_date can be a list or a single datetime
+                exp_date = w.expiration_date
+                if isinstance(exp_date, list):
+                    exp_date = exp_date[0]
+                
+                if hasattr(exp_date, 'date'):
+                    expiry_date = exp_date.date()
+                else:
+                    expiry_date = exp_date
+                
+                logger.info(f"[Domain] Found expiration date for {domain_name} via WHOIS: {expiry_date}")
+                return expiry_date
+            else:
+                logger.info(f"[Domain] WHOIS returned no expiration date for {domain_name}")
+        except Exception as whois_error:
+            logger.warning(f"[Domain] WHOIS lookup failed for {domain_name}: {whois_error}")
+        
         return None
         
     except Exception as e:
