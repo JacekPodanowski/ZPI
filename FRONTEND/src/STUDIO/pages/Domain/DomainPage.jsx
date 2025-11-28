@@ -102,9 +102,7 @@ const DomainPage = () => {
                     order.status === 'pending_payment' || order.status === 'configuring_dns'
                 );
                 
-                if (hasOrdersInProgress) {
-                    console.log('[DomainPage] Auto-refreshing orders (in progress detected)');
-                } else {
+                if (!hasOrdersInProgress) {
                     // No orders in progress, stop auto-refresh
                     clearInterval(interval);
                 }
@@ -139,14 +137,10 @@ const DomainPage = () => {
             return;
         }
         
-        console.log('[DomainPage] Adding domain to Cloudflare:', newDomainName);
-        
         try {
             setAddingDomain(true);
             setSearchError(null);
             const response = await addDomainWithCloudflare(newDomainName.trim(), siteId ? parseInt(siteId) : null);
-            
-            console.log('[DomainPage] Domain added to Cloudflare:', response);
             
             // Reload orders to show the new domain
             const orders = await getDomainOrders(parseInt(siteId));
@@ -156,7 +150,6 @@ const DomainPage = () => {
             setNewDomainName('');
             
         } catch (err) {
-            console.error('[DomainPage] Failed to add domain:', err);
             setSearchError(err.message || 'Failed to add domain to Cloudflare');
         } finally {
             setAddingDomain(false);
@@ -166,10 +159,8 @@ const DomainPage = () => {
     const handleCheckOrderStatus = async (orderId) => {
         try {
             setCheckingStatus(orderId);
-            console.log('[DomainPage] Checking order status:', orderId);
             
             const result = await checkOrderStatus(orderId);
-            console.log('[DomainPage] Status check result:', result);
             
             // Reload orders to get updated status
             const orders = await getDomainOrders(parseInt(siteId));
@@ -178,10 +169,8 @@ const DomainPage = () => {
             // Show success message if DNS configuration was triggered
             if (result.dns_configuration_triggered) {
                 setSearchError(null);
-                // You could add a success snackbar here
             }
         } catch (err) {
-            console.error('[DomainPage] Failed to check order status:', err);
             setSearchError(err.message || 'Failed to check order status');
         } finally {
             setCheckingStatus(null);

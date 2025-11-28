@@ -323,7 +323,23 @@ class EventSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        from django.utils import timezone
+        from datetime import timedelta
+        
         site = attrs.get('site') or (self.instance.site if self.instance else None)
+        start_time = attrs.get('start_time')
+        
+        # Validate that events cannot be created in the past (with 60 min buffer)
+        if start_time:
+            now = timezone.now()
+            # Allow events to be set up to 60 minutes in the past (buffer)
+            min_allowed_time = now - timedelta(minutes=60)
+            
+            if start_time < min_allowed_time:
+                raise serializers.ValidationError({
+                    'start_time': 'Nie można tworzyć wydarzeń w przeszłości. Minimalna godzina rozpoczęcia to 1 godzina przed aktualnym czasem.'
+                })
+        
         # creator is now read-only, so it won't be in attrs during creation
         # validation will happen in the ViewSet's perform_create
         return attrs
@@ -433,6 +449,34 @@ class AvailabilityBlockSerializer(serializers.ModelSerializer):
                 name = member.email
             return f"{name} (Zespół)"
         return None
+    
+    def validate(self, attrs):
+        from django.utils import timezone
+        from datetime import datetime, timedelta
+        
+        date = attrs.get('date')
+        start_time = attrs.get('start_time')
+        
+        # Validate that availability blocks cannot be created too far in the past (15 min buffer)
+        if date and start_time:
+            now = timezone.now()
+            today = now.date()
+            
+            # Only validate for today's date
+            if date == today:
+                # Combine date and time to get full datetime
+                block_start = datetime.combine(date, start_time)
+                block_start = timezone.make_aware(block_start)
+                
+                # Allow blocks to start up to 60 minutes in the past
+                min_allowed_time = now - timedelta(minutes=60)
+                
+                if block_start < min_allowed_time:
+                    raise serializers.ValidationError({
+                        'start_time': 'Nie można tworzyć bloków dostępności w przeszłości. Minimalna godzina rozpoczęcia to 1 godzina przed aktualnym czasem.'
+                    })
+        
+        return attrs
     
     def create(self, validated_data):
         # Automatically set creator to the current user
@@ -740,6 +784,7 @@ class DomainOrderSerializer(serializers.ModelSerializer):
     site_name = serializers.CharField(source='site.name', read_only=True)
     site_identifier = serializers.CharField(source='site.identifier', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    days_until_expiration = serializers.SerializerMethodField()
     
     class Meta:
         model = DomainOrder
@@ -748,13 +793,23 @@ class DomainOrderSerializer(serializers.ModelSerializer):
             'domain_name', 'ovh_order_id', 'ovh_cart_id', 'price', 'status',
             'status_display', 'payment_url', 'dns_configuration', 'target', 'proxy_mode', 'error_message',
             'cloudflare_zone_id', 'cloudflare_nameservers',
+            'domain_expiration_date', 'days_until_expiration',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'user', 'ovh_order_id', 'ovh_cart_id', 'payment_url',
             'dns_configuration', 'error_message', 'cloudflare_zone_id', 'cloudflare_nameservers',
+            'domain_expiration_date', 'days_until_expiration',
             'created_at', 'updated_at'
         ]
+    
+    def get_days_until_expiration(self, obj):
+        """Calculate days until domain expiration."""
+        if not obj.domain_expiration_date:
+            return None
+        today = timezone.now().date()
+        delta = obj.domain_expiration_date - today
+        return delta.days
 
 
 class TestimonialSerializer(serializers.ModelSerializer):

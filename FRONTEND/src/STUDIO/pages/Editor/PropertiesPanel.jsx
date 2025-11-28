@@ -1486,15 +1486,6 @@ const PropertiesPanel = ({ placement = 'right' }) => {
   // Check both module.layout and module.content.layout
   let rawLayout = module?.layout || module?.content?.layout || moduleDef?.defaultLayout || availableLayouts[0];
   
-  console.log('[PropertiesPanel] Layout info:', {
-    moduleType: module?.type,
-    moduleLayout: module?.layout,
-    contentLayout: module?.content?.layout,
-    rawLayout,
-    availableLayouts,
-    defaultLayout: moduleDef?.defaultLayout
-  });
-  
   // Normalize layout: if current layout is not in available options, use default
   const currentLayout = availableLayouts.includes(rawLayout) 
     ? rawLayout 
@@ -1529,13 +1520,6 @@ const PropertiesPanel = ({ placement = 'right' }) => {
 
   const handleContentChange = (field, value) => {
     if (module && page) {
-      console.log('🔧 PropertiesPanel - Content Change:', {
-        field,
-        value: typeof value === 'string' ? value.substring(0, 50) : value,
-        moduleId: module.id,
-        pageId: page.id
-      });
-      
       // Special handling for 'layout' - save to module.layout, not module.content.layout
       if (field === 'layout') {
         updateModuleProperty(page.id, module.id, 'layout', value);

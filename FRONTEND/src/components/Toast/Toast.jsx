@@ -1,4 +1,3 @@
-import React from 'react';
 import ToastVersions from './ToastVersions';
 
 const Toast = ({ message, variant = 'info', duration = 5000, version = 1, width = 420, height = 75, font = 16, onClose }) => {

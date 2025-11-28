@@ -51,15 +51,12 @@ const BuyDomainPage = () => {
         // Remove any TLD if user entered it
         const cleanQuery = searchQuery.trim().toLowerCase().replace(/\.(com|pl|io|net|app|store|online)$/i, '');
 
-        console.log('[BuyDomainPage] Starting domain search for:', cleanQuery);
-
         try {
             setSearching(true);
             setSearchError(null);
             setDomainResults([]);
 
             const results = await checkDomainAvailability(cleanQuery);
-            console.log('[BuyDomainPage] Search results:', results);
             
             // Sort: available first (by price), then unavailable (alphabetically)
             const sortedResults = results.sort((a, b) => {
@@ -71,7 +68,6 @@ const BuyDomainPage = () => {
                 return a.domain.localeCompare(b.domain);
             });
             
-            console.log('[BuyDomainPage] Sorted results:', sortedResults);
             setDomainResults(sortedResults);
 
             const availableCount = sortedResults.filter(d => d.available).length;
@@ -79,13 +75,6 @@ const BuyDomainPage = () => {
                 setSearchError('No available domains found. Try a different name.');
             }
         } catch (err) {
-            console.error('[BuyDomainPage] Domain search failed:', err);
-            console.error('[BuyDomainPage] Error details:', {
-                message: err.message,
-                response: err.response?.data,
-                status: err.response?.status
-            });
-            
             // Handle specific error types
             if (err.response?.status === 403) {
                 setSearchError(
@@ -119,13 +108,9 @@ const BuyDomainPage = () => {
     const handleConfirmPurchase = async () => {
         if (!selectedDomain) return;
         
-        console.log('[BuyDomainPage] Purchasing domain:', selectedDomain.domain);
-        
         try {
             setPurchasing(true);
             const response = await purchaseDomain(selectedDomain.domain, siteId ? parseInt(siteId) : null);
-            
-            console.log('[BuyDomainPage] Purchase initiated:', response);
             
             // Store site_id in localStorage so we can navigate back after payment
             if (siteId) {
@@ -141,7 +126,6 @@ const BuyDomainPage = () => {
                 navigate(`/studio/domain-purchase-success?orderId=${response.order_id}`);
             }
         } catch (err) {
-            console.error('[BuyDomainPage] Purchase failed:', err);
             setSearchError(err.message || 'Failed to initiate purchase. Please try again.');
             setConfirmDialogOpen(false);
         } finally {

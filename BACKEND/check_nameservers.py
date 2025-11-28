@@ -3,7 +3,7 @@
 import django
 import os
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'site_project.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_config.settings')
 django.setup()
 
 from django.conf import settings

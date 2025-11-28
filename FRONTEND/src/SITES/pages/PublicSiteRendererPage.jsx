@@ -1,5 +1,4 @@
 // File: FRONTEND/src/SITES/pages/PublicSiteRendererPage.jsx
-import React from 'react';
 import { useParams } from 'react-router-dom';
 import SiteApp from '../SiteApp';
 

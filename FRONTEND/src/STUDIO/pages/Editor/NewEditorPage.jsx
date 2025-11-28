@@ -291,44 +291,7 @@ const NewEditorPage = () => {
     }
   }, [replaceSiteStateWithHistory]);
 
-  // WebSocket connection for AI updates (now used only for real-time delivery)
-  useEffect(() => {
-    if (!user?.id) {
-      return;
-    }
-
-    // Use backend URL for WebSocket
-    const API_BASE = import.meta.env.VITE_API_BASE_URL;
-    const backendHost = API_BASE.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '');
-    const wsProtocol = API_BASE.startsWith('https') ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${backendHost}/ws/ai-updates/${user.id}/`;
-    
-    const socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        handleAIUpdate(data);
-      } catch (error) {
-      }
-    };
-
-    socket.onerror = (error) => {
-    };
-
-    socket.onclose = (event) => {
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, [user?.id, handleAIUpdate]);
-
-  // Also listen for polling-based updates
+  // Listen for AI updates dispatched from AIChatPanel
   useEffect(() => {
     const handlePolledUpdate = (event) => {
       handleAIUpdate(event.detail);

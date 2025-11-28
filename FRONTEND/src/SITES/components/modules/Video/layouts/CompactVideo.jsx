@@ -1,4 +1,3 @@
-import React from 'react';
 import { resolveMediaUrl } from '../../../../../config/api';
 import { normaliseVideoUrl, applyPlaybackPreferences } from '../helpers';
 import EditableText from '../../../../../STUDIO/components/EditableText';

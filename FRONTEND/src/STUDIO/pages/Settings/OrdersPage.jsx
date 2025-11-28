@@ -69,22 +69,14 @@ const OrdersPage = () => {
       
       if (isAdmin) {
         // Admin: get ALL orders at once (no site_id filter)
-        console.log('[OrdersPage] Loading all orders for admin...');
         const ordersResponse = await apiClient.get('/domains/orders/');
         allOrders = ordersResponse.data;
-        
-        // Backend already includes site info via serializer
-        console.log('[OrdersPage] Admin orders loaded:', allOrders.length);
       } else {
         // Regular user: get orders per site
-        console.log('[OrdersPage] Loading orders for regular user...');
-        
         const sitesResponse = await apiClient.get('/sites/');
         const sites = Array.isArray(sitesResponse.data) 
           ? sitesResponse.data 
           : sitesResponse.data.results || [];
-        
-        console.log('[OrdersPage] User sites:', sites.length);
         
         for (const site of sites) {
           try {
@@ -101,19 +93,16 @@ const OrdersPage = () => {
             
             allOrders.push(...ordersWithSite);
           } catch (err) {
-            console.error(`Failed to load orders for site ${site.id}:`, err);
+            // Silently skip failed site order loads
           }
         }
       }
-      
-      console.log('[OrdersPage] Total orders:', allOrders.length);
       
       // Sort by creation date (newest first)
       allOrders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       
       setOrders(allOrders);
     } catch (err) {
-      console.error('Failed to load orders:', err);
       setError('Nie udało się załadować zamówień. Spróbuj ponownie.');
     } finally {
       setLoading(false);
@@ -433,6 +422,46 @@ const OrdersPage = () => {
                       {formatDate(order.created_at)}
                     </Typography>
                   </Box>
+                  {order.domain_expiration_date && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.colors?.text?.secondary, display: 'block' }}>
+                        Wygasa
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: 500,
+                          color: order.days_until_expiration !== null && order.days_until_expiration <= 30 
+                            ? order.days_until_expiration <= 7 
+                              ? 'error.main' 
+                              : 'warning.main'
+                            : 'inherit'
+                        }}
+                      >
+                        {new Date(order.domain_expiration_date).toLocaleDateString('pl-PL', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                        {order.days_until_expiration !== null && (
+                          <Typography 
+                            component="span" 
+                            variant="caption" 
+                            sx={{ 
+                              ml: 1,
+                              color: order.days_until_expiration <= 7 
+                                ? 'error.main' 
+                                : order.days_until_expiration <= 30 
+                                  ? 'warning.main' 
+                                  : 'text.secondary'
+                            }}
+                          >
+                            ({order.days_until_expiration} dni)
+                          </Typography>
+                        )}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
 
                 {order.status === 'pending_payment' && (

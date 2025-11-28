@@ -1,5 +1,4 @@
 // layouts/CenteredHero.jsx - Centered layout with mobile responsiveness
-import React from 'react';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import EditableText from '../../../../../STUDIO/components/EditableText';
 import useNewEditorStore from '../../../../../STUDIO/store/newEditorStore';

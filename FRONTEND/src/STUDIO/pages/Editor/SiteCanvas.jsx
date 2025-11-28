@@ -543,7 +543,6 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                       });
                     }}
                     onDragStart={(e) => {
-                      console.log('[SiteCanvas] Drag start - module:', module.id, 'from page:', page.id);
                       e.dataTransfer.effectAllowed = 'move';
                       e.dataTransfer.setData('moduleId', module.id);
                       e.dataTransfer.setData('sourcePageId', page.id);
@@ -601,7 +600,6 @@ const SiteCanvas = ({ page, renderMode = 'icon', showOverlay = true, onDropHandl
                         });
                     }}
                     onDragEnd={(e) => {
-                      console.log('[SiteCanvas] Drag end');
                       e.stopPropagation();
                         setDragging(false);
                     }}

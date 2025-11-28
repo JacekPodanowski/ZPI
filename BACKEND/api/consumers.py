@@ -29,7 +29,7 @@ class AIConsumer(AsyncWebsocketConsumer):
         )
         
         await self.accept()
-        logger.info(f"WebSocket connected for user {self.user_id}")
+        logger.debug(f"WebSocket connected for user {self.user_id}")
     
     async def disconnect(self, close_code):
         """Remove from group on disconnect."""
@@ -37,7 +37,7 @@ class AIConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
-        logger.info(f"WebSocket disconnected for user {self.user_id} (code: {close_code})")
+        logger.debug(f"WebSocket disconnected for user {self.user_id} (code: {close_code})")
     
     async def receive(self, text_data):
         """
@@ -88,7 +88,7 @@ class GoogleCalendarConsumer(AsyncWebsocketConsumer):
             )
             
             await self.accept()
-            logger.info(f"Google Calendar WebSocket connected for site {self.site_id}")
+            logger.debug(f"Google Calendar WebSocket connected for site {self.site_id}")
         except Exception as e:
             logger.error(f"Error connecting Google Calendar WebSocket: {e}", exc_info=True)
             await self.close()

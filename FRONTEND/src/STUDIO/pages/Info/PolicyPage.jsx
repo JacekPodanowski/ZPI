@@ -1,284 +1,101 @@
-import React from 'react';
-import { Box, Container, Typography, Paper, Stack } from '@mui/material';
-import useTheme from '../../../theme/useTheme';
+import { useState, useEffect } from 'react';
+import { Box, Container, Paper, Typography, Divider, CircularProgress, Alert } from '@mui/material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import Logo from '../../../components/Logo/Logo';
+import apiClient from '../../../services/apiClient';
 import Navigation from '../../../components/Navigation/Navigation';
 
 const PolicyPage = () => {
-  const theme = useTheme();
+    const [document, setDocument] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-  return (
-    <>
-      <Navigation />
-      <Box
-      sx={{
-        minHeight: '100vh',
-        bgcolor: theme.palette.mode === 'dark' ? 'rgb(12, 12, 12)' : 'rgb(228, 229, 218)',
-        py: 8
-      }}
-    >
-      <Container maxWidth="md">
-        <Stack spacing={4}>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography
-              variant="h2"
-              sx={{
-                fontWeight: 700,
-                mb: 2,
-                color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-              }}
-            >
-              Polityka Prywatności
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{
-                color: theme.palette.mode === 'dark' ? 'rgb(188, 186, 179)' : 'rgb(70, 70, 68)'
-              }}
-            >
-              Informacje o przetwarzaniu danych osobowych
-            </Typography>
-          </Box>
+    useEffect(() => {
+        const loadDocument = async () => {
+            try {
+                const response = await apiClient.get('/documents/policy/latest/');
+                setDocument(response.data);
+            } catch (err) {
+                setError('Nie udało się załadować polityki prywatności');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-          <Paper
-            elevation={3}
-            sx={{
-              p: 4,
-              borderRadius: 3
-            }}
-          >
-            <Stack spacing={3}>
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
-                >
-                  1. Administrator danych
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8
-                  }}
-                >
-                  Administratorem danych osobowych jest YourEasySite.com, NIP: 8993042136.
-                </Typography>
-              </Box>
+        loadDocument();
+    }, []);
 
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
-                >
-                  2. Cele i podstawy prawne przetwarzania
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8,
-                    mb: 1
-                  }}
-                >
-                  Dane osobowe przetwarzane są w następujących celach:
-                </Typography>
-                <Box component="ul" sx={{ pl: 3 }}>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Realizacja umowy o świadczenie usług (art. 6 ust. 1 lit. b RODO)
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Wystawianie faktur (art. 6 ust. 1 lit. c RODO)
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Marketing bezpośredni (art. 6 ust. 1 lit. f RODO)
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8 }}>
-                    Obsługa zapytań i komunikacja (art. 6 ust. 1 lit. f RODO)
-                  </Typography>
-                </Box>
-              </Box>
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
-                >
-                  3. Odbiorcy danych
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8,
-                    mb: 1
-                  }}
-                >
-                  Dane osobowe mogą być przekazywane następującym kategoriom odbiorców:
-                </Typography>
-                <Box component="ul" sx={{ pl: 3 }}>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Dostawcy usług IT i hostingowych
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Operatorzy płatności (PayPro SA - Przelewy24)
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Firmy księgowe
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8 }}>
-                    Organy publiczne w zakresie wymaganym prawem
-                  </Typography>
-                </Box>
-              </Box>
+    if (error) {
+        return (
+            <Container maxWidth="md" sx={{ py: 8 }}>
+                <Alert severity="error">{error}</Alert>
+            </Container>
+        );
+    }
 
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
-                >
-                  4. Okresy przechowywania danych
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8,
-                    mb: 1
-                  }}
-                >
-                  Dane osobowe przechowywane są przez okres:
-                </Typography>
-                <Box component="ul" sx={{ pl: 3 }}>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Niezbędny do realizacji umowy
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Wymagany przepisami prawa (np. rachunkowe - 5 lat)
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8 }}>
-                    Do momentu wniesienia sprzeciwu (w przypadku marketingu)
-                  </Typography>
-                </Box>
-              </Box>
+    const publishedDate = document?.published_at 
+        ? new Date(document.published_at).toLocaleDateString('pl-PL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })
+        : '';
 
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
+    return (
+        <>
+            <Navigation />
+            <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: { xs: 4, md: 8 } }}>
+            <Container maxWidth="md">
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: { xs: 4, md: 6 },
+                        borderRadius: 5,
+                        border: '1px solid rgba(160, 0, 22, 0.14)'
+                    }}
                 >
-                  5. Prawa użytkownika
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8,
-                    mb: 1
-                  }}
-                >
-                  Użytkownik ma prawo do:
-                </Typography>
-                <Box component="ul" sx={{ pl: 3 }}>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Dostępu do swoich danych osobowych
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Sprostowania danych
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Usunięcia danych
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Ograniczenia przetwarzania
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Przenoszenia danych
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Wniesienia sprzeciwu wobec przetwarzania
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8, mb: 0.5 }}>
-                    Cofnięcia zgody w dowolnym momencie
-                  </Typography>
-                  <Typography component="li" variant="body1" sx={{ color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)', lineHeight: 1.8 }}>
-                    Wniesienia skargi do organu nadzorczego (UODO)
-                  </Typography>
-                </Box>
-              </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+                        <Logo size="large" variant="shadow" />
+                    </Box>
+                    <Typography variant="h3" sx={{ fontWeight: 700, textAlign: 'center', mb: 2 }}>
+                        Polityka Prywatności
+                    </Typography>
+                    <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', mb: 4 }}>
+                        Wersja {document?.version} | Opublikowano: {publishedDate}
+                    </Typography>
+                    <Divider sx={{ mb: 4 }} />
 
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
-                >
-                  6. Pliki cookies
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8
-                  }}
-                >
-                  Serwis wykorzystuje pliki cookies w celu zapewnienia prawidłowego działania strony,
-                  personalizacji treści oraz analizy ruchu. Użytkownik może zarządzać plikami cookies
-                  poprzez ustawienia przeglądarki.
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography
-                  variant="h5"
-                  sx={{
-                    fontWeight: 600,
-                    mb: 2,
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)'
-                  }}
-                >
-                  7. Bezpieczeństwo danych
-                </Typography>
-                <Typography
-                  variant="body1"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? 'rgb(220, 220, 220)' : 'rgb(30, 30, 30)',
-                    lineHeight: 1.8
-                  }}
-                >
-                  Administrator stosuje odpowiednie środki techniczne i organizacyjne w celu
-                  zabezpieczenia danych osobowych przed nieuprawnionym dostępem, utratą lub zniszczeniem.
-                </Typography>
-              </Box>
-            </Stack>
-          </Paper>
-        </Stack>
-      </Container>
-    </Box>
-    </>
-  );
+                    <Box
+                        sx={{
+                            '& h1': { fontSize: '2rem', fontWeight: 600, mt: 4, mb: 2 },
+                            '& h2': { fontSize: '1.5rem', fontWeight: 600, mt: 3, mb: 1.5 },
+                            '& h3': { fontSize: '1.25rem', fontWeight: 600, mt: 2, mb: 1 },
+                            '& p': { mb: 2, lineHeight: 1.7 },
+                            '& ul, & ol': { mb: 2, pl: 4 },
+                            '& li': { mb: 1 },
+                            '& strong': { fontWeight: 600 },
+                            '& a': { color: 'primary.main', textDecoration: 'underline' },
+                        }}
+                    >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {document?.content_md || '# Brak treści\n\nPolityka prywatności nie została jeszcze utworzona.'}
+                        </ReactMarkdown>
+                    </Box>
+                </Paper>
+            </Container>
+        </Box>
+        </>
+    );
 };
 
 export default PolicyPage;

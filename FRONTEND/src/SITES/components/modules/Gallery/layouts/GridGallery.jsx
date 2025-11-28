@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import BackgroundMedia from '../../../../../components/BackgroundMedia';
 import { renderMedia } from '../helpers';

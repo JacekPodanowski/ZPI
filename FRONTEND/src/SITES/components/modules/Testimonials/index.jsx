@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import { TESTIMONIALS_DEFAULTS } from './defaults';
 import { TESTIMONIALS_DESCRIPTOR } from './descriptor';

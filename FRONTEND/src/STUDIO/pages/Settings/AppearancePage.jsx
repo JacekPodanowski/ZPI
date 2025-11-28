@@ -152,7 +152,6 @@ const AppearancePage = () => {
 
   const handleSave = () => {
     // TODO: Save settings to backend
-    console.log('Saving appearance settings:', { mode, ...settings });
   };
 
   return (

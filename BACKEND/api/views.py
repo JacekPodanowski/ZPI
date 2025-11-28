@@ -57,6 +57,7 @@ from .models import (
     MediaUsage,
     Notification,
     AvailabilityBlock,
+    LegalDocument,
     TermsOfService,
     MagicLink,
     EmailTemplate,
@@ -75,7 +76,7 @@ from .media_helpers import (
 )
 from .media_storage import StorageError, StorageSaveResult, get_media_storage
 from .permissions import IsOwnerOrTeamMember
-from .signals import ensure_initial_terms_exist
+from .signals import ensure_initial_terms_exist, ensure_initial_documents_exist
 from .google_calendar_service import google_calendar_service
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -2678,7 +2679,62 @@ class BaseTemplatedEmailView(APIView):
 
 
 @extend_schema(
-    tags=['Terms of Service'],
+    tags=['Legal Documents'],
+    summary='Get latest legal document',
+    description='Returns the version and markdown content of the latest legal document. Document types: terms, policy, guide. This is a public endpoint.',
+    parameters=[
+        OpenApiParameter(
+            name='doc_type',
+            type=str,
+            location=OpenApiParameter.PATH,
+            description='Document type: terms, policy, or guide',
+            enum=['terms', 'policy', 'guide']
+        )
+    ],
+    responses={
+        200: inline_serializer(
+            name='LatestDocumentResponse',
+            fields={
+                'document_type': serializers.CharField(),
+                'version': serializers.CharField(),
+                'content_md': serializers.CharField(),
+                'published_at': serializers.DateTimeField(),
+            }
+        ),
+        404: OpenApiResponse(description='No document found'),
+    },
+)
+class LatestDocumentView(APIView):
+    """Provides the version and markdown content of the latest legal document by type."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, doc_type, *args, **kwargs):
+        # Validate document type
+        valid_types = [choice[0] for choice in LegalDocument.DocumentType.choices]
+        if doc_type not in valid_types:
+            return Response(
+                {'detail': f'Invalid document type. Must be one of: {", ".join(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Ensure at least one version of each document exists
+        ensure_initial_documents_exist()
+        
+        try:
+            latest_doc = LegalDocument.objects.filter(document_type=doc_type).latest('published_at')
+            return Response({
+                'document_type': latest_doc.document_type,
+                'version': latest_doc.version,
+                'content_md': latest_doc.content_md,
+                'published_at': latest_doc.published_at,
+            })
+        except LegalDocument.DoesNotExist:
+            return Response({'detail': 'No document found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# Backwards compatibility - LatestTermsView now uses LatestDocumentView internally
+@extend_schema(
+    tags=['Legal Documents'],
     summary='Get latest Terms of Service',
     description='Returns the version and markdown content of the latest Terms of Service document. This is a public endpoint.',
     responses={
@@ -2698,22 +2754,21 @@ class LatestTermsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
-        # Ensure at least one terms version exists
-        ensure_initial_terms_exist()
+        ensure_initial_documents_exist()
         
         try:
-            latest_terms = TermsOfService.objects.latest('published_at')
+            latest_terms = LegalDocument.objects.filter(document_type=LegalDocument.DocumentType.TERMS).latest('published_at')
             return Response({
                 'version': latest_terms.version,
                 'content_md': latest_terms.content_md,
                 'published_at': latest_terms.published_at,
             })
-        except TermsOfService.DoesNotExist:
+        except LegalDocument.DoesNotExist:
             return Response({'detail': 'No terms of service found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @extend_schema(
-    tags=['Terms of Service'],
+    tags=['Legal Documents'],
     summary='Accept latest Terms of Service',
     description='Allows an authenticated user to accept the latest Terms of Service version.',
     responses={
@@ -2732,11 +2787,10 @@ class AcceptTermsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        # Ensure at least one terms version exists
-        ensure_initial_terms_exist()
+        ensure_initial_documents_exist()
         
         try:
-            latest_terms = TermsOfService.objects.latest('published_at')
+            latest_terms = LegalDocument.objects.filter(document_type=LegalDocument.DocumentType.TERMS).latest('published_at')
             user = request.user
             
             user.terms_agreement = latest_terms
@@ -2744,12 +2798,65 @@ class AcceptTermsView(APIView):
             user.save(update_fields=['terms_agreement', 'terms_agreement_date'])
             
             return Response({'status': 'success', 'message': f'Terms v{latest_terms.version} accepted.'})
-        except TermsOfService.DoesNotExist:
+        except LegalDocument.DoesNotExist:
             return Response({'detail': 'No terms to accept.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema(
-    tags=['Terms of Service'],
+    tags=['Legal Documents'],
+    summary='Get all versions of a legal document',
+    description='Returns all versions of a specific legal document type. Requires admin authentication.',
+    parameters=[
+        OpenApiParameter(
+            name='doc_type',
+            type=str,
+            location=OpenApiParameter.PATH,
+            description='Document type: terms, policy, or guide',
+            enum=['terms', 'policy', 'guide']
+        )
+    ],
+    responses={
+        200: inline_serializer(
+            name='AllDocumentsResponse',
+            fields={
+                'id': serializers.IntegerField(),
+                'document_type': serializers.CharField(),
+                'version': serializers.CharField(),
+                'content_md': serializers.CharField(),
+                'published_at': serializers.DateTimeField(),
+                'created_at': serializers.DateTimeField(),
+            },
+            many=True
+        ),
+    },
+)
+class AllDocumentsView(APIView):
+    """Returns all versions of a specific legal document type for admin management."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, doc_type, *args, **kwargs):
+        valid_types = [choice[0] for choice in LegalDocument.DocumentType.choices]
+        if doc_type not in valid_types:
+            return Response(
+                {'detail': f'Invalid document type. Must be one of: {", ".join(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        all_docs = LegalDocument.objects.filter(document_type=doc_type).order_by('-published_at')
+        data = [{
+            'id': doc.id,
+            'document_type': doc.document_type,
+            'version': doc.version,
+            'content_md': doc.content_md,
+            'published_at': doc.published_at,
+            'created_at': doc.created_at,
+        } for doc in all_docs]
+        return Response(data)
+
+
+# Backwards compatibility
+@extend_schema(
+    tags=['Legal Documents'],
     summary='Get all Terms of Service versions',
     description='Returns all versions of Terms of Service. Requires admin authentication.',
     responses={
@@ -2771,7 +2878,7 @@ class AllTermsView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
     def get(self, request, *args, **kwargs):
-        all_terms = TermsOfService.objects.all().order_by('-published_at')
+        all_terms = LegalDocument.objects.filter(document_type=LegalDocument.DocumentType.TERMS).order_by('-published_at')
         data = [{
             'id': terms.id,
             'version': terms.version,
@@ -2783,7 +2890,85 @@ class AllTermsView(APIView):
 
 
 @extend_schema(
-    tags=['Terms of Service'],
+    tags=['Legal Documents'],
+    summary='Create new legal document version',
+    description='Create a new version of a legal document. Requires admin authentication.',
+    parameters=[
+        OpenApiParameter(
+            name='doc_type',
+            type=str,
+            location=OpenApiParameter.PATH,
+            description='Document type: terms, policy, or guide',
+            enum=['terms', 'policy', 'guide']
+        )
+    ],
+    request=inline_serializer(
+        name='CreateDocumentRequest',
+        fields={
+            'version': serializers.CharField(),
+            'content_md': serializers.CharField(),
+        }
+    ),
+    responses={
+        201: inline_serializer(
+            name='CreateDocumentResponse',
+            fields={
+                'id': serializers.IntegerField(),
+                'document_type': serializers.CharField(),
+                'version': serializers.CharField(),
+                'published_at': serializers.DateTimeField(),
+            }
+        ),
+        400: OpenApiResponse(description='Validation error'),
+    },
+)
+class CreateDocumentView(APIView):
+    """Create a new version of a legal document."""
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request, doc_type, *args, **kwargs):
+        valid_types = [choice[0] for choice in LegalDocument.DocumentType.choices]
+        if doc_type not in valid_types:
+            return Response(
+                {'detail': f'Invalid document type. Must be one of: {", ".join(valid_types)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        version = request.data.get('version')
+        content_md = request.data.get('content_md')
+
+        if not version or not content_md:
+            return Response(
+                {'detail': 'Version and content_md are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if version already exists for this document type
+        if LegalDocument.objects.filter(document_type=doc_type, version=version).exists():
+            return Response(
+                {'detail': f'Version {version} already exists for this document type.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        doc = LegalDocument.objects.create(
+            document_type=doc_type,
+            version=version,
+            content_md=content_md
+        )
+
+        logger.info(f"Created new {doc_type} document version {version} by {request.user.email}")
+
+        return Response({
+            'id': doc.id,
+            'document_type': doc.document_type,
+            'version': doc.version,
+            'published_at': doc.published_at,
+        }, status=status.HTTP_201_CREATED)
+
+
+# Backwards compatibility
+@extend_schema(
+    tags=['Legal Documents'],
     summary='Create new Terms of Service version',
     description='Create a new version of Terms of Service. Requires admin authentication.',
     request=inline_serializer(
@@ -2820,13 +3005,14 @@ class CreateTermsView(APIView):
             )
 
         # Check if version already exists
-        if TermsOfService.objects.filter(version=version).exists():
+        if LegalDocument.objects.filter(document_type=LegalDocument.DocumentType.TERMS, version=version).exists():
             return Response(
                 {'detail': f'Version {version} already exists.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        terms = TermsOfService.objects.create(
+        terms = LegalDocument.objects.create(
+            document_type=LegalDocument.DocumentType.TERMS,
             version=version,
             content_md=content_md
         )
@@ -3081,7 +3267,25 @@ class PublicAvailabilityView(APIView):
                 existing_slot['assignee_id'] = event_assignee_info['id']
                 existing_slot['assignee_name'] = event_assignee_info['name']
 
-        sorted_slots = sorted(slot_map.values(), key=lambda x: x['start'])
+        # Filter out slots that have already ended
+        now = timezone.now()
+        filtered_slots = []
+        for slot in slot_map.values():
+            end_str = slot['end']
+            # Handle both 'Z' suffix and '+00:00' timezone formats
+            if end_str.endswith('Z'):
+                end_str = end_str[:-1] + '+00:00'
+            try:
+                slot_end = datetime.fromisoformat(end_str)
+                if timezone.is_naive(slot_end):
+                    slot_end = timezone.make_aware(slot_end)
+                if slot_end > now:
+                    filtered_slots.append(slot)
+            except (ValueError, TypeError):
+                # If parsing fails, include the slot to be safe
+                filtered_slots.append(slot)
+        
+        sorted_slots = sorted(filtered_slots, key=lambda x: x['start'])
 
         return Response(sorted_slots)
 
@@ -3127,6 +3331,14 @@ class PublicBookingView(APIView):
         if timezone.is_naive(start_time):
             start_time = timezone.make_aware(start_time)
         end_time = start_time + timedelta(minutes=duration)
+        
+        # Validate that booking is not for an event that has already ended
+        now = timezone.now()
+        if end_time <= now:
+            return Response(
+                {'error': 'Nie można zapisać się na wydarzenie, które już się zakończyło.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Znajdź lub stwórz klienta
         client, _ = Client.objects.get_or_create(
@@ -5102,6 +5314,12 @@ def add_domain_with_cloudflare(request):
             # This will fail with IntegrityError if unique constraint is violated
             expires_at = timezone.now() + timedelta(hours=48)
             
+            # STEP 4.5: Check domain expiration date via Cloudflare (if zone is active)
+            domain_expiration_date = None
+            if zone_status == 'active' and zone_id:
+                from .tasks import fetch_domain_expiration_date
+                domain_expiration_date = fetch_domain_expiration_date(domain_name, zone_id)
+            
             domain_order = DomainOrder.objects.create(
                 user=request.user,
                 site=site,
@@ -5110,6 +5328,7 @@ def add_domain_with_cloudflare(request):
                 cloudflare_nameservers=nameservers,
                 status=zone_status,
                 expires_at=expires_at,
+                domain_expiration_date=domain_expiration_date,
                 dns_configuration={
                     'cloudflare_zone_created': zone_created,
                     'created_at': timezone.now().isoformat()

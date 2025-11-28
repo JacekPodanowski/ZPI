@@ -30,6 +30,7 @@ services:
     image: redis:7-alpine
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_redis
     restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "${REDIS_PORT_HOST:-6379}:6379"
     healthcheck:
@@ -64,7 +65,7 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_django_app
     restart: unless-stopped
-    command: daphne -b 0.0.0.0 -p 8000 site_project.asgi:application
+    command: uvicorn django_config.asgi:application --host 0.0.0.0 --port 8000 --workers 3 --loop uvloop --http httptools
     volumes:
       - ./BACKEND:/home/appuser/app
     ports:
@@ -82,7 +83,7 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
     restart: unless-stopped
-    command: celery -A site_project worker --loglevel=info
+    command: celery -A django_config worker --beat --loglevel=info --concurrency=2 --prefetch-multiplier=1
     volumes:
       - ./BACKEND:/home/appuser/app
     env_file:
