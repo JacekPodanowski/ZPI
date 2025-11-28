@@ -1887,9 +1887,23 @@ class PublicSiteView(generics.RetrieveAPIView):
             status=DomainOrder.OrderStatus.ACTIVE
         ).select_related('site').first()
         
-        if domain_order and domain_order.site:
-            logger.info(f"[PublicSiteView] Fallback: Found site via domain '{identifier}' -> site '{domain_order.site.identifier}'")
-            return domain_order.site
+        if domain_order:
+            # Case 1: Domain has a linked site
+            if domain_order.site:
+                logger.info(f"[PublicSiteView] Fallback: Found site via domain '{identifier}' -> site '{domain_order.site.identifier}'")
+                return domain_order.site
+            
+            # Case 2: Domain has no linked site but has a target URL
+            # Extract site identifier from target (e.g., "1-pokazowa.youreasysite.pl" -> "1-pokazowa")
+            if domain_order.target:
+                target = domain_order.target
+                # Check if target is a youreasysite.pl subdomain
+                if target.endswith('.youreasysite.pl'):
+                    target_identifier = target.replace('.youreasysite.pl', '')
+                    site = Site.objects.filter(identifier=target_identifier).first()
+                    if site:
+                        logger.info(f"[PublicSiteView] Fallback: Found site via domain target '{identifier}' -> '{target}' -> site '{site.identifier}'")
+                        return site
         
         # If still not found, raise 404
         from django.http import Http404
