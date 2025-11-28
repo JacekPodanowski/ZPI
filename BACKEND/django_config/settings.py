@@ -248,6 +248,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.youreasysite\.pl$",     # Allow all subdomains (user sites)
     r"^http://.*\.youreasysite\.pl$",      # Allow all subdomains (HTTP for dev)
     r"^null$",  # Allow local HTML files for testing
+    r"^https?://[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}$",  # Allow custom user domains (e.g., bohdanpage.eu)
+    r"^https?://[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}$",  # Allow subdomains of custom domains
 ]
 CORS_ALLOW_CREDENTIALS = True
 
