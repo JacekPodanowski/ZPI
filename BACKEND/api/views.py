@@ -1874,10 +1874,9 @@ class PublicSiteView(generics.RetrieveAPIView):
         identifier = self.kwargs.get('identifier')
         
         # First, try standard lookup by identifier
-        try:
-            return super().get_object()
-        except Exception:
-            pass
+        site = Site.objects.filter(identifier=identifier).select_related('owner').first()
+        if site:
+            return site
         
         # Fallback: Check if identifier is a custom domain name
         # This happens when a custom domain (e.g., bohdanpage.eu) proxies to a site
@@ -1904,14 +1903,14 @@ class PublicSiteView(generics.RetrieveAPIView):
                 # Check if target is a youreasysite.pl subdomain
                 if target.endswith('.youreasysite.pl'):
                     target_identifier = target.replace('.youreasysite.pl', '')
-                    site = Site.objects.filter(identifier=target_identifier).first()
+                    site = Site.objects.filter(identifier=target_identifier).select_related('owner').first()
                     if site:
                         logger.info(f"[PublicSiteView] Fallback: Found site via domain target '{identifier}' -> '{target}' -> site '{site.identifier}'")
                         return site
         
-        # If still not found, raise 404
-        from django.http import Http404
-        raise Http404(f"Site with identifier '{identifier}' not found")
+        # If still not found, raise 404 using DRF's Http404
+        from rest_framework.exceptions import NotFound
+        raise NotFound(detail=f"Site with identifier '{identifier}' not found")
 
 
 @extend_schema(tags=['Public Sites'])
