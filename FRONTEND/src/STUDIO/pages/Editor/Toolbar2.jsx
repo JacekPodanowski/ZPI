@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useId, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Box, 
@@ -2051,4 +2051,4 @@ const Toolbar2 = ({
   );
 };
 
-export default Toolbar2;
+export default memo(Toolbar2);

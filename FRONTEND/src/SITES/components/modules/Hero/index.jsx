@@ -1,4 +1,5 @@
 // index.jsx - Main HeroSection component with layout switching
+import React, { memo } from 'react';
 import { HERO_DEFAULTS } from './defaults';
 import { HERO_DESCRIPTOR } from './descriptor';
 import CenteredHero from './layouts/CenteredHero';
@@ -12,7 +13,7 @@ const LAYOUTS = {
   fullscreen: FullscreenHero
 };
 
-const HeroSection = ({ layout = 'centered', content = {}, style, isEditing, moduleId, pageId, typography }) => {
+const HeroSection = memo(({ layout = 'centered', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   console.log('[HeroSection] Rendering with layout:', layout);
   console.log('[HeroSection] content:', content);
   console.log('[HeroSection] content keys:', Object.keys(content || {}));
@@ -31,7 +32,8 @@ const HeroSection = ({ layout = 'centered', content = {}, style, isEditing, modu
       typography={typography}
     />
   );
-};
+});
 
+HeroSection.displayName = 'HeroSection';
 HeroSection.descriptor = HERO_DESCRIPTOR;
 export default HeroSection;

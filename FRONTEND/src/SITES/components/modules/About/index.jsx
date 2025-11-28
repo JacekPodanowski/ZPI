@@ -1,4 +1,5 @@
 // index.jsx - Main AboutSection component
+import React, { memo } from 'react';
 import { ABOUT_DEFAULTS } from './defaults';
 import { ABOUT_DESCRIPTOR } from './descriptor';
 import TimelineAbout from './layouts/TimelineAbout';
@@ -12,7 +13,7 @@ const LAYOUTS = {
   narrative: NarrativeAbout
 };
 
-const AboutSection = ({ layout = 'grid', content = {}, style, isEditing, moduleId, pageId, typography }) => {
+const AboutSection = memo(({ layout = 'grid', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   const defaultOptions = ABOUT_DEFAULTS[layout] || ABOUT_DEFAULTS.grid;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
@@ -29,7 +30,8 @@ const AboutSection = ({ layout = 'grid', content = {}, style, isEditing, moduleI
       typography={typography}
     />
   );
-};
+});
 
+AboutSection.displayName = 'AboutSection';
 AboutSection.descriptor = ABOUT_DESCRIPTOR;
 export default AboutSection;

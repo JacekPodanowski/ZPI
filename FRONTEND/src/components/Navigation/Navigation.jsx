@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { Link as RouterLink, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     AppBar,
@@ -36,6 +36,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import ShadowAvatarSrc from '../../assets/yes-avatar-shadow.svg';
 import AdminLink from '../AdminLink/AdminLink';
+import { prefetchOnHover } from '../../STUDIO/utils/prefetch';
 
 const drawerWidth = 280;
 const NAV_HEIGHT = 60;
@@ -289,6 +290,7 @@ const Navigation = () => {
                                 <Button
                                     component={NavLink}
                                     to={item.to}
+                                    onMouseEnter={() => prefetchOnHover(item.to)}
                                     sx={{
                                         color: 'text.secondary',
                                         transition: 'all 0.3s ease',

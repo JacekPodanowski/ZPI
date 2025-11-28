@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import moment from 'moment';
+import { format, startOfMonth, endOfMonth, parseISO, isValid } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import PublicCalendar from '../components/PublicCalendar';
 import BookingModal from '../../../../../components/Calendar/BookingModal';
 import { applyOpacity } from '../../../../../utils/color';
@@ -16,13 +17,18 @@ const normalizeEvents = (events = []) => {
       return;
     }
 
-    const candidateMoment = event.date ? moment(event.date) : event.start ? moment(event.start) : null;
+    let candidateDate = null;
+    if (event.date) {
+      candidateDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
+    } else if (event.start) {
+      candidateDate = typeof event.start === 'string' ? parseISO(event.start) : event.start;
+    }
 
-    if (!candidateMoment || !candidateMoment.isValid()) {
+    if (!candidateDate || !isValid(candidateDate)) {
       return;
     }
 
-    const dayKey = candidateMoment.format('YYYY-MM-DD');
+    const dayKey = format(candidateDate, 'yyyy-MM-dd');
 
     const normalizedEvent = {
       title: event.title || event.name || 'Wydarzenie',
@@ -50,9 +56,9 @@ const normalizeEvents = (events = []) => {
 
   map.forEach((list, dayKey) => {
     list.sort((a, b) => {
-      const aMoment = a.start ? moment(a.start) : moment(`${dayKey}T00:00:00`);
-      const bMoment = b.start ? moment(b.start) : moment(`${dayKey}T00:00:00`);
-      return aMoment.valueOf() - bMoment.valueOf();
+      const aDate = a.start ? (typeof a.start === 'string' ? parseISO(a.start) : a.start) : parseISO(`${dayKey}T00:00:00`);
+      const bDate = b.start ? (typeof b.start === 'string' ? parseISO(b.start) : b.start) : parseISO(`${dayKey}T00:00:00`);
+      return aDate.getTime() - bDate.getTime();
     });
   });
 
@@ -74,7 +80,7 @@ const FullWidthCalendar = ({ content, style, siteId, isEditing, moduleId, pageId
   const [apiEvents, setApiEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(moment().startOf('month'));
+  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [selectedCreator, setSelectedCreator] = useState('all');
@@ -110,8 +116,8 @@ const FullWidthCalendar = ({ content, style, siteId, isEditing, moduleId, pageId
     setLoading(true);
     setError(null);
     
-    const start = currentMonth.clone().startOf('month').format('YYYY-MM-DD');
-    const end = currentMonth.clone().endOf('month').format('YYYY-MM-DD');
+    const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+    const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
     try {
       const response = await fetch(
@@ -214,7 +220,7 @@ const FullWidthCalendar = ({ content, style, siteId, isEditing, moduleId, pageId
     if (!activeDay) {
       return null;
     }
-    return activeDay.clone().startOf('day').format('YYYY-MM-DD');
+    return format(activeDay, 'yyyy-MM-dd');
   }, [activeDay]);
 
   const activeEvents = useMemo(() => {
@@ -326,7 +332,7 @@ const FullWidthCalendar = ({ content, style, siteId, isEditing, moduleId, pageId
 
         <div className="mt-10">
           <h3 className="text-2xl font-semibold mb-4" style={{ color: headingColor }}>
-            {activeDayKey ? `Wydarzenia ${moment(activeDayKey).format('D MMMM YYYY')}` : 'Brak wybranego dnia'}
+            {activeDayKey ? `Wydarzenia ${format(parseISO(activeDayKey), 'd MMMM yyyy', { locale: pl })}` : 'Brak wybranego dnia'}
           </h3>
 
           {activeEvents.length === 0 ? (
@@ -334,8 +340,8 @@ const FullWidthCalendar = ({ content, style, siteId, isEditing, moduleId, pageId
           ) : (
             <div className="grid gap-5 md:grid-cols-2">
               {activeEvents.map((event) => {
-                const startTime = event.start ? moment(event.start).format('HH:mm') : null;
-                const endTime = event.end ? moment(event.end).format('HH:mm') : null;
+                const startTime = event.start ? format(typeof event.start === 'string' ? parseISO(event.start) : event.start, 'HH:mm') : null;
+                const endTime = event.end ? format(typeof event.end === 'string' ? parseISO(event.end) : event.end, 'HH:mm') : null;
 
                 return (
                   <article

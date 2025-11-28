@@ -83,7 +83,27 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
     restart: unless-stopped
-    command: celery -A django_config worker --beat --loglevel=info --concurrency=2 --prefetch-multiplier=1
+    # Optymalizacja: concurrency=2, nasłuchuje na wszystkich kolejkach priorytetowych
+    command: celery -A django_config worker --loglevel=info --concurrency=2 --max-tasks-per-child=500 -Q default,emails,high_priority,low_priority
+    volumes:
+      - ./BACKEND:/home/appuser/app
+    env_file:
+      - ./BACKEND/.env
+    depends_on:
+      backend-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # --- Serwis Celery Beat (Scheduler - bardzo lekki) ---
+  celery-beat:
+    build:
+      context: ./BACKEND
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_beat
+    restart: unless-stopped
+    # Beat zużywa ~20-50MB RAM - tylko sprawdza harmonogram i wrzuca taski do kolejki
+    command: celery -A django_config beat --loglevel=info
     volumes:
       - ./BACKEND:/home/appuser/app
     env_file:

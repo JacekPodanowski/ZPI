@@ -1,4 +1,5 @@
 // index.jsx - Main Navigation component
+import React, { memo } from 'react';
 import { NAVIGATION_DEFAULTS } from './defaults';
 import { NAVIGATION_DESCRIPTOR } from './descriptor';
 import HorizontalNav from './layouts/HorizontalNav';
@@ -13,7 +14,7 @@ const LAYOUTS = {
   mobile: MobileNav
 };
 
-const Navigation = ({ layout = 'horizontal', content = {}, style, onNavigate, typography }) => {
+const Navigation = memo(({ layout = 'horizontal', content = {}, style, onNavigate, typography }) => {
   const defaults = NAVIGATION_DEFAULTS[layout] || NAVIGATION_DEFAULTS.horizontal;
 
   const mergedContent = {
@@ -34,7 +35,8 @@ const Navigation = ({ layout = 'horizontal', content = {}, style, onNavigate, ty
       typography={typography}
     />
   );
-};
+});
 
+Navigation.displayName = 'Navigation';
 Navigation.descriptor = NAVIGATION_DESCRIPTOR;
 export default Navigation;

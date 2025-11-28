@@ -1,3 +1,4 @@
+import React, { memo } from 'react';
 import { mergeWithDefaults } from '../../../../utils/contentMerge';
 import FullWidthCalendar from './layouts/FullWidthCalendar';
 import { PUBLIC_CALENDAR_BIG_DEFAULTS } from './defaults';
@@ -7,13 +8,14 @@ const LAYOUTS = {
   default: FullWidthCalendar
 };
 
-const PublicCalendarBigModule = ({ layout = 'default', content = {}, style, siteId }) => {
+const PublicCalendarBigModule = memo(({ layout = 'default', content = {}, style, siteId }) => {
   const defaults = PUBLIC_CALENDAR_BIG_DEFAULTS[layout] || PUBLIC_CALENDAR_BIG_DEFAULTS.default;
   const mergedContent = mergeWithDefaults(defaults, content);
   const LayoutComponent = LAYOUTS[layout] || LAYOUTS.default;
 
   return <LayoutComponent content={mergedContent} style={style} siteId={siteId} />;
-};
+});
 
+PublicCalendarBigModule.displayName = 'PublicCalendarBigModule';
 PublicCalendarBigModule.descriptor = PUBLIC_CALENDAR_BIG_DESCRIPTOR;
 export default PublicCalendarBigModule;

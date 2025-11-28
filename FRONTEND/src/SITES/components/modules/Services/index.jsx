@@ -1,4 +1,5 @@
 // index.jsx - Main ServicesSection component
+import React, { memo } from 'react';
 import { SERVICES_DEFAULTS } from './defaults';
 import { SERVICES_DESCRIPTOR } from './descriptor';
 import CardServices from './layouts/CardServices';
@@ -12,7 +13,7 @@ const LAYOUTS = {
   accordion: AccordionServices
 };
 
-const ServicesSection = ({ layout = 'cards', content = {}, style, isEditing, moduleId, pageId, typography }) => {
+const ServicesSection = memo(({ layout = 'cards', content = {}, style, isEditing, moduleId, pageId, typography }) => {
   const defaultOptions = SERVICES_DEFAULTS[layout] || SERVICES_DEFAULTS.cards;
   const defaults = Array.isArray(defaultOptions) ? defaultOptions[0] : defaultOptions;
 
@@ -37,7 +38,8 @@ const ServicesSection = ({ layout = 'cards', content = {}, style, isEditing, mod
       typography={typography}
     />
   );
-};
+});
 
+ServicesSection.displayName = 'ServicesSection';
 ServicesSection.descriptor = SERVICES_DESCRIPTOR;
 export default ServicesSection;
