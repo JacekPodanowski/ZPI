@@ -132,6 +132,15 @@ class SafeTokenRefreshView(TokenRefreshView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check_view(request):
+    """
+    Prosty endpoint sprawdzający "zdrowie" aplikacji.
+    Zwraca status 200 OK, jeśli aplikacja działa.
+    Używany przez Docker health check.
+    """
+    return Response({"status": "healthy"}, status=status.HTTP_200_OK)
 
 def tag_viewset(*tags, operations=None):
     """Decorator to apply tags and common metadata to specified viewset operations."""

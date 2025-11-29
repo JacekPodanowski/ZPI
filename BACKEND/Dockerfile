@@ -25,11 +25,13 @@ ENV PYTHONUNBUFFERED=1
 
 # --- SYSTEM DEPENDENCIES ---
 # Graphviz is needed for generating model diagrams with django-extensions + pydot.
+# curl is needed for the Docker health check.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     dos2unix \
     graphviz \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var-lib/apt/lists/*
 
 # --- CREATE NON-ROOT USER ---
 RUN useradd --create-home --shell /bin/bash appuser
