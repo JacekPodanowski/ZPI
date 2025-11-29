@@ -147,7 +147,10 @@ const DomainPage = () => {
     }, [selectedSiteId]);
 
     const handleAddDomain = async () => {
-
+        if (!selectedSiteId) {
+            setSearchError('Wybierz stronę przed dodaniem domeny.');
+            return;
+        }
         if (!newDomainName.trim()) {
             setSearchError('Wprowadź nazwę domeny');
             return;
