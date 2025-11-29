@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dos2unix \
     graphviz \
     curl \
-    && rm -rf /var-lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # --- CREATE NON-ROOT USER ---
 RUN useradd --create-home --shell /bin/bash appuser

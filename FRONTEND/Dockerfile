@@ -17,6 +17,8 @@ RUN echo "=== Contents of dist folder ===" && \
 # Production stage - serve with lightweight static server
 FROM node:22-alpine AS production
 WORKDIR /app
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 # Copy dist from builder
 COPY --from=builder /app/dist /app/dist
 # Debug: Verify dist contents in production stage BEFORE anything else
@@ -37,6 +39,8 @@ CMD ["sh", "-c", "echo 'Starting serve from:' && pwd && ls -la && ls -la dist/ &
 # Development stage (default for local dev)
 FROM node:22-alpine AS development
 WORKDIR /app
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 ENV NODE_ENV=development \
     CHOKIDAR_USEPOLLING=true \
     WATCHPACK_POLLING=true \
