@@ -18,11 +18,7 @@ import {
     DialogActions,
     Link,
     Collapse,
-    IconButton,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem
+    IconButton
 } from '@mui/material';
 import { 
     Add as AddIcon,
@@ -30,7 +26,7 @@ import {
     ExpandMore as ExpandMoreIcon,
     ShoppingCart as ShoppingCartIcon
 } from '@mui/icons-material';
-import { fetchSiteById, fetchSites } from '../../../services/siteService';
+import { fetchSiteById } from '../../../services/siteService';
 import { getDomainOrders, checkOrderStatus, addDomainWithCloudflare } from '../../../services/domainService';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 import { getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
@@ -42,9 +38,7 @@ const DomainPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     
-    // Sites list state
-    const [sites, setSites] = useState([]);
-    const [loadingSites, setLoadingSites] = useState(true);
+    // Selected site state
     const [selectedSiteId, setSelectedSiteId] = useState(siteId || '');
     
     // Domain orders state
@@ -63,32 +57,11 @@ const DomainPage = () => {
     // Collapse state for nameserver instructions
     const [expandedOrders, setExpandedOrders] = useState({});
 
-    // Load all user's sites
+    // Set selected site from URL param
     useEffect(() => {
-        const loadSites = async () => {
-            try {
-                setLoadingSites(true);
-                const data = await fetchSites();
-                // Handle different response formats - use only owned_sites
-                let sitesArray = [];
-                if (Array.isArray(data)) {
-                    sitesArray = data;
-                } else if (Array.isArray(data?.results)) {
-                    sitesArray = data.results;
-                } else if (Array.isArray(data?.owned_sites)) {
-                    sitesArray = data.owned_sites;
-                }
-                setSites(sitesArray);
-                if (siteId) {
-                    setSelectedSiteId(siteId);
-                }
-            } catch (err) {
-                console.error('Failed to load sites:', err);
-            } finally {
-                setLoadingSites(false);
-            }
-        };
-        loadSites();
+        if (siteId) {
+            setSelectedSiteId(siteId);
+        }
     }, [siteId]);
 
     // Load selected site details
@@ -261,51 +234,6 @@ const DomainPage = () => {
             title="Mam domenę"
             subtitle={site ? `Dodaj własną domenę do ${site.name}` : "Dodaj i skonfiguruj własną domenę"}
         >
-            {/* Site Selection Dropdown */}
-            <Paper
-                sx={{
-                    p: 3,
-                    mb: 3,
-                    bgcolor: 'background.paper',
-                    borderRadius: 3,
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
-                }}
-            >
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    Wybierz stronę
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Wybierz stronę, do której chcesz przypisać domenę.
-                </Typography>
-                <FormControl fullWidth>
-                    <InputLabel id="site-select-label">Strona</InputLabel>
-                    <Select
-                        labelId="site-select-label"
-                        value={selectedSiteId}
-                        onChange={(e) => setSelectedSiteId(e.target.value)}
-                        label="Strona"
-                        disabled={loadingSites}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        {loadingSites ? (
-                            <MenuItem value="" disabled>
-                                <CircularProgress size={20} sx={{ mr: 1 }} /> Ładowanie...
-                            </MenuItem>
-                        ) : sites.length === 0 ? (
-                            <MenuItem value="" disabled>
-                                Brak stron - utwórz najpierw stronę
-                            </MenuItem>
-                        ) : (
-                            sites.map((s) => (
-                                <MenuItem key={s.id} value={s.id.toString()}>
-                                    {s.name}
-                                </MenuItem>
-                            ))
-                        )}
-                    </Select>
-                </FormControl>
-            </Paper>
-
             {/* Site URL and Add Domain Button - Only show if site is loaded */}
             {site && (
                 <Paper
