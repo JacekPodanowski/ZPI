@@ -255,7 +255,7 @@ const DomainPage = () => {
                             Current Site URL
                         </Typography>
                         <Link
-                            href={`https://${getSiteUrlDisplay(site)}`}
+                            href={`https://${site.subdomain || getSiteUrlDisplay(site.identifier)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             sx={{
@@ -271,7 +271,7 @@ const DomainPage = () => {
                                 }
                             }}
                         >
-                            {getSiteUrlDisplay(site)}
+                            {site.subdomain || getSiteUrlDisplay(site.identifier)}
                             <OpenInNewIcon sx={{ fontSize: 18 }} />
                         </Link>
                     </Box>
