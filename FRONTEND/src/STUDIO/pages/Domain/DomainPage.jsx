@@ -18,7 +18,8 @@ import {
     DialogActions,
     Link,
     Collapse,
-    IconButton
+    IconButton,
+    MenuItem
 } from '@mui/material';
 import { 
     Add as AddIcon,
@@ -26,7 +27,7 @@ import {
     ExpandMore as ExpandMoreIcon,
     ShoppingCart as ShoppingCartIcon
 } from '@mui/icons-material';
-import { fetchSiteById } from '../../../services/siteService';
+import { fetchSiteById, fetchSites } from '../../../services/siteService';
 import { getDomainOrders, checkOrderStatus, addDomainWithCloudflare } from '../../../services/domainService';
 import REAL_DefaultLayout from '../../layouts/REAL_DefaultLayout';
 import { getSiteUrlDisplay } from '../../../utils/siteUrlUtils';
@@ -35,6 +36,7 @@ const DomainPage = () => {
     const { siteId } = useParams();
     const navigate = useNavigate();
     const [site, setSite] = useState(null);
+    const [sites, setSites] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     
@@ -57,34 +59,45 @@ const DomainPage = () => {
     // Collapse state for nameserver instructions
     const [expandedOrders, setExpandedOrders] = useState({});
 
-    // Set selected site from URL param
     useEffect(() => {
-        if (siteId) {
-            setSelectedSiteId(siteId);
-        }
-    }, [siteId]);
-
-    // Load selected site details
-    useEffect(() => {
-        const loadSite = async () => {
-            if (!selectedSiteId) {
-                setSite(null);
-                setLoading(false);
-                return;
-            }
-            
+        const loadSites = async () => {
             try {
-                setLoading(true);
-                const data = await fetchSiteById(selectedSiteId);
-                setSite(data);
+                const response = await fetchSites();
+                const ownedSites = response.owned_sites || [];
+                const teamSites = response.team_member_sites || [];
+                const userSites = [...ownedSites, ...teamSites];
+                
+                setSites(userSites);
+
             } catch (err) {
-                console.error('Failed to load site:', err);
-                setError('Failed to load site. You may not have access to this site.');
-            } finally {
-                setLoading(false);
+                console.error('Failed to load user sites:', err);
+                setSites([]);
             }
         };
 
+        loadSites();
+    }, []);
+
+    // Load selected site details based on selectedSiteId state
+    useEffect(() => {
+        const loadSite = async () => {
+            if (selectedSiteId) {
+                setLoading(true);
+                try {
+                    const data = await fetchSiteById(selectedSiteId);
+                    setSite(data);
+                } catch (err) {
+                    console.error('Failed to load site:', err);
+                    setError('Failed to load site. You may not have access to this site.');
+                } finally {
+                    setLoading(false);
+                }
+            } else {
+                setSite(null);
+                setLoading(false);
+            }
+        };
+        
         loadSite();
     }, [selectedSiteId]);
     
@@ -146,6 +159,11 @@ const DomainPage = () => {
         }
     }, [selectedSiteId]);
 
+    const handleSiteChange = (event) => {
+        const newSiteId = event.target.value;
+        setSelectedSiteId(newSiteId);
+    };
+
     const handleAddDomain = async () => {
         if (!selectedSiteId) {
             setSearchError('Wybierz stronę przed dodaniem domeny.');
@@ -196,22 +214,27 @@ const DomainPage = () => {
         }
     };
 
-    if (loading) {
+    if (loading && !site && siteId) {
         return (
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: '60vh'
-                }}
+            <REAL_DefaultLayout
+                title="Mam domenę"
+                subtitle="Ładowanie..."
             >
-                <CircularProgress />
-            </Box>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        minHeight: '60vh'
+                    }}
+                >
+                    <CircularProgress />
+                </Box>
+            </REAL_DefaultLayout>
         );
     }
 
-    if (error) {
+    if (error && !site && siteId) {
         return (
             <REAL_DefaultLayout
                 title="Error"
@@ -232,8 +255,27 @@ const DomainPage = () => {
     return (
         <REAL_DefaultLayout
             title="Mam domenę"
-            subtitle={site ? `Dodaj własną domenę do ${site.name}` : "Dodaj i skonfiguruj własną domenę"}
+            subtitle={site ? `Dodaj własną domenę do ${site.name}` : "Wybierz stronę, aby zarządzać domeną"}
         >
+            
+            <Paper sx={{ p: 2, mb: 3 }}>
+                <TextField
+                    select
+                    fullWidth
+                    label="Wybierz stronę"
+                    value={selectedSiteId}
+                    onChange={handleSiteChange}
+                    disabled={sites.length === 0}
+                    helperText={sites.length === 0 ? "Nie masz jeszcze żadnych stron." : "Wybierz stronę, dla której chcesz zarządzać domenami."}
+                >
+                    {sites.map((siteItem) => (
+                        <MenuItem key={siteItem.id} value={siteItem.id}>
+                            {siteItem.name}
+                        </MenuItem>
+                    ))}
+                </TextField>
+            </Paper>
+
             {/* Site URL and Add Domain Button - Only show if site is loaded */}
             {site && (
                 <Paper
@@ -429,7 +471,7 @@ const DomainPage = () => {
                                             </Box>
                                             
                                             <Typography variant="body2" sx={{ mb: 1 }}>
-                                                • Jeśli <strong>nie zmieniłeś</strong> nameserverów - zmień je u rejestratora na powyższe wartości.
+                                                • Jeśli <strong>nie zmieniłeś</strong> nameserwerów - zmień je u rejestratora na powyższe wartości.
                                             </Typography>
                                             <Typography variant="body2" sx={{ mb: 1 }}>
                                                 • Jeśli <strong>już zmieniłeś</strong> - nie rób nic, propagacja trwa do 48 godzin.
