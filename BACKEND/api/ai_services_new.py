@@ -29,7 +29,7 @@ class BaseAIAgent:
         if not settings.FLASH_API_KEY:
             raise AIServiceException("FLASH_API_KEY not configured in settings")
         genai.configure(api_key=settings.FLASH_API_KEY)
-        self.model_name = "gemini-2.5-pro"
+        self.model_name = "gemini-3-pro-preview"
     
     def _try_fix_json(self, json_text: str) -> str:
         """Attempt to fix common JSON errors using json-repair library."""
