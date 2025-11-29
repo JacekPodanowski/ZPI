@@ -2,9 +2,16 @@
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 services:
+  db:
+    # W produkcji port bazy danych nie powinien być wystawiony na zewnątrz
+    ports: !reset []
+
+  redis:
+    # Port Redisa również nie powinien być publicznie dostępny
+    ports: !reset []
+
   backend:
     # W produkcji backend jest dostępny tylko przez nginx
-    # Usuń external port exposure - tylko internal network
     ports: !reset []
 
   studio-frontend:
@@ -32,7 +39,9 @@ services:
       - "80:80"
       - "443:443"
     depends_on:
-      - backend
-      - studio-frontend
+      backend:
+        condition: service_healthy
+      studio-frontend:
+        condition: service_healthy
     networks:
-      - default
+      - frontend-network

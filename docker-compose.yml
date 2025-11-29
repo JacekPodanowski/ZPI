@@ -4,26 +4,54 @@ services:
     image: postgres:16-alpine
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_postgres_db
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "log_min_duration_statement=1000"
     volumes:
-      # Utrwala dane bazy danych na dysku hosta, aby nie zniknęły po restarcie kontenera
       - site_db_data:/var/lib/postgresql/data/
     environment:
-      # Te zmienne są wczytywane z GŁÓWNEGO pliku .env (w katalogu z docker-compose.yml)
-      # i używane przez obraz Postgres do stworzenia bazy i użytkownika przy pierwszym uruchomieniu.
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    tmpfs:
+      - /tmp
+      - /run
+    security_opt:
+      - no-new-privileges:true
     ports:
-      # Udostępnia port bazy danych na zewnątrz, aby można było się do niej podłączyć np. DBeaver.
       - "${DB_PORT_HOST:-5432}:5432"
     healthcheck:
-      # Sprawdza, czy baza danych jest gotowa na przyjmowanie połączeń. Kluczowe dla `depends_on`.
-      # Używamy $$ aby Docker Compose poprawnie przekazał zmienne do powłoki wewnątrz kontenera.
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -h localhost -p 5432"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    networks:
+      - backend-network
 
   # --- Serwis Redis (Message Broker dla Celery) ---
   redis:
@@ -47,7 +75,8 @@ services:
         reservations:
           cpus: "0.1"
           memory: 128M
-
+    networks:
+      - backend-network
 
   # --- Serwis Setup (Wykona entrypoint.sh i zakończy działanie.) ---
   backend-setup:
@@ -65,6 +94,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - backend-network
 
   # --- Serwis Backendu (Django) ---
   backend:
@@ -83,6 +114,15 @@ services:
     depends_on:
       backend-setup:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/api/v1/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - backend-network
+      - frontend-network
 
   # --- Serwis Celery Worker (Asynchroniczne przetwarzanie) ---
   celery-worker:
@@ -91,7 +131,6 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_worker
     restart: unless-stopped
-    # Optymalizacja: concurrency=2, nasłuchuje na wszystkich kolejkach priorytetowych
     command: celery -A django_config worker --loglevel=info --concurrency=2 -Q default,emails,high_priority,low_priority
     volumes:
       - ./BACKEND:/home/appuser/app
@@ -102,6 +141,11 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A django_config inspect ping -d celery@$$(hostname)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -110,7 +154,8 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
-
+    networks:
+      - backend-network
 
   # --- Serwis Celery Beat (Scheduler - bardzo lekki) ---
   celery-beat:
@@ -119,7 +164,6 @@ services:
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME:-site777}_celery_beat
     restart: unless-stopped
-    # Beat zużywa ~20-50MB RAM - tylko sprawdza harmonogram i wrzuca taski do kolejki
     command: celery -A django_config beat --loglevel=info --max-interval=10
     volumes:
       - ./BACKEND:/home/appuser/app
@@ -130,6 +174,11 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /home/appuser/app/celerybeat.pid"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -138,6 +187,8 @@ services:
         reservations:
           cpus: '0.1'
           memory: 64M
+    networks:
+      - backend-network
 
   # --- Serwis Studio Frontendu (React) ---
   studio-frontend:
@@ -160,12 +211,26 @@ services:
       - VITE_APP_ROUTING_MODE=subdomain
       - VITE_BUILD_TARGET=STUDIO
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - frontend-network
 
   # --- Nginx Reverse Proxy with SSL ---
   # Nginx jest uruchamiany tylko w trybie produkcyjnym przez docker-compose.prod.yml
   # W trybie lokalnym frontend i backend są dostępne bezpośrednio na portach 3000 i 8000
 
 volumes:
-  # Definicja nazwanego woluminu dla bazy danych. Lepsze niż anonimowe woluminy.
   site_db_data: {}
+
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge

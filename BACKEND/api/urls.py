@@ -20,6 +20,7 @@ from .views import (
     RequestPasswordResetView,
     VerifyPasswordResetTokenView,
     ChangePasswordView,
+    health_check_view,
     GoogleLogin,
     TemplateViewSet,
     PublicSiteListView,
@@ -120,8 +121,10 @@ router.register(r'team-members', TeamMemberViewSet, basename='teammember')
 router.register(r'testimonials', TestimonialViewSet, basename='testimonial')
 router.register(r'big-events', BigEventViewSet, basename='bigevent')
 
+
 urlpatterns = [
     path('', include(router.urls)),
+    path('health/', health_check_view),
     path('auth/register/', CustomRegisterView.as_view(), name='custom_register'),
     path('auth/resend-verification/', ResendVerificationEmailView.as_view(), name='resend_verification'),
     path('auth/confirm-email/', ConfirmEmailView.as_view(), name='confirm_email'),
