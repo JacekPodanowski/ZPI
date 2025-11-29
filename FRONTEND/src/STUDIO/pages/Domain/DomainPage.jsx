@@ -169,7 +169,15 @@ const DomainPage = () => {
             setSearchError('Wybierz stronę przed dodaniem domeny.');
             return;
         }
-        if (!newDomainName.trim()) {
+
+        // Normalize domain name
+        const normalizedDomain = newDomainName
+            .trim()
+            .replace(/^https?:\/\//, '') // Remove http:// or https://
+            .replace(/^www\./, '')      // Remove www.
+            .split('/')[0];             // Remove path and trailing slash
+
+        if (!normalizedDomain) {
             setSearchError('Wprowadź nazwę domeny');
             return;
         }
@@ -177,7 +185,7 @@ const DomainPage = () => {
         try {
             setAddingDomain(true);
             setSearchError(null);
-            const response = await addDomainWithCloudflare(newDomainName.trim(), parseInt(selectedSiteId));
+            const response = await addDomainWithCloudflare(normalizedDomain, parseInt(selectedSiteId));
             
             // Reload orders to show the new domain
             const orders = await getDomainOrders(parseInt(selectedSiteId));
